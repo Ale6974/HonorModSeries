@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <Honor_Need.label>명예</Honor_Need.label>
+  <Honor_Need.description>명예는 사건에 따라 즉시 변하고, 시간이 지나면 현재 단계 안에서 매우 천천히 감소합니다. 단계 하락은 사건으로만 일어납니다.</Honor_Need.description>
+</LanguageData>

@@ -10,4 +10,5 @@
   <Honor_Arena>결투장 지정</Honor_Arena><Honor_ArenaDesc>안전하고 빈 결투장의 중심을 선택합니다. 근접전 반경 4칸, 사격전 반경 7칸이 필요합니다.</Honor_ArenaDesc><Honor_ArenaSet>결투장 중심을 지정했습니다.</Honor_ArenaSet>
   <Honor_Begin>대기 결투 진행</Honor_Begin><Honor_BeginDesc>양측 참가자와 결투장이 준비되면 강제 결투를 진행합니다.</Honor_BeginDesc><Honor_NotReady>준비 미완료: 빈 결투장, 치료 완료, 깨어 있음, 징집 해제, 허용 무기의 종류·품질·재료·내구도 일치, 이동 경로를 확인하세요.</Honor_NotReady>
   <Honor_Abort>결투 안전 중단</Honor_Abort><Honor_AbortDesc>관리 목적으로 안전하게 중단합니다. 승리자나 보상은 없습니다.</Honor_AbortDesc>
+  <Honor_DevInsult>개발: 명예 모욕</Honor_DevInsult><Honor_DevInsultDesc>지정한 대상이 선택한 주민을 모욕한 것으로 기록합니다.</Honor_DevInsultDesc>
 </LanguageData>

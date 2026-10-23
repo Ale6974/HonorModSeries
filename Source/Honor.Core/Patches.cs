@@ -85,7 +85,7 @@ internal static class HonorGizmos
             yield return new Command_Action { defaultLabel = "Honor_Abort".Translate(), defaultDesc = "Honor_AbortDesc".Translate(),
                 action = () => manager.Finish(active, null, "player safety stop") };
         if (Prefs.DevMode)
-            yield return new Command_Action { defaultLabel = "DEV: Honor insult", defaultDesc = "Register an insult from target to selected pawn.",
+            yield return new Command_Action { defaultLabel = "Honor_DevInsult".Translate(), defaultDesc = "Honor_DevInsultDesc".Translate(),
                 action = () => Find.Targeter.BeginTargeting(TargetingParameters.ForPawns(), target => {
                     if (target.Pawn != null && manager.CanRegister(pawn, target.Pawn)) manager.RegisterInsult(target.Pawn, pawn);
                 }) };

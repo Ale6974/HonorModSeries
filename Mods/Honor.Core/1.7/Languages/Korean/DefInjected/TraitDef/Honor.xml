@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <Honor_Obsessed.degreeDatas.0.label>명예 집착</Honor_Obsessed.degreeDatas.0.label>
+  <Honor_Obsessed.degreeDatas.0.description>[PAWN_nameDef]은(는) 명예의 변화에 매우 민감하게 반응합니다.</Honor_Obsessed.degreeDatas.0.description>
+  <Honor_Honorable.degreeDatas.0.label>명예로움</Honor_Honorable.degreeDatas.0.label>
+  <Honor_Honorable.degreeDatas.0.description>[PAWN_nameDef]은(는) 명예를 소중히 여깁니다.</Honor_Honorable.degreeDatas.0.description>
+  <Honor_Vile.degreeDatas.0.label>비열함</Honor_Vile.degreeDatas.0.label>
+  <Honor_Vile.degreeDatas.0.description>[PAWN_nameDef]은(는) 명예를 별로 신경 쓰지 않습니다.</Honor_Vile.degreeDatas.0.description>
+</LanguageData>

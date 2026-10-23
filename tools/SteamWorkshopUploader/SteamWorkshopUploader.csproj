@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><GenerateDependencyFile>true</GenerateDependencyFile></PropertyGroup>
+  <ItemGroup><Reference Include="com.rlabrecque.steamworks.net"><HintPath>$(RimWorldDir)/com.rlabrecque.steamworks.net.dll</HintPath><Private>true</Private></Reference></ItemGroup>
+</Project>

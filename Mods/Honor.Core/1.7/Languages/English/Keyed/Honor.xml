@@ -14,4 +14,5 @@
   <Honor_Begin>Stage pending duel</Honor_Begin><Honor_BeginDesc>Start the mandatory challenge when both participants and the arena are ready.</Honor_BeginDesc>
   <Honor_NotReady>Not ready: check arena clearance, health, wakefulness, undrafted status, matching allowed weapons, quality, material, condition, and paths.</Honor_NotReady>
   <Honor_Abort>Stop duel safely</Honor_Abort><Honor_AbortDesc>Administrative safety stop. No victor or reward.</Honor_AbortDesc>
+  <Honor_DevInsult>DEV: Honor insult</Honor_DevInsult><Honor_DevInsultDesc>Register an insult from the target to the selected pawn.</Honor_DevInsultDesc>
 </LanguageData>

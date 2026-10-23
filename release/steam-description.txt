@@ -1,0 +1,16 @@
+[h1]Honor.Core — Experimental MVP for RimWorld 1.7[/h1]
+PRIVATE DEVELOPMENT TEST / 비공개 개발 테스트
+
+[h2]English[/h2]
+Honor needs, insult-triggered mandatory duel challenges, first-blood/surrender/death rules, matched weapons, armor removal, emergency field tending and social memories.
+Follows the game's language setting. English and Korean are supported; other languages fall back to English.
+Requires RimWorld 1.7 and Harmony 3. Tested against 1.7.4985 unstable.
+Experimental: reward negotiations and the Society/Nobility/Diplomacy/Oaths modules are not implemented. Large modpacks and Combat Extended compatibility are not verified. Non-death duels can still cause lethal injuries.
+
+[h2]한국어[/h2]
+명예 욕구, 모욕으로 시작하는 강제 결투, 선혈전·항복전·사망전, 동일 무기 조건, 방어구 탈의, 즉시 응급처치와 관계 기억을 제공합니다.
+게임의 언어 설정을 자동으로 따릅니다. 영어와 한국어를 지원하며, 그 외 언어에서는 영어를 사용합니다.
+RimWorld 1.7과 Harmony 3이 필요합니다. 1.7.4985 unstable에서 검사했습니다.
+개발 중인 MVP입니다. 승리자의 보상 요구와 Society/Nobility/Diplomacy/Oaths 모듈은 아직 구현하지 않았습니다. 대형 모드 구성과 Combat Extended 호환성은 미검증이며, 비사망전에서도 치명상이 발생할 수 있습니다.
+
+Source / 소스: https://github.com/Ale6974/HonorModSeries

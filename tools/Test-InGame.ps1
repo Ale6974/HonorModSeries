@@ -1,7 +1,9 @@
 param(
     [Parameter(Mandatory)][string]$RimWorldDir,
-    [ValidateSet('FirstBlood','Ranged','Surrender','Death','Checkpoint','Resume')][string]$Scenario = 'FirstBlood',
+    [ValidateSet('FirstBlood','Ranged','Surrender','Death','Checkpoint','Resume','English','Korean')][string]$Scenario = 'FirstBlood',
     [string]$SaveDataDir,
+    [switch]$UseInstalledCore,
+    [switch]$BaseGameOnly,
     [int]$TimeoutSeconds = 240
 )
 $ErrorActionPreference = 'Stop'
@@ -23,13 +25,33 @@ $temporaryModPaths = @()
 $taskProcess = $null
 try {
     foreach ($entry in @(@('Core','Mods/Honor.Core'), @('Tests','TestMods/Honor.InGame'))) {
+        if ($UseInstalledCore -and $entry[0] -eq 'Core') {
+            if (!(Test-Path -LiteralPath (Join-Path $gameRoot 'mods/Honor.Core/About/About.xml'))) { throw 'Installed Honor.Core missing.' }
+            continue
+        }
         $target = Join-Path $gameRoot "mods/HonorTest_$($entry[0])_$runId"
         if (Test-Path -LiteralPath $target) { throw "Target already exists: $target" }
         Copy-Item -LiteralPath (Join-Path $repoRoot $entry[1]) -Destination $target -Recurse
         $temporaryModPaths += $target
     }
     $runArgs = @('-Headless', '-NoFileLogCallstacks', '-mod=brrainz.harmony,honor.series.core,honor.series.tests', "-savedatafolder=`"$SaveDataDir`"")
-    if ($Scenario -eq 'Resume') { $runArgs += '-honorSmokeResume' }
+    if ($UseInstalledCore) { $runArgs += "-honorExpectedRoot=`"$(Join-Path $gameRoot 'mods/Honor.Core')`"" }
+    if ($BaseGameOnly) {
+        $runArgs = @($runArgs | Where-Object { $_ -notlike '-mod=*' })
+        $runArgs += '-honorExpectBaseOnly'
+        $configDir = Join-Path $SaveDataDir 'Config'
+        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+        '<ModsConfigData><version>1.7.4985 rev1269</version><activeMods><li>brrainz.harmony</li><li>ludeon.rimworld</li><li>honor.series.core</li><li>honor.series.tests</li></activeMods><knownExpansions><li>ludeon.rimworld.royalty</li><li>ludeon.rimworld.ideology</li><li>ludeon.rimworld.biotech</li><li>ludeon.rimworld.anomaly</li><li>ludeon.rimworld.odyssey</li></knownExpansions></ModsConfigData>' | Set-Content -LiteralPath (Join-Path $configDir 'ModsConfig.xml') -Encoding utf8
+    }
+    if ($Scenario -in @('English','Korean')) {
+        $configDir = Join-Path $SaveDataDir 'Config'
+        New-Item -ItemType Directory -Path $configDir -Force | Out-Null
+        $langName = if ($Scenario -eq 'Korean') { 'Korean (한국어)' } else { 'English' }
+        "<PrefsData><langFolderName>$langName</langFolderName></PrefsData>" | Set-Content -LiteralPath (Join-Path $configDir 'Prefs.xml') -Encoding utf8
+        $runArgs += '-honorLanguageSmoke'
+        if ($Scenario -eq 'Korean') { $runArgs += '-honorExpectKorean' }
+    }
+    elseif ($Scenario -eq 'Resume') { $runArgs += '-honorSmokeResume' }
     else {
         $runArgs += @('-quicktest','-honorSmoke')
         if ($Scenario -ne 'FirstBlood') { $runArgs += "-honorSmoke$Scenario" }

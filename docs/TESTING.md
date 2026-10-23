@@ -7,6 +7,8 @@
 - 설치 게임 DLL 참조 Release 빌드: 오류 0, 경고 0.
 - 엔진 독립 규칙: 20,080개 검증 통과. 0~1 전 구간의 단계 하한·자연 감소, 사건 하락, 범위 제한, 64가지 참가 자격 조합, 이념 우선, 선혈·항복·사망 종료 조건을 검사합니다.
 - XML 구문: 모든 모드·테스트 Def 및 번역 파일 파싱 통과.
+- 영어·한국어 각각 실제 엔진에서 게임 언어 설정, Need, Job, 세 특성, 소셜 기억, 기즈모, 알림, Ideology 교리 번역 검사를 통과했습니다. 설치된 로컬 모드가 실제 로드됐는지도 확인했습니다. Keyed 문구 22개와 포맷 인수의 일치를 빌드 스크립트에서 확인했습니다.
+- 모든 DLC를 비활성화한 한국어 구성에서도 실제 로드·번역 검사를 통과했습니다. DLC 전용 번역이 제외되고 Honor Def 번역 11개가 모두 적용됐으며 Honor 관련 번역 오류는 0개였습니다. 이 구성에서 게임 기본 한국어 데이터의 별도 진단 36개가 발생하는 것은 구분하여 기록했습니다.
 - 실제 엔진: 성공한 바닐라 모욕으로 신청 방향·기존 소셜 싸움 억제·준비·실제 근접 공격·선혈 종료·처치·명예·작업 종료·중복 처리 방지를 확인했습니다.
 - 실제 엔진 저장: 전투 중 `HonorActive.rws` 저장 → 프로세스 종료 → 실제 로드 → Pawn·Need 참조, Fighting 상태와 양측 Job 복원 → 전투 완료·처치·방어구 재착용을 확인했습니다.
 
@@ -24,12 +26,16 @@
 ./tools/Test-InGame.ps1 -RimWorldDir 'F:/SteamLibrary/steamapps/common/RimWorld' -Scenario Ranged
 ./tools/Test-InGame.ps1 -RimWorldDir 'F:/SteamLibrary/steamapps/common/RimWorld' -Scenario Surrender
 ./tools/Test-InGame.ps1 -RimWorldDir 'F:/SteamLibrary/steamapps/common/RimWorld' -Scenario Death
+./tools/Test-InGame.ps1 -RimWorldDir 'F:/SteamLibrary/steamapps/common/RimWorld' -Scenario English -UseInstalledCore
+./tools/Test-InGame.ps1 -RimWorldDir 'F:/SteamLibrary/steamapps/common/RimWorld' -Scenario Korean -UseInstalledCore
+# DLC 없는 구성도 실제 개인 설정과 별개로 검사할 수 있음
+./tools/Test-InGame.ps1 -RimWorldDir 'F:/SteamLibrary/steamapps/common/RimWorld' -Scenario Korean -UseInstalledCore -BaseGameOnly
 # Checkpoint 결과에 출력된 SaveData 경로를 Resume에 사용
 ./tools/Test-InGame.ps1 -RimWorldDir 'F:/SteamLibrary/steamapps/common/RimWorld' -Scenario Checkpoint
 ./tools/Test-InGame.ps1 -RimWorldDir 'F:/SteamLibrary/steamapps/common/RimWorld' -Scenario Resume -SaveDataDir 'C:/path/to/Checkpoint/SaveData'
 ```
 
-이미 Honor.Core를 직접 설치한 경우 같은 packageId가 중복되지 않도록 수동 설치본을 따로 보관한 상태에서 검사하세요. 스크립트는 자신의 고유 이름 임시 모드 폴더만 `artifacts`로 회수합니다. 로그·테스트 세이브도 저장소의 무시된 `artifacts`에 남습니다. 실제 플레이에는 TestMods를 설치하지 않습니다.
+이미 Honor.Core를 설치한 경우 `-UseInstalledCore`로 그 설치본을 검사하거나, 같은 packageId가 중복되지 않도록 수동 설치본을 따로 보관한 상태에서 검사하세요. 스크립트는 자신의 고유 이름 임시 모드 폴더만 `artifacts`로 회수합니다. 로그·테스트 세이브도 저장소의 무시된 `artifacts`에 남습니다. 실제 플레이에는 TestMods를 설치하지 않습니다.
 
 ## 수동 플레이 점검표 — 아직 별도 검증 필요
 
@@ -38,7 +44,7 @@
 - 단계 경계에서 장기 경과, 세이브 재개, 특성별 동일 사건 민감도.
 - 일반 옷 유지, 잠긴 방어구·장비 파괴·강제 교체·부상으로 착용 불가능해진 경우.
 - 아군·동물 진입, 새 화재·습격, 외부 사격, 투사체가 날아오는 도중 종료.
-- 기본 게임만 / Ideology만 / Royalty만 / 전체 DLC의 로드 및 교리 선택. 다른 소셜·전투 모드와의 조합.
+- Ideology만 / Royalty만의 개별 구성과 교리 선택, 다른 소셜·전투 모드와의 조합. 기본 게임만의 장기 결투 플레이.
 - 사망·쌍방 다운·장시간 결투·전투 중 이념 변경·맵 이탈과 저장 재개.
 - 장기간 정착지 플레이 및 성능. CE 등 대형 전투 변경 모드는 호환성 미검증.
 

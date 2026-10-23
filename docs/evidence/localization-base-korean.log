@@ -1,0 +1,17 @@
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization all DLC are disabled for base-game test
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization installed local mod is loaded
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization need label
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization need description
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization job report
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization obsessed trait
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization honorable trait
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization vile trait
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization social memory
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization dishonor memory
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization keyed UI
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization developer gizmo
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization formatted notification
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization no Honor translation diagnostics
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization all Honor Def translations applied
+04:04:35  INFO [Honor.Tests] ASSERT PASS: localization DLC-only translations excluded
+04:04:35  INFO [Honor.Tests] INFO: upstream translation diagnostics=36; Honor diagnostics=0.

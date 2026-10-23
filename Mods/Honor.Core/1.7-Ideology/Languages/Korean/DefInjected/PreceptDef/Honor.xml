@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <Honor_FirstBlood.label>선혈전</Honor_FirstBlood.label>
+  <Honor_FirstBlood.description>명예 결투는 첫 출혈 부상이 발생하면 종료합니다.</Honor_FirstBlood.description>
+  <Honor_Surrender.label>항복전</Honor_Surrender.label>
+  <Honor_Surrender.description>명예 결투는 참가자가 쓰러지거나 설정한 통증 기준에 도달하면 종료합니다.</Honor_Surrender.description>
+  <Honor_Death.label>사망전</Honor_Death.label>
+  <Honor_Death.description>명예 결투는 참가자 한 명이 사망하면 종료합니다.</Honor_Death.description>
+</LanguageData>

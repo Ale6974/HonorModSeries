@@ -11,6 +11,8 @@ internal static class SmokeBoot
 {
     static SmokeBoot()
     {
+        if (GenCommandLine.CommandLineArgPassed("honorLanguageSmoke"))
+            LongEventHandler.ExecuteWhenFinished(LocalizationSmoke.Run);
         if (GenCommandLine.CommandLineArgPassed("honorSmokeResume"))
             LongEventHandler.ExecuteWhenFinished(() => GameDataSaveLoader.LoadGame("HonorActive"));
     }
