@@ -1,0 +1,13 @@
+03:32:48  INFO [Honor.Core] Harmony patches installed; target 1.7.4985 / Harmony 3.
+03:33:08  INFO [Honor.Tests] ASSERT PASS: Scribe pawn and need references
+03:33:08  INFO [Honor.Tests] ASSERT PASS: Scribe active duel phase
+03:33:08  INFO [Honor.Tests] ASSERT PASS: Scribe duel jobs
+03:33:08  INFO [Honor.Tests] RESUME PASS: continuing saved combat.
+03:33:09  INFO [Honor.Core] duel=1 phase=Completed mode=FirstBlood duel resolved
+03:33:09  INFO [Honor.Tests] ASSERT PASS: winner and honor applied
+03:33:09  INFO [Honor.Tests] ASSERT PASS: survival / death rule
+03:33:09  INFO [Honor.Tests] ASSERT PASS: immediate tending
+03:33:09  INFO [Honor.Tests] ASSERT PASS: combat jobs ended
+03:33:09  INFO [Honor.Tests] ASSERT PASS: armor restored to survivor
+03:33:09  INFO [Honor.Tests] ASSERT PASS: idempotent result
+03:33:10  INFO [Honor.Tests] PASS: real insult -> gathering -> combat -> FirstBlood -> tending -> honor; save requested.

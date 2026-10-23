@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <NeedDef>
+    <defName>Honor_Need</defName><needClass>Honor.Core.Need_Honor</needClass>
+    <label>honor</label><description>Honor changes immediately through events and slowly decays within its current tier. Only events can reduce the tier.</description>
+    <minIntelligence>Humanlike</minIntelligence><listPriority>150</listPriority>
+    <showForCaravanMembers>true</showForCaravanMembers>
+    <developmentalStageFilter>Child, Adult</developmentalStageFilter>
+  </NeedDef>
+  <JobDef><defName>Honor_Duel</defName><driverClass>Honor.Core.JobDriver_HonorDuel</driverClass><reportString>participating in an honor duel.</reportString><casualInterruptible>false</casualInterruptible><playerInterruptible>true</playerInterruptible><checkOverrideOnDamage>Never</checkOverrideOnDamage></JobDef>
+  <ThoughtDef>
+    <defName>Honor_Respected</defName><thoughtClass>Thought_MemorySocial</thoughtClass><durationDays>10</durationDays><stackLimit>1</stackLimit>
+    <stages><li><label>respected duel victor</label><baseOpinionOffset>8</baseOpinionOffset></li></stages>
+  </ThoughtDef>
+  <ThoughtDef>
+    <defName>Honor_Dishonorable</defName><thoughtClass>Thought_MemorySocial</thoughtClass><durationDays>20</durationDays><stackLimit>1</stackLimit>
+    <stages><li><label>dishonorable killing</label><baseOpinionOffset>-20</baseOpinionOffset></li></stages>
+  </ThoughtDef>
+  <TraitDef><defName>Honor_Obsessed</defName><commonality>0.2</commonality><degreeDatas><li><label>honor obsessed</label><description>[PAWN_nameDef] responds intensely to changes in honor.</description></li></degreeDatas><conflictingTraits><li>Honor_Honorable</li><li>Honor_Vile</li></conflictingTraits></TraitDef>
+  <TraitDef><defName>Honor_Honorable</defName><commonality>0.5</commonality><degreeDatas><li><label>honorable</label><description>[PAWN_nameDef] is especially sensitive to honor.</description></li></degreeDatas><conflictingTraits><li>Honor_Obsessed</li><li>Honor_Vile</li></conflictingTraits></TraitDef>
+  <TraitDef><defName>Honor_Vile</defName><commonality>0.3</commonality><degreeDatas><li><label>vile</label><description>[PAWN_nameDef] cares little about honor.</description></li></degreeDatas><conflictingTraits><li>Honor_Obsessed</li><li>Honor_Honorable</li></conflictingTraits></TraitDef>
+</Defs>

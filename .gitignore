@@ -1,0 +1,9 @@
+**/bin/
+**/obj/
+.local/
+artifacts/
+Mods/*/1.7/Assemblies/*
+!Mods/*/1.7/Assemblies/.gitkeep
+TestMods/*/1.7/Assemblies/*
+*.user
+GamePaths.props

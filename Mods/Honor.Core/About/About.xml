@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModMetaData>
+  <name>Honor.Core — development MVP</name>
+  <author>Honor Mod Series</author>
+  <packageId>honor.series.core</packageId>
+  <modVersion>0.1.0</modVersion>
+  <supportedVersions><li>1.7</li></supportedVersions>
+  <modDependencies><li><packageId>brrainz.harmony</packageId><displayName>Harmony 3 (1.7)</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl></li></modDependencies>
+  <loadAfter><li>brrainz.harmony</li><li>Ludeon.RimWorld</li></loadAfter>
+  <description>Development MVP: honor need, mandatory insult challenges, controlled duels and emergency field tending. Read README and the playtest checklist before using an existing colony.</description>
+</ModMetaData>

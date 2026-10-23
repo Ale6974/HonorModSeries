@@ -1,0 +1,6 @@
+<Project>
+  <PropertyGroup>
+    <RimWorldDir>F:\SteamLibrary\steamapps\common\RimWorld</RimWorldDir>
+    <HarmonyDll>F:\SteamLibrary\steamapps\workshop\content\294100\2009463077\1.7\Assemblies\0Harmony.dll</HarmonyDll>
+  </PropertyGroup>
+</Project>

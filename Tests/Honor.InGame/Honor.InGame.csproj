@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath><OutputPath>../../TestMods/Honor.InGame/1.7/Assemblies/</OutputPath></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../Source/Honor.Core/Honor.Core.csproj"><Private>false</Private></ProjectReference>
+    <ProjectReference Include="../../Source/Honor.Rules/Honor.Rules.csproj"><Private>false</Private></ProjectReference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(RimWorldDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityStubs"><HintPath>$(RimWorldDir)/UnityStubs.dll</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

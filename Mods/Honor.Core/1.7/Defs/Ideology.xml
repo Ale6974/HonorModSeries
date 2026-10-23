@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+  <IssueDef MayRequire="Ludeon.RimWorld.Ideology"><defName>Honor_DuelRule</defName><label>honor duels</label><iconPath>UI/Issues/Execution</iconPath></IssueDef>
+  <PreceptDef MayRequire="Ludeon.RimWorld.Ideology"><defName>Honor_FirstBlood</defName><issue>Honor_DuelRule</issue><label>first blood</label><description>Honor duels end at the first new bleeding injury.</description><impact>Low</impact><displayOrderInIssue>0</displayOrderInIssue><defaultSelectionWeight>1</defaultSelectionWeight><modExtensions><li Class="Honor.Core.DuelRuleExtension"><mode>FirstBlood</mode></li></modExtensions></PreceptDef>
+  <PreceptDef MayRequire="Ludeon.RimWorld.Ideology"><defName>Honor_Surrender</defName><issue>Honor_DuelRule</issue><label>surrender</label><description>Honor duels end at incapacitation or the configured pain threshold.</description><impact>Medium</impact><displayOrderInIssue>10</displayOrderInIssue><modExtensions><li Class="Honor.Core.DuelRuleExtension"><mode>Surrender</mode></li></modExtensions></PreceptDef>
+  <PreceptDef MayRequire="Ludeon.RimWorld.Ideology"><defName>Honor_Death</defName><issue>Honor_DuelRule</issue><label>to the death</label><description>Honor duels end when a participant dies.</description><impact>High</impact><displayOrderInIssue>20</displayOrderInIssue><modExtensions><li Class="Honor.Core.DuelRuleExtension"><mode>Death</mode></li></modExtensions></PreceptDef>
+</Defs>

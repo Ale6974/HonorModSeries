@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <Honor_Auto>Automatically stage mandatory challenges</Honor_Auto>
+  <Honor_Minors>Allow participants under 18 biological years</Honor_Minors>
+  <Honor_Slaves>Allow slaves</Honor_Slaves><Honor_Prisoners>Allow prisoners</Honor_Prisoners>
+  <Honor_Ranged>Allow additional non-explosive bullet weapons (experimental)</Honor_Ranged>
+  <Honor_Verbose>Log honor events</Honor_Verbose>
+  <Honor_Decay>Daily natural decay: {0}</Honor_Decay><Honor_Pain>Surrender pain threshold: {0}</Honor_Pain>
+  <Honor_Tier>Honor tier {0}/5. Natural decay cannot cross this tier's floor.</Honor_Tier>
+  <Honor_Challenge>{0} has challenged {1} over an insult. The offender cannot refuse. Set an arena and equip matching weapons.</Honor_Challenge>
+  <Honor_Result>Duel #{0} ended. Victor: {1}.</Honor_Result><Honor_NoWinner>none</Honor_NoWinner>
+  <Honor_Arena>Set duel arena</Honor_Arena><Honor_ArenaDesc>Select the center of an empty, safe arena. A melee arena needs radius 4; a ranged arena needs radius 7.</Honor_ArenaDesc>
+  <Honor_ArenaSet>Duel arena center set.</Honor_ArenaSet>
+  <Honor_Begin>Stage pending duel</Honor_Begin><Honor_BeginDesc>Start the mandatory challenge when both participants and the arena are ready.</Honor_BeginDesc>
+  <Honor_NotReady>Not ready: check arena clearance, health, wakefulness, undrafted status, matching allowed weapons, quality, material, condition, and paths.</Honor_NotReady>
+  <Honor_Abort>Stop duel safely</Honor_Abort><Honor_AbortDesc>Administrative safety stop. No victor or reward.</Honor_AbortDesc>
+</LanguageData>

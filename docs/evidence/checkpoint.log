@@ -1,0 +1,14 @@
+03:32:03  INFO [Honor.Core] Harmony patches installed; target 1.7.4985 / Harmony 3.
+03:32:29  INFO [Honor.Tests] ASSERT PASS: Harmony ready
+03:32:29  INFO [Honor.Core] duel=1 phase=Pending mode=FirstBlood mandatory challenge queued
+03:32:29  INFO [Honor.Tests] ASSERT PASS: real insult succeeds
+03:32:29  INFO [Honor.Tests] ASSERT PASS: insult direction
+03:32:29  INFO [Honor.Tests] ASSERT PASS: no parallel social fight
+03:32:29  INFO [Honor.Core] duel=1 phase=Gathering mode=FirstBlood gathering
+03:32:29  INFO [Honor.Tests] ASSERT PASS: duel stages immediately in prepared arena:
+03:32:29  INFO [Honor.Tests] SETUP PASS; waiting for real combat.
+03:32:29  INFO [Honor.Core] duel=1 phase=Fighting mode=FirstBlood combat started
+03:32:29  INFO [Honor.Tests] ASSERT PASS: armor removed A
+03:32:29  INFO [Honor.Tests] ASSERT PASS: armor removed B
+03:32:29  INFO [Honor.Tests] ASSERT PASS: ordinary clothing retained
+03:32:30  INFO [Honor.Tests] CHECKPOINT PASS: active duel saved.

@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <Honor_Auto>강제 결투의 준비와 진행을 자동 시작</Honor_Auto>
+  <Honor_Minors>생물학적 나이 18세 미만 참가 허용</Honor_Minors><Honor_Slaves>노예 참가 허용</Honor_Slaves><Honor_Prisoners>포로 참가 허용</Honor_Prisoners>
+  <Honor_Ranged>기타 비폭발 탄환 무기 허용 (실험 기능)</Honor_Ranged><Honor_Verbose>명예 사건 상세 로그</Honor_Verbose>
+  <Honor_Decay>하루 자연 감소량: {0}</Honor_Decay><Honor_Pain>항복 통증 기준: {0}</Honor_Pain>
+  <Honor_Tier>명예 {0}/5단계. 자연 감소로는 이 단계의 하한 아래로 내려가지 않습니다.</Honor_Tier>
+  <Honor_Challenge>{0}이(가) 모욕한 {1}에게 명예 결투를 신청했습니다. 모욕자는 거절할 수 없습니다. 결투장을 지정하고 같은 무기를 준비하세요.</Honor_Challenge>
+  <Honor_Result>결투 #{0} 종료. 승리자: {1}.</Honor_Result><Honor_NoWinner>없음</Honor_NoWinner>
+  <Honor_Arena>결투장 지정</Honor_Arena><Honor_ArenaDesc>안전하고 빈 결투장의 중심을 선택합니다. 근접전 반경 4칸, 사격전 반경 7칸이 필요합니다.</Honor_ArenaDesc><Honor_ArenaSet>결투장 중심을 지정했습니다.</Honor_ArenaSet>
+  <Honor_Begin>대기 결투 진행</Honor_Begin><Honor_BeginDesc>양측 참가자와 결투장이 준비되면 강제 결투를 진행합니다.</Honor_BeginDesc><Honor_NotReady>준비 미완료: 빈 결투장, 치료 완료, 깨어 있음, 징집 해제, 허용 무기의 종류·품질·재료·내구도 일치, 이동 경로를 확인하세요.</Honor_NotReady>
+  <Honor_Abort>결투 안전 중단</Honor_Abort><Honor_AbortDesc>관리 목적으로 안전하게 중단합니다. 승리자나 보상은 없습니다.</Honor_AbortDesc>
+</LanguageData>
