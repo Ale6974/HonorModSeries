@@ -2,14 +2,14 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.1</modVersion>
+  <modVersion>0.3.2</modVersion>
   <supportedVersions><li>1.7</li></supportedVersions>
   <modDependencies>
     <li><packageId>brrainz.harmony</packageId><displayName>Harmony 3</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl></li>
     <li><packageId>honor.series.core</packageId><displayName>Honor.Core 0.2.1+</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/3825494597</steamWorkshopUrl></li>
   </modDependencies>
   <loadAfter><li>brrainz.harmony</li><li>honor.series.core</li></loadAfter>
-  <description>CODE-VALIDATED DEVELOPMENT PREVIEW. Not a complete feudal simulation release. World settlement commands open persistent bilateral charter records referencing real settlements/factions. Optional physical tribute requires explicit enablement and a player caravan at a counterparty settlement; confirming delivery transfers REAL inventory to the NPC stock. Prices use installed vanilla trade APIs; escrow and receipts are saved. Collection visits, incoming NPC tribute, title/favor trading, protection missions, faction membership and shared diplomacy are not implemented. A separate fictional model does not transfer real goods. English/Korean follow the game language. Requires Core 0.2.1+ and Harmony 3, no DLC required. Direct gameplay validation is deferred by user request.
-한국어: 코드 단계 검증용 개발 미리보기입니다. 실제 영지 계약 장부와 별도 가상 모델이 있습니다. 실물 공납은 별도로 켠 뒤 상대 정착지에 도착한 플레이어 상단에서 직접 납부합니다. 확정하면 실제 소지품을 NPC 거래 재고로 이전하며 게임 거래가격 API로 평가합니다. 임시 보관과 영수증 저장 코드를 포함합니다. 징수관·NPC의 상납·작위/호의 거래·보호 임무·세력 편입·외교 공유는 미구현입니다. 실제 플레이 검증은 보류 중이며 완성된 봉건계약 모드가 아닙니다. Core 0.2.1 이상과 Harmony 3 필요, DLC 불필요.
+  <description>CODE-VALIDATED DEVELOPMENT PREVIEW. Stage 1 remains in progress. Optional initial-world setup previews eligible NPC towns and, after confirmation, moves them into one REAL Free City Union faction with shared native diplomacy. Keeping the current world changes no ownership. Player/visited/loaded/chartered towns and source factions' last bases are excluded. Bilateral charter records and separately enabled physical tribute are also provided: manual delivery transfers REAL caravan inventory to NPC stock using installed trade-price APIs and saved escrow/receipts. Player membership, contract-driven sovereignty, council votes, protection missions, collection visits, incoming NPC tribute and title/favor trading are pending. A separate fictional model does not transfer real goods. English/Korean follow the game language. Requires Core 0.2.1+ and Harmony 3; no DLC required. Direct gameplay validation is deferred by user request.
+한국어: 코드 단계 검증용 개발 미리보기이며 1단계 진행 중입니다. 초기 세계 유지 또는 적격 NPC 도시를 실제 자유도시연합 세력으로 편입하는 선택을 제공합니다. 대상 목록을 검토하고 확정해야 소속을 변경하며, 플레이어·방문/로딩된 도시·계약 등록 도시·원 세력 마지막 기지는 제외합니다. 실제 영지 계약 장부와 별도 선택형 실물 공납도 있습니다. 공납을 켜고 상단에서 전달을 확정하면 실제 소지품을 NPC 재고로 이전합니다. 플레이어 가입·계약에 따른 세력 편입·표결·보호·징수관·NPC 상납·작위/호의 거래는 남아 있습니다. 별도 가상 모델은 실제 물품을 옮기지 않습니다. 실제 플레이 검증은 보류 중입니다. Core 0.2.1 이상과 Harmony 3 필요, DLC 불필요.
 Source: https://github.com/Ale6974/HonorModSeries</description>
 </ModMetaData>

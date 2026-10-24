@@ -1,5 +1,7 @@
 # 모듈 구조 — 0.2.1
 
+1단계 NPC 연합 초기화: `UnionAdmissionRules`는 적격/비율·원 세력 보존 계획을, `UnionAdmissionLedger`는 준비/적용/취소 소유권 기록과 저장 검증을 소유한다. `UnionPoliticsLedger`는 저장 게임별 최초 선택·실제 union Faction 참조·Settlement/원 세력 Scribe 참조·초기화 UI를 소유한다. 생성은 임의 정착지를 추가하지 않고, 도시 편입은 기존 player/맵/계약 기록을 우회하지 않는다. 플레이어의 native faction 특례와 계약 소속 집행은 후속 연결이다.
+
 실물 공납: `TributeLedger`가 명시적으로 활성화한 계정·고정 가치 납기·회차별 영수증과 저장 검증을 소유한다. Preview의 `TributePaymentLedger`가 최신 실제 상단/수령지·거래 단가를 검증하고 ThingOwner 임시 보관 → NPC 거래 재고 이전 → 실제 소유권/수량 검증 → 확정을 수행한다. `TributeTransfer`/`TributePiece`가 미완료 물품과 수령지·원 운반자 참조를 Scribe에 보관한다. 가상 모델 배송 기록과 혼용하지 않고 기존 장부 서명만으로 자동 차감하지 않는다. 확정된 이전은 빈 보관함·불필요한 물품 참조를 정리하고 순수 영수증만 남긴다.
 
 실제 영지 장부: `CharterBook`은 native owner 스냅샷과 불변 문안·별도 동의/해약 시각·계층 검증·JSON 복원 검증을 소유한다. Preview의 별도 `LiveCharterLedger`가 실제 Settlement/Faction의 Scribe 참조와 최신 관측을 공급한다. 가상 PoliticalWorld의 병력/영수증을 이 장부의 증거로 재사용하지 않는다. 플레이어는 하나의 정치 ID에 모든 기지를 묶고 native faction을 유지한다. 실제 효과는 선택형 수동 공납만 연결했으며 보호·정치 소속 집행은 남아 있다.

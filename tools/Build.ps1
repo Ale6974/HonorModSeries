@@ -36,6 +36,16 @@ try {
     }
     Write-Output "PASS: $($englishKeys.Count) matching English/Korean keys and format placeholders."
     }
+    [xml]$unionEnglish = Get-Content TestMods/Honor.Contracts.Preview/1.7/Languages/English/DefInjected/FactionDef/FreeCityUnion.xml -Raw
+    [xml]$unionKorean = Get-Content TestMods/Honor.Contracts.Preview/1.7/Languages/Korean/DefInjected/FactionDef/FreeCityUnion.xml -Raw
+    [xml]$unionDef = Get-Content TestMods/Honor.Contracts.Preview/1.7/Defs/FactionDefs/FreeCityUnion.xml -Raw
+    $unionKeys = @('label','description','fixedName','pawnSingular','pawnsPlural','leaderTitle')
+    foreach ($field in $unionKeys) {
+        $key = "HonorContracts_FreeCityUnion.$field"
+        if (!$unionEnglish.LanguageData.SelectSingleNode($key) -or !$unionKorean.LanguageData.SelectSingleNode($key)) { throw "Union translation missing: $key" }
+        if ($unionEnglish.LanguageData.SelectSingleNode($key).InnerText -ne $unionDef.Defs.FactionDef.SelectSingleNode($field).InnerText) { throw "Union English fallback differs: $key" }
+    }
+    Write-Output 'PASS: six union FactionDef fields have matching English fallback and Korean translations.'
     $symbols = Join-Path $repoRoot ('artifacts/symbols-' + [guid]::NewGuid().ToString('N'))
     New-Item -ItemType Directory -Path $symbols -Force | Out-Null
     Get-ChildItem Mods -Recurse -File -Filter *.pdb | ForEach-Object {

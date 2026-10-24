@@ -1,4 +1,21 @@
 <LanguageData>
+  <HP_UnionName>Free City Union</HP_UnionName>
+  <HP_Open>Initial political setup</HP_Open>
+  <HP_Setup>Choose how to initialize this world's free cities. Keeping the existing world changes no ownership. Configuring initial cities moves the reviewed NPC settlements into one REAL Free City Union faction with shared diplomacy, standard union trade/defenders and ideology. Player faction, visited towns, loaded maps, charter records and each source faction's last base are excluded. Player membership, council votes, automatic wars and conquest are not connected yet. This is world setup, not negotiated NPC independence. Gameplay validation is deferred. Closing this window defers the choice.</HP_Setup>
+  <HP_Keep>Keep existing world; form contracts during play</HP_Keep>
+  <HP_Ratio>Initial free-city target: {0}% of eligible towns (maximum 10, at most one from each source faction).</HP_Ratio>
+  <HP_Preview>Preview eligible initial cities</HP_Preview>
+  <HP_Plan>Reviewed selection: {0} cities. No ownership changes until confirmed.</HP_Plan>
+  <HP_Apply>Confirm initial cities and apply REAL faction changes</HP_Apply>
+  <HP_Done>Initial configuration has been applied. No additional automatic conversion will occur.</HP_Done>
+  <HP_Missing>Missing city</HP_Missing>
+  <HP_Configured>Initial Free City Union configuration recorded. Review the city list for the applied results.</HP_Configured>
+  <HP_Rejected>Political setup could not be completed. Check changed ownership, existing maps/contracts and pending records. Completed changes are retained; do not assume every selected city moved.</HP_Rejected>
+  <HP_Record>{0} · admission record: {1}</HP_Record>
+  <HP_Prepared>Prepared; actual ownership requires review</HP_Prepared>
+  <HP_Applied>Applied at recorded time</HP_Applied>
+  <HP_Cancelled>Cancelled without ownership change</HP_Cancelled>
+  <HP_Recover>Recheck pending admission without moving the city again</HP_Recover>
   <HT_Enable>Enable real tribute for this charter</HT_Enable>
   <HT_OptIn>Optional experimental physical payments: enabling starts a new schedule now, with no retroactive bills. Manual delivery removes real caravan goods. Protection missions, faction membership changes and collection visits are not implemented.</HT_OptIn>
   <HT_Account>Real tribute enabled. Only manual subject delivery is supported; no goods are taken automatically. Existing debts remain payable after mutual release.</HT_Account>

@@ -1,0 +1,8 @@
+<LanguageData>
+  <HonorContracts_FreeCityUnion.label>free city union</HonorContracts_FreeCityUnion.label>
+  <HonorContracts_FreeCityUnion.description>A union of autonomous free cities sharing external diplomatic relations. Membership and military support are governed separately. Development preview: player membership and council votes are not connected yet.</HonorContracts_FreeCityUnion.description>
+  <HonorContracts_FreeCityUnion.fixedName>Free City Union</HonorContracts_FreeCityUnion.fixedName>
+  <HonorContracts_FreeCityUnion.pawnSingular>free citizen</HonorContracts_FreeCityUnion.pawnSingular>
+  <HonorContracts_FreeCityUnion.pawnsPlural>free citizens</HonorContracts_FreeCityUnion.pawnsPlural>
+  <HonorContracts_FreeCityUnion.leaderTitle>council speaker</HonorContracts_FreeCityUnion.leaderTitle>
+</LanguageData>

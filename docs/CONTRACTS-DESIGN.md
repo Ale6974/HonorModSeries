@@ -213,6 +213,6 @@ UI와 사건·편지·Def 설명은 기존 방식대로 영어/한국어 두 언
 4. **군사·이탈 경로:** 실제 공격/포위→항복 또는 점령→정착지 보존·계약, 봉신 피습/포위 사건→방어 퀘스트→결과·계약 반영. 구원 조건부 봉신 제안→실제 구원→이전 관계 정리→약속한 계약 체결도 연결한다. 세력 공적 사건→명예→계약 신뢰→동요·경고→실제 이탈/회복을 지원한다. 세력 전체 강화는 한 정착지 항복과 별도 구현한다. 규칙 계산은 구현했고 실제 게임 사건·독립·반란·소속 변경은 미구현이다.
 5. **공개 전:** 격리 저장에서 협상→이행/분쟁→종료→재로딩, 만기 경계·사망/멸망·종속 순환·자원 복제·양측 위반·DLC 없는 구성·영한 전환을 엔진 검사한다. 군사 경로는 정착지/마지막 세력 보존, 관리하지 않는 정착지의 기본 패배, 항복 후 공격, 철수·초토화, 동일 사건 중복·포위 전환·기한·구원 실패를 검사한다. 도시 선택은 실제 WealthTotal 경계·빈 후보·기존 계약·다중 정착지·임시 맵 제외·저장 후 반복 편지 방지·언어 전환을 검사한다. 그 뒤 로컬 설치, 새 Workshop 항목과 정확한 의존성 등록, 기존 추천 모음집에 추가한다.
 
-기존 모음집의 마지막 웹 공개 버튼은 사용자가 나중에 처리하기로 한 상태를 유지한다.
+기존 모음집의 마지막 웹 공개 단계는 사용자가 완료했다고 보고했다. 새 Contracts의 개발 미리보기를 기존 모음집에 자동으로 추가하지 않는다.
 
 English: Planned Honor.Contracts covers faction and personal vassalage, foreign settlement charters, conquest/defense, and free cities with a proposed 100,000-wealth suzerain/independence choice. Event-driven faction honor now affects directional contract trust and territorial secession pressure. Verified warning delivery and a response period precede exit readiness, which never automatically breaks a contract or assigns personal dishonor. It is **not yet a playable or published Workshop mod**. Game attribution/routing, actual secession, quests, persistence, transfers, settings, letters, rights enforcement and English/Korean UI remain to be implemented.

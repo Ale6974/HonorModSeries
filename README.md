@@ -1,12 +1,14 @@
 # Honor Mod Series — RimWorld 1.7
 
+Contracts 개발판 0.3.2: **1단계 계약·정치 구조 진행 중**입니다. 기존 세계 유지 또는 검토한 NPC 도시를 실제 자유도시연합으로 초기 편입하는 선택형 코드를 추가했습니다. 플레이어 가입·공유 외교 특례와 계약에 따른 실제 봉신 소속 집행은 남아 있습니다. [6단계 진행표](docs/CONTRACTS-ROADMAP.md) · [현재 범위와 제한](docs/CONTRACTS-PREVIEW.md). 실제 게임 실행 검증은 계속 보류합니다.
+
 개발 미리보기에 **실제 정착지 계약 장부와 선택형 실물 공납**을 추가했습니다. 별도로 공납을 켜면 상단이 상대 정착지에서 물품을 직접 전달합니다. 실제 소지품을 옮기며 게임 거래가격으로 평가합니다. 보호·소속 변경 집행과 실제 플레이 검증은 아직 남아 있습니다. [현재 연결 범위](docs/CONTRACTS-PREVIEW.md).
 
 Contracts 개발 진행: [확정 요구사항](docs/CONTRACTS-DECISIONS.md) · [선택형 개발 미리보기와 설치](docs/CONTRACTS-PREVIEW.md). 계약 → 공납 → 공격/구원 → 시정/이탈을 연결한 가상 모델입니다. 기존 공개 0.2.1 모드의 기능이나 실제 게임 세계의 봉건계약 구현으로 보지 마세요. 신규 개발은 코드/빌드 검증만 진행하며 직접 플레이 검증은 보류 중입니다.
 
 **0.2.1 공개 실험판.** 실제 RimWorld **1.7.4985 rev1269 unstable / Waylith** 설치 DLL로 빌드하고 별도 저장 폴더에서 엔진 통합 검사를 수행합니다. 초기 명세 전체의 완성판은 아닙니다.
 
-[추천 모음집 — 마지막 공개 단계 대기](https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644) · [공개 GitHub 소스](https://github.com/Ale6974/HonorModSeries) · [창작마당 Core](https://steamcommunity.com/sharedfiles/filedetails/?id=3825494597) · [필수 항목 및 권장 구성](docs/DEPENDENCIES.md)
+[추천 모음집](https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644) · [공개 GitHub 소스](https://github.com/Ale6974/HonorModSeries) · [창작마당 Core](https://steamcommunity.com/sharedfiles/filedetails/?id=3825494597) · [필수 항목 및 권장 구성](docs/DEPENDENCIES.md)
 
 ## 모듈과 사용법
 

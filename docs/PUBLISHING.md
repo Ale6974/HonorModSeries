@@ -1,6 +1,6 @@
 # 게시 상태와 절차 — 0.2.1
 
-2026-10-24 사용자가 Core/네 부속 모드의 공개 게시와 공개 모음집을 승인했습니다. 각 모드는 공개 업로드했고 비로그인 페이지 접근도 확인했습니다. **모음집은 API의 Public 설정과 6개 항목 등록까지 완료했지만 Steam 웹의 마지막 ‘공개’ 단계가 남아 있습니다.** 사용자는 외출 중이라 이 버튼을 나중에 직접 누르겠다고 답했습니다. 모음집 완료 전에는 일반 사용자에게 공개된 모음집이라고 안내하지 마세요.
+2026-10-24 사용자가 Core/네 부속 모드의 공개 게시와 공개 모음집을 승인했습니다. 각 모드는 공개 업로드했고 비로그인 페이지 접근도 확인했습니다. **이후 사용자가 모음집 최종 공개를 완료했다고 알렸습니다.** 이번 개발 작업에서는 비로그인 접근을 별도로 재검사하지 않았으며, 사용자에게 공개 버튼을 다시 누르도록 요청하지 않습니다. Contracts Preview는 개발용이며 기존 공개 다섯 모드나 모음집에 추가 게시하지 않았습니다.
 
 | 항목 | 링크 | 상태 |
 |---|---|---|
@@ -9,7 +9,7 @@
 | Nobility | https://steamcommunity.com/sharedfiles/filedetails/?id=3825925320 | 공개, Core/Harmony/Royalty 필수 |
 | Diplomacy | https://steamcommunity.com/sharedfiles/filedetails/?id=3825925370 | 공개, Core/Harmony 필수 |
 | Oaths | https://steamcommunity.com/sharedfiles/filedetails/?id=3825925424 | 공개, Core/Harmony 필수 |
-| 추천 모음집 | https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644 | 6개 등록, 마지막 공개 버튼 대기 |
+| 추천 모음집 | https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644 | 6개 등록, 사용자 최종 공개 완료 보고 |
 
 ## GitHub
 

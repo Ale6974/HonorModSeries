@@ -16,4 +16,4 @@
 - On 2026-10-24 the user explicitly authorized PUBLIC Steam Workshop publishing for Core and the four expansion modules, and a PUBLIC collection. Publish verified functionality with accurate limitations and dependency/DLC metadata. Reuse persisted item IDs. Ask the user to personally handle sign-in, Steam Guard or a new legal agreement when required.
 - All Honor modules support English and Korean through the game's native language system. Keep keyed strings and DefInjected labels/descriptions covered; default English definitions are the fallback. Never change the user's language preference to select the mod language.
 
-- Collection 3825922644 has API Public visibility and six children, but the web Publish Collection step remains pending. The user said they are away and will click Publish later. Do not claim the collection is publicly accessible until the anonymous page is verified.
+- Collection 3825922644 has six children. The user reports completing the final public publication step (2026-10-24). Do not keep asking them to click Publish. Anonymous access has not been independently rechecked in this development turn.

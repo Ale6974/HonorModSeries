@@ -75,6 +75,8 @@ internal static class PreviewSettlementCommand
             yield return new Command_Action { defaultLabel = "HCL_Open".Translate(), defaultDesc = "HCL_Warning".Translate(),
                 action = () => Find.WindowStack.Add(new LiveChartersWindow(__instance)) };
         if (__instance.Faction != Faction.OfPlayer) yield break;
+        yield return new Command_Action { defaultLabel = "HP_Open".Translate(), defaultDesc = "HP_Setup".Translate(),
+            action = () => Find.WindowStack.Add(new InitialPoliticsWindow()) };
         yield return new Command_Action { defaultLabel = "HCP_Open".Translate(), defaultDesc = "HCP_Warning".Translate(),
             action = () => Find.WindowStack.Add(new ContractsPreviewWindow()) };
     }

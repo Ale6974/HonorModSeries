@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 1단계 NPC 자유도시 초기 배치 (2026-10-24, 코드/빌드만)
+
+Version.txt 1.7.4985 rev1269 및 기존 .NET10/Waylith 구성을 재확인했다. 설치 DLL의 FactionGenerator.NewGeneratedFaction(FactionGeneratorParms)는 hidden override가 false인 경우 무작위 정착지를 생성해 월드에 추가한다. 따라서 이번 연합 생성은 `new FactionGeneratorParms(def, hidden: true)`로 정착지 생성을 억제하고 `faction.hidden = false` 후 FactionManager.Add로 등록한다. 초기 관계 생성은 FactionDef의 적대 규칙을 사용하고, hidden 상태 자체를 수치 판단에 사용하지 않는 것을 조사했다. 실제 생성 동작을 실행 검증하지는 않았다.
+
+WorldObject.SetFaction은 이 설치본에서 factionInt를 설정하는 메서드이며 정착지의 trader/맵/기존 주민을 일괄 이주하는 API가 아니다. Settlement의 player 판정·map generator·방문 가능 여부는 Faction.OfPlayer에 의존한다. 따라서 플레이어나 로딩/방문/주민 생성된 도시는 대상으로 삼지 않고, 기존 계약 참조도 우회하지 않는다. `Settlement.EverVisited`는 trader.EverVisited이며 실제 재고 생성 이력을 반영한다. 원 세력 정착지 수는 각 변경 직전에 현재 WorldObjects에서 다시 계산한다.
+
+FactionDef 필드와 기본 OutlanderFactionBase 상속 구조를 설치 XML에서 확인했다. 자동 생성 수·가중치를 0으로 두고 raidsForbidden/canRequestMilitaryAid/canGenerateQuestSites 제한을 명시했다. 이 Def의 실제 XML inheritance 해석, 새/기존 저장 초기화, 세력 생성/이름·관계·캐시·저장 재로딩과 언어 전환은 실행 검증하지 않았다. 소스 및 빌드 결과는 해당 엔진 증거를 대신하지 않는다.
+
 ## 실물 공납 직접 전달 (2026-10-24, 코드/빌드만)
 
 동일 설치 1.7.4985 rev1269와 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 DLL에서 Tradeable.InitPriceDataIfNeeded의 입력과 TradeUtility.GetPricePlayerSell(Thing,float,float,float,float,float,float,TradeCurrency), GetPricePlayerBuy(Thing,float,float,float,float), PlayerSellableNow를 조사했다. 통화는 시장가를 쓰고 일반 물품은 가격형·협상가·정착지·약물/축산물·난이도 보정 및 판매/구매 가격 상한을 반영한다. 전역 TradeSession은 변경하지 않는다. 표기/반올림 차이까지 실제 거래 화면과 대조한 결과는 없다.

@@ -8,6 +8,20 @@
 
 ## 이번에 연결한 범위
 
+### 1단계: 실제 NPC 자유도시연합 초기 배치 (0.3.2)
+
+모드가 활성화된 세계를 처음 열면 **기존 세계 유지 / 초기 자유도시 구성**을 선택하는 창을 제시하도록 작성했다. 닫으면 선택을 미루고, 확정 전에는 소유권을 바꾸지 않는다. 선택은 저장 게임별로 기록한다. 플레이어 정착지의 **초기 정치 질서 설정** 명령으로 다시 열 수 있다. 새로운 행성 생성기 자체의 설정 화면/봉신 계층 생성기는 아직 아니며 시작/불러오기 이후에 동작하는 초기화 단계다.
+
+기존 유지 선택은 도시 소속을 변경하지 않는다. 구성 선택은 적격 도시의 0~30%(기본 10%), 최대 10개·원 세력당 1개를 미리 표시하고 확정 후 실제 `Settlement.SetFaction`으로 하나의 `HonorContracts_FreeCityUnion` 세력에 편입한다. 같은 native faction에 속하므로 편입 NPC 도시들은 바닐라 대외 관계를 공유한다. 기존 도시의 개별 원 세력 외교 대신 연합 외교·기본 산업 기술 병력/거래·이념이 적용되며 이를 확정 전에 표시한다. 인물/맵별 문화·병종 보존은 후속 작업이다.
+
+플레이어 세력, 로딩된 맵, 방문/재고 생성 또는 주민 생성 이력이 있는 도시, 계약 장부에 등록된 도시, 적대/영구 적대 세력, 숨김/임시/멸망 세력, 비인간형 세력, 왕실 작위 체계를 가진 세력, 원 세력의 마지막 정착지는 제외한다. 확정 직전에 실제 소유자·정착지 수·모든 조건을 재확인한다. 플레이어 기지나 Pawn의 faction은 변경하지 않으며, 봉신 영지를 `Faction.OfPlayer`로 바꿔 일반 플레이어 기지로 만들지도 않는다.
+
+연합 FactionDef는 바닐라 OutlanderFactionBase를 상속하고 자동 세계 생성 수와 가중치는 0이다. 게임이 무작위 연합 정착지를 추가로 생성하지 않도록 `FactionGenerator.NewGeneratedFaction`의 hidden override를 사용한 뒤, 공개 faction으로 전환하고 manager에 등록한다. 동일 Def의 기존 세력이 있으면 재사용하며 중복/멸망 세력은 임의 복구하지 않는다. 이름·설명·시민/지도자 명칭은 영한 번역을 제공하고 연합 이름은 게임의 현재 언어로 표시한다.
+
+`UnionAdmissionLedger`에 준비/적용/취소 시각과 원 소유자·목표 세력·도시 ID를 기록한다. 실제 참조는 `UnionCityReference`가 Scribe에 저장한다. 부분 실패를 전체 성공으로 기록하거나 저장 후 도시를 다시 이동시키지 않는다. 미완료 건은 현재 소유자가 연합인지/원 소유자인지 확인해 완료/취소할 수 있고, 제삼자가 점령했거나 맵이 로딩된 상태를 임의로 덮어쓰지 않는다. 이미 적용된 도시가 나중에 정복돼도 이 초기화 코드는 자동으로 되돌리지 않는다. 적용한 건이 있으면 두 번째 초기 재편을 막으며 전부 미이동 취소로 확인된 경우에는 재검토할 수 있다.
+
+연합의 무작위 습격과 바닐라 군사 원조 요청은 비활성화했다. 평의회 의결 없이 임의로 연합 군사를 사용하는 기능을 완성했다고 표시하지 않는다. **플레이어의 연합 가입·계약을 따른 NPC 소속 변경·독립 시 편입·평의회 표결·공유 외교의 플레이어 특례는 아직 미연결이다.** 1단계 전체가 완료된 것은 아니다. FactionDef 실제 해석/세력 생성/도시 변경/팝업/저장 복원은 코드와 빌드만 검사했고 게임을 실행하지 않았다.
+
 ### 선택형 실제 공납 전달
 
 계약 장부에서 플레이어가 봉신인 활성 계약에 **이 계약의 실제 공납 켜기**를 선택하면 켠 시점부터 공납 일정을 시작한다. 기존 개발용 계약에 소급 청구하지 않는다. 가입/서명만으로 물품을 자동 차감하지 않는다. 고정 원금 100, 봉신 직접 배송의 운송 몫 10% 공제에 따라 회차당 인수 가치 90을 요구한다. 주기 5일·유예 1일이며 미납 자체로 자동 명예 유죄나 전쟁을 만들지 않는다.
@@ -32,7 +46,7 @@
 
 GameComponent가 실제 Settlement/Faction을 Scribe 참조로, 정치 장부를 별도 버전 1 JSON으로 보관한다. 잘못된 복원은 원본 데이터를 보존하고 동작을 막는다. 코드 검사에서 동의 순서·기한·실시간 소유권 변경·중복 관측·후손 유지·변조된 저장 거절을 검증했다. **실제 게임의 저장/재로딩은 실행하지 않았다.**
 
-**활성 기록만으로 모든 계약 효과가 집행되지는 않는다.** 실제 공납은 위 선택형 직접 전달만 연결했으며 Faction 편입·연합 외교·보호 퀘스트·명예 변화는 미연결이다. 장부는 최초 세계 재편이나 NPC 도시를 자동으로 자유도시연합으로 옮기지 않는다. 종료 후 연합 편입도 현재 실제 게임에는 적용하지 않는다. 가상 모델의 영수증·전투 결과를 이 장부로 복사하지 않는다. 현재 장부는 한 당사자가 플레이어인 계약만 취급하며 NPC끼리의 초기 정치 질서 생성은 후속 작업이다.
+**활성 기록만으로 모든 계약 효과가 집행되지는 않는다.** 실제 공납은 선택형 직접 전달만 연결했다. 초기 NPC 자유도시 배치는 별도 확정 절차이며 계약에 따른 Faction 편입·플레이어 공유 외교·보호 퀘스트·명예 변화는 미연결이다. 장부 서명만으로 NPC 도시를 자동으로 연합에 옮기지 않는다. 해약 후 연합 편입도 아직 적용하지 않는다. 가상 모델의 영수증·전투 결과를 실제 장부로 복사하지 않는다. 장부는 한 당사자가 플레이어인 계약만 취급하며 NPC끼리의 봉신 계층 생성은 후속 작업이다.
 
 ### 독립된 가상 모델
 
@@ -66,4 +80,4 @@ GameComponent가 실제 Settlement/Faction을 Scribe 참조로, 정치 장부를
 
 세력 소속 반영/플레이어 특례, 방문 징수·NPC 상납·수송 상단 사건, 실제 퀘스트/전투 결과 증거, 항복·점령의 정착지 보존, 게임 세계 사건 생성과 알림, 이행 면책·반복 미납 제재, 평의회 가중 표결, 세계 생성/기존 저장 선택, 용병단과 개인 서약을 순차적으로 연결한다. 실제 정착지 매핑·동의 기록·직접 실물 공납 코드는 추가했지만 복잡한 NPC 권한·정치 판단·초기 세계 전체 적용은 아직 미완성이다. 기존 규칙의 RescuePledge/FactionHonorLedger와 새 모델 통합도 남아 있다. 현재 명예 수치는 Core Need/바닐라 우호도에 전파하지 않는다.
 
-English: An opt-in, code-validated development preview. The separate fictional model does not affect real inventory. The live charter book now offers explicit opt-in manual tribute from a caravan at a counterparty settlement, moving real inventory into vanilla NPC stock with saved escrow and receipts. No automatic collection, incoming NPC tribute, title/favor trading, protection missions, sovereignty changes or player defeat simulation are provided. No gameplay validation or Workshop release is claimed.
+English: An opt-in, code-validated development preview. Initial configuration can move reviewed eligible NPC towns into a real shared Free City Union, preserving player control and source factions' last bases. Live charters offer separately enabled manual physical tribute with escrow/receipts. The fictional model remains separate. Player membership, contract-driven sovereignty, council votes, incoming NPC tribute, collection visits, title/favor trading and protection missions remain pending. No gameplay validation or Workshop release is claimed.
