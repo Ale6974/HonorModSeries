@@ -8,6 +8,8 @@ try {
     if ($LASTEXITCODE) { throw 'Core build failed.' }
     & $DotnetPath run --project Tests/Honor.Rules.Tests -c Release
     if ($LASTEXITCODE) { throw 'Rule tests failed.' }
+    & $DotnetPath run --project Tests/Honor.Contracts.Tests -c Release
+    if ($LASTEXITCODE) { throw 'Contract rule tests failed.' }
     & $DotnetPath build Tests/Honor.InGame/Honor.InGame.csproj -c Release
     if ($LASTEXITCODE) { throw 'In-game test build failed.' }
     foreach ($module in 'Society','Nobility','Diplomacy','Oaths') {

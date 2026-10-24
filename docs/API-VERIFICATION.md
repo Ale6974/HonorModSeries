@@ -59,3 +59,9 @@ Steam의 필수 항목/모음집 구성은 공식 [ISteamUGC 문서](https://par
 Verse.ModDependency.IsSatisfied는 실제 설치 DLL에서 packageId/alternativePackageIds의 활성 여부를 검사하고 버전 숫자를 비교하지 않습니다. 표시 문자열을 버전 강제 장치라고 안내하지 않습니다. 대여 무기 회수에는 실제 Thing.holdingOwner.Remove / Thing.Destroy를 사용하고 저장된 결투의 해당 무기 참조도 지웁니다. 맹세 이전은 GameComponent.LoadedGame 이후에 처리합니다.
 
 Verse.GenGrid.Standable은 Walkable뿐 아니라 같은 셀 Thing의 def.passability가 모두 Traversability.Standable인지도 검사합니다. 통과 가능한 돌덩이도 기립 장소를 막을 수 있어 생성 결투장 준비에서 제거합니다.
+
+## Contracts 설계 검토 (2026-10-24)
+
+설치 Version.txt의 1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 다시 확인했습니다. 기존 설치 DLL에서 확인한 Settlement : MapParent의 Faction/TraderKind/Goods 및 거래 전달 함수, WorldObject.SetFaction/ExposeData/Destroyed, Faction.leader/defeated/RelationWith/TryAffectGoodwillWith를 설계에 참고했습니다. 정착지 거래 재고가 별도 영토 국고나 지속 생산 경제라는 전제는 두지 않습니다. 자치권·봉신 관계는 새 계약 데이터로 구현할 설계이며 기본 엔진에서 이미 보장된다고 주장하지 않습니다.
+
+이번 구현은 엔진 독립 계약 규칙뿐이므로 새로운 게임 메서드 바인딩·Harmony 패치를 추가하지 않았고 새 기능의 엔진 검증도 수행하지 않았습니다. 실제 계약 모듈 구현 시 해당 바인딩을 다시 컴파일·실행 검증해야 합니다.

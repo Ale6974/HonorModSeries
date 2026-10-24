@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
+  <ItemGroup><ProjectReference Include="../../Source/Honor.Contracts.Rules/Honor.Contracts.Rules.csproj" /></ItemGroup>
+</Project>

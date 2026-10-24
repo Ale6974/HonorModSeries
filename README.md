@@ -47,6 +47,8 @@ Oaths: 정당한 결투 승리 또는 모욕·불명예 없이 5일 버티기입
 
 ## 빌드와 개발
 
+다음 기능은 [봉신·식민지 계약 설계](docs/CONTRACTS-DESIGN.md)에 정리했습니다. 세력 간 봉신, 개인 봉신, 외국 정착지별 자치·공납·보호 계약을 대상으로 하며 `Honor.Contracts.Rules`와 별도 규칙 검사를 추가했습니다. **아직 게임 내 사용 가능한 Contracts 모드는 아닙니다.** 공개 0.2.1의 다섯 모드에는 포함하지 않습니다.
+
 .NET 10 SDK와 사용자 소유의 게임·Harmony DLL이 필요합니다. 개발 스크립트는 PowerShell 7에서 검증했습니다. `GamePaths.props.example`을 `GamePaths.props`로 복사해 경로를 설정한 뒤 `./tools/Build.ps1 -DotnetPath 'dotnet.exe 경로'`를 실행합니다. 게임·Harmony·Steamworks DLL과 세이브·개인 설정은 배포하지 않습니다.
 
 - [API 검증](docs/API-VERIFICATION.md)

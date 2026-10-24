@@ -20,3 +20,7 @@ DuelRecord.Beneficiary는 실제 전투자에서 귀족 본인으로 결과를 �
 DuelRuleExtension은 PreceptDef 확장입니다. 최초 신청자 교리만 읽고 충돌 시 defName 순서로 고릅니다. 별도 평판 화폐는 없고 바닐라 관계 기억/혈연/세력 우호도를 사용합니다.
 
 모든 게임 객체 접근은 게임 스레드에서 수행합니다. 실제 게임/DLC 타입은 설치 DLL로 검증하며 게임 DLL·역컴파일본은 배포하지 않습니다. 계획과 출시 범위는 STATUS, 증거는 TESTING을 참조하세요.
+
+## 개발 중인 Contracts
+
+`Honor.Contracts.Rules`는 세 범위의 계약 조항·서명·의무·분쟁·종료와 종속 그래프 검사를 담당하는 별도 엔진 독립 프로젝트입니다. 현재 어느 게임 DLL에서도 참조하지 않으며 Core/기존 Honor.Rules와 배포 관계를 바꾸지 않습니다. 향후 Contracts만 이 DLL을 포함합니다. 게임 객체의 권한/존재 확인, 저장, 자원 이전, 명예 결과는 별도 게임 어댑터의 책임입니다. [계약 설계](CONTRACTS-DESIGN.md).
