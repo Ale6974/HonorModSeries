@@ -88,6 +88,12 @@ public sealed class LiveCharterLedger : GameComponent
             Settlement = player || factionGroup ? null : settlement, OriginalFaction = owner, PlayerGroup = player, FactionGroup = factionGroup });
         return identity;
     }
+    public void EnsurePlayerIdentity()
+    {
+        if (RestoreFailed || !Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Any(s => !s.Destroyed && s.Faction == Faction.OfPlayer))
+            throw new ArgumentException("No current player settlement.");
+        Register(null, true);
+    }
     public string Label(string identity)
     {
         var binding = bindings.SingleOrDefault(b => b.Identity == identity);

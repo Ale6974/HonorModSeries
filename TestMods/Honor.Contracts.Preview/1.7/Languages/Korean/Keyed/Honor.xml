@@ -96,4 +96,28 @@
   <HCP_Name_town>모의 도시</HCP_Name_town>
   <HCP_Name_enemy>모의 공격 세력</HCP_Name_enemy>
   <HCP_Name_rival>모의 경쟁 세력</HCP_Name_rival>
+  <PA_Open>플레이어 정치 소속</PA_Open>
+  <PA_Warning>개발 미리보기 — 가입을 확정하면 모든 플레이어 정착지의 실제 대외 우호도와 전쟁·평화 관계가 선택한 종주/연합을 따릅니다. 이후 관계 변화도 공유합니다. 종주/연합과의 관계는 우호도 +100 동맹으로 시작합니다. 기지와 주민의 플레이어 통제는 유지됩니다. 아래 관계를 검토한 뒤 확정하세요. 연합 이적에는 3일 전 통보·미완료 실물 이전 정산·서명된 새 종주 계약이 필요하며 아직 일방 탈퇴 버튼은 없습니다. 연합 회비·평의회·자동 보호는 미구현이며 실제 플레이 검증은 보류 중입니다.</PA_Warning>
+  <PA_State>지위: {0} · 종주/연합: {1}</PA_State>
+  <PA_None>없음</PA_None>
+  <PA_Independent>미소속</PA_Independent>
+  <PA_Union>자유도시연합 소속</PA_Union>
+  <PA_Vassal>계약상 봉신</PA_Vassal>
+  <PA_Suspended>공유 외교를 중단했습니다. 종주/연합·계약·퀘스트 관계 잠금·플레이어 우호도 상한 중 현재 공유와 충돌하는 조건이 있습니다. 기존 관계를 유지합니다. 문제를 해결한 뒤 소속 재확인을 요청하세요. 소유권과 계약 기록은 보존합니다.</PA_Suspended>
+  <PA_Reaffirm>문제 해결 후 소속 재확인 요청</PA_Reaffirm>
+  <PA_ReviewUnion>자유도시연합 가입 검토</PA_ReviewUnion>
+  <PA_ReviewLiege>서명된 종주 계약의 외교 검토</PA_ReviewLiege>
+  <PA_Notice>연합 이탈 3일 전 통보</PA_Notice>
+  <PA_NoticeUntil>통보기간 잔여 일수(0 이하는 경과): {0}. 서명된 새 종주 계약과 미완료 실물 이전 정산도 필요합니다.</PA_NoticeUntil>
+  <PA_Review>선택한 종주/연합: {0}. 아래에 공개 대외 세력 관계를 표시합니다. 원본 관계가 바뀌면 다시 검토해야 확정할 수 있습니다.</PA_Review>
+  <PA_Relation>{0}: 우호도 {1} · {2}</PA_Relation>
+  <PA_KindHostile>적대</PA_KindHostile>
+  <PA_KindNeutral>중립</PA_KindNeutral>
+  <PA_KindAlly>동맹</PA_KindAlly>
+  <PA_Join>연합 가입 확정 및 공유 외교 적용</PA_Join>
+  <PA_ApplyLiege>서명된 종주 소속 확정 및 공유 외교 적용</PA_ApplyLiege>
+  <PA_Reason>정치 소속에 따른 공유 외교</PA_Reason>
+  <PA_RelationsChanged>공유 외교로 다음 세력과의 관계가 바뀌었습니다: {0}. 검토할 수 있도록 게임을 일시정지했습니다.</PA_RelationsChanged>
+  <PA_Goodwill>{0}에 대한 공동 우호도: {1} → {2}</PA_Goodwill>
+  <PA_Rejected>정치 소속을 변경할 수 없습니다. 현재 외교·상대 동의·기존 계약 해약·통보기간·미완료 이전을 확인하세요. 퀘스트 잠금이나 플레이어 우호도 상한도 공유를 막을 수 있습니다.</PA_Rejected>
 </LanguageData>

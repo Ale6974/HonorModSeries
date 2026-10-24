@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 플레이어 공유 외교 (0.3.3, 코드/빌드만)
+
+설치 Version.txt의 1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 DLL의 Faction.RelationWith(Faction,bool)는 세력별 mutable FactionRelation을 반환한다. 관계 객체를 대표 세력 것으로 바꿔 돌려주면 양방향 변경과 바닐라 알림이 잘못 처리될 수 있으므로 getter를 패치하지 않는다. 실제 플레이어·상대의 별도 relation 값에 baseGoodwill/kind를 함께 반영하고 Notify_RelationKindChanged(Faction,FactionRelationKind,bool,string,GlobalTargetInfo,out bool)를 호출한다.
+
+TryAffectGoodwillWith(Faction,int,bool,bool,HistoryEventDef,GlobalTargetInfo?)와 CanChangeGoodwillFor, CalculateAdjustedGoodwillChange를 조사하고 해당 오버로드에 컴파일했다. 플레이어 관련 원래 변경 금지 조건과 자연 우호도 보정을 유지한 뒤 대표 세력 쌍으로 전달한다. NPC끼리 변경은 바닐라의 플레이어 HistoryEvent를 생성하지 않으므로 원래 플레이어 사건의 실제 변화분을 별도로 기록한다. RelationKind는 단순 goodwill 부호가 아니라 바닐라 hysteresis 결과이므로 원본 kind를 유지한다.
+
+GoodwillWith의 플레이어 상한 적용, GoodwillSituationManager.GetMaxGoodwill, QuestUtility.IsGoodwillLockedByQuest를 확인했다. 원본과 충돌하면 공유를 중단하며 상한/잠금을 우회하지 않는다. SetRelationDirect와 Notify_GoodwillSituationsChanged 후에도 재검사하고 250틱 주기로 확인한다. 실제 패치 설치·사건 재진입·퀘스트 진행·조약 호환성·게임 저장 재로딩은 실행하지 않았다. 설치 DLL 조사와 빌드 결과를 엔진 성공 증거로 취급하지 않는다.
+
 ## 1단계 NPC 자유도시 초기 배치 (2026-10-24, 코드/빌드만)
 
 Version.txt 1.7.4985 rev1269 및 기존 .NET10/Waylith 구성을 재확인했다. 설치 DLL의 FactionGenerator.NewGeneratedFaction(FactionGeneratorParms)는 hidden override가 false인 경우 무작위 정착지를 생성해 월드에 추가한다. 따라서 이번 연합 생성은 `new FactionGeneratorParms(def, hidden: true)`로 정착지 생성을 억제하고 `faction.hidden = false` 후 FactionManager.Add로 등록한다. 초기 관계 생성은 FactionDef의 적대 규칙을 사용하고, hidden 상태 자체를 수치 판단에 사용하지 않는 것을 조사했다. 실제 생성 동작을 실행 검증하지는 않았다.

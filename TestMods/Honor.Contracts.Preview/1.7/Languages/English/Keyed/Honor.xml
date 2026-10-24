@@ -96,4 +96,28 @@
   <HCP_Name_town>Model town</HCP_Name_town>
   <HCP_Name_enemy>Model attacker</HCP_Name_enemy>
   <HCP_Name_rival>Model rival</HCP_Name_rival>
+  <PA_Open>Player political allegiance</PA_Open>
+  <PA_Warning>DEVELOPMENT PREVIEW — Confirming membership changes REAL external goodwill and war/peace relations for ALL player settlements to match the selected authority, including future changes. Relations with the authority start at +100 (ally). Your colony and pawns remain player-controlled. Review the relations below before confirming. Union exit requires 3 days' notice, resolved physical transfers and a signed new liege contract; there is no unilateral exit button yet. Union levies, council votes and automatic protection are not implemented. Gameplay validation is deferred.</PA_Warning>
+  <PA_State>Status: {0} · Authority: {1}</PA_State>
+  <PA_None>None</PA_None>
+  <PA_Independent>Unaffiliated</PA_Independent>
+  <PA_Union>Free City Union member</PA_Union>
+  <PA_Vassal>Contractual vassal</PA_Vassal>
+  <PA_Suspended>Shared diplomacy suspended. The authority, contract, quest relation lock or player goodwill cap no longer permits sharing. Existing relations are retained. Resolve the conflict, then request reaffirmation; ownership and contract records are preserved.</PA_Suspended>
+  <PA_Reaffirm>Request reaffirmation after resolving the conflict</PA_Reaffirm>
+  <PA_ReviewUnion>Review Free City Union admission</PA_ReviewUnion>
+  <PA_ReviewLiege>Review diplomacy of the signed liege contract</PA_ReviewLiege>
+  <PA_Notice>Give 3 days' notice of union departure</PA_Notice>
+  <PA_NoticeUntil>Notice remaining (days; zero or less means elapsed): {0}. A signed new liege contract and settlement of pending transfers are still required.</PA_NoticeUntil>
+  <PA_Review>Selected authority: {0}. Visible external factions are listed below. If the source relations change, review again before confirming.</PA_Review>
+  <PA_Relation>{0}: goodwill {1} · {2}</PA_Relation>
+  <PA_KindHostile>Hostile</PA_KindHostile>
+  <PA_KindNeutral>Neutral</PA_KindNeutral>
+  <PA_KindAlly>Ally</PA_KindAlly>
+  <PA_Join>Confirm union admission and apply shared diplomacy</PA_Join>
+  <PA_ApplyLiege>Confirm signed liege allegiance and apply shared diplomacy</PA_ApplyLiege>
+  <PA_Reason>Shared political allegiance</PA_Reason>
+  <PA_RelationsChanged>Shared diplomacy changed the relationship with: {0}. The game has been paused for review.</PA_RelationsChanged>
+  <PA_Goodwill>Shared goodwill with {0}: {1} → {2}</PA_Goodwill>
+  <PA_Rejected>Political change unavailable. Review current relations, authority consent, released prior ties, notice and pending transfers. Quest locks or player goodwill caps may prevent sharing.</PA_Rejected>
 </LanguageData>

@@ -8,6 +8,18 @@
 
 ## 이번에 연결한 범위
 
+### 1단계: 플레이어 소속과 공유 외교 (0.3.3)
+
+플레이어 정착지의 **플레이어 정치 소속 / Player political allegiance** 명령을 추가했다. 초기 구성에서 만든 연합 가입 또는 실제 장부에 양측이 서명한 플레이어 봉신 계약의 종주를 검토한다. 후보의 공개 대외 관계를 표시하고 별도 확정해야 적용하며, 검토 이후 원본 관계가 바뀌면 재검토를 요구한다. NPC 동의는 연합의 살아 있는 지도자·비적대 상태 또는 기존 양측 서명 계약을 기준으로 하는 임시 정책이다. 초기 기지 가치 성장 알림과 정치 협상 AI는 아직 연결하지 않았다.
+
+확정 시 **모든 플레이어 정착지의 실제 대외 우호도와 적대/중립/동맹 관계가 종주/연합을 따른다.** 종주/연합과의 내부 관계는 +100 동맹으로 시작한다. 세력의 실제 관계 객체를 별도로 유지하면서 값을 복사하고 바닐라 관계 변경 알림을 호출한다. 플레이어가 관련된 우호도 사건은 원래의 변경 허용 조건과 자연 우호도 보정을 확인한 뒤 대표 세력에 전달한다. 이후 외교 변화도 즉시 또는 250틱 주기로 공유하며 관계 종류 변경은 메시지와 일시정지로 알린다. 평의회 표결/전쟁 승인 기능은 아직 없으므로 현재는 플레이어의 외교 사건이 공유 관계에 직접 영향을 준다.
+
+Pawn·Settlement의 native player faction은 바꾸지 않는다. 소속 때문에 식민지 조작을 NPC에 넘기거나 게임을 종료하는 코드를 추가하지 않았다. 퀘스트 관계 잠금·플레이어 전용 우호도 상한이 원본 관계와 충돌하면 공유를 중단한다. 종주 소실·내부 적대·계약 무효화도 같은 방식이며 마지막 관계/계약 기록은 보존한다. 문제 해결 후 같은 권위자의 유효성·동의를 다시 확인해야 재개한다. 중단 상태는 정상적인 독립 판정이 아니며 모든 관계를 가입 전으로 자동 복구하지 않는다. 다른 모드의 임의 관계 객체 직접 수정과 모든 퀘스트 경로의 호환성을 검증한 것은 아니다.
+
+`PlayerAllegiance`는 고정 native player ID와 전환 명령을 버전 1 JSON으로 저장·재생한다. 기존 봉신 계약이 실제로 해약되기 전 다른 계약이나 연합으로 이중 편입하지 못한다. 연합에서 새 종주로 가려면 3일 전 통보, 서명된 새 계약, 미완료 물품 이전 해소가 필요하다. 통보를 다시 눌러 기간을 줄일 수 없다. 연합 회비는 아직 없으므로 이 확인은 미래의 모든 연합 의무 정산을 구현한 것이 아니다. 합의 해약/정당한 독립 후 자동 연합 편입과 NPC 영지의 계약상 Faction 이동은 후속 작업이다.
+
+추가 72개 순수 검사는 동의·기존 계약 해약·통보기간 경계·중단/재확인·저장 재생·손상 입력과 독립된 관계 스냅샷을 검증한다. 실제 게임의 창·Harmony 패치·외교 사건·일시정지·Scribe 재로딩·플레이어 통제는 실행 검증하지 않았다. **1단계 전체 완료나 Workshop 배포 가능한 검증판을 의미하지 않는다.**
+
 ### 1단계: 실제 NPC 자유도시연합 초기 배치 (0.3.2)
 
 모드가 활성화된 세계를 처음 열면 **기존 세계 유지 / 초기 자유도시 구성**을 선택하는 창을 제시하도록 작성했다. 닫으면 선택을 미루고, 확정 전에는 소유권을 바꾸지 않는다. 선택은 저장 게임별로 기록한다. 플레이어 정착지의 **초기 정치 질서 설정** 명령으로 다시 열 수 있다. 새로운 행성 생성기 자체의 설정 화면/봉신 계층 생성기는 아직 아니며 시작/불러오기 이후에 동작하는 초기화 단계다.
@@ -20,7 +32,7 @@
 
 `UnionAdmissionLedger`에 준비/적용/취소 시각과 원 소유자·목표 세력·도시 ID를 기록한다. 실제 참조는 `UnionCityReference`가 Scribe에 저장한다. 부분 실패를 전체 성공으로 기록하거나 저장 후 도시를 다시 이동시키지 않는다. 미완료 건은 현재 소유자가 연합인지/원 소유자인지 확인해 완료/취소할 수 있고, 제삼자가 점령했거나 맵이 로딩된 상태를 임의로 덮어쓰지 않는다. 이미 적용된 도시가 나중에 정복돼도 이 초기화 코드는 자동으로 되돌리지 않는다. 적용한 건이 있으면 두 번째 초기 재편을 막으며 전부 미이동 취소로 확인된 경우에는 재검토할 수 있다.
 
-연합의 무작위 습격과 바닐라 군사 원조 요청은 비활성화했다. 평의회 의결 없이 임의로 연합 군사를 사용하는 기능을 완성했다고 표시하지 않는다. **플레이어의 연합 가입·계약을 따른 NPC 소속 변경·독립 시 편입·평의회 표결·공유 외교의 플레이어 특례는 아직 미연결이다.** 1단계 전체가 완료된 것은 아니다. FactionDef 실제 해석/세력 생성/도시 변경/팝업/저장 복원은 코드와 빌드만 검사했고 게임을 실행하지 않았다.
+연합의 무작위 습격과 바닐라 군사 원조 요청은 비활성화했다. 평의회 의결 없이 임의로 연합 군사를 사용하는 기능을 완성했다고 표시하지 않는다. 플레이어 가입과 공유 외교는 위 0.3.3 절에서 추가했다. **계약을 따른 NPC 소속 변경·독립 시 편입·평의회 표결은 아직 미연결이다.** 1단계 전체가 완료된 것은 아니다. FactionDef 실제 해석/세력 생성/도시 변경/팝업/저장 복원은 코드와 빌드만 검사했고 게임을 실행하지 않았다.
 
 ### 선택형 실제 공납 전달
 
@@ -34,7 +46,7 @@
 
 중단 시 완료를 입증하면 영수증을 확정하고, 그렇지 않으면 확인 가능한 물품의 반환을 시도한다. 전량 반환을 확인해야 회차 예약을 해제한다. 행방/수량을 입증할 수 없는 부분 이전은 임시 보관과 기록을 보존하며 다시 납부하도록 자동 초기화하지 않는다. 미완료 이전이 있거나 결제 장부를 복원하지 못하면 해약도 보류한다. 임의의 모드 훅 예외·외부 재고 조작에서 항상 자동 복구된다는 보장은 없다.
 
-한 계정 최대 1,200회차, 전체 영수증 4,000개, 납부당 최대 100개 스택을 취급한다. **이는 코드/빌드 단계 구현이다. 실제 상단 전달·가격 화면 대조·실물 보존·엔진 저장 재로딩은 아직 실행하지 않았다.** 보호 임무·세력 편입·공유 외교는 여전히 미연결이므로 완성 계약 모드로 Workshop에 게시하지 않는다.
+한 계정 최대 1,200회차, 전체 영수증 4,000개, 납부당 최대 100개 스택을 취급한다. **이는 코드/빌드 단계 구현이다. 실제 상단 전달·가격 화면 대조·실물 보존·엔진 저장 재로딩은 아직 실행하지 않았다.** 보호 임무·계약에 따른 NPC 세력 편입은 여전히 미연결이므로 완성 계약 모드로 Workshop에 게시하지 않는다.
 
 ### 실제 정착지 계약 장부 (추가 개발)
 
@@ -46,7 +58,7 @@
 
 GameComponent가 실제 Settlement/Faction을 Scribe 참조로, 정치 장부를 별도 버전 1 JSON으로 보관한다. 잘못된 복원은 원본 데이터를 보존하고 동작을 막는다. 코드 검사에서 동의 순서·기한·실시간 소유권 변경·중복 관측·후손 유지·변조된 저장 거절을 검증했다. **실제 게임의 저장/재로딩은 실행하지 않았다.**
 
-**활성 기록만으로 모든 계약 효과가 집행되지는 않는다.** 실제 공납은 선택형 직접 전달만 연결했다. 초기 NPC 자유도시 배치는 별도 확정 절차이며 계약에 따른 Faction 편입·플레이어 공유 외교·보호 퀘스트·명예 변화는 미연결이다. 장부 서명만으로 NPC 도시를 자동으로 연합에 옮기지 않는다. 해약 후 연합 편입도 아직 적용하지 않는다. 가상 모델의 영수증·전투 결과를 실제 장부로 복사하지 않는다. 장부는 한 당사자가 플레이어인 계약만 취급하며 NPC끼리의 봉신 계층 생성은 후속 작업이다.
+**활성 기록만으로 모든 계약 효과가 집행되지는 않는다.** 실제 공납은 선택형 직접 전달만 연결했다. 초기 NPC 자유도시 배치는 별도 확정 절차이며 계약에 따른 NPC Faction 편입·보호 퀘스트·명예 변화는 미연결이다. 플레이어 공유 외교는 별도의 검토·확정 절차를 거친다. 장부 서명만으로 NPC 도시를 자동으로 연합에 옮기지 않는다. 해약 후 연합 편입도 아직 적용하지 않는다. 가상 모델의 영수증·전투 결과를 실제 장부로 복사하지 않는다. 장부는 한 당사자가 플레이어인 계약만 취급하며 NPC끼리의 봉신 계층 생성은 후속 작업이다.
 
 ### 독립된 가상 모델
 
@@ -78,6 +90,6 @@ GameComponent가 실제 Settlement/Faction을 Scribe 참조로, 정치 장부를
 
 ## 다음 연결 작업
 
-세력 소속 반영/플레이어 특례, 방문 징수·NPC 상납·수송 상단 사건, 실제 퀘스트/전투 결과 증거, 항복·점령의 정착지 보존, 게임 세계 사건 생성과 알림, 이행 면책·반복 미납 제재, 평의회 가중 표결, 세계 생성/기존 저장 선택, 용병단과 개인 서약을 순차적으로 연결한다. 실제 정착지 매핑·동의 기록·직접 실물 공납 코드는 추가했지만 복잡한 NPC 권한·정치 판단·초기 세계 전체 적용은 아직 미완성이다. 기존 규칙의 RescuePledge/FactionHonorLedger와 새 모델 통합도 남아 있다. 현재 명예 수치는 Core Need/바닐라 우호도에 전파하지 않는다.
+계약에 따른 NPC 소속 집행/독립, 방문 징수·NPC 상납·수송 상단 사건, 실제 퀘스트/전투 결과 증거, 항복·점령의 정착지 보존, 게임 세계 사건 생성과 알림, 이행 면책·반복 미납 제재, 평의회 가중 표결, 세계 생성/기존 저장 선택, 용병단과 개인 서약을 순차적으로 연결한다. 실제 정착지 매핑·동의 기록·직접 실물 공납 코드는 추가했지만 복잡한 NPC 권한·정치 판단·초기 세계 전체 적용은 아직 미완성이다. 기존 규칙의 RescuePledge/FactionHonorLedger와 새 모델 통합도 남아 있다. 현재 명예 수치는 Core Need/바닐라 우호도에 전파하지 않는다.
 
-English: An opt-in, code-validated development preview. Initial configuration can move reviewed eligible NPC towns into a real shared Free City Union, preserving player control and source factions' last bases. Live charters offer separately enabled manual physical tribute with escrow/receipts. The fictional model remains separate. Player membership, contract-driven sovereignty, council votes, incoming NPC tribute, collection visits, title/favor trading and protection missions remain pending. No gameplay validation or Workshop release is claimed.
+English: An opt-in, code-validated development preview. Initial configuration can move reviewed eligible NPC towns into a real shared Free City Union, preserving player control and source factions' last bases. Live charters offer separately enabled manual physical tribute with escrow/receipts. The fictional model remains separate. Player membership and signed liege allegiance can apply real shared diplomacy after review, preserving native player control. Quest locks or player goodwill caps suspend sharing. Contract-driven NPC sovereignty, independence, council votes, incoming NPC tribute, collection visits, title/favor trading and protection missions remain pending. No gameplay validation or Workshop release is claimed.
