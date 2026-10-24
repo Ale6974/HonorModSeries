@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 방문 도시의 일반 물품 보존 (0.3.7, 코드/빌드만)
+
+2026-10-25에 설치 Version.txt 1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev, Harmony 3.0.0.0-rc.3+3c0e32cd3fd20e4ae27c47cb8c888844766f9f1a를 재확인하고 Assembly-CSharp의 Settlement와 Settlement_TraderTracker를 다시 조사했다. GetDirectlyHeldThings()는 stock 필드를 그대로 반환하며 재생성하지 않는다. StockListForReading은 null/빈 재고에서 RegenerateStock을 호출하므로 이번 검사에서 사용하지 않는다. EverVisited는 everGeneratedStock, NextRestockTick은 보관자/생성 이력/마지막 생성 시각에 따른 조회다. TraderKind는 현재 settlement.Faction.def.baseTraderKinds에서 선택하므로 별도 캐시 초기화를 추측해 추가하지 않는다.
+
+SetFaction의 주민/재고 이관 API를 가정하지 않는다. 미로딩/저장 주민 부재/일반 물품만 허용하고 현재 재고의 ID·종류·재료·수량·내구도·품질과 재입고 정보를 요약해 실제 소유권과 함께 검사한다. 거래 재고의 Pawn·Corpse·MinifiedThing·IThingHolder 및 보관자 컴포넌트는 제외하며 Pawn.SetFaction은 호출하지 않는다. Settlement.Material은 private cachedMat을 재사용한다. 확인한 이름/타입이 일치할 때 Harmony AccessTools로 FieldInfo를 얻어 이전 후 null로 비우고 풀 material은 파괴하지 않는다. 타입/멤버가 달라지면 이전을 거절한다. Reflection 필드 쓰기·물품 보존·Harmony 패치와의 상호작용·실제 Scribe 저장/로드·게임 런타임 SHA256 실행은 검증하지 않았다.
+
 ## 소속·봉신 통합 전환 (0.3.6, 코드/빌드만)
 
 동일 설치 Version.txt의 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 새로운 게임 멤버 시그니처를 추측해 추가하지 않고 기존 검증한 GameComponent/Scribe_Values, Faction 대표/관계/알림, Settlement.SetFaction 참조를 재사용한다. 순수 조정 장부는 System.Text.Json과 .NET SHA256으로 현재 명령 이력/영지 장부 일치를 검증한다. 실제 Waylith 게임 프로세스에서 이 JSON/해시 경로를 실행한 것은 아니다.

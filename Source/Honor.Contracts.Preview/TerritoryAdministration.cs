@@ -83,9 +83,11 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     private static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target)
     {
         var all = Cities(); bool exists = city != null && all.Contains(city); var owner = exists ? city.Faction : null;
+        string proof = exists ? CityStockPreservation.Capture(city) : null;
         return new(territory, owner?.GetUniqueLoadID(), all.Count(s => s.Faction == owner), exists, owner?.IsPlayer == true,
-            exists && city.HasMap, !exists || city.trader == null || city.EverVisited || city.previouslyGeneratedInhabitants?.Count > 0,
-            exists && city.def.canHaveFaction && Eligible(owner), Eligible(target), target?.IsPlayer == true);
+            exists && city.HasMap, !exists || proof == null || city.EverVisited,
+            exists && city.def.canHaveFaction && Eligible(owner), Eligible(target), target?.IsPlayer == true,
+            HasInhabitants: !exists || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count > 0, StockProof: proof);
     }
     private (RecordedCharter Charter, Settlement City, Faction Target, TerritoryTransferObservation Observation, TerritoryTransferPurpose Purpose) Context(string id, Faction proposed = null)
     {
@@ -110,7 +112,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
             c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
             c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId);
         return new(id, c.City.Label, c.City.Faction.Name, c.Target.Name, c.Purpose,
-            string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose), c.Target.GetUniqueLoadID());
+            string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose, c.Observation.StockProof), c.Target.GetUniqueLoadID());
     }
     public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true) => ApplyForTarget(reviewed, notify, null);
     private bool ApplyForTarget(TerritoryAdministrationReview reviewed, bool notify, Faction target)
@@ -128,6 +130,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                 c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId);
             references.Add(new() { Id = id, City = c.City, From = c.City.Faction, Target = c.Target });
             c.City.SetFaction(c.Target);
+            CityStockPreservation.InvalidateMaterial(c.City);
             Ledger.Confirm(id, Observe(c.City, c.Charter.Terms.Subject, c.Target), Find.TickManager.TicksGame);
             if (notify) Messages.Message("CT_Applied".Translate(), MessageTypeDefOf.NeutralEvent);
             return true;
@@ -194,7 +197,12 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                 throw new ArgumentException("Cannot establish original transfer references.");
             var actual = Observe(reference.City, item.Territory, reference.Target);
             if (reference.City.Faction == reference.From) Ledger.CancelUnmoved(id, actual, Find.TickManager.TicksGame);
-            else Ledger.Confirm(id, actual, Find.TickManager.TicksGame);
+            else
+            {
+                if (reference.City.Faction != reference.Target) throw new ArgumentException("Unrelated current owner.");
+                CityStockPreservation.InvalidateMaterial(reference.City);
+                Ledger.Confirm(id, actual, Find.TickManager.TicksGame);
+            }
         }
         catch (ArgumentException) { Reject(); }
     }
