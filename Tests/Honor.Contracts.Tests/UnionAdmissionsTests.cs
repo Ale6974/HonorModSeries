@@ -61,7 +61,7 @@ internal static class UnionAdmissionsTests
         Check(UnionAdmissionRules.Plan(candidates, 30).Count == 9, "thirty percent configured count");
         Check(UnionAdmissionRules.Plan(candidates, 30, 2).Count == 2, "explicit setup cap");
         Check(UnionAdmissionRules.Plan(candidates, 30).Select(c => c.OwnerId).Distinct().Count() == 9, "at most one city per source faction");
-        Check(UnionAdmissionRules.Plan(candidates.Reverse(), 30).SequenceEqual(UnionAdmissionRules.Plan(candidates, 30)), "plan independent of world enumeration order");
+        Check(UnionAdmissionRules.Plan(candidates.AsEnumerable().Reverse(), 30).SequenceEqual(UnionAdmissionRules.Plan(candidates, 30)), "plan independent of world enumeration order");
 
         // All combinations of exclusion flags remain excluded at every supported setup ratio.
         for (int mask = 1; mask < 128; mask++)

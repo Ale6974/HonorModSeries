@@ -2,11 +2,12 @@ param([Parameter(Mandatory)][string]$RimWorldDir)
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $gameRoot = (Resolve-Path -LiteralPath $RimWorldDir).Path
+$gameVersion = if ((Get-Content -LiteralPath (Join-Path $gameRoot 'Version.txt') -Raw) -match '^1\.(6|7)\.') { '1.' + $Matches[1] } else { throw 'Only RimWorld 1.6 / 1.7 are supported.' }
 if (Get-Process -Name RimWorld,RimWorldWin64 -ErrorAction SilentlyContinue) { throw 'Close RimWorld before installation.' }
 if (!(Test-Path -LiteralPath (Join-Path $gameRoot 'Version.txt'))) { throw 'Not a RimWorld installation.' }
 $source = Join-Path $repoRoot 'TestMods/Honor.Contracts.Preview'
 foreach ($assembly in 'Honor.Contracts.Preview','Honor.Contracts.Rules') {
-    if (!(Test-Path -LiteralPath (Join-Path $source "1.7/Assemblies/$assembly.dll"))) { throw 'Build the preview first.' }
+    if (!(Test-Path -LiteralPath (Join-Path $source "$gameVersion/Assemblies/$assembly.dll"))) { throw "Build the $gameVersion preview first." }
 }
 $modsRoot = Join-Path $gameRoot 'Mods'
 New-Item -ItemType Directory -Path $modsRoot -Force | Out-Null
@@ -25,4 +26,4 @@ if (Test-Path -LiteralPath $target) {
 }
 Copy-Item -LiteralPath $source -Destination $target -Recurse
 Write-Output "Installed optional development preview: $target"
-Write-Output 'Activation unchanged. Requires Harmony 3 and Honor.Core 0.2.1+. No game process was started.'
+Write-Output 'Activation unchanged. Requires Harmony for the selected game version and Honor.Core 0.2.2+. No game process was started.'

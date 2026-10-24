@@ -33,21 +33,21 @@ public sealed class FactionHonorLedger
 
     public FactionHonorLedger(PartyRef faction, double initialHonor = .5, long now = 0)
     {
-        ArgumentNullException.ThrowIfNull(faction);
+        RuntimeCompat.NotNull(faction);
         if (faction.Kind != PartyKind.Faction) throw new ArgumentException("Faction honor needs a faction identity.");
-        if (!double.IsFinite(initialHonor) || initialHonor is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(initialHonor));
+        if (!RuntimeCompat.IsFinite(initialHonor) || initialHonor is < 0 or > 1) throw new ArgumentOutOfRangeException(nameof(initialHonor));
         if (now < 0) throw new ArgumentOutOfRangeException(nameof(now));
         Faction = faction; Value = initialHonor; lastTick = now;
     }
 
     public FactionHonorChange RecordVerifiedEvent(string eventId, double assessedDelta, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        if (!double.IsFinite(assessedDelta) || assessedDelta is < -1 or > 1) throw new ArgumentOutOfRangeException(nameof(assessedDelta));
+        RuntimeCompat.NotBlank(eventId);
+        if (!RuntimeCompat.IsFinite(assessedDelta) || assessedDelta is < -1 or > 1) throw new ArgumentOutOfRangeException(nameof(assessedDelta));
         if (eventIds.Contains(eventId)) return null;
         if (now < 0 || now < lastTick) throw new ArgumentOutOfRangeException(nameof(now), "Honor events cannot run backward.");
         long revision = checked(Revision + 1);
-        double next = Math.Clamp(Value + assessedDelta, 0, 1);
+        double next = RuntimeCompat.Clamp(Value + assessedDelta, 0, 1);
         var change = new FactionHonorChange(Faction, eventId, revision, now, Value, next, assessedDelta);
         eventIds.Add(eventId); history.Add(change);
         Value = next; Revision = revision; lastTick = now;

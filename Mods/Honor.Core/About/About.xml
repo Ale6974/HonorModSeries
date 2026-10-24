@@ -3,14 +3,14 @@
   <name>Honor.Core</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.core</packageId>
-  <modVersion>0.2.1</modVersion>
+  <modVersion>0.2.2</modVersion>
   <supportedVersions>
-    <li>1.7</li>
+    <li>1.6</li><li>1.7</li>
   </supportedVersions>
   <modDependencies>
     <li>
       <packageId>brrainz.harmony</packageId>
-      <displayName>Harmony 3 (1.7)</displayName>
+      <displayName>Harmony (1.6: 2.x / 1.7: 3.x) (1.7)</displayName>
       <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
     </li>
   </modDependencies>
@@ -18,8 +18,9 @@
     <li>brrainz.harmony</li>
     <li>Ludeon.RimWorld</li>
   </loadAfter>
-  <description>Honor.CoreThe base module: five honor Need tiers, event changes, slow decay with tier floors, mandatory insult duels, challenger ideology rules, matched swords/knives/revolvers, armor removal, arena safety, immediate field tending, honor traits, settings and save/load. No DLC required. Requires Harmony 3 for 1.7.
-한국어: 기본 명예 욕구·5단계 하한·강제 결투·동일 장비·방어구 탈의·결투장·응급처치·특성·설정·저장. Harmony 3 필수, DLC 필수 아님.
+  <description>RimWorld 1.6 and 1.7 have separate builds. The 1.6.4871 reference build is code-validated only; direct gameplay testing is deferred. 한국어: 1.6/1.7 버전별 빌드이며 1.6.4871 참조 빌드는 코드 검사만 통과했고 실제 플레이 검증은 보류 중입니다.
+Honor.CoreThe base module: five honor Need tiers, event changes, slow decay with tier floors, mandatory insult duels, challenger ideology rules, matched swords/knives/revolvers, armor removal, arena safety, immediate field tending, honor traits, settings and save/load. No DLC required. Requires Harmony (1.6: 2.x / 1.7: 3.x) for 1.7.
+한국어: 기본 명예 욕구·5단계 하한·강제 결투·동일 장비·방어구 탈의·결투장·응급처치·특성·설정·저장. Harmony (1.6: 2.x / 1.7: 3.x) 필수, DLC 필수 아님.
 Source: https://github.com/Ale6974/HonorModSeries
 Collection: https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644</description>
 </ModMetaData>

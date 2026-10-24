@@ -3,11 +3,12 @@ param([Parameter(Mandatory)][string]$RimWorldDir, [switch]$Activate,
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $gameRoot = (Resolve-Path -LiteralPath $RimWorldDir).Path
-if (Get-Process -Name RimWorld -ErrorAction SilentlyContinue) { throw 'Close RimWorld before installation.' }
+$gameVersion = if ((Get-Content -LiteralPath (Join-Path $gameRoot 'Version.txt') -Raw) -match '^1\.(6|7)\.') { '1.' + $Matches[1] } else { throw 'Only RimWorld 1.6 / 1.7 are supported.' }
+if (Get-Process -Name RimWorld,RimWorldWin64 -ErrorAction SilentlyContinue) { throw 'Close RimWorld before installation.' }
 $Modules = @('Core') + @($Modules | Where-Object { $_ -ne 'Core' } | Select-Object -Unique)
 # Validate the entire requested set before moving any installed folder.
 foreach ($module in $Modules) {
-    if (!(Test-Path -LiteralPath (Join-Path $repoRoot "Mods/Honor.$module/1.7/Assemblies/Honor.$module.dll"))) { throw "Build $module first." }
+    if (!(Test-Path -LiteralPath (Join-Path $repoRoot "Mods/Honor.$module/$gameVersion/Assemblies/Honor.$module.dll"))) { throw "Build $module for $gameVersion first." }
     $target = Join-Path $gameRoot "mods/Honor.$module"
     if (Test-Path -LiteralPath $target) {
         [xml]$about = Get-Content -LiteralPath (Join-Path $target 'About/About.xml') -Raw
@@ -19,7 +20,7 @@ New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 foreach ($module in $Modules) {
     $source = Join-Path $repoRoot "Mods/Honor.$module"
     $target = Join-Path $gameRoot "mods/Honor.$module"
-    if (!(Test-Path -LiteralPath (Join-Path $source "1.7/Assemblies/Honor.$module.dll"))) { throw "Build $module first." }
+    if (!(Test-Path -LiteralPath (Join-Path $source "$gameVersion/Assemblies/Honor.$module.dll"))) { throw "Build $module for $gameVersion first." }
     if (Test-Path -LiteralPath $target) {
         [xml]$about = Get-Content -LiteralPath (Join-Path $target 'About/About.xml') -Raw
         if ($about.ModMetaData.packageId -ne "honor.series.$($module.ToLowerInvariant())") { throw 'Refusing to replace a different mod.' }

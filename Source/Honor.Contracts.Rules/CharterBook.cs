@@ -37,7 +37,7 @@ public sealed class CharterBook
         ? RecordedCharterPhase.Expired : charter.Phase;
     public void Register(TerritoryIdentity entity, long now)
     {
-        ArgumentNullException.ThrowIfNull(entity); Key(entity.Id); Key(entity.NativeOwner); Time(now);
+        RuntimeCompat.NotNull(entity); Key(entity.Id); Key(entity.NativeOwner); Time(now);
         if (entities.TryGetValue(entity.Id, out var previous))
         { Require(previous == entity, "An ownership change cannot silently reassign a recorded political identity."); return; }
         Require(entities.Count < MaxEntities && (!entity.Player || entities.Values.All(e => !e.Player)), "Capacity or duplicate player political identity.");
@@ -45,7 +45,7 @@ public sealed class CharterBook
     }
     public CharterAvailability Availability(string id, IEnumerable<TerritoryObservation> observations)
     {
-        ArgumentNullException.ThrowIfNull(observations);
+        RuntimeCompat.NotNull(observations);
         var entity = Entity(id);
         var matches = observations.Where(o => o != null && o.Id == id).ToArray();
         if (matches.Length != 1 || !matches[0].Exists) return CharterAvailability.MissingTerritory;
@@ -69,11 +69,11 @@ public sealed class CharterBook
     public string RecordedPoliticalOwner(string entityId) => Entity(Root(entityId)).NativeOwner;
     private void Terms(RecordedCharterTerms terms)
     {
-        ArgumentNullException.ThrowIfNull(terms);
+        RuntimeCompat.NotNull(terms);
         Require(Entity(terms.Liege).Id != Entity(terms.Subject).Id, "Self-contract.");
         Require(Entity(terms.Liege).Player != Entity(terms.Subject).Player, "This adapter currently supports one player party and one NPC settlement.");
         Require(terms.TributeValue is > 0 and <= 10000000 && terms.IntervalTicks is >= PoliticalWorld.Day and <= PoliticalWorld.Day * 60 &&
-            terms.GraceTicks is >= 0 and <= PoliticalWorld.Day * 30 && Enum.IsDefined(terms.Transport) && terms.TransportRate is >= 0 and <= .5m,
+            terms.GraceTicks is >= 0 and <= PoliticalWorld.Day * 30 && RuntimeCompat.IsDefined(terms.Transport) && terms.TransportRate is >= 0 and <= .5m,
             "Invalid fixed-value tribute terms.");
     }
     private void Topology(RecordedCharterTerms candidate, string omit = null)
@@ -94,7 +94,7 @@ public sealed class CharterBook
     }
     private void Fresh(RecordedCharterTerms terms, IEnumerable<TerritoryObservation> observations)
     {
-        ArgumentNullException.ThrowIfNull(observations);
+        RuntimeCompat.NotNull(observations);
         var current = observations.ToArray();
         // Validate the entire connected component, not just the two endpoints: an absent intermediate
         // lord must not make a stale contract look valid or allow two effective masters.
@@ -158,8 +158,8 @@ public sealed class CharterBook
         foreach (var entity in save.Entities) book.Register(entity, 0);
         foreach (var charter in save.Charters)
         {
-            ArgumentNullException.ThrowIfNull(charter); Key(charter.Id); book.Terms(charter.Terms);
-            Require(!book.charters.ContainsKey(charter.Id) && Enum.IsDefined(charter.Phase) && charter.Phase != RecordedCharterPhase.Expired &&
+            RuntimeCompat.NotNull(charter); Key(charter.Id); book.Terms(charter.Terms);
+            Require(!book.charters.ContainsKey(charter.Id) && RuntimeCompat.IsDefined(charter.Phase) && charter.Phase != RecordedCharterPhase.Expired &&
                 charter.OfferedTick >= 0 && charter.OfferedTick <= save.LastTick && charter.ExpiresTick > charter.OfferedTick &&
                 charter.ExpiresTick - charter.OfferedTick is >= PoliticalWorld.Day and <= PoliticalWorld.Day * 30 && charter.ExpiresTick <= int.MaxValue,
                 "Invalid saved charter.");

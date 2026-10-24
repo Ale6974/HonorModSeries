@@ -15,12 +15,12 @@ public static class DefenseCalls
     public static DefenseCall TryOpen(ContractLedger contract, string clauseId, string incidentId,
         string settlementId, string defenderFactionId, string aggressorFactionId, DefenseIncidentKind kind, long incidentTick, long now)
     {
-        ArgumentNullException.ThrowIfNull(contract);
-        ArgumentException.ThrowIfNullOrWhiteSpace(incidentId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(settlementId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(defenderFactionId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(aggressorFactionId);
-        if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        RuntimeCompat.NotNull(contract);
+        RuntimeCompat.NotBlank(incidentId);
+        RuntimeCompat.NotBlank(settlementId);
+        RuntimeCompat.NotBlank(defenderFactionId);
+        RuntimeCompat.NotBlank(aggressorFactionId);
+        if (!RuntimeCompat.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
         if (incidentTick < 0 || incidentTick > now) throw new ArgumentOutOfRangeException(nameof(incidentTick));
         if (contract.StartedTick == null || incidentTick < contract.StartedTick.Value) return null;
         var terms = contract.Terms;

@@ -42,7 +42,7 @@ public sealed class ResidentBaselineStore : GameComponent
         return Baseline.Compare(observed.City, observed.Owner, observed.Tick, observed.Residents);
     }
     public void Discard() { Baseline = null; snapshot = null; RestoreFailed = false; }
-    private static string Digest(object data) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(data))));
+    private static string Digest(object data) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(data))));
     private static CityStockItem[] Gear(IEnumerable<Thing> things)
     {
         if (things == null) return [];
@@ -63,7 +63,7 @@ public sealed class ResidentBaselineStore : GameComponent
         {
             if (pawn == null || pawn.GetType() != typeof(Pawn) || pawn.health?.hediffSet?.hediffs == null || pawn.health.hediffSet.hediffs.Count > 10000)
                 throw new ArgumentException("Unverifiable resident reference.");
-            if (pawn.health.hediffSet.hediffs.Any(h => h == null || h.def == null || !float.IsFinite(h.Severity)))
+            if (pawn.health.hediffSet.hediffs.Any(h => h == null || h.def == null || !RuntimeCompat.IsFinite(h.Severity)))
                 throw new ArgumentException("Unverifiable resident health.");
             var health = pawn.health.hediffSet.hediffs.Select(h => new { Id = h.GetUniqueLoadID(), Def = h.def.defName,
                 Part = h.Part?.def.defName, h.Severity }).OrderBy(h => h.Id, StringComparer.Ordinal).ToArray();

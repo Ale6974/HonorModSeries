@@ -9,9 +9,9 @@ public static class FreeCityRules
     /// </summary>
     public static bool IsFreeCity(string settlementId, PartyRef owner, IEnumerable<ContractLedger> contracts)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(settlementId);
-        ArgumentNullException.ThrowIfNull(owner);
-        ArgumentNullException.ThrowIfNull(contracts);
+        RuntimeCompat.NotBlank(settlementId);
+        RuntimeCompat.NotNull(owner);
+        RuntimeCompat.NotNull(contracts);
         if (owner.Kind != PartyKind.Faction) throw new ArgumentException("A city needs a faction owner.", nameof(owner));
         return !contracts.Any(c => (c.Phase is ContractPhase.Active or ContractPhase.Disputed) && Applies(c.Terms, settlementId, owner));
     }
@@ -46,8 +46,8 @@ public sealed class CityRecognition
 
     public CityRecognition(string settlementId, PartyRef owner)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(settlementId);
-        ArgumentNullException.ThrowIfNull(owner);
+        RuntimeCompat.NotBlank(settlementId);
+        RuntimeCompat.NotNull(owner);
         if (owner.Kind != PartyKind.Faction) throw new ArgumentException("A city needs a faction owner.", nameof(owner));
         SettlementId = settlementId; Owner = owner;
     }
@@ -55,9 +55,9 @@ public sealed class CityRecognition
     /// <returns>True only for the first automatic wealth-triggered prompt. Existing bindings suppress it.</returns>
     public bool Observe(double wealth, double threshold, bool isOwnedPlayerHome, IEnumerable<ContractLedger> contracts, long now)
     {
-        if (!double.IsFinite(wealth) || wealth < 0) throw new ArgumentOutOfRangeException(nameof(wealth));
-        if (!double.IsFinite(threshold) || threshold <= 0) throw new ArgumentOutOfRangeException(nameof(threshold));
-        ArgumentNullException.ThrowIfNull(contracts);
+        if (!RuntimeCompat.IsFinite(wealth) || wealth < 0) throw new ArgumentOutOfRangeException(nameof(wealth));
+        if (!RuntimeCompat.IsFinite(threshold) || threshold <= 0) throw new ArgumentOutOfRangeException(nameof(threshold));
+        RuntimeCompat.NotNull(contracts);
         ObserveTime(now);
         ownedPlayerHome = isOwnedPlayerHome;
         if (!ownedPlayerHome) return false;
@@ -89,8 +89,8 @@ public sealed class CityRecognition
     /// <summary>The adapter revalidates actual diplomacy and legal representatives before every signature.</summary>
     public bool SeekLiege(PartyRef liege, IEnumerable<PartyRef> eligibleLieges, IEnumerable<ContractLedger> contracts, long now)
     {
-        ArgumentNullException.ThrowIfNull(liege);
-        ArgumentNullException.ThrowIfNull(eligibleLieges);
+        RuntimeCompat.NotNull(liege);
+        RuntimeCompat.NotNull(eligibleLieges);
         ObserveTime(now);
         if (!ownedPlayerHome || Phase is not (CityRecognitionPhase.ChoicePending or CityRecognitionPhase.FreeCityChosen) ||
             liege.Kind != PartyKind.Faction || liege == Owner || !eligibleLieges.Contains(liege) ||

@@ -92,7 +92,7 @@ public sealed class RealmAdministrationLedger : GameComponent
             var others = Find.FactionManager.AllFactionsListForReading.Where(f => f != player && f != faction && !f.IsPlayer).ToArray();
             var source = others.Select(other => {
                 var p = player.RelationWith(other, true); var a = faction.RelationWith(other, true);
-                if (p == null || a == null || other.RelationWith(faction, true) == null || !Enum.IsDefined(p.kind) ||
+                if (p == null || a == null || other.RelationWith(faction, true) == null || !RuntimeCompat.IsDefined(p.kind) ||
                     !faction.CanChangeGoodwillFor(other, 0) && (a.baseGoodwill != p.baseGoodwill || a.kind != p.kind))
                     throw new ArgumentException("Cannot bypass an administration quest/permanent relation lock.");
                 return new SharedRelation(other.GetUniqueLoadID(), p.baseGoodwill, p.kind switch {

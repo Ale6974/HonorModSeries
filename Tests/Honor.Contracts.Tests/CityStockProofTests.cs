@@ -16,12 +16,12 @@ internal static class CityStockProofTests
         string Proof(IEnumerable<CityStockItem> items) => CityStockProof.Capture(true, true, 1800000, items);
         string proof = Proof(goods);
         Check(CityStockProof.Valid(proof), "stock digest has bounded canonical form");
-        Check(Proof(goods.Reverse()) == proof, "stock order does not invalidate identical goods");
+        Check(Proof(goods.AsEnumerable().Reverse()) == proof, "stock order does not invalidate identical goods");
         Check(Proof(goods.Select(i => i with { })) == proof, "stable identity survives snapshot recreation");
         foreach (var changed in new[] { goods[0] with { Id = "Thing_3" }, goods[0] with { Def = "Silver" },
             goods[0] with { Stuff = "WoodLog" }, goods[0] with { Count = 49 }, goods[0] with { HitPoints = 99 }, goods[0] with { Quality = 1 } })
             Check(Proof([changed, goods[1]]) != proof, "identity, kind, material, quantity, condition and quality changes invalidate preservation");
-        Check(Proof(goods[..1]) != proof && Proof([]) != proof, "missing goods cannot confirm conservation");
+        Check(Proof(goods.Take(1).ToArray()) != proof && Proof([]) != proof, "missing goods cannot confirm conservation");
         Check(CityStockProof.Capture(true, true, 1800001, goods) != proof, "restock schedule change invalidates review");
         string empty = CityStockProof.Capture(false, false, -1, []);
         string visitedEmpty = CityStockProof.Capture(true, false, -1, []);

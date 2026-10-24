@@ -25,9 +25,9 @@ internal static class FollowerTransfersTests
         var before = ledger.Export(); var plan = FollowerTransfers.Review(book, ledger, Candidates(), "administration", 10, "administration");
         Check(plan.Entries.Count == 3 && plan.Moves.SequenceEqual(new[] { "bond-a", "bond-b", "bond-c" }), "all active NPC subjects selected deterministically");
         Check(ledger.Export() == before && ledger.Transfers.Count == 0, "successful preflight creates no real execution proof");
-        Check(FollowerTransfers.Review(book, ledger, Candidates().Reverse(), "administration", 10, "administration").Stamp == plan.Stamp, "enumeration order cannot change review");
+        Check(FollowerTransfers.Review(book, ledger, Candidates().AsEnumerable().Reverse(), "administration", 10, "administration").Stamp == plan.Stamp, "enumeration order cannot change review");
         Check(FollowerTransfers.Review(CharterBook.Restore(book.Export()), TerritoryTransferLedger.Restore(ledger.Export()), Candidates(), "administration", 10, "administration").Stamp == plan.Stamp, "same persisted inputs yield same plan");
-        Reject(Candidates()[..2], "cannot omit one vassal");
+        Reject(Candidates().Take(2).ToArray(), "cannot omit one vassal");
         Reject([Candidates()[0], Candidates()[0], Candidates()[2]], "duplicate and missing subjects");
         Reject([.. Candidates(), new("extra", new("extra", "source", 3))], "unrelated contract cannot enter group");
         Reject([null], "missing candidate");

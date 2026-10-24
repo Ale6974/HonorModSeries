@@ -25,12 +25,12 @@ public sealed class ResidentBaseline
     }
     public static ResidentBaseline Capture(string city, string owner, long tick, IEnumerable<ResidentEvidence> residents)
     {
-        Key(city); Key(owner); ArgumentNullException.ThrowIfNull(residents);
+        Key(city); Key(owner); RuntimeCompat.NotNull(residents);
         var entries = residents.Take(Capacity + 1).ToArray();
         if (tick < 0 || tick > int.MaxValue || entries.Length > Capacity) throw new ArgumentException("Invalid baseline size or clock.");
         foreach (var entry in entries)
         {
-            ArgumentNullException.ThrowIfNull(entry); Key(entry.Id); if (entry.Faction != null) Key(entry.Faction);
+            RuntimeCompat.NotNull(entry); Key(entry.Id); if (entry.Faction != null) Key(entry.Faction);
             if (!CityStockProof.Valid(entry.Health) || !CityStockProof.Valid(entry.Gear) || !CityStockProof.Valid(entry.Status))
                 throw new ArgumentException("Invalid resident evidence.");
         }

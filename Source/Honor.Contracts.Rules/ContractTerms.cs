@@ -14,8 +14,8 @@ public sealed record PartyRef
     public string Id { get; }
     public PartyRef(PartyKind kind, string id)
     {
-        if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        if (!RuntimeCompat.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        RuntimeCompat.NotBlank(id);
         Kind = kind;
         Id = id;
     }
@@ -39,12 +39,12 @@ public sealed record ObligationClause
     public ObligationClause(string id, ObligationKind kind, ContractSide debtor, long intervalTicks,
         long graceTicks, string resourceDef = null, int amount = 0, int maximumRequests = 0, long responseTicks = 0)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        if (!Enum.IsDefined(kind) || !Enum.IsDefined(debtor)) throw new ArgumentException("Unknown clause type or side.");
+        RuntimeCompat.NotBlank(id);
+        if (!RuntimeCompat.IsDefined(kind) || !RuntimeCompat.IsDefined(debtor)) throw new ArgumentException("Unknown clause type or side.");
         if (graceTicks < 0 || graceTicks > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(graceTicks));
         if (kind == ObligationKind.Tribute)
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(resourceDef);
+            RuntimeCompat.NotBlank(resourceDef);
             if (intervalTicks <= 0 || intervalTicks > int.MaxValue || amount <= 0 || maximumRequests != 0 || responseTicks != 0)
                 throw new ArgumentException("Tribute needs a positive interval and amount, with no request quota.");
         }
@@ -77,11 +77,11 @@ public sealed class ContractTerms
         IEnumerable<ObligationClause> clauses, string settlementId = null, CharterRights rights = null,
         ContractOrigin origin = ContractOrigin.Negotiated)
     {
-        ArgumentNullException.ThrowIfNull(liege);
-        ArgumentNullException.ThrowIfNull(subject);
-        ArgumentNullException.ThrowIfNull(clauses);
-        if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
-        if (!Enum.IsDefined(origin)) throw new ArgumentOutOfRangeException(nameof(origin));
+        RuntimeCompat.NotNull(liege);
+        RuntimeCompat.NotNull(subject);
+        RuntimeCompat.NotNull(clauses);
+        if (!RuntimeCompat.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        if (!RuntimeCompat.IsDefined(origin)) throw new ArgumentOutOfRangeException(nameof(origin));
         if (origin != ContractOrigin.Negotiated && kind != ContractKind.SettlementCharter)
             throw new ArgumentException("This conquest protocol binds a settlement, not a whole faction or personal oath.");
         if (liege == subject) throw new ArgumentException("A party cannot bind itself.");
@@ -90,8 +90,8 @@ public sealed class ContractTerms
         if (durationTicks <= 0 || durationTicks > int.MaxValue) throw new ArgumentOutOfRangeException(nameof(durationTicks));
         if (kind == ContractKind.SettlementCharter)
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(settlementId);
-            ArgumentNullException.ThrowIfNull(rights);
+            RuntimeCompat.NotBlank(settlementId);
+            RuntimeCompat.NotNull(rights);
         }
         else if (settlementId != null || rights != null) throw new ArgumentException("Only a charter names a settlement and rights.");
         var copy = clauses.ToArray();

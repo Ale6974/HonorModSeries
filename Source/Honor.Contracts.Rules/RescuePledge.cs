@@ -19,12 +19,12 @@ public sealed class RescuePledgeTerms
     public RescuePledgeTerms(string id, string incidentId, string pledgeEvidenceId, string aggressorFactionId,
         DefenseIncidentKind threatKind, ContractTerms contract, long offeredTick, long acceptUntil, long rescueUntil, long ratifyUntil)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        ArgumentException.ThrowIfNullOrWhiteSpace(incidentId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(pledgeEvidenceId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(aggressorFactionId);
-        ArgumentNullException.ThrowIfNull(contract);
-        if (!Enum.IsDefined(threatKind)) throw new ArgumentOutOfRangeException(nameof(threatKind));
+        RuntimeCompat.NotBlank(id);
+        RuntimeCompat.NotBlank(incidentId);
+        RuntimeCompat.NotBlank(pledgeEvidenceId);
+        RuntimeCompat.NotBlank(aggressorFactionId);
+        RuntimeCompat.NotNull(contract);
+        if (!RuntimeCompat.IsDefined(threatKind)) throw new ArgumentOutOfRangeException(nameof(threatKind));
         if (contract.Kind != ContractKind.SettlementCharter || contract.Origin != ContractOrigin.Negotiated)
             throw new ArgumentException("Rescue pledges promise a negotiated charter over one settlement.");
         if (aggressorFactionId == contract.Liege.Id || aggressorFactionId == contract.Subject.Id)
@@ -74,10 +74,10 @@ public sealed class RescuePledge
         IEnumerable<RescuePledge> offers, ContractLedger departing = null, FactionHonorLedger lowHonorParty = null,
         double lowHonorThreshold = .4)
     {
-        ArgumentNullException.ThrowIfNull(terms);
-        ArgumentNullException.ThrowIfNull(contracts);
-        ArgumentNullException.ThrowIfNull(offers);
-        if (!double.IsFinite(lowHonorThreshold) || lowHonorThreshold is <= 0 or > 1)
+        RuntimeCompat.NotNull(terms);
+        RuntimeCompat.NotNull(contracts);
+        RuntimeCompat.NotNull(offers);
+        if (!RuntimeCompat.IsFinite(lowHonorThreshold) || lowHonorThreshold is <= 0 or > 1)
             throw new ArgumentOutOfRangeException(nameof(lowHonorThreshold));
         var all = contracts.ToArray();
         if (all.Any(c => c.Id == $"rescue/{terms.Id}") || offers.Any(o => o.Terms.Id == terms.Id ||
@@ -96,7 +96,7 @@ public sealed class RescuePledge
 
     public bool Accept(string evidenceId, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(evidenceId);
+        RuntimeCompat.NotBlank(evidenceId);
         Advance(now);
         if (Phase != RescuePledgePhase.Offered || !evidenceIds.Add(evidenceId)) return false;
         AcceptanceEvidenceId = evidenceId; Phase = RescuePledgePhase.Accepted;
@@ -114,7 +114,7 @@ public sealed class RescuePledge
     /// <summary>Call after actual verified relief by the agreed rescuer, never merely caravan arrival.</summary>
     public bool RecordVerifiedRelief(string evidenceId, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(evidenceId);
+        RuntimeCompat.NotBlank(evidenceId);
         Advance(now);
         if (Phase != RescuePledgePhase.Accepted || !evidenceIds.Add(evidenceId)) return false;
         ReliefEvidenceId = evidenceId; Phase = RescuePledgePhase.Rescued;
@@ -123,7 +123,7 @@ public sealed class RescuePledge
 
     public ContractLedger TryRatifyVerified(IEnumerable<ContractLedger> contracts, long now)
     {
-        ArgumentNullException.ThrowIfNull(contracts);
+        RuntimeCompat.NotNull(contracts);
         Advance(now);
         if (Phase is not (RescuePledgePhase.Rescued or RescuePledgePhase.AwaitingRelease)) return null;
         var all = contracts.ToArray();
@@ -145,7 +145,7 @@ public sealed class RescuePledge
 
     public bool RecordVerifiedFailure(string evidenceId, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(evidenceId);
+        RuntimeCompat.NotBlank(evidenceId);
         Advance(now);
         if (Terminal || !evidenceIds.Add(evidenceId)) return false;
         FailureEvidenceId = evidenceId; Phase = RescuePledgePhase.Failed;

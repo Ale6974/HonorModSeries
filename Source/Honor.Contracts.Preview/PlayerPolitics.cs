@@ -86,7 +86,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         {
             var relation = root.RelationWith(other, true);
             if (relation == null || Faction.OfPlayer.RelationWith(other, true) == null || other.RelationWith(Faction.OfPlayer, true) == null ||
-                relation.baseGoodwill is < -100 or > 100 || !Enum.IsDefined(relation.kind) ||
+                relation.baseGoodwill is < -100 or > 100 || !RuntimeCompat.IsDefined(relation.kind) ||
                 other.HasGoodwill && Find.GoodwillSituationManager.GetMaxGoodwill(other) < relation.baseGoodwill ||
                 QuestUtility.IsGoodwillLockedByQuest(Faction.OfPlayer, other) &&
                     (Faction.OfPlayer.BaseGoodwillWith(other) != relation.baseGoodwill || Faction.OfPlayer.RelationKindWith(other) != relation.kind))

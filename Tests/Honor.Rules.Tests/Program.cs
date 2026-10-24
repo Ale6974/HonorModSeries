@@ -26,5 +26,6 @@ Check(!HonorRules.Ends(DuelMode.Surrender, false, false, true, .1f, .35f), "surr
 Check(HonorRules.Ends(DuelMode.Surrender, false, false, false, .4f, .35f), "pain surrender");
 Check(HonorRules.Ends(DuelMode.Surrender, false, true, false, .1f, .35f), "downed surrender");
 Check(!HonorRules.Ends(DuelMode.Death, false, true, true, 1, .35f), "death duel continues");
-foreach (var mode in Enum.GetValues<DuelMode>()) Check(HonorRules.Ends(mode, true, true, true, 1, .35f), "death ends all");
-Console.WriteLine($"PASS: {assertions} assertions (tier boundaries, event demotion, eligibility, ideology priority, endings).");
+foreach (var mode in RuntimeCompat.EnumValues<DuelMode>()) Check(HonorRules.Ends(mode, true, true, true, 1, .35f), "death ends all");
+assertions += CompatibilityTests.Run();
+Console.WriteLine($"PASS: {assertions} assertions (tier boundaries, event demotion, eligibility, ideology priority, endings, runtime compatibility).");

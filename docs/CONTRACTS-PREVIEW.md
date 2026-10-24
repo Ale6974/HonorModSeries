@@ -4,7 +4,7 @@
 
 사용자가 선택한 전체 흐름 우선 개발의 첫 연결 버전이다. `PoliticalWorld`는 실제 Faction과 별개의 정치 주체 ID를 사용한다. `Honor.Contracts.Preview`는 **별도 선택형 개발 모드**이며 공개 Core/Society/Nobility/Diplomacy/Oaths에 자동으로 포함되지 않는다. 실제 플레이 증명 없이 완성 모드로 Workshop에 게시하지 않는다.
 
-설치 게임 1.7.4985 rev1269의 Assembly-CSharp/UnityStubs/Waylith와 Harmony 3 RC DLL로 컴파일했다. 새 게임 실행·UI 조작·Scribe 게임 저장 재로딩은 수행하지 않았다. 빌드는 API 참조 검사이지 엔진 동작 증거가 아니다.
+0.3.10부터 설치 게임 1.7.4985 rev1269/.NET 10/Harmony 3 RC와 1.6.4871 참조 패키지/.NET Framework 4.7.2/Harmony 2.4.3으로 각각 컴파일한다. 1.6의 실제 게임 DLL 구현/Mono 런타임 실행은 확인하지 않았다. 새 게임 실행·UI 조작·Scribe 게임 저장 재로딩은 수행하지 않았다. 빌드는 API 참조 검사이지 엔진 동작 증거가 아니다.
 
 ## 이번에 연결한 범위
 
@@ -152,7 +152,7 @@ GameComponent가 실제 Settlement/Faction을 Scribe 참조로, 정치 장부를
 ./tools/Install-ContractsPreview.ps1 -RimWorldDir '<RimWorld directory>'
 ```
 
-설치기는 게임을 실행하거나 모드 활성 설정을 변경하지 않는다. 기존 동일 package ID 설치가 있으면 `.local`에 백업한다. 직접 확인할 때 게임 모드 목록에서 **Honor.Contracts — Development Preview**를 선택한다. 로드 순서는 Harmony 3 → Core 0.2.1+ → Preview. 다른 부속 모드/DLC는 필수 아님. 이후 사용자 요청 전까지 에이전트가 게임을 실행하지 않는다.
+설치기는 게임을 실행하거나 모드 활성 설정을 변경하지 않는다. 기존 동일 package ID 설치가 있으면 `.local`에 백업한다. 직접 확인할 때 게임 모드 목록에서 **Honor.Contracts — Development Preview**를 선택한다. 로드 순서는 해당 게임 버전의 Harmony(1.6: 2.x / 1.7: 3.x) → Core 0.2.2+ → Preview. 다른 부속 모드/DLC는 필수 아님. 이후 사용자 요청 전까지 에이전트가 게임을 실행하지 않는다.
 
 가상 모델의 향후 사용 경로(미실행): 월드맵에서 플레이어 정착지 선택 → 계약 개발 미리보기 → 모델 생성. 계약 합의 → 5일 경과 → 가상 배송 기록, 또는 가상 공격 → 구원 병력 파견 → 기한 경과 → 결과. 구원을 보내지 않았다면 시정 요구 → 합의 시정 또는 3일 대응 기간 뒤 독립. 이 가상 화면의 버튼은 모의 사건 입력이며 실제 전투 증거를 만들어 내지 않는다. 별도 정착지 계약 장부의 실물 공납은 위 설명대로 실제 소지품을 이전한다.
 

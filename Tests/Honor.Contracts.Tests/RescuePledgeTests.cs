@@ -30,7 +30,7 @@ static class RescuePledgeTests
         var noOffers = Array.Empty<RescuePledge>();
         RescuePledge Free(RescuePledgeTerms terms = null) => RescuePledge.TryOffer(terms ?? Terms(), none, noOffers);
 
-        foreach (var kind in Enum.GetValues<DefenseIncidentKind>())
+        foreach (var kind in RuntimeCompat.EnumValues<DefenseIncidentKind>())
         {
             var offer = Free(Terms(kind: kind));
             Check(offer != null && offer.OriginalContractId == null, "unbound city can offer vassalage for relief");

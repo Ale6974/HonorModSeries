@@ -80,7 +80,7 @@ public sealed class TributePaymentWindow : Window
         list.Label("HT_Required".Translate(receiver.Label, bill.RequiredValue.ToString("F2")));
         foreach (var item in quote.Where(q => !q.Thing.Destroyed && q.Thing.stackCount > 0))
         {
-            int count = Math.Clamp(selected.GetValueOrDefault(item.Thing), 0, item.Thing.stackCount);
+            int count = RuntimeCompat.Clamp(selected.GetValueOrDefault(item.Thing), 0, item.Thing.stackCount);
             list.Label("HT_Item".Translate(item.Thing.LabelNoCount, count, item.Thing.stackCount, item.Price.ToString("F2")));
             selected[item.Thing] = Mathf.RoundToInt(list.Slider(count, 0, item.Thing.stackCount));
         }

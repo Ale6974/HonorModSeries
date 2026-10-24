@@ -42,7 +42,7 @@ public sealed class OathLedger : GameComponent
         // Migrate old records after the complete game clock and deep collections have loaded.
         int now = Math.Max(0, Find.TickManager.TicksGame);
         foreach (var r in Records.Where(r => (r.Completed || r.Broken) && r.ResolvedTick < 0))
-            r.ResolvedTick = Math.Clamp(r.Deadline, 0, now);
+            r.ResolvedTick = RuntimeCompat.Clamp(r.Deadline, 0, now);
     }
     public OathRecord Active(Pawn p)
     {
@@ -55,7 +55,7 @@ public sealed class OathLedger : GameComponent
         !Records.Any(r => r.Pawn == p && r.Broken && r.ResolvedTick > Find.TickManager.TicksGame - 300000);
     public bool Swear(Pawn p, OathKind kind)
     {
-        if (!Enum.IsDefined(kind) || p?.Map == null || !DuelMapComponent.Eligible(p) || p.Downed || p.Drafted ||
+        if (!RuntimeCompat.IsDefined(kind) || p?.Map == null || !DuelMapComponent.Eligible(p) || p.Downed || p.Drafted ||
             !p.Awake() || p.InMentalState || Active(p) != null ||
             p.Map.mapPawns.FreeColonistsSpawned.Count(w => w != p && !w.Downed && w.Awake() &&
                 w.Position.InHorDistOf(p.Position, 10) && GenSight.LineOfSight(w.Position, p.Position, p.Map)) < 2) return false;
@@ -115,7 +115,7 @@ internal static class OathCommands
                 if (ledger.Active(p) is { } oath) {
                     Messages.Message("HO_Status".Translate(((oath.Deadline - Find.TickManager.TicksGame) / 60000f).ToString("0.0")), p, MessageTypeDefOf.NeutralEvent); return;
                 }
-                Find.WindowStack.Add(new FloatMenu(Enum.GetValues<OathKind>().Select(kind => new FloatMenuOption(
+                Find.WindowStack.Add(new FloatMenu(RuntimeCompat.EnumValues<OathKind>().Select(kind => new FloatMenuOption(
                     (kind == OathKind.WinDuel ? "HO_Win" : "HO_Peace").Translate(), () => {
                         var job = JobMaker.MakeJob(DefDatabase<JobDef>.GetNamed("HonorOaths_Swear")); job.count = (int)kind; job.playerForced = true;
                         p.jobs.TryTakeOrderedJob(job);

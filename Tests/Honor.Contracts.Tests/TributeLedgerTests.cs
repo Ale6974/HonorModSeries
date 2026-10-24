@@ -81,7 +81,7 @@ internal static class TributeLedgerTests
         var noMinting = new TributeLedger();
         Reject(noMinting, () => noMinting.Enable(npcBook, "charter", 0), "this outgoing adapter cannot invent NPC tribute goods");
 
-        foreach (var mode in Enum.GetValues<TributeTransport>())
+        foreach (var mode in RuntimeCompat.EnumValues<TributeTransport>())
         foreach (decimal rate in new[] { 0m, .1m, .5m })
         {
             var priced = new TributeLedger(); priced.Enable(Book(mode, rate), "charter", 0);

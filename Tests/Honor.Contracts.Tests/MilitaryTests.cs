@@ -85,8 +85,8 @@ static class MilitaryTests
             "occupation cannot silently overwrite previous liege");
         Check(blocked.Phase == SettlementConflictPhase.Occupied && blocked.Contract == null, "binding conflict leaves occupation unresolved");
 
-        foreach (var origin in Enum.GetValues<ContractOrigin>())
-        foreach (var kind in Enum.GetValues<DefenseIncidentKind>())
+        foreach (var origin in RuntimeCompat.EnumValues<ContractOrigin>())
+        foreach (var kind in RuntimeCompat.EnumValues<DefenseIncidentKind>())
         {
             var defense = origin == ContractOrigin.Occupation
                 ? MakeOccupied(Conflict($"defense-{kind}"), Terms(origin), none)

@@ -16,7 +16,7 @@ public static class UnionAdmissionRules
 {
     public static UnionExclusion Exclusion(UnionCandidate c)
     {
-        ArgumentNullException.ThrowIfNull(c);
+        RuntimeCompat.NotNull(c);
         if (c.Player) return UnionExclusion.Player;
         if (c.AlreadyUnion) return UnionExclusion.AlreadyUnion;
         if (c.HasMap) return UnionExclusion.LoadedMap;
@@ -28,7 +28,7 @@ public static class UnionAdmissionRules
     }
     public static IReadOnlyList<UnionCandidate> Plan(IEnumerable<UnionCandidate> candidates, int percent, int limit = 10)
     {
-        ArgumentNullException.ThrowIfNull(candidates);
+        RuntimeCompat.NotNull(candidates);
         if (percent is < 0 or > 30 || limit is < 1 or > 20) throw new ArgumentException("Invalid initial union configuration.");
         var all = candidates.ToArray();
         if (all.Any(c => c == null || string.IsNullOrWhiteSpace(c.SettlementId) || string.IsNullOrWhiteSpace(c.OwnerId)) ||
@@ -54,7 +54,7 @@ public sealed class UnionAdmissionLedger
     public UnionAdmission Admission(string id) => admissions.TryGetValue(id ?? "", out var record) ? record : throw new ArgumentException("Unknown admission.");
     public UnionAdmission Prepare(string id, UnionCandidate observed, string unionOwner, long now)
     {
-        Key(id); Key(unionOwner); ArgumentNullException.ThrowIfNull(observed); Key(observed.SettlementId); Key(observed.OwnerId); Time(now);
+        Key(id); Key(unionOwner); RuntimeCompat.NotNull(observed); Key(observed.SettlementId); Key(observed.OwnerId); Time(now);
         Require(observed.OwnerId != unionOwner && UnionAdmissionRules.Exclusion(observed) == UnionExclusion.None,
             "The current settlement is not eligible for initial admission.");
         Require(admissions.Count < MaxAdmissions && !admissions.ContainsKey(id) && !admissions.Values.Any(a =>
@@ -86,8 +86,8 @@ public sealed class UnionAdmissionLedger
         var ledger = new UnionAdmissionLedger();
         foreach (var record in save.Admissions)
         {
-            ArgumentNullException.ThrowIfNull(record); Key(record.Id); Key(record.SettlementId); Key(record.OriginalOwner); Key(record.UnionOwner);
-            Require(!ledger.admissions.ContainsKey(record.Id) && record.OriginalOwner != record.UnionOwner && Enum.IsDefined(record.Phase) &&
+            RuntimeCompat.NotNull(record); Key(record.Id); Key(record.SettlementId); Key(record.OriginalOwner); Key(record.UnionOwner);
+            Require(!ledger.admissions.ContainsKey(record.Id) && record.OriginalOwner != record.UnionOwner && RuntimeCompat.IsDefined(record.Phase) &&
                 record.PreparedTick >= 0 && record.PreparedTick <= save.LastTick &&
                 (record.Phase == UnionAdmissionPhase.Prepared ? !record.ResolvedTick.HasValue :
                     record.ResolvedTick >= record.PreparedTick && record.ResolvedTick <= save.LastTick), "Invalid saved admission.");

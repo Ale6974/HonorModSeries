@@ -24,8 +24,8 @@ public sealed class PlayerAllegiance
     private static void Key(string id) => Require(!string.IsNullOrWhiteSpace(id) && id.Length <= 120 && !id.Any(char.IsControl), "Invalid allegiance identity.");
     public void Apply(AllegianceCommand command)
     {
-        ArgumentNullException.ThrowIfNull(command);
-        Require(Enum.IsDefined(command.Action) && command.Tick >= LastTick && command.Tick <= int.MaxValue && commands.Count < 1000,
+        RuntimeCompat.NotNull(command);
+        Require(RuntimeCompat.IsDefined(command.Action) && command.Tick >= LastTick && command.Tick <= int.MaxValue && commands.Count < 1000,
             "Invalid allegiance command, clock or capacity.");
         var next = State;
         switch (command.Action)
@@ -79,8 +79,8 @@ public static class SharedDiplomacyPlan
     public static IReadOnlyList<SharedRelation> Build(string player, string authority, IEnumerable<SharedRelation> relations)
     {
         if (string.IsNullOrWhiteSpace(player) || string.IsNullOrWhiteSpace(authority) || player == authority) throw new ArgumentException("Invalid diplomacy endpoints.");
-        ArgumentNullException.ThrowIfNull(relations); var copy = relations.ToArray();
-        if (copy.Any(r => r == null || string.IsNullOrWhiteSpace(r.Other) || r.BaseGoodwill is < -100 or > 100 || !Enum.IsDefined(r.Kind)) ||
+        RuntimeCompat.NotNull(relations); var copy = relations.ToArray();
+        if (copy.Any(r => r == null || string.IsNullOrWhiteSpace(r.Other) || r.BaseGoodwill is < -100 or > 100 || !RuntimeCompat.IsDefined(r.Kind)) ||
             copy.Select(r => r.Other).Distinct(StringComparer.Ordinal).Count() != copy.Length) throw new ArgumentException("Invalid source diplomacy.");
         return Array.AsReadOnly(copy.Where(r => r.Other != player && r.Other != authority).ToArray());
     }

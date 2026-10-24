@@ -38,7 +38,7 @@ public static class HonorApi
         float value = traits?.HasTrait(HonorDefOf.Honor_Obsessed) == true ? 1.75f :
             traits?.HasTrait(HonorDefOf.Honor_Honorable) == true ? 1.25f :
             traits?.HasTrait(HonorDefOf.Honor_Vile) == true ? .5f : 1;
-        foreach (var modifier in SensitivityModifiers) value *= Math.Clamp(modifier(pawn), 0, 5);
+        foreach (var modifier in SensitivityModifiers) value *= RuntimeCompat.Clamp(modifier(pawn), 0, 5);
         return value;
     }
     internal static void NotifyEnded(DuelRecord duel)

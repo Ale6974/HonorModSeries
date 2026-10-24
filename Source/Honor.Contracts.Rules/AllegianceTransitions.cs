@@ -14,8 +14,8 @@ public static class AllegianceChangeSource
 {
     public static void Validate(CharterBook book, PlayerAllegianceState before, AllegianceCommand command, TributeLedger payments)
     {
-        ArgumentNullException.ThrowIfNull(book); ArgumentNullException.ThrowIfNull(before);
-        ArgumentNullException.ThrowIfNull(command); ArgumentNullException.ThrowIfNull(payments);
+        RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(before);
+        RuntimeCompat.NotNull(command); RuntimeCompat.NotNull(payments);
         if (payments.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared)) throw new ArgumentException("Resolve reserved goods first.");
         if (before.Mode == PlayerAllegianceMode.Vassal)
         {
@@ -47,13 +47,13 @@ public sealed class AllegianceTransitionLedger
     public bool Pending => Current?.Phase is AllegianceTransitionPhase.Prepared or AllegianceTransitionPhase.AllegianceApplied;
     private static void Require(bool value, string reason) { if (!value) throw new ArgumentException(reason); }
     private static bool Key(string id) => !string.IsNullOrWhiteSpace(id) && id.Length <= 120 && !id.Any(char.IsControl);
-    private static string Digest(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
+    private static string Digest(string value) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(value)));
     private void Time(long now) => Require(Current != null && now >= (Current.FinishedTick ?? Current.AllegianceTick ?? Current.PreparedTick) && now <= int.MaxValue,
         "Invalid transition clock.");
     public void Prepare(string id, PlayerAllegiance actual, AllegianceCommand command, FollowerTransferPlan followers, TerritoryTransferLedger transfers)
     {
-        ArgumentNullException.ThrowIfNull(actual); ArgumentNullException.ThrowIfNull(command);
-        ArgumentNullException.ThrowIfNull(followers); ArgumentNullException.ThrowIfNull(transfers);
+        RuntimeCompat.NotNull(actual); RuntimeCompat.NotNull(command);
+        RuntimeCompat.NotNull(followers); RuntimeCompat.NotNull(transfers);
         Require(!Pending && Key(id) && (Current == null || Current.Id != id) && command.Action is AllegianceAction.JoinUnion or AllegianceAction.BindLiege &&
             command.Authority == followers.Target && command.Tick == followers.ReviewedTick && followers.Entries != null && followers.Moves != null &&
             followers.Entries.All(e => e != null && Key(e.Charter)) && followers.Entries.Count <= CharterBook.MaxEntities &&
@@ -86,7 +86,7 @@ public sealed class AllegianceTransitionLedger
     }
     public void Complete(PlayerAllegiance actual, FollowerTransferPlan current, long now)
     {
-        ArgumentNullException.ThrowIfNull(current); Time(now);
+        RuntimeCompat.NotNull(current); Time(now);
         Require(Current.Phase == AllegianceTransitionPhase.AllegianceApplied && IsAfter(actual) && !actual.State.Suspended && actual.LastTick <= now &&
             current.Target == actual.State.Authority && current.ReviewedTick == now && current.Moves != null && current.Entries != null &&
             current.Entries.All(e => e != null && Key(e.Charter)) && current.Moves.Count == 0 &&
@@ -96,7 +96,7 @@ public sealed class AllegianceTransitionLedger
     }
     public void CancelUnchanged(PlayerAllegiance actual, TerritoryTransferLedger transfers, long now)
     {
-        ArgumentNullException.ThrowIfNull(transfers); Time(now);
+        RuntimeCompat.NotNull(transfers); Time(now);
         Require(Current.Phase == AllegianceTransitionPhase.Prepared && IsBefore(actual) && actual.LastTick <= now &&
             Digest(transfers.Export()) == Current.TransferBaseline, "Only completely unchanged preparation can be cancelled.");
         Current = Current with { Phase = AllegianceTransitionPhase.Cancelled, FinishedTick = now };
@@ -109,7 +109,7 @@ public sealed class AllegianceTransitionLedger
         Require(save != null && save.Version == 1, "Unsupported transition snapshot.");
         var result = new AllegianceTransitionLedger(); var c = save.Current;
         if (c == null) return result;
-        Require(Key(c.Id) && Enum.IsDefined(c.Phase) && c.TransferBaseline?.Length == 64 && c.TransferBaseline.All(Uri.IsHexDigit) &&
+        Require(Key(c.Id) && RuntimeCompat.IsDefined(c.Phase) && c.TransferBaseline?.Length == 64 && c.TransferBaseline.All(Uri.IsHexDigit) &&
             c.Followers != null && c.Followers.Count <= CharterBook.MaxEntities && c.Followers.All(Key) &&
             c.Followers.Distinct(StringComparer.Ordinal).Count() == c.Followers.Count && c.PreparedTick is >= 0 and <= int.MaxValue,
             "Invalid transition intent.");

@@ -101,7 +101,7 @@ internal static class CharterBookTests
         var badGraph = JsonSerializer.Deserialize<CharterBookSave>(race.Export());
         Corrupt(badGraph with { Charters = badGraph.Charters.Select(c => c.Id == "first" ?
             c with { Phase = RecordedCharterPhase.Active, PlayerSignedTick = 1 } : c).ToArray() }, "cyclic graph cannot be loaded as two active contracts");
-        foreach (var transport in Enum.GetValues<TributeTransport>())
+        foreach (var transport in RuntimeCompat.EnumValues<TributeTransport>())
         foreach (decimal rate in new[] { 0m, .1m, .5m })
         {
             var roundtrip = Seed();

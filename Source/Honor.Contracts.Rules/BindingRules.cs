@@ -10,8 +10,8 @@ public static class BindingRules
     /// </summary>
     public static BindingConflict Check(ContractTerms candidate, IEnumerable<ContractLedger> existing)
     {
-        ArgumentNullException.ThrowIfNull(candidate);
-        ArgumentNullException.ThrowIfNull(existing);
+        RuntimeCompat.NotNull(candidate);
+        RuntimeCompat.NotNull(existing);
         var active = existing.Where(c => c.Phase is ContractPhase.Active or ContractPhase.Disputed).Select(c => c.Terms).ToArray();
         if (candidate.Kind == ContractKind.SettlementCharter)
             return active.Any(c => c.Kind == candidate.Kind && c.SettlementId == candidate.SettlementId)

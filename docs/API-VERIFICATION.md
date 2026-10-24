@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 1.6/1.7 호환성 빌드 (0.2.2 / Contracts 0.3.10, 2026-10-25)
+
+설치 게임은 계속 1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev다. 1.6 게임을 설치하거나 Steam 분기를 변경하지 않았다. [Ludeon 허가를 받아 배포하는 RimRef](https://github.com/krafs/RimRef)의 고정 Krafs.Rimworld.Ref 1.6.4871 서명 참조를 사용해 6개 모듈을 net472로 컴파일했다. 1.6 게임 구현/Mono 실행을 확인한 것은 아니다. 설치 Harmony 1.6 DLL은 2.4.3.0+b79f2f1ac971e5bc224cda3efedbbb4084efbfb6, 1.7 DLL은 3.0.0-rc.3이다. 1.6 API 바인딩은 서명·타입 검사이고 Harmony 설치/역패치·퀘스트/맵/저장 동작의 성공 증거가 아니다.
+
+순수 규칙과 게임 어셈블리를 버전별로 분리하고, 공용 null/enum/clamp/finite/SHA helper 및 빌드용 PolySharp로 새 BCL/컴파일러 의존성을 제거했다. net472 규칙은 Windows .NET Framework에서, net10 규칙은 .NET 10에서 실행했다. Contracts 1.6은 System.Text.Json 10.0.13과 필요한 Microsoft 런타임 DLL 9개를 자체 1.6 폴더에 포함하며 1.7에서는 이를 로드하지 않는다. Native Mono와 타 모드 DLL 충돌은 미검증이다. GameComponent/Scribe/Harmony/정착지 등 1.7 구현 조사 결과를 1.6 구현 검증으로 간주하지 않는다. [정확한 범위와 재현 명령](VERSION-SUPPORT.md).
+
 ## 주민 기준 기록 관측·저장 (0.3.9)
 
 Version.txt 1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev와 Harmony 3.0.0.0-rc.3+3c0e32cd3fd20e4ae27c47cb8c888844766f9f1a를 재확인했다. 설치 DLL의 Verse.Hediff, Verse.Pawn_EquipmentTracker, RimWorld.Pawn_ApparelTracker, Verse.Pawn_InventoryTracker를 조사하고 GetUniqueLoadID/Severity/Part, AllEquipmentListForReading, WornApparel, inventory.innerContainer 참조를 확인했다. 기존 Pawn 생존/위치/포로/지도자/mental/job getter와 health.hediffSet.hediffs를 읽어 버전이 고정된 관측 요약을 만든다. 물품 생성·이동·Pawn.SetFaction·기존 장부 수정은 호출하지 않는다.

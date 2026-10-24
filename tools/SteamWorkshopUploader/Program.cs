@@ -42,14 +42,19 @@ try
     bool collection = args[0] == "collection";
     string modDir = Path.GetFullPath(args[2]), stateFile = Path.GetFullPath(args[3]);
     string title;
-    if (collection) title = "Honor Mod Series — 1.7 (English / 한국어)";
+    var versions = new List<string> { "1.6", "1.7" };
+    if (collection) title = "Honor Mod Series — 1.6 / 1.7 (English / 한국어)";
     else
     {
         var about = XDocument.Load(Path.Combine(modDir, "About", "About.xml")).Root!;
         var package = about.Element("packageId")!.Value;
         if (!package.StartsWith("honor.series.")) throw new InvalidOperationException("Only Honor series content is supported.");
-        title = about.Element("name")!.Value + " — 1.7 Experimental (EN/KO)";
-        if (!File.Exists(Path.Combine(modDir, "1.7", "Assemblies", about.Element("name")!.Value + ".dll"))) throw new InvalidOperationException("Built module required.");
+        if (package == "honor.series.contracts.preview") throw new InvalidOperationException("Contracts is a code-validated preview; Workshop publication is deferred.");
+        versions = about.Element("supportedVersions")!.Elements("li").Select(v => v.Value).Distinct().ToList();
+        if (versions.Count == 0 || versions.Any(v => v is not ("1.6" or "1.7"))) throw new InvalidOperationException("Unverified game version metadata.");
+        title = about.Element("name")!.Value + " — " + string.Join(" / ", versions) + " Experimental (EN/KO)";
+        foreach (var version in versions)
+            if (!File.Exists(Path.Combine(modDir, version, "Assemblies", about.Element("name")!.Value + ".dll"))) throw new InvalidOperationException("All advertised version builds are required.");
         if (Directory.EnumerateFiles(modDir, "*.dll", SearchOption.AllDirectories).Any(p => !Path.GetFileName(p).StartsWith("Honor."))) throw new InvalidOperationException("Foreign DLL in upload.");
         if (Directory.EnumerateFiles(modDir, "*.pdb", SearchOption.AllDirectories).Any()) throw new InvalidOperationException("Debug symbols in upload: run tools/Build.ps1 first.");
     }
@@ -68,11 +73,14 @@ try
     var update = SteamUGC.StartItemUpdate(new AppId_t(294100), new PublishedFileId_t(record.PublishedFileId));
     Need(SteamUGC.SetItemTitle(update, title), "title"); Need(SteamUGC.SetItemDescription(update, File.ReadAllText(args[4])), "description");
     Need(SteamUGC.SetItemVisibility(update, ERemoteStoragePublishedFileVisibility.k_ERemoteStoragePublishedFileVisibilityPublic), "public visibility");
-    Need(SteamUGC.SetItemTags(update, new List<string> { "1.7" }), "tag");
+    Need(SteamUGC.SetItemTags(update, versions), "tag");
     if (!collection) Need(SteamUGC.SetItemContent(update, modDir), "content");
     var preview = Path.Combine(modDir, "About", "Preview.png");
+    var workshopPreview = Path.Combine(modDir, "About", "Preview-Workshop.jpg");
+    if (File.Exists(workshopPreview)) preview = workshopPreview;
+    if (File.Exists(preview) && new FileInfo(preview).Length >= 1000000) throw new InvalidOperationException("Workshop preview must be below 1 MB.");
     if (File.Exists(preview)) Need(SteamUGC.SetItemPreview(update, preview), "preview");
-    var submitted = Wait<SubmitItemUpdateResult_t>(() => SteamUGC.SubmitItemUpdate(update, "0.2.1 release review: state validation, oath deadlines, honor rewards and tournament loan weapon cleanup."));
+    var submitted = Wait<SubmitItemUpdateResult_t>(() => SteamUGC.SubmitItemUpdate(update, "0.2.2 compatibility: separate RimWorld 1.6 / 1.7 builds; 1.6 code/reference validation only."));
     Require(submitted.m_eResult, "SubmitItemUpdate");
     record.LegalAgreementRequired = submitted.m_bUserNeedsToAcceptWorkshopLegalAgreement; record.UploadedUtc = DateTime.UtcNow; record.Visibility = "Public"; WriteState(stateFile, record);
     if (!collection) File.WriteAllText(idPath, record.PublishedFileId + "\n");

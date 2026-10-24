@@ -1,0 +1,18 @@
+<Project>
+  <Import Project="../Directory.Build.props" />
+  <PropertyGroup Condition="'$(RimWorldVersion)' == '1.6'">
+    <TargetFramework>net472</TargetFramework>
+    <HarmonyDll>$(Harmony16Dll)</HarmonyDll>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Compatibility/RuntimeCompat.cs" Link="Compatibility/RuntimeCompat.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RimWorldVersion)' == '1.6'">
+    <PackageReference Include="PolySharp" Version="1.16.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RimWorldVersion)' == '1.6' and '$(MSBuildProjectName)' != 'Honor.Rules' and '$(MSBuildProjectName)' != 'Honor.Contracts.Rules'">
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="1.6.4871" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

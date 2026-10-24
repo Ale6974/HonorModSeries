@@ -1,0 +1,14 @@
+<Project>
+  <Import Project="../Directory.Build.props" />
+  <PropertyGroup Condition="'$(RimWorldVersion)' == '1.6' and ('$(MSBuildProjectName)' == 'Honor.Rules.Tests' or '$(MSBuildProjectName)' == 'Honor.Contracts.Tests')">
+    <TargetFramework>net472</TargetFramework>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(MSBuildProjectName)' == 'Honor.Rules.Tests' or '$(MSBuildProjectName)' == 'Honor.Contracts.Tests'">
+    <Compile Include="$(MSBuildThisFileDirectory)../Source/Compatibility/RuntimeCompat.cs" Link="Compatibility/RuntimeCompat.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RimWorldVersion)' == '1.6' and ('$(MSBuildProjectName)' == 'Honor.Rules.Tests' or '$(MSBuildProjectName)' == 'Honor.Contracts.Tests')">
+    <PackageReference Include="PolySharp" Version="1.16.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies.net472" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

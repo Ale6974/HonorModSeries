@@ -1,10 +1,13 @@
 <Project>
   <PropertyGroup>
+    <RimWorldVersion Condition="'$(RimWorldVersion)' == ''">1.7</RimWorldVersion>
+    <BaseIntermediateOutputPath>obj/$(RimWorldVersion)/</BaseIntermediateOutputPath>
+    <DefaultItemExcludes>$(DefaultItemExcludes);**/obj/**;**/bin/**</DefaultItemExcludes>
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-    <Deterministic>true</Deterministic><Version>0.2.1</Version>
+    <Deterministic>true</Deterministic><Version>0.2.2</Version>
     <GenerateDependencyFile>false</GenerateDependencyFile>
   </PropertyGroup>
   <Import Project="GamePaths.props" Condition="Exists('GamePaths.props')" />

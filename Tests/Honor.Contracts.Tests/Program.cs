@@ -31,7 +31,7 @@ ContractLedger Active(ContractTerms terms = null, long start = 0)
     return contract;
 }
 
-foreach (var kind in Enum.GetValues<ContractKind>())
+foreach (var kind in RuntimeCompat.EnumValues<ContractKind>())
 {
     var contract = new ContractLedger("consent", Terms(kind));
     Check(!contract.RequestVerifiedDuty("protect", "raid", 0), "unsigned contract grants no protection duty");
@@ -84,7 +84,7 @@ for (int i = 1; i <= 2; i++)
 }
 Check(!quota.RequestVerifiedDuty("protect", "raid-3", 3), "agreed quota cannot be exceeded");
 
-foreach (var side in Enum.GetValues<ContractSide>())
+foreach (var side in RuntimeCompat.EnumValues<ContractSide>())
 {
     var broken = Active();
     Check(broken.Repudiate(side, 1) && broken.BreachingSide == side, "either party can deliberately repudiate");

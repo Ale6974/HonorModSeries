@@ -23,7 +23,7 @@ public sealed class ContractStabilityPolicy
     {
         double[] values = [lowHonorThreshold, lowTrustThreshold, pressurePerDay, recoveryPerDay,
             warningThreshold, exitThreshold, resetThreshold, lossTrustMultiplier, repairTrustMultiplier];
-        if (values.Any(v => !double.IsFinite(v))) throw new ArgumentException("Stability parameters must be finite.");
+        if (values.Any(v => !RuntimeCompat.IsFinite(v))) throw new ArgumentException("Stability parameters must be finite.");
         if (lowHonorThreshold is <= 0 or > 1 || lowTrustThreshold is <= 0 or > 1 ||
             pressurePerDay is < 0 or > 1 || recoveryPerDay is < 0 or > 1 ||
             resetThreshold < 0 || resetThreshold >= warningThreshold || warningThreshold >= exitThreshold || exitThreshold > 1 ||
@@ -60,9 +60,9 @@ public sealed class ContractStability
     public ContractStability(ContractLedger contract, FactionHonorLedger liege, FactionHonorLedger subject,
         long now, ContractStabilityPolicy policy = null)
     {
-        ArgumentNullException.ThrowIfNull(contract);
-        ArgumentNullException.ThrowIfNull(liege);
-        ArgumentNullException.ThrowIfNull(subject);
+        RuntimeCompat.NotNull(contract);
+        RuntimeCompat.NotNull(liege);
+        RuntimeCompat.NotNull(subject);
         if (contract.Terms.Kind == ContractKind.PersonalVassalage || contract.Terms.Liege != liege.Faction || contract.Terms.Subject != subject.Faction)
             throw new ArgumentException("Stability needs the actual faction parties of a territorial contract.");
         if (now < 0 || !contract.StartedTick.HasValue || now < contract.StartedTick.Value ||
@@ -82,7 +82,7 @@ public sealed class ContractStability
 
     public bool ApplyFactionHonorChange(FactionHonorChange change)
     {
-        ArgumentNullException.ThrowIfNull(change);
+        RuntimeCompat.NotNull(change);
         bool isLiege = change.Faction == contract.Terms.Liege;
         bool isSubject = change.Faction == contract.Terms.Subject;
         if (!isLiege && !isSubject) return false;
@@ -96,12 +96,12 @@ public sealed class ContractStability
         if (isLiege)
         {
             LiegeHonor = change.After; liegeRevision = change.Revision;
-            SubjectTrustInLiege = Math.Clamp(SubjectTrustInLiege + impact, 0, 1);
+            SubjectTrustInLiege = RuntimeCompat.Clamp(SubjectTrustInLiege + impact, 0, 1);
         }
         else
         {
             SubjectHonor = change.After; subjectRevision = change.Revision;
-            LiegeTrustInSubject = Math.Clamp(LiegeTrustInSubject + impact, 0, 1);
+            LiegeTrustInSubject = RuntimeCompat.Clamp(LiegeTrustInSubject + impact, 0, 1);
         }
         Recalculate(change.Tick);
         return true;
@@ -115,7 +115,7 @@ public sealed class ContractStability
             double severity = Math.Max(0, (policy.LowHonorThreshold - LiegeHonor) / policy.LowHonorThreshold) +
                 Math.Max(0, (policy.LowTrustThreshold - SubjectTrustInLiege) / policy.LowTrustThreshold);
             double rate = severity > 0 ? policy.PressurePerDay * severity : -policy.RecoveryPerDay;
-            SecessionPressure = Math.Clamp(SecessionPressure + rate * ((now - lastTick) / 60000d), 0, 1);
+            SecessionPressure = RuntimeCompat.Clamp(SecessionPressure + rate * ((now - lastTick) / 60000d), 0, 1);
         }
         lastTick = now;
         contract.Advance(now);
@@ -125,7 +125,7 @@ public sealed class ContractStability
     /// <summary>Only after the game has actually delivered and saved the warning; no backdated grace period.</summary>
     public bool RecordVerifiedNoticeDelivered(string evidenceId, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(evidenceId);
+        RuntimeCompat.NotBlank(evidenceId);
         Advance(now);
         if (Phase != ContractStabilityPhase.WarningNeeded || !noticeEvidence.Add(evidenceId)) return false;
         NoticeDeliveredTick = now; NoticeEvidenceId = evidenceId;

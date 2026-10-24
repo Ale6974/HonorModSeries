@@ -133,8 +133,8 @@ public sealed class PoliticalWorld
 
     public void Apply(WorldCommand command)
     {
-        ArgumentNullException.ThrowIfNull(command);
-        Require(Enum.IsDefined(command.Action) && commands.Count < MaxCommands, "Unknown action or journal capacity reached.");
+        RuntimeCompat.NotNull(command);
+        Require(RuntimeCompat.IsDefined(command.Action) && commands.Count < MaxCommands, "Unknown action or journal capacity reached.");
         Require(command.At == Now || command.Action == WorldAction.Advance && command.At > Now,
             "Only Advance may move model time. Other commands must use current time.");
         switch (command.Action)
@@ -297,7 +297,7 @@ public sealed class PoliticalWorld
             if (Now == NextTurn)
             {
                 foreach (var domain in domains.Values)
-                    domain.Prosperity = Math.Clamp(domain.Prosperity + (Busy(domain.Id) ? -.01m : .001m), 0, 1);
+                    domain.Prosperity = RuntimeCompat.Clamp(domain.Prosperity + (Busy(domain.Id) ? -.01m : .001m), 0, 1);
                 NextTurn += TurnTicks;
             }
         }

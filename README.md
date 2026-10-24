@@ -1,12 +1,12 @@
-# Honor Mod Series — RimWorld 1.7
+# Honor Mod Series — RimWorld 1.6 / 1.7
 
-Contracts 개발판 0.3.9: **1단계 계약·정치 구조 진행 중**입니다. 연합 가입·합의 해약 후 복귀·새 종주 소속을 봉신 전체의 이동 검토와 통합했습니다. 한 번 확정하면 소속/외교와 도시 이전을 단계별로 기록하고, 중단 시 재검토·재개하거나 적용 전 미변경 준비만 취소합니다. 기존 채무와 플레이어 통제를 유지합니다. 방문한 NPC 도시도 일반 거래 물품 보존을 검사해 이전하도록 확장했습니다. 도시별 주민·재고 점검과 선택형 주민 기준 기록 저장/비교를 추가했습니다. 누락·추가·소속·건강·장비·상태의 추적 항목 차이를 확인하며 이전 권한이나 보존 완료 증거로 쓰지 않습니다. 로딩된 맵·저장된 주민·사람/동물/보관함 재고가 있는 도시, 전시 이적·일방 독립·NPC 계층 생성은 남아 있습니다. [6단계 진행표](docs/CONTRACTS-ROADMAP.md) · [현재 범위와 제한](docs/CONTRACTS-PREVIEW.md). 실제 게임 실행 검증은 계속 보류합니다.
+Contracts 개발판 0.3.10: **1단계 계약·정치 구조 진행 중**입니다. 연합 가입·합의 해약 후 복귀·새 종주 소속을 봉신 전체의 이동 검토와 통합했습니다. 한 번 확정하면 소속/외교와 도시 이전을 단계별로 기록하고, 중단 시 재검토·재개하거나 적용 전 미변경 준비만 취소합니다. 기존 채무와 플레이어 통제를 유지합니다. 방문한 NPC 도시도 일반 거래 물품 보존을 검사해 이전하도록 확장했습니다. 도시별 주민·재고 점검과 선택형 주민 기준 기록 저장/비교를 추가했습니다. 누락·추가·소속·건강·장비·상태의 추적 항목 차이를 확인하며 이전 권한이나 보존 완료 증거로 쓰지 않습니다. 로딩된 맵·저장된 주민·사람/동물/보관함 재고가 있는 도시, 전시 이적·일방 독립·NPC 계층 생성은 남아 있습니다. [6단계 진행표](docs/CONTRACTS-ROADMAP.md) · [현재 범위와 제한](docs/CONTRACTS-PREVIEW.md). 실제 게임 실행 검증은 계속 보류합니다.
 
 개발 미리보기에 **실제 정착지 계약 장부와 선택형 실물 공납**을 추가했습니다. 별도로 공납을 켜면 상단이 상대 정착지에서 물품을 직접 전달합니다. 실제 소지품을 옮기며 게임 거래가격으로 평가합니다. 자동 보호와 실제 플레이 검증은 아직 남아 있습니다. [현재 연결 범위](docs/CONTRACTS-PREVIEW.md).
 
 Contracts 개발 진행: [확정 요구사항](docs/CONTRACTS-DECISIONS.md) · [선택형 개발 미리보기와 설치](docs/CONTRACTS-PREVIEW.md). 실제 계약 장부·선택형 실물 공납·소속/외교 집행과 별도의 가상 모델을 구분합니다. 기존 공개 0.2.1 모드에 자동 포함되지 않습니다. 신규 개발은 코드/빌드 검증만 진행하며 직접 플레이 검증은 보류 중입니다.
 
-**0.2.1 공개 실험판.** 실제 RimWorld **1.7.4985 rev1269 unstable / Waylith** 설치 DLL로 빌드하고 별도 저장 폴더에서 엔진 통합 검사를 수행합니다. 초기 명세 전체의 완성판은 아닙니다.
+**0.2.2 호환성 빌드.** 1.6.4871 참조 DLL/.NET Framework 4.7.2와 설치된 1.7.4985 rev1269/.NET 10을 별도로 빌드합니다. 양쪽 규칙 검사는 통과했지만 이번 변경은 실제 게임 실행으로 검증하지 않았습니다. 기존 0.2.1의 엔진 검사 이력을 신규 1.6 플레이 증거로 사용하지 않습니다. 창작마당 공개본은 0.2.1이며 이 호환성 변경은 GitHub 소스·로컬 ZIP으로 제공합니다. [버전별 빌드와 범위](docs/VERSION-SUPPORT.md).
 
 [추천 모음집](https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644) · [공개 GitHub 소스](https://github.com/Ale6974/HonorModSeries) · [창작마당 Core](https://steamcommunity.com/sharedfiles/filedetails/?id=3825494597) · [필수 항목 및 권장 구성](docs/DEPENDENCIES.md)
 
@@ -20,7 +20,7 @@ Contracts 개발 진행: [확정 요구사항](docs/CONTRACTS-DECISIONS.md) · [
 | Diplomacy | 비적대 정착지 모욕에 대응하는 월드 퀘스트, 대표 생성·동일 무기·결투, 은과 우호도 결과 | 월드맵 비적대 정착지의 ‘정착지 모욕에 대응’ → 상단 이동 → 도착한 대표 선택 |
 | Oaths | 목격자 2명과 600틱 의식, 5일 승리/평화 맹세, 성공·위반 명예와 기분 기억, 의례적 칭호 | 주민의 ‘맹세하기’ 선택, 10칸 이내 깨어 있는 목격자 2명 확보 |
 
-Core는 Harmony 3만 필요합니다. 각 부속 모드는 Core 0.2.1 이상과 Harmony가 필요하며 서로는 필요하지 않습니다. **Nobility만 Royalty DLC가 필수**입니다. DLC가 없다면 Nobility를 제외한 구성을 사용하세요. [정확한 의존성 표](docs/DEPENDENCIES.md).
+Core는 게임 버전에 맞는 Harmony만 필요합니다(1.6: Harmony 2.x, 1.7: Harmony 3.x). 이 배포 묶음의 각 부속 모드는 Core 0.2.2 이상과 Harmony가 필요하며 서로는 필요하지 않습니다. **Nobility만 Royalty DLC가 필수**입니다. DLC가 없다면 Nobility를 제외한 구성을 사용하세요. [정확한 의존성 표](docs/DEPENDENCIES.md).
 
 모든 플레이어 문구는 게임의 영어/한국어 언어 설정을 따릅니다. 다른 언어에서는 기본 영어를 사용합니다. 사용자 언어 설정을 바꾸지 않습니다.
 
@@ -63,10 +63,10 @@ Oaths: 정당한 결투 승리 또는 모욕·불명예 없이 5일 버티기입
 
 “구원하러 오면 봉신이 되겠다”는 자유도시/저명예 세력 영지의 조건부 제안도 규칙 계층에 추가했습니다. 수락·실제 구원·기존 계약 정리 뒤 약속한 문안으로 정착지 계약을 체결하며 기한과 증거/사건 중복을 검사합니다. 실제 미션 생성·전투·외교 결과·저장과 영한 UI는 아직 연결하지 않았습니다.
 
-.NET 10 SDK와 사용자 소유의 게임·Harmony DLL이 필요합니다. 개발 스크립트는 PowerShell 7에서 검증했습니다. `GamePaths.props.example`을 `GamePaths.props`로 복사해 경로를 설정한 뒤 `./tools/Build.ps1 -DotnetPath 'dotnet.exe 경로'`를 실행합니다. 게임·Harmony·Steamworks DLL과 세이브·개인 설정은 배포하지 않습니다.
+.NET 10 SDK와 사용자 소유의 게임·Harmony DLL이 필요합니다. 개발 스크립트는 PowerShell 7에서 검증했습니다. `GamePaths.props.example`을 `GamePaths.props`로 복사해 경로를 설정한 뒤 `./tools/Build.ps1 -DotnetPath 'dotnet.exe 경로'`를 실행합니다. 1.6 빌드는 Harmony16Dll 경로를 지정하고 같은 명령에 -GameVersion 1.6을 붙입니다. 1.6 API 참조 패키지·프레임워크 참조·빌드용 PolySharp를 NuGet으로 복원합니다. 게임·Harmony·Steamworks DLL과 세이브·개인 설정은 배포하지 않습니다. `tools/Package.ps1 -IncludeContractsPreview`로 두 버전이 든 선택형 개발 묶음을 만들 수 있습니다.
 
 - [API 검증](docs/API-VERIFICATION.md)
 - [모듈 구조](docs/ARCHITECTURE.md)
 - [게시 절차](docs/PUBLISHING.md)
 
-English: Experimental 0.2.1 for verified RimWorld 1.7.4985 unstable. Five playable modules, native English/Korean localization, no separate reputation currency. Core needs Harmony 3 for 1.7. Optional modules each need Core 0.2.1+; only Nobility also needs Royalty. Read DEPENDENCIES before subscribing to the complete collection. Diplomacy provides a player-triggered world quest with fixed rewards; general reward negotiation is not implemented. This is an early experimental release, not completion of every planned feature.
+English: Experimental compatibility build 0.2.2 with separate RimWorld 1.6.4871 reference/net472 and installed 1.7.4985/net10 builds. Both rule suites pass; no new engine/play test is claimed. Steam remains at 0.2.1; use the current GitHub source/local bundle for these compatibility changes. Five playable modules, native English/Korean localization, no separate reputation currency. Core needs the matching Harmony build (2.x on 1.6, 3.x on 1.7). Optional modules in this bundle each need Core 0.2.2+; only Nobility also needs Royalty. Read DEPENDENCIES before subscribing to the complete collection. Diplomacy provides a player-triggered world quest with fixed rewards; general reward negotiation is not implemented. This is an early experimental release, not completion of every planned feature.

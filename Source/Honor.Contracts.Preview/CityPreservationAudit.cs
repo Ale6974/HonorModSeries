@@ -97,7 +97,7 @@ public sealed class CityPreservationAuditWindow : Window
                 var result = baseline.Compare(city);
                 comparison.Add("RB_Result".Translate(baseline.Baseline.Tick, result.ObservedTick,
                     result.CityOwnerChanged ? "RB_OwnerChanged".Translate() : "RB_OwnerSame".Translate()));
-                foreach (var kind in Enum.GetValues<ResidentDifference>())
+                foreach (var kind in RuntimeCompat.EnumValues<ResidentDifference>())
                 {
                     int count = result.Residents.Count(r => kind == ResidentDifference.None ? r.Difference == kind : r.Difference.HasFlag(kind));
                     comparison.Add("RB_Count".Translate(("RB_" + kind).Translate(), count));

@@ -154,7 +154,7 @@ public sealed class TributePaymentLedger : GameComponent
                     1, improvement, receiver.TradePriceImprovementOffsetForPlayer);
                 price = Math.Min(price, buy);
             }
-            if (float.IsFinite(price) && price > 0 && price <= 10000000) items.Add(new(thing, carrier, (decimal)price));
+            if (RuntimeCompat.IsFinite(price) && price > 0 && price <= 10000000) items.Add(new(thing, carrier, (decimal)price));
         }
         return items.OrderBy(i => i.Thing.def.defName, StringComparer.Ordinal).ThenBy(i => i.Thing.thingIDNumber).Take(100).ToArray();
     }

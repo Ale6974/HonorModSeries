@@ -1,5 +1,15 @@
 # 검증과 플레이 점검
 
+## 1.6/1.7 분리 빌드와 커버 (0.2.2 / Contracts 0.3.10)
+
+두 타깃의 6개 모듈이 각각 경고/오류 0으로 빌드됐다. 각 타깃에서 명예/런타임 규칙 20,093개와 계약 2,716개, **각각 22,809개**가 통과했다. 신규 13개 검사는 SHA256 고정 벡터 2개, 정수/long/float/double/decimal clamp·NaN/무한대·finite·역전 경계 거절·caller 인자명·빈 문자열·enum 의미를 포함한다. 기존 검사 수를 두 번 실행한 총합을 별도 고유 검사 수라고 하지 않는다. net472 테스트는 Windows .NET Framework 호스트이며 RimWorld Mono 실행 증거가 아니다.
+
+XML·공용 EN/KO keyed(Preview 222개)·placeholder·두 세력 DefInjected 12개 필드가 통과했다. 패키지 검사는 6모듈×2버전의 LoadFolders/metadata·공용 데이터·DLL 허용 목록과 PE의 TargetFramework를 검사했다. 1.6에 net10 DLL 또는 공용 폴더에 DLL이 섞이지 않으며 게임/Unity/Waylith/Harmony/참조 DLL은 포함하지 않았다. 새 전체 ZIP을 작성했다. 게임 실행·1.6 XML 파싱·Harmony 적용·저장/로드·JSON/Memory 타 모드 충돌은 미검증이다. 기존 Steam 5개 항목과 Contracts Workshop는 갱신하지 않는다.
+
+Contracts 커버는 기존 Core/Diplomacy를 스타일 참조로 built-in image generation에서 생성한 1672×941 PNG다. 같은 그림의 JPEG 인코딩은 252,526바이트로 [Steam 1MB 제한](https://partner.steamgames.com/doc/api/ISteamUGC#SetItemPreview) 이하다. 제목·문구·구성과 개발판 표기를 육안 확인했다. PNG/JPEG와 생성 프롬프트를 저장했으며, 1.6/1.7 호환성을 그림에 보증 문구로 넣지 않았다.
+
+기존 6개 로컬 모드를 백업 후 갱신하고 설치 파일 94개 SHA256이 소스 빌드 폴더와 일치함을 확인했다. 활성화·언어·Steam 분기는 변경하지 않았고 게임을 실행하지 않았다. 두 타깃을 포함한 전체 선택형 ZIP을 작성했으며 이 ZIP에는 개발판 Contracts와 Royalty가 필요한 Nobility도 들어 있다. 실제 1.6 설치 경로에서 설치기를 실행한 증거는 아니다.
+
 ## 주민 기준 기록 저장·비교 (0.3.9, 2026-10-25)
 
 새 작업 폴더에서 최신 GitHub 소스를 가져와 로컬 게임 참조 설정을 재사용하고 전체 빌드를 수행했다. 경고/오류 0, 명예 규칙 20,080개와 계약 규칙 2,716개(신규 41개), 합계 22,796개가 통과했다. 주민 순서 무관성·입력 배열과의 독립/불변 목록·기준 JSON 왕복·도시 소유권 분리·소속/건강/장비/상태 독립 및 복합 변화·주민 교체의 추가/누락 구분·도시/시각 불일치·중복/잘못된 입력/크기/스키마/요약 검사를 포함한다. 실패한 비교가 기준 기록을 바꾸지 않는지도 검사했다.

@@ -35,20 +35,20 @@ public sealed class TerritoryTransferLedger
     public bool VerifiedOwner(string territory, string baseline, string actual) => !Pending(territory) && ExpectedOwner(territory, baseline) == actual;
     public TerritoryObservation ObserveIdentity(TerritoryObservation actual, string baseline)
     {
-        ArgumentNullException.ThrowIfNull(actual);
+        RuntimeCompat.NotNull(actual);
         bool verified = actual.Exists && !actual.Player && VerifiedOwner(actual.Id, baseline, actual.NativeOwner);
         return actual with { NativeOwner = verified ? baseline : actual.NativeOwner, Eligible = actual.Eligible && verified };
     }
     public TerritoryTransfer Prepare(string id, CharterBook book, string charterId, TerritoryTransferObservation observed,
         string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration = null)
     {
-        ArgumentNullException.ThrowIfNull(book); ArgumentNullException.ThrowIfNull(observed);
+        RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(observed);
         Key(id); Key(target); Key(observed.Territory); Key(observed.Owner); Time(now);
         Require(now >= book.LastTick, "Transfer cannot precede the current consent book clock.");
         var charter = book.Charter(charterId); var subject = book.Entity(charter.Terms.Subject);
         Require(!book.Charters.Any(c => c.Terms.Subject == subject.Id && book.Phase(c, now) == RecordedCharterPhase.Offered),
             "Resolve open proposals before changing the NPC authority that granted consent.");
-        Require(Enum.IsDefined(purpose) && !subject.Player && book.Entity(charter.Terms.Liege).Player &&
+        Require(RuntimeCompat.IsDefined(purpose) && !subject.Player && book.Entity(charter.Terms.Liege).Player &&
             observed.Territory == subject.Id && charter.PlayerSignedTick.HasValue && charter.NpcSignedTick.HasValue &&
             now >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value), "A mutually signed player-liege/NPC-city charter is required.");
         if (purpose == TerritoryTransferPurpose.ActiveCharter)
@@ -69,7 +69,7 @@ public sealed class TerritoryTransferLedger
     }
     public void Confirm(string id, TerritoryTransferObservation actual, long now)
     {
-        ArgumentNullException.ThrowIfNull(actual); Time(now); var transfer = Transfer(id);
+        RuntimeCompat.NotNull(actual); Time(now); var transfer = Transfer(id);
         Require(transfer.Phase == TerritoryTransferPhase.Prepared && actual.Territory == transfer.Territory && actual.Exists &&
             actual.Owner == transfer.TargetOwner && !actual.Player && Preserved(actual, transfer.StockProof),
             "Applied transfer needs actual intended nonplayer ownership and matching preserved stock evidence.");
@@ -77,7 +77,7 @@ public sealed class TerritoryTransferLedger
     }
     public void CancelUnmoved(string id, TerritoryTransferObservation actual, long now)
     {
-        ArgumentNullException.ThrowIfNull(actual); Time(now); var transfer = Transfer(id);
+        RuntimeCompat.NotNull(actual); Time(now); var transfer = Transfer(id);
         Require(transfer.Phase == TerritoryTransferPhase.Prepared && actual.Territory == transfer.Territory && actual.Exists &&
             actual.Owner == transfer.FromOwner && !actual.Player && Preserved(actual, transfer.StockProof),
             "Only verified unmoved ownership with unchanged stock can cancel a transfer.");
@@ -95,10 +95,10 @@ public sealed class TerritoryTransferLedger
         var result = new TerritoryTransferLedger();
         foreach (var item in save.Transfers)
         {
-            ArgumentNullException.ThrowIfNull(item);
+            RuntimeCompat.NotNull(item);
             foreach (var key in new[] { item.Id, item.Territory, item.BaselineOwner, item.FromOwner, item.TargetOwner, item.Charter }) Key(key);
             Require((item.StockProof == null || CityStockProof.Valid(item.StockProof)) &&
-                Enum.IsDefined(item.Purpose) && Enum.IsDefined(item.Phase) && item.FromOwner != item.TargetOwner &&
+                RuntimeCompat.IsDefined(item.Purpose) && RuntimeCompat.IsDefined(item.Phase) && item.FromOwner != item.TargetOwner &&
                 item.PreparedTick >= result.LastTick && item.PreparedTick <= save.LastTick &&
                 (item.Phase == TerritoryTransferPhase.Prepared ? !item.ResolvedTick.HasValue : item.ResolvedTick >= item.PreparedTick && item.ResolvedTick <= save.LastTick) &&
                 !result.transfers.Any(t => t.Id == item.Id || t.Phase == TerritoryTransferPhase.Prepared) &&

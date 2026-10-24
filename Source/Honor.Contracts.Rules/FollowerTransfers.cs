@@ -10,7 +10,7 @@ public static class FollowerTransfers
     public static FollowerTransferPlan Review(CharterBook book, TerritoryTransferLedger ledger, IEnumerable<FollowerCandidate> candidates,
         string target, long now, string verifiedAdministration = null)
     {
-        ArgumentNullException.ThrowIfNull(book); ArgumentNullException.ThrowIfNull(ledger); ArgumentNullException.ThrowIfNull(candidates);
+        RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(ledger); RuntimeCompat.NotNull(candidates);
         var entries = candidates.OrderBy(c => c?.Charter, StringComparer.Ordinal).ToArray();
         var required = book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active && book.Entity(c.Terms.Liege).Player && !book.Entity(c.Terms.Subject).Player)
             .Select(c => c.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray();

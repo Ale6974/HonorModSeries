@@ -84,7 +84,7 @@ internal static class PlayerAllegianceTests
         bool readOnly = false;
         try { ((IList<SharedRelation>)plan)[0] = new("other", 0, SharedRelationKind.Neutral); } catch (NotSupportedException) { readOnly = true; }
         Check(readOnly, "plan cannot mutate game source or reviewed snapshot");
-        foreach (var kind in Enum.GetValues<SharedRelationKind>())
+        foreach (var kind in RuntimeCompat.EnumValues<SharedRelationKind>())
         foreach (int goodwill in new[] { -100, -75, -1, 0, 1, 75, 100 })
             Check(SharedDiplomacyPlan.Build("p", "r", [new("x", goodwill, kind)])[0] == new SharedRelation("x", goodwill, kind), "base goodwill and source hysteresis kind preserved independently");
         void BadPlan(string player, string root, SharedRelation[] relations, string name)

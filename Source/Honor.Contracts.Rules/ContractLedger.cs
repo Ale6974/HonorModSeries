@@ -28,8 +28,8 @@ public sealed class ContractLedger
 
     public ContractLedger(string id, ContractTerms terms)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        ArgumentNullException.ThrowIfNull(terms);
+        RuntimeCompat.NotBlank(id);
+        RuntimeCompat.NotNull(terms);
         Id = id; Terms = terms;
     }
 
@@ -87,7 +87,7 @@ public sealed class ContractLedger
     /// <summary>Call only after verifying a real protection/service trigger, not arbitrary player requests.</summary>
     public bool RequestVerifiedDuty(string clauseId, string triggerId, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(triggerId);
+        RuntimeCompat.NotBlank(triggerId);
         Advance(now);
         if (Phase is not (ContractPhase.Active or ContractPhase.Disputed) || now >= EndTick.Value) return false;
         var clause = Terms.Clauses.SingleOrDefault(c => c.Id == clauseId);
@@ -106,7 +106,7 @@ public sealed class ContractLedger
     /// <summary>Transfer/quest completion receipt; a receipt can settle at most one obligation.</summary>
     public bool RecordVerifiedFulfillment(string obligationId, string receiptId, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(receiptId);
+        RuntimeCompat.NotBlank(receiptId);
         Advance(now);
         if (IsTerminal || Phase == ContractPhase.Proposed || evidence.Contains(receiptId)) return false;
         int index = obligations.FindIndex(o => o.Id == obligationId);
@@ -124,7 +124,7 @@ public sealed class ContractLedger
     /// <summary>A late delivery cannot silently erase a dispute; the adapter must resolve it explicitly.</summary>
     public bool ResolveMissedDuty(string obligationId, bool culpable, string findingId, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(findingId);
+        RuntimeCompat.NotBlank(findingId);
         Advance(now);
         if (Phase != ContractPhase.Disputed || evidence.Contains(findingId)) return false;
         int index = obligations.FindIndex(o => o.Id == obligationId && o.Phase == ObligationPhase.Overdue);
@@ -186,6 +186,6 @@ public sealed class ContractLedger
 
     static void ValidateSide(ContractSide side)
     {
-        if (!Enum.IsDefined(side)) throw new ArgumentOutOfRangeException(nameof(side));
+        if (!RuntimeCompat.IsDefined(side)) throw new ArgumentOutOfRangeException(nameof(side));
     }
 }

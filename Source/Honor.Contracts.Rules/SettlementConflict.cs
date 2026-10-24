@@ -20,10 +20,10 @@ public sealed class SettlementConflict
 
     public SettlementConflict(string id, string settlementId, PartyRef attacker, PartyRef defender, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(id);
-        ArgumentException.ThrowIfNullOrWhiteSpace(settlementId);
-        ArgumentNullException.ThrowIfNull(attacker);
-        ArgumentNullException.ThrowIfNull(defender);
+        RuntimeCompat.NotBlank(id);
+        RuntimeCompat.NotBlank(settlementId);
+        RuntimeCompat.NotNull(attacker);
+        RuntimeCompat.NotNull(defender);
         if (attacker.Kind != PartyKind.Faction || defender.Kind != PartyKind.Faction || attacker == defender)
             throw new ArgumentException("Conquest requires different attacking and defending factions.");
         if (now < 0) throw new ArgumentOutOfRangeException(nameof(now));
@@ -42,7 +42,7 @@ public sealed class SettlementConflict
     /// <summary>The adapter must verify defeated defenders AND surviving settlement AND actual attacker control.</summary>
     public bool RecordVerifiedOccupation(string evidenceId, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(evidenceId);
+        RuntimeCompat.NotBlank(evidenceId);
         Observe(now);
         if (Phase is not (SettlementConflictPhase.Assaulting or SettlementConflictPhase.Besieging)) return false;
         OccupationEvidenceId = evidenceId;
@@ -54,7 +54,7 @@ public sealed class SettlementConflict
     public ContractLedger AcceptVerifiedCapitulation(ContractTerms acceptedTerms, string evidenceId,
         IEnumerable<ContractLedger> existing, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(evidenceId);
+        RuntimeCompat.NotBlank(evidenceId);
         Observe(now);
         if (Phase is not (SettlementConflictPhase.Assaulting or SettlementConflictPhase.Besieging or SettlementConflictPhase.Occupied)) return null;
         if (!Matches(acceptedTerms, ContractOrigin.Capitulation) || !CanBind(acceptedTerms, existing)) return null;
@@ -68,7 +68,7 @@ public sealed class SettlementConflict
     public ContractLedger EstablishOccupationCharter(ContractTerms imposedTerms, string evidenceId,
         IEnumerable<ContractLedger> existing, long now)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(evidenceId);
+        RuntimeCompat.NotBlank(evidenceId);
         Observe(now);
         if (Phase != SettlementConflictPhase.Occupied || !Matches(imposedTerms, ContractOrigin.Occupation) ||
             !CanBind(imposedTerms, existing)) return null;
@@ -99,7 +99,7 @@ public sealed class SettlementConflict
 
     bool CanBind(ContractTerms terms, IEnumerable<ContractLedger> existing)
     {
-        ArgumentNullException.ThrowIfNull(existing);
+        RuntimeCompat.NotNull(existing);
         var all = existing.ToArray();
         return !all.Any(c => c.Id == $"conquest/{Id}") && BindingRules.Check(terms, all) == BindingConflict.None;
     }

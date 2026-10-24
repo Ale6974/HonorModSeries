@@ -27,14 +27,14 @@ public sealed class TributeLedger
     private void Time(long now) => Require(now >= LastTick && now <= int.MaxValue, "Invalid or reversed payment time.");
     private static void Terms(RecordedCharterTerms t)
     {
-        ArgumentNullException.ThrowIfNull(t); Key(t.Liege); Key(t.Subject);
+        RuntimeCompat.NotNull(t); Key(t.Liege); Key(t.Subject);
         Require(t.Liege != t.Subject && t.TributeValue is > 0 and <= 10000000 &&
             t.IntervalTicks is >= PoliticalWorld.Day and <= PoliticalWorld.Day * 60 && t.GraceTicks is >= 0 and <= PoliticalWorld.Day * 30 &&
-            Enum.IsDefined(t.Transport) && t.TransportRate is >= 0 and <= .5m, "Invalid tribute schedule.");
+            RuntimeCompat.IsDefined(t.Transport) && t.TransportRate is >= 0 and <= .5m, "Invalid tribute schedule.");
     }
     public void Enable(CharterBook book, string charterId, long now)
     {
-        ArgumentNullException.ThrowIfNull(book); Time(now); Key(charterId);
+        RuntimeCompat.NotNull(book); Time(now); Key(charterId);
         var charter = book.Charter(charterId); Terms(charter.Terms);
         Require(charter.Phase == RecordedCharterPhase.Active && book.Entity(charter.Terms.Subject).Player &&
             charter.PlayerSignedTick.HasValue && charter.NpcSignedTick.HasValue &&
@@ -68,7 +68,7 @@ public sealed class TributeLedger
     {
         var account = Account(charterId);
         long cutoff = Math.Min(now, account.ClosedTick ?? now);
-        int periods = (int)Math.Clamp((cutoff - account.StartedTick) / account.Terms.IntervalTicks + 1, 0, MaxPeriods);
+        int periods = (int)RuntimeCompat.Clamp((cutoff - account.StartedTick) / account.Terms.IntervalTicks + 1, 0, MaxPeriods);
         for (int period = 1; period <= periods; period++)
         {
             long due = account.StartedTick + account.Terms.IntervalTicks * period;
@@ -80,7 +80,7 @@ public sealed class TributeLedger
     public bool IsPaid(string charterId, int period) => receipts.Values.Any(r => r.CharterId == charterId && r.Period == period && r.Phase == TributeReceiptPhase.Committed);
     private static TributeLine[] Lines(IEnumerable<TributeLine> lines)
     {
-        ArgumentNullException.ThrowIfNull(lines); var copy = lines.ToArray();
+        RuntimeCompat.NotNull(lines); var copy = lines.ToArray();
         Require(copy.Length is >= 1 and <= 100 && copy.All(l => l != null), "Select a bounded set of real goods.");
         foreach (var line in copy)
         { Key(line.SourceId); Require(line.Count is >= 1 and <= 1000000 && line.UnitValue is > 0 and <= 10000000, "Invalid quoted count or trade price."); }
@@ -124,7 +124,7 @@ public sealed class TributeLedger
         var ledger = new TributeLedger();
         foreach (var account in save.Accounts)
         {
-            ArgumentNullException.ThrowIfNull(account); Key(account.CharterId); Terms(account.Terms);
+            RuntimeCompat.NotNull(account); Key(account.CharterId); Terms(account.Terms);
             Require(!ledger.accounts.ContainsKey(account.CharterId) && account.StartedTick >= 0 && account.StartedTick <= save.LastTick &&
                 account.StartedTick <= int.MaxValue - account.Terms.IntervalTicks && (!account.ClosedTick.HasValue ||
                 account.ClosedTick >= account.StartedTick && account.ClosedTick <= save.LastTick), "Invalid saved account.");
@@ -132,8 +132,8 @@ public sealed class TributeLedger
         }
         foreach (var receipt in save.Receipts)
         {
-            ArgumentNullException.ThrowIfNull(receipt); Key(receipt.Id); var lines = Lines(receipt.Lines); var bill = ledger.Bill(receipt.CharterId, receipt.Period);
-            Require(!ledger.receipts.ContainsKey(receipt.Id) && Enum.IsDefined(receipt.Phase) && receipt.PreparedTick >= bill.DueTick && receipt.PreparedTick <= save.LastTick &&
+            RuntimeCompat.NotNull(receipt); Key(receipt.Id); var lines = Lines(receipt.Lines); var bill = ledger.Bill(receipt.CharterId, receipt.Period);
+            Require(!ledger.receipts.ContainsKey(receipt.Id) && RuntimeCompat.IsDefined(receipt.Phase) && receipt.PreparedTick >= bill.DueTick && receipt.PreparedTick <= save.LastTick &&
                 lines.Sum(l => l.Count * l.UnitValue) >= bill.RequiredValue &&
                 (receipt.Phase == TributeReceiptPhase.Prepared ? !receipt.ResolvedTick.HasValue : receipt.ResolvedTick >= receipt.PreparedTick && receipt.ResolvedTick <= save.LastTick),
                 "Invalid saved receipt.");

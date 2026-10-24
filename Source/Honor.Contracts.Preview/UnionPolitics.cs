@@ -47,7 +47,7 @@ public sealed class UnionPoliticsLedger : GameComponent
         try
         {
             if (snapshot != null) Admissions = UnionAdmissionLedger.Restore(snapshot);
-            if (!Enum.IsDefined(choice) || cities.Any(c => c == null) || cities.Select(c => c.AdmissionId).Distinct(StringComparer.Ordinal).Count() != cities.Count ||
+            if (!RuntimeCompat.IsDefined(choice) || cities.Any(c => c == null) || cities.Select(c => c.AdmissionId).Distinct(StringComparer.Ordinal).Count() != cities.Count ||
                 cities.Count != Admissions.Admissions.Count || cities.Any(c => Admissions.Admissions.All(a => a.Id != c.AdmissionId)))
                 throw new ArgumentException("Invalid union reference registry.");
         }
