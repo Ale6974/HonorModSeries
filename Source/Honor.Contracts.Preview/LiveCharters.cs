@@ -21,7 +21,7 @@ public sealed class TerritoryBinding : IExposable
     }
 }
 
-/// <summary>Actual settlement references and bilateral records; no resource/ownership/diplomacy effects yet.</summary>
+/// <summary>Actual references and bilateral consent. Physical and political execution use separate journals.</summary>
 public sealed class LiveCharterLedger : GameComponent
 {
     private string snapshot;
@@ -30,6 +30,8 @@ public sealed class LiveCharterLedger : GameComponent
     public bool RestoreFailed { get; private set; }
     public LiveCharterLedger(Game game) { }
     public string PlayerIdentity => "player/" + Faction.OfPlayer.GetUniqueLoadID();
+    internal TerritoryBinding Binding(string identity) => bindings.SingleOrDefault(b => b.Identity == identity)
+        ?? throw new ArgumentException("Unknown territory binding.");
     public override void ExposeData()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) snapshot = Book.Export();
@@ -76,13 +78,25 @@ public sealed class LiveCharterLedger : GameComponent
             var owner = alive ? settlement.Faction : null;
             bool eligible = owner != null && owner != Faction.OfPlayer && owner.HasGoodwill && !owner.defeated &&
                 !owner.def.permanentEnemy && !owner.HostileTo(Faction.OfPlayer);
-            return new TerritoryObservation(b.Identity, owner?.GetUniqueLoadID(), alive, owner == Faction.OfPlayer, eligible);
+            var administration = Current.Game.GetComponent<TerritoryAdministrationLedger>();
+            string baseline = Book.Entity(b.Identity).NativeOwner;
+            // Only this journal's completed, still-current transfer can account for an owner change.
+            // Pending transfers and foreign conquests never become fresh consent observations.
+            var observation = new TerritoryObservation(b.Identity, owner?.GetUniqueLoadID(), alive, owner == Faction.OfPlayer, eligible);
+            return administration.RestoreFailed ? observation with { Eligible = false }
+                : administration.Ledger.ObserveIdentity(observation, baseline);
         }).ToArray();
     }
     private string Register(Settlement settlement, bool player, bool factionGroup = false)
     {
         var owner = player ? Faction.OfPlayer : settlement.Faction;
         string identity = player ? PlayerIdentity : factionGroup ? "faction/" + owner.GetUniqueLoadID() : "territory/" + settlement.GetUniqueLoadID();
+        if (Book.Entities.Any(e => e.Id == identity))
+        {
+            if (Book.Availability(identity, Observe()) != CharterAvailability.Current || Book.Entity(identity).Player != player)
+                throw new ArgumentException("Existing identity is not current.");
+            return identity;
+        }
         Book.Register(new(identity, owner.GetUniqueLoadID(), player), Find.TickManager.TicksGame);
         if (bindings.All(b => b.Identity != identity)) bindings.Add(new() { Identity = identity,
             Settlement = player || factionGroup ? null : settlement, OriginalFaction = owner, PlayerGroup = player, FactionGroup = factionGroup });
@@ -214,6 +228,8 @@ public sealed class LiveChartersWindow : Window
                     if (list.ButtonText("HCL_Decline".Translate())) ledger.Decline(charter.Id);
                 }
                 if (phase == RecordedCharterPhase.Active && list.ButtonText("HCL_Release".Translate())) ledger.RequestRelease(charter.Id);
+                if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && !ledger.Book.Entity(charter.Terms.Subject).Player &&
+                    list.ButtonText("CT_Open".Translate())) Find.WindowStack.Add(new TerritoryAdministrationWindow(charter.Id));
                 if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && ledger.Book.Entity(charter.Terms.Subject).Player)
                     TributePaymentWindow.DrawAccount(list, ledger, charter);
             }

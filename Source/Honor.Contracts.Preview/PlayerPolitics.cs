@@ -73,6 +73,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         CheckProjection(root);
         return root;
     }
+    internal Faction TerritoryAuthority() => ValidateAuthority();
     private static void CheckProjection(Faction root)
     {
         if (root.RelationWith(Faction.OfPlayer, true) == null || Faction.OfPlayer.RelationWith(root, true) == null)

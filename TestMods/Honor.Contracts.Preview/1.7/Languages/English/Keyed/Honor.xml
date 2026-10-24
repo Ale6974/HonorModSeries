@@ -35,7 +35,7 @@
   <HT_Recovery>Recovery attempted. Unproven transfers remain reserved; retained escrow is not discarded. The bill is not reopened until the full return is verified.</HT_Recovery>
   <HT_Unavailable>Payment unavailable or quote changed. Check ledger status, current ownership, caravan location, negotiator, goods and quoted value. Favor-based or title-restricted trading is not supported yet. An interrupted transfer remains reserved for recovery.</HT_Unavailable>
   <HCL_Open>Settlement charter records</HCL_Open>
-  <HCL_Warning>DEVELOPMENT CHARTER RECORDS — real settlement references with separate NPC/player consent. Physical tribute requires explicit opt-in and manual delivery below. Protection, faction membership and shared diplomacy are not enforced yet. Native player control is preserved. The fictional model is separate. Gameplay validation is deferred.</HCL_Warning>
+  <HCL_Warning>DEVELOPMENT CHARTER RECORDS — real settlement references with separate NPC/player consent. Physical tribute requires explicit opt-in and manual delivery below. Player shared diplomacy and eligible NPC membership each require separate review and confirmation. Automatic protection is not implemented. Native player control is preserved. The fictional model is separate. Gameplay validation is deferred.</HCL_Warning>
   <HCL_Player>Player colony (all settlements)</HCL_Player>
   <HCL_Missing>Missing territory</HCL_Missing>
   <HCL_Unavailable>Charter action unavailable: check the current owner, representative, diplomacy, pending offers and existing bonds.</HCL_Unavailable>
@@ -120,4 +120,18 @@
   <PA_RelationsChanged>Shared diplomacy changed the relationship with: {0}. The game has been paused for review.</PA_RelationsChanged>
   <PA_Goodwill>Shared goodwill with {0}: {1} → {2}</PA_Goodwill>
   <PA_Rejected>Political change unavailable. Review current relations, authority consent, released prior ties, notice and pending transfers. Quest locks or player goodwill caps may prevent sharing.</PA_Rejected>
+  <CT_Open>NPC territory membership</CT_Open>
+  <CT_Warning>DEVELOPMENT PREVIEW — Confirming changes this NPC town's REAL faction, shared diplomacy, future inhabitants, trade and faction ideology/technology. Player bases and pawns remain under player control. Only untouched nonplayer towns can move: no loaded map, generated inhabitants, generated trade stock, hostility or pending delivery; the source faction must keep another base. Active charters require a nonplayer shared authority already accepted by the player. An unaffiliated player's administrative faction is not implemented. Released towns need an existing Free City Union and no newer active contract. Movement is separate from signing/releasing; no automatic protection or warfare is added. Gameplay validation is deferred.</CT_Warning>
+  <CT_Review>Review current destination and eligibility</CT_Review>
+  <CT_Proposal>{0}: {1} → {2}</CT_Proposal>
+  <CT_Active>Apply the mutually signed charter: the NPC town joins the player's current shared political authority while remaining an NPC town.</CT_Active>
+  <CT_Released>Apply the mutually released charter: the NPC town joins the existing Free City Union. Old contracts and execution history are preserved. This is not a unilateral independence ruling.</CT_Released>
+  <CT_Confirm>Confirm actual NPC faction change</CT_Confirm>
+  <CT_Record>{0} → {1}: {2}</CT_Record>
+  <CT_Recover>Check interrupted change: confirm destination or cancel if unmoved</CT_Recover>
+  <CT_Unavailable>Territory change unavailable. Check signed/released status, unresolved proposals, player shared authority or existing union, current ownership, source's remaining bases, untouched town and pending deliveries. A town already at the destination needs no move. Interrupted moves must be resolved first.</CT_Unavailable>
+  <CT_Applied>Faction change applied; actual ownership verified</CT_Applied>
+  <CT_Prepared>Prepared; ownership not confirmed</CT_Prepared>
+  <CT_Cancelled>Cancelled after verifying no movement</CT_Cancelled>
+  <CT_Missing>Missing faction</CT_Missing>
 </LanguageData>

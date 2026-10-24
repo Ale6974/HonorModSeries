@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 계약에 따른 NPC 영지 소속 집행 (0.3.4, 코드/빌드만)
+
+Version.txt 1.7.4985 rev1269, runtimeconfig net10.0 / 10.0.13-waylithclr.dev 및 Harmony 3.0.0.0-rc.3을 재확인했다. 설치 DLL을 다시 조회한 WorldObject.SetFaction(Faction)은 def.canHaveFaction을 검사하고 factionInt를 설정하는 virtual 메서드다. Settlement에는 이를 도시 주민·재고 이전까지 수행하는 형태로 재정의한 메서드가 없으며, 플레이어 기지/맵 처리는 native faction에 의존한다. 따라서 대상과 목적지 모두 비플레이어로 한정하고 HasMap/EverVisited/previouslyGeneratedInhabitants 및 실제 세력 자격을 검사한다.
+
+실행 전 준비 기록을 남기고 SetFaction 이후 실제 도시 참조와 Faction.GetUniqueLoadID, 미로딩/미방문 상태를 확인한다. 계약의 최초 정체성을 임의로 새 세력으로 수정하지 않고, 완료된 소유권 실행의 현재 일치만 별도 관측 어댑터에서 인정한다. NPC 계층/점령 권한이나 맵·재고 이관 API가 있다고 가정하지 않는다. 실제 맵·거래 재고·생성 주민·world object 캐시·세력 멸망/퀘스트·Scribe 복구 경로는 실행 검증하지 않았다.
+
 ## 플레이어 공유 외교 (0.3.3, 코드/빌드만)
 
 설치 Version.txt의 1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 DLL의 Faction.RelationWith(Faction,bool)는 세력별 mutable FactionRelation을 반환한다. 관계 객체를 대표 세력 것으로 바꿔 돌려주면 양방향 변경과 바닐라 알림이 잘못 처리될 수 있으므로 getter를 패치하지 않는다. 실제 플레이어·상대의 별도 relation 값에 baseGoodwill/kind를 함께 반영하고 Notify_RelationKindChanged(Faction,FactionRelationKind,bool,string,GlobalTargetInfo,out bool)를 호출한다.
