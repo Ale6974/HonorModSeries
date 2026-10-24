@@ -2,6 +2,7 @@
 
 - Latest user instruction (2026-10-24): validate new Contracts development with code, builds and rule tests only; defer direct gameplay/engine execution until requested again. This overrides the engine-run requirement below. Develop a broad contract → tribute → war/rescue → exit slice first. Do not describe code-only evidence as gameplay proof or publish the Contracts preview to Workshop as a verified playable release.
 - The current approved Contracts requirements are in docs/CONTRACTS-DECISIONS.md. They supersede conflicting initial assumptions in CONTRACTS-DESIGN.md, especially shared free-city faction membership, inherited obligations, player control, and justified secession.
+- Contracts Preview has optional REAL physical tribute delivery, separately enabled per live charter. Do not describe the live payment UI as inventory-neutral. Never backbill old development records, overwrite global TradeSession for quotes, mint NPC tribute, commit a receipt without verified destination counts, or reopen a reserved bill without verified full return. Gameplay validation remains deferred.
 
 - Target RimWorld 1.7. Validate the user's actual Version.txt, runtimeconfig and game/Harmony DLLs before changing engine bindings. Record build-specific evidence in docs/API-VERIFICATION.md. Do not assume 1.6 signatures or stable 1.7 support.
 - Keep game DLLs, decompiled game code, local paths/configuration, saves and downloaded tools out of Git and distributions.

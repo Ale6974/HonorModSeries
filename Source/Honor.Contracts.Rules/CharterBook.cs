@@ -109,6 +109,7 @@ public sealed class CharterBook
         } while (changed);
         Require(ids.All(id => Availability(id, current) == CharterAvailability.Current), "A connected territory is missing, changed owner or is ineligible.");
     }
+    public void ValidateCurrent(string charterId, IEnumerable<TerritoryObservation> observations) => Fresh(Charter(charterId).Terms, observations);
     public RecordedCharter Offer(string id, RecordedCharterTerms terms, long now, long responseTicks, IEnumerable<TerritoryObservation> observations)
     {
         Key(id); Time(now); Terms(terms); Fresh(terms, observations); Topology(terms);

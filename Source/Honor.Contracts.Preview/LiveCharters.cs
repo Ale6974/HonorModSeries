@@ -100,6 +100,13 @@ public sealed class LiveCharterLedger : GameComponent
         var root = Book.Root(identity);
         return Label(root);
     }
+    public Faction CounterpartyFaction(string charterId)
+    {
+        var charter = Book.Charter(charterId);
+        string npc = Book.Entity(charter.Terms.Liege).Player ? charter.Terms.Subject : charter.Terms.Liege;
+        var binding = bindings.Single(b => b.Identity == npc);
+        return binding.FactionGroup ? binding.OriginalFaction : binding.Settlement?.Faction;
+    }
     private bool Execute(Action action)
     {
         if (RestoreFailed) return false;
@@ -141,6 +148,7 @@ public sealed class LiveCharterLedger : GameComponent
     public void RequestRelease(string id)
     {
         Execute(() => {
+            if (Current.Game.GetComponent<TributePaymentLedger>().HasPending(id)) throw new ArgumentException("Resolve pending physical delivery before release.");
             var charter = Book.Charter(id);
             string npcId = Book.Entity(charter.Terms.Liege).Player ? charter.Terms.Subject : charter.Terms.Liege;
             var binding = bindings.Single(b => b.Identity == npcId);
@@ -152,6 +160,7 @@ public sealed class LiveCharterLedger : GameComponent
             if (faction.GoodwillWith(Faction.OfPlayer) < 20)
             { Messages.Message("HCL_ReleaseRefused".Translate(), MessageTypeDefOf.RejectInput); return; }
             Book.ConsentToRelease(id, false, Find.TickManager.TicksGame, Observe());
+            Current.Game.GetComponent<TributePaymentLedger>().Synchronize(id);
         });
     }
 }
@@ -199,6 +208,8 @@ public sealed class LiveChartersWindow : Window
                     if (list.ButtonText("HCL_Decline".Translate())) ledger.Decline(charter.Id);
                 }
                 if (phase == RecordedCharterPhase.Active && list.ButtonText("HCL_Release".Translate())) ledger.RequestRelease(charter.Id);
+                if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && ledger.Book.Entity(charter.Terms.Subject).Player)
+                    TributePaymentWindow.DrawAccount(list, ledger, charter);
             }
         }
         height = list.CurHeight + 20; list.End(); Widgets.EndScrollView();

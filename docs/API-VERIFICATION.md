@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 실물 공납 직접 전달 (2026-10-24, 코드/빌드만)
+
+동일 설치 1.7.4985 rev1269와 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 DLL에서 Tradeable.InitPriceDataIfNeeded의 입력과 TradeUtility.GetPricePlayerSell(Thing,float,float,float,float,float,float,TradeCurrency), GetPricePlayerBuy(Thing,float,float,float,float), PlayerSellableNow를 조사했다. 통화는 시장가를 쓰고 일반 물품은 가격형·협상가·정착지·약물/축산물·난이도 보정 및 판매/구매 가격 상한을 반영한다. 전역 TradeSession은 변경하지 않는다. 표기/반올림 차이까지 실제 거래 화면과 대조한 결과는 없다.
+
+Settlement_TraderTracker는 IThingHolder이고 GetDirectlyHeldThings가 실제 거래 재고 ThingOwner를 반환한다. 기본 GiveSoldThingToTrader는 거절된 물품을 Destroy할 수 있어 공납 경로에서는 이를 호출하지 않는다. ThingOwner.TryTransferToContainer(Thing,ThingOwner,int,out Thing,bool)의 반환 수량과 실제 목적지 보관자·스택 수량을 확인하며 병합을 비활성화한다. 임시 보관은 IThingHolder + Scribe_Deep, 실제 참조는 Scribe_References로 작성했다. NPC 기존 거래 재고의 생성/갱신은 바닐라 StockListForReading 경로다. NPC 공납 자원을 새로 만들어 지급하지 않는다.
+
+컴파일은 실제 상단 도착·가격 대조·물품 보존·예외/모드 훅·엔진 Scribe 저장 복구의 증거가 아니다. 이 검증은 사용자 지시에 따라 아직 수행하지 않았다.
+
 ## 실제 영지 장부 연결 (2026-10-24, 코드 검증만)
 
 Version.txt 1.7.4985 rev1269와 runtimeconfig의 net10.0 / 10.0.13-waylithclr.dev, 설치 Harmony 3 RC를 재확인했다. 설치 DLL 기준으로 Settlement/WorldObject의 GetUniqueLoadID, Destroyed, Faction, Faction의 GetUniqueLoadID/leader/HasGoodwill/defeated/HostileTo/GoodwillWith, FactionManager.AllFactionsListForReading, Scribe_References/Scribe_Collections와 GameComponent.ExposeData에 바인딩하고 Preview를 컴파일했다. WorldObject.GetUniqueLoadID는 WorldObject_ + ID를 반환하므로 번역 이름이나 현재 타일을 저장 키로 사용하지 않는다.

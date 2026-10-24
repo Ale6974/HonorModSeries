@@ -1,6 +1,24 @@
 <LanguageData>
+  <HT_Enable>Enable real tribute for this charter</HT_Enable>
+  <HT_OptIn>Optional experimental physical payments: enabling starts a new schedule now, with no retroactive bills. Manual delivery removes real caravan goods. Protection missions, faction membership changes and collection visits are not implemented.</HT_OptIn>
+  <HT_Account>Real tribute enabled. Only manual subject delivery is supported; no goods are taken automatically. Existing debts remain payable after mutual release.</HT_Account>
+  <HT_Bill>Period {0}: principal value {1}, delivery value {2}, due in {3} days (negative means past due).</HT_Bill>
+  <HT_Overdue>Overdue. This does not automatically assign dishonor or start a war.</HT_Overdue>
+  <HT_Choose>Select a caravan at the counterparty settlement</HT_Choose>
+  <HT_Caravan>{0} at {1}</HT_Caravan>
+  <HT_NoCaravan>Bring a player caravan onto a settlement tile owned by the charter's liege faction, then select payment again.</HT_NoCaravan>
+  <HT_RealWarning>REAL DELIVERY — confirming transfers the selected inventory into the NPC settlement's trade stock. Prices use the game's current sell-price rules. Excess value is not refunded or applied to other bills. Only ordinary inventory items are supported. This code has not been tested in gameplay.</HT_RealWarning>
+  <HT_Required>Recipient: {0} · required delivery value: {1}</HT_Required>
+  <HT_Item>{0}: selected {1}/{2} · quoted unit value {3}</HT_Item>
+  <HT_Total>Selected value {0} · surplus without change {1}</HT_Total>
+  <HT_Deliver>Confirm delivery of these real goods</HT_Deliver>
+  <HT_Delivered>Physical tribute delivered and receipt recorded.</HT_Delivered>
+  <HT_Receipt>Paid period {0} · actual delivered value {1}</HT_Receipt>
+  <HT_Recover>Recover pending delivery or return verified goods</HT_Recover>
+  <HT_Recovery>Recovery attempted. Unproven transfers remain reserved; retained escrow is not discarded. The bill is not reopened until the full return is verified.</HT_Recovery>
+  <HT_Unavailable>Payment unavailable or quote changed. Check ledger status, current ownership, caravan location, negotiator, goods and quoted value. Favor-based or title-restricted trading is not supported yet. An interrupted transfer remains reserved for recovery.</HT_Unavailable>
   <HCL_Open>Settlement charter records</HCL_Open>
-  <HCL_Warning>DEVELOPMENT CHARTER RECORDS — these records reference real settlements and require separate NPC/player consent. They do not yet transfer goods, enforce protection, change faction ownership or shared diplomacy. Native player control is preserved. The fictional model is a separate screen. Gameplay validation is deferred.</HCL_Warning>
+  <HCL_Warning>DEVELOPMENT CHARTER RECORDS — real settlement references with separate NPC/player consent. Physical tribute requires explicit opt-in and manual delivery below. Protection, faction membership and shared diplomacy are not enforced yet. Native player control is preserved. The fictional model is separate. Gameplay validation is deferred.</HCL_Warning>
   <HCL_Player>Player colony (all settlements)</HCL_Player>
   <HCL_Missing>Missing territory</HCL_Missing>
   <HCL_Unavailable>Charter action unavailable: check the current owner, representative, diplomacy, pending offers and existing bonds.</HCL_Unavailable>
@@ -8,7 +26,7 @@
   <HCL_NpcDeclined>The NPC representative declined. This initial negotiation policy requires at least {0} goodwill for this role.</HCL_NpcDeclined>
   <HCL_ReleaseRefused>The NPC representative declined release; the charter remains active. This initial policy requires 20 goodwill.</HCL_ReleaseRefused>
   <HCL_Target>Settlement: {0} · current faction: {1}</HCL_Target>
-  <HCL_Terms>Recorded terms: fixed tribute value 100 every 5 days, 1-day grace; subject delivery with a 10% transport allowance. Protection requires timely troop support. Economic and protection enforcement are not connected yet. NPC acceptance currently requires 0 goodwill to become your liege, or 50 to become your vassal; honor/performance negotiation is pending.</HCL_Terms>
+  <HCL_Terms>Recorded terms: fixed tribute value 100 every 5 days, 1-day grace; subject delivery with a 10% transport allowance. Optional manual physical tribute starts only after enabling it. Protection requires timely troop support, but its enforcement is pending. NPC acceptance currently requires 0 goodwill to become your liege, or 50 to become your vassal; honor/performance negotiation is pending.</HCL_Terms>
   <HCL_SeekLiege>Request this settlement's faction as liege of all player colonies</HCL_SeekLiege>
   <HCL_OfferProtection>Offer protection as liege of this settlement</HCL_OfferProtection>
   <HCL_Territory>{0} · recorded political superior: {1} · world binding: {2}</HCL_Territory>
@@ -23,7 +41,7 @@
   <HCL_OwnershipChanged>Owner changed; review required</HCL_OwnershipChanged>
   <HCL_Ineligible>Current diplomacy prevents action</HCL_Ineligible>
   <HCL_Offered>Awaiting consent</HCL_Offered>
-  <HCL_Active>Active record (effects pending)</HCL_Active>
+  <HCL_Active>Active record (protection and sovereignty pending)</HCL_Active>
   <HCL_Declined>Declined</HCL_Declined>
   <HCL_Released>Mutually released</HCL_Released>
   <HCL_Expired>Expired proposal</HCL_Expired>

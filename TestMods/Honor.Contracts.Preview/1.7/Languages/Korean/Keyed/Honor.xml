@@ -1,6 +1,24 @@
 <LanguageData>
+  <HT_Enable>이 계약의 실제 공납 켜기</HT_Enable>
+  <HT_OptIn>선택형 실험 기능: 켠 시점부터 새 납기를 계산하며 소급 청구하지 않습니다. 직접 납부하면 상단의 실제 물품이 이전됩니다. 보호 임무·세력 편입·징수관 방문은 아직 미구현입니다.</HT_OptIn>
+  <HT_Account>실제 공납 사용 중. 봉신의 직접 전달만 지원하며 자동으로 물품을 가져가지 않습니다. 합의 해약 후에도 이미 발생한 공납은 납부할 수 있습니다.</HT_Account>
+  <HT_Bill>{0}회차: 공납 원금 가치 {1}, 배송 인수 가치 {2}, 납기까지 {3}일 (음수는 납기 경과).</HT_Bill>
+  <HT_Overdue>미납 상태입니다. 자동 불명예 판정이나 전쟁 선포는 발생하지 않습니다.</HT_Overdue>
+  <HT_Choose>상대 정착지에 도착한 상단 선택</HT_Choose>
+  <HT_Caravan>{1}의 {0}</HT_Caravan>
+  <HT_NoCaravan>계약 종주 세력의 정착지 타일에 플레이어 상단을 도착시킨 뒤 납부를 다시 선택하세요.</HT_NoCaravan>
+  <HT_RealWarning>실제 물품 전달 — 확정하면 선택한 재고가 NPC 정착지의 거래 재고로 이전됩니다. 현재 게임의 판매가격 규칙으로 평가합니다. 초과 가치는 거스르거나 다른 공납에 적용하지 않습니다. 일반 소지품만 지원합니다. 실제 플레이 검증은 아직 수행하지 않았습니다.</HT_RealWarning>
+  <HT_Required>수령지: {0} · 필요한 배송 인수 가치: {1}</HT_Required>
+  <HT_Item>{0}: 선택 {1}/{2} · 개당 평가 가치 {3}</HT_Item>
+  <HT_Total>선택한 가치 {0} · 반환되지 않는 초과 가치 {1}</HT_Total>
+  <HT_Deliver>선택한 실제 물품 전달 확정</HT_Deliver>
+  <HT_Delivered>실물 공납을 전달하고 영수증을 기록했습니다.</HT_Delivered>
+  <HT_Receipt>{0}회차 납부 완료 · 실제 전달 가치 {1}</HT_Receipt>
+  <HT_Recover>미완료 전달 복구 또는 확인된 물품 반환</HT_Recover>
+  <HT_Recovery>복구를 시도했습니다. 확인되지 않은 전달은 예약 상태를 유지하고 보관 물품을 버리지 않습니다. 전량 반환을 확인해야 다시 납부할 수 있습니다.</HT_Recovery>
+  <HT_Unavailable>납부할 수 없거나 견적이 바뀌었습니다. 장부·현재 소유자·상단 위치·협상가·물품·평가 가치를 확인하세요. 호의 화폐나 작위 제한 거래는 아직 지원하지 않습니다. 중단된 전달은 복구를 위해 예약을 유지합니다.</HT_Unavailable>
   <HCL_Open>정착지 계약 장부</HCL_Open>
-  <HCL_Warning>개발용 계약 장부 — 실제 정착지를 참조하고 NPC와 플레이어의 동의를 각각 기록합니다. 물품 이전·보호 의무 집행·세력 소속과 외교 변경은 아직 연결되지 않았습니다. 플레이어 통제권은 유지됩니다. 가상 모델은 별도 화면입니다. 실제 플레이 검증은 보류 중입니다.</HCL_Warning>
+  <HCL_Warning>개발용 계약 장부 — 실제 정착지 참조와 NPC·플레이어의 동의를 각각 기록합니다. 실물 공납은 아래에서 명시적으로 켠 뒤 직접 납부해야 합니다. 보호 의무·세력 편입·외교 공유는 미연결이며 플레이어 통제권은 유지됩니다. 가상 모델은 별도 화면입니다. 실제 플레이 검증은 보류 중입니다.</HCL_Warning>
   <HCL_Player>플레이어 식민지 전체</HCL_Player>
   <HCL_Missing>소실된 영지</HCL_Missing>
   <HCL_Unavailable>계약 동작을 수행할 수 없습니다. 현재 소유자·대표자·외교 관계·협상 중인 제안·기존 종속 관계를 확인하세요.</HCL_Unavailable>
@@ -8,7 +26,7 @@
   <HCL_NpcDeclined>NPC 대표가 거절했습니다. 초기 협상 규칙상 이 역할에는 우호도 {0} 이상이 필요합니다.</HCL_NpcDeclined>
   <HCL_ReleaseRefused>NPC 대표가 해약을 거절해 계약을 유지합니다. 초기 협상 규칙상 우호도 20 이상이 필요합니다.</HCL_ReleaseRefused>
   <HCL_Target>정착지: {0} · 현재 소속 세력: {1}</HCL_Target>
-  <HCL_Terms>기록 조건: 고정 공납 가치 100·주기 5일·유예 1일. 봉신 배송에 운송 몫 10% 공제. 보호 의무는 기한 내 병력 지원입니다. 경제·보호 의무의 실제 집행은 아직 미연결입니다. 초기 NPC 수락 기준은 종주가 될 때 우호도 0, 봉신이 될 때 50 이상이며 명예·실적 협상은 후속 구현입니다.</HCL_Terms>
+  <HCL_Terms>기록 조건: 고정 공납 가치 100·주기 5일·유예 1일. 봉신 배송에 운송 몫 10% 공제. 선택형 실물 공납은 별도로 켠 뒤 시작합니다. 보호 의무는 기한 내 병력 지원이나 실제 집행은 미연결입니다. 초기 NPC 수락 기준은 종주가 될 때 우호도 0, 봉신이 될 때 50 이상이며 명예·실적 협상은 후속 구현입니다.</HCL_Terms>
   <HCL_SeekLiege>이 정착지 측에 플레이어 식민지 전체의 종주가 되도록 제안</HCL_SeekLiege>
   <HCL_OfferProtection>이 정착지의 종주로서 보호를 제안</HCL_OfferProtection>
   <HCL_Territory>{0} · 장부상 최상위 주체: {1} · 실제 세계 참조: {2}</HCL_Territory>
@@ -23,7 +41,7 @@
   <HCL_OwnershipChanged>소유자 변경·재검토 필요</HCL_OwnershipChanged>
   <HCL_Ineligible>현재 외교 관계로 동작 보류</HCL_Ineligible>
   <HCL_Offered>동의 대기</HCL_Offered>
-  <HCL_Active>활성 기록·실제 효과 미연결</HCL_Active>
+  <HCL_Active>활성 기록·보호 및 소속 집행 미연결</HCL_Active>
   <HCL_Declined>거절됨</HCL_Declined>
   <HCL_Released>합의 해약됨</HCL_Released>
   <HCL_Expired>제안 기한 만료</HCL_Expired>
