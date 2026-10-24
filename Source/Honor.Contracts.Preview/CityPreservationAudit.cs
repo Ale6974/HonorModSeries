@@ -2,16 +2,18 @@ using RimWorld;
 using RimWorld.Planet;
 using UnityEngine;
 using Verse;
+using Honor.Contracts.Rules;
 
 namespace Honor.Contracts.Preview;
 
-/// <summary>Observations only. Never grants transfer authority or mutates a pawn, inventory or journal.</summary>
+/// <summary>Native state inspection with an optional diagnostic baseline; never grants transfer authority.</summary>
 public sealed class CityPreservationAuditWindow : Window
 {
     private readonly Settlement city;
     private readonly List<string> lines = [];
     private Vector2 scroll;
     private float height = 1000;
+    private readonly List<string> comparison = [];
     public override Vector2 InitialSize => new(850, 760);
     public CityPreservationAuditWindow(Settlement settlement)
     {
@@ -21,6 +23,7 @@ public sealed class CityPreservationAuditWindow : Window
     }
     private void Refresh()
     {
+        comparison.Clear();
         lines.Clear();
         if (city == null || city.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(city))
         { lines.Add("CA_Missing".Translate()); return; }
@@ -78,10 +81,41 @@ public sealed class CityPreservationAuditWindow : Window
     public override void DoWindowContents(Rect rect)
     {
         if (Widgets.ButtonText(new Rect(0, 0, rect.width, 32), "CA_Refresh".Translate())) Refresh();
-        var area = new Rect(0, 42, rect.width, rect.height - 85);
+        var baseline = Current.Game.GetComponent<ResidentBaselineStore>();
+        float width = (rect.width - 16) / 3;
+        if (Widgets.ButtonText(new Rect(0, 40, width, 32), "RB_Save".Translate()))
+        {
+            try { baseline.Save(city); Refresh(); Messages.Message("RB_Saved".Translate(), MessageTypeDefOf.NeutralEvent); }
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.Text.Json.JsonException)
+            { Messages.Message("RB_Unavailable".Translate(), MessageTypeDefOf.RejectInput); }
+        }
+        if (Widgets.ButtonText(new Rect(width + 8, 40, width, 32), "RB_Compare".Translate()))
+        {
+            Refresh();
+            try
+            {
+                var result = baseline.Compare(city);
+                comparison.Add("RB_Result".Translate(baseline.Baseline.Tick, result.ObservedTick,
+                    result.CityOwnerChanged ? "RB_OwnerChanged".Translate() : "RB_OwnerSame".Translate()));
+                foreach (var kind in Enum.GetValues<ResidentDifference>())
+                {
+                    int count = result.Residents.Count(r => kind == ResidentDifference.None ? r.Difference == kind : r.Difference.HasFlag(kind));
+                    comparison.Add("RB_Count".Translate(("RB_" + kind).Translate(), count));
+                }
+            }
+            catch (Exception e) when (e is ArgumentException or InvalidOperationException or System.Text.Json.JsonException)
+            { Messages.Message("RB_Unavailable".Translate(), MessageTypeDefOf.RejectInput); }
+        }
+        if (Widgets.ButtonText(new Rect((width + 8) * 2, 40, width, 32), "RB_Discard".Translate()))
+        { baseline.Discard(); comparison.Clear(); }
+        var area = new Rect(0, 82, rect.width, rect.height - 125);
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 20000));
         list.Label("CA_Note".Translate());
+        list.Label("RB_Note".Translate());
+        if (baseline.RestoreFailed) list.Label("RB_RestoreFailed".Translate());
+        else if (baseline.Baseline != null) list.Label((baseline.Baseline.City == city?.GetUniqueLoadID() ? "RB_ThisCity" : "RB_OtherCity").Translate(baseline.Baseline.Tick));
+        foreach (string line in comparison) list.Label(line);
         foreach (string line in lines) list.Label(line);
         height = list.CurHeight + 20; list.End(); Widgets.EndScrollView();
     }

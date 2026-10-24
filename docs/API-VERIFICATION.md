@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 주민 기준 기록 관측·저장 (0.3.9)
+
+Version.txt 1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev와 Harmony 3.0.0.0-rc.3+3c0e32cd3fd20e4ae27c47cb8c888844766f9f1a를 재확인했다. 설치 DLL의 Verse.Hediff, Verse.Pawn_EquipmentTracker, RimWorld.Pawn_ApparelTracker, Verse.Pawn_InventoryTracker를 조사하고 GetUniqueLoadID/Severity/Part, AllEquipmentListForReading, WornApparel, inventory.innerContainer 참조를 확인했다. 기존 Pawn 생존/위치/포로/지도자/mental/job getter와 health.hediffSet.hediffs를 읽어 버전이 고정된 관측 요약을 만든다. 물품 생성·이동·Pawn.SetFaction·기존 장부 수정은 호출하지 않는다.
+
+별도 ResidentBaselineStore는 Scribe_Values에 자체 JSON 1개를 저장한다. 원본 Scribe/게임 저장 재로딩·Pawn/장비/건강 변동의 런타임 관측·JSON/SHA256의 Waylith 실행·UI 렌더링은 검증하지 않았다. 기존 주민에 Scribe 보존 참조를 추가하거나 private faction 필드를 쓰지 않으며, 모든 상태를 복원하는 API가 있다고 가정하지 않는다. 본 기준 기록은 관측·진단 전용이며 주민 이전 승인/완료/복구 증거로 쓰지 않는다.
+
 ## 저장 주민의 세력 변경 부작용과 읽기 전용 점검 (0.3.8)
 
 설치 Version.txt 1.7.4985 rev1269, runtimeconfig 10.0.13-waylithclr.dev/net10.0, Harmony 3.0.0.0-rc.3+3c0e32cd3fd20e4ae27c47cb8c888844766f9f1a를 재확인했다. Assembly-CSharp의 Verse.Pawn을 다시 조사했다. SetFaction(Faction,Pawn)는 guest.SetGuestStatus(null), 지도 등록/예약/Lord 변경, 지도자 상실 처리, health.surgeryBills.Clear, playerSettings.ResetMedicalCare, ClearMind_NewTemp, needs/relations/Ideo 알림 등을 호출한다. NPC 비플레이어 간 변경도 주민의 모든 상태를 그대로 보존하는 경로라고 가정할 수 없다. 이번에는 이 메서드나 private faction 필드를 쓰는 우회를 추가하지 않는다.

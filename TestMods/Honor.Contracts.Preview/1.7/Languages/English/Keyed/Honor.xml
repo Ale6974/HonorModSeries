@@ -169,7 +169,7 @@
   <CA_Open>Inspect this town's residents and stock</CA_Open>
   <CA_OpenAll>Choose a vassal town to inspect</CA_OpenAll>
   <CA_Refresh>Refresh observations</CA_Refresh>
-  <CA_Note>READ-ONLY INSPECTION. No ownership, pawn status, inventory, contract or saved journal is changed. This report does not approve a move or recover an interrupted one. Saved residents remain unsupported: the native pawn faction API also resets guest status, surgery bills, medical settings and mental/job state. Stock is read without generating or restocking it. Counts refer to saved references or stock entries, not stack units. Flags may overlap. Inspect again after changes; actual transfer review still applies all contract, destination, diplomacy and resource checks. Gameplay validation is deferred.</CA_Note>
+  <CA_Note>READ-ONLY INSPECTION. No ownership, pawn status, inventory, contract or execution journal is changed. Optional baseline buttons store or discard a separate diagnostic record. This report does not approve a move or recover an interrupted one. Saved residents remain unsupported: the native pawn faction API also resets guest status, surgery bills, medical settings and mental/job state. Stock is read without generating or restocking it. Counts refer to saved references or stock entries, not stack units. Flags may overlap. Inspect again after changes; actual transfer review still applies all contract, destination, diplomacy and resource checks. Gameplay validation is deferred.</CA_Note>
   <CA_Missing>This town no longer exists or its saved reference is unavailable.</CA_Missing>
   <CA_City>Town: {0} — current faction: {1}</CA_City>
   <CA_MapLoaded>A map is loaded. Ownership migration is blocked.</CA_MapLoaded>
@@ -201,4 +201,24 @@
   <CA_Unverified>no listed flag; preservation and transfer authority remain unverified</CA_Unverified>
   <CA_Truncated>{0} further resident references omitted from the name list; all references are included in the counts.</CA_Truncated>
   <CA_Empty>No active direct NPC vassal towns are registered.</CA_Empty>
+  <RB_Save>Save resident baseline</RB_Save>
+  <RB_Compare>Compare with baseline</RB_Compare>
+  <RB_Discard>Discard baseline only</RB_Discard>
+  <RB_Saved>Diagnostic resident baseline saved. No residents or goods were moved.</RB_Saved>
+  <RB_Unavailable>Baseline unavailable. Use an existing unloaded NPC town with valid, unique saved resident references and supported health/ordinary equipment data. Nested goods cannot be recorded. Comparison requires a baseline for this same town and a valid clock. Discard an unreadable diagnostic baseline before replacing it.</RB_Unavailable>
+  <RB_Result>Baseline tick {0}, observation tick {1}. City ownership: {2}.</RB_Result>
+  <RB_OwnerChanged>changed</RB_OwnerChanged>
+  <RB_OwnerSame>same</RB_OwnerSame>
+  <RB_Count>{0}: {1}</RB_Count>
+  <RB_None>No difference in tracked fields</RB_None>
+  <RB_Added>New resident reference</RB_Added>
+  <RB_Removed>Missing resident reference</RB_Removed>
+  <RB_Faction>Changed resident faction</RB_Faction>
+  <RB_Health>Changed health evidence</RB_Health>
+  <RB_Gear>Changed equipment/apparel/inventory evidence</RB_Gear>
+  <RB_Status>Changed tracked resident status</RB_Status>
+  <RB_Note>Save one optional baseline of the town's referenced residents, factions, health, direct gear and selected status. Saving replaces the previous baseline, even for another town. It is retained in your game save; discarding clears only this record. Comparison does not move residents or repair losses. It covers only the listed observations, not every medical setting, memory or mod state. Normal time progression can cause differences. A missing reference does not prove death, and matching observations do not authorize migration. Counts can overlap. No automatic recovery or dishonor is applied.</RB_Note>
+  <RB_RestoreFailed>The diagnostic baseline could not be restored or its clock is invalid. Original data is retained. Other contract actions are unaffected. Discarding clears only this diagnostic record.</RB_RestoreFailed>
+  <RB_ThisCity>Stored baseline for this town, tick {0}.</RB_ThisCity>
+  <RB_OtherCity>The single stored baseline belongs to another town, tick {0}. Saving here replaces it; comparison here is unavailable.</RB_OtherCity>
 </LanguageData>
