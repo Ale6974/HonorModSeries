@@ -167,4 +167,5 @@ assertions += TributeLedgerTests.Run();
 assertions += UnionAdmissionsTests.Run();
 assertions += PlayerAllegianceTests.Run();
 assertions += TerritoryTransferTests.Run();
+assertions += FollowerTransfersTests.Run();
 Console.WriteLine($"PASS: {assertions} contract assertions (three scopes, consent and conquest origins, deadlines, reciprocal duties, evidence reuse guards, quotas, binding cycles, validation).");

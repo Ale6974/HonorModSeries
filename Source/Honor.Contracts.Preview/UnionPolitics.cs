@@ -84,7 +84,7 @@ public sealed class UnionPoliticsLedger : GameComponent
         string id = city.GetUniqueLoadID();
         bool registered = Current.Game.GetComponent<LiveCharterLedger>().Book.Entities.Any(e => e.Id == "territory/" + id);
         bool eligible = faction?.def != null && !faction.Hidden && !faction.temporary && !faction.defeated && faction.HasGoodwill &&
-            faction.def.humanlikeFaction && !faction.def.permanentEnemy && !(faction.def.royalTitleTags?.Count > 0);
+            faction.def.humanlikeFaction && faction.def.defName != RealmAdministrationLedger.DefName && !faction.def.permanentEnemy && !(faction.def.royalTitleTags?.Count > 0);
         return new(id, faction?.GetUniqueLoadID() ?? "missing-owner", all.Count(s => s.Faction == faction),
             faction?.IsPlayer == true, faction?.def?.defName == UnionDefName, city.HasMap,
             city.trader == null || city.EverVisited || city.previouslyGeneratedInhabitants?.Count > 0, registered,
@@ -178,6 +178,7 @@ internal static class UnionFactionName
 {
     static bool Prefix(Faction __instance, ref string __result)
     {
+        if (__instance.def?.defName == RealmAdministrationLedger.DefName) { __result = "AD_Name".Translate(); return false; }
         if (__instance.def?.defName != UnionPoliticsLedger.UnionDefName) return true;
         __result = "HP_UnionName".Translate(); return false;
     }

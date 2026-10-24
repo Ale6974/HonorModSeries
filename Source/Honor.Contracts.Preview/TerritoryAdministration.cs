@@ -18,7 +18,7 @@ public sealed class TerritoryTransferReference : IExposable
     }
 }
 public sealed record TerritoryAdministrationReview(string Charter, string City, string From, string Target,
-    TerritoryTransferPurpose Purpose, string Stamp);
+    TerritoryTransferPurpose Purpose, string Stamp, string TargetIdentity);
 
 /// <summary>Optional actual NPC city ownership execution. Never assigns a city to the native player faction.</summary>
 public sealed class TerritoryAdministrationLedger : GameComponent
@@ -29,6 +29,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     public bool RestoreFailed { get; private set; }
     private LiveCharterLedger Charters => Current.Game.GetComponent<LiveCharterLedger>();
     public TerritoryAdministrationLedger(Game game) { }
+    private string AdministrationId => Current.Game.GetComponent<RealmAdministrationLedger>().OwnedFaction?.GetUniqueLoadID();
     public override void ExposeData()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) snapshot = Ledger.Export();
@@ -106,13 +107,13 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         var c = Context(id); var clone = TerritoryTransferLedger.Restore(Ledger.Export());
         clone.Prepare("review-" + Guid.NewGuid().ToString("N"), Charters.Book, id, c.Observation, c.Target.GetUniqueLoadID(),
             c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
-            c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame);
+            c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId);
         return new(id, c.City.Label, c.City.Faction.Name, c.Target.Name, c.Purpose,
-            string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose));
+            string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose), c.Target.GetUniqueLoadID());
     }
-    public void Apply(TerritoryAdministrationReview reviewed)
+    public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true)
     {
-        if (reviewed == null) { Reject(); return; }
+        if (reviewed == null) { Reject(); return false; }
         try
         {
             var current = Review(reviewed.Charter);
@@ -120,14 +121,47 @@ public sealed class TerritoryAdministrationLedger : GameComponent
             var c = Context(reviewed.Charter); string id = Guid.NewGuid().ToString("N");
             Ledger.Prepare(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
                 c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
-                c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame);
+                c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId);
             references.Add(new() { Id = id, City = c.City, From = c.City.Faction, Target = c.Target });
             c.City.SetFaction(c.Target);
             Ledger.Confirm(id, Observe(c.City, c.Charter.Terms.Subject, c.Target), Find.TickManager.TicksGame);
-            Messages.Message("CT_Applied".Translate(), MessageTypeDefOf.NeutralEvent);
+            if (notify) Messages.Message("CT_Applied".Translate(), MessageTypeDefOf.NeutralEvent);
+            return true;
         }
         catch (Exception e) when (e is ArgumentException or InvalidOperationException)
-        { Log.Warning("[Honor.Contracts.Preview] Territory execution incomplete; recorded intent retained. " + e.GetType().Name); Reject(); }
+        { Log.Warning("[Honor.Contracts.Preview] Territory execution incomplete; recorded intent retained. " + e.GetType().Name); Reject(); return false; }
+    }
+    public FollowerTransferPlan ReviewFollowers()
+    {
+        if (RestoreFailed || Charters.RestoreFailed) throw new ArgumentException("Execution or consent journal unavailable.");
+        var target = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
+        var entries = Charters.Book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active &&
+            Charters.Book.Entity(c.Terms.Liege).Player && !Charters.Book.Entity(c.Terms.Subject).Player).Select(c => {
+                var context = Context(c.Id);
+                if (context.Target != target) throw new ArgumentException("Authority changed during review.");
+                return new FollowerCandidate(c.Id, context.Observation);
+            }).ToArray();
+        return FollowerTransfers.Review(Charters.Book, Ledger, entries, target.GetUniqueLoadID(), Find.TickManager.TicksGame, AdministrationId);
+    }
+    public string FollowerLabel(string charterId) => Charters.Label(Charters.Book.Charter(charterId).Terms.Subject);
+    public void ApplyFollowers(FollowerTransferPlan reviewed)
+    {
+        if (reviewed == null) { Reject(); return; }
+        try
+        {
+            var current = ReviewFollowers();
+            if (current.Stamp != reviewed.Stamp) throw new ArgumentException("Follower plan changed; review again.");
+            foreach (string id in current.Moves)
+            {
+                var single = Review(id);
+                if (single.TargetIdentity != current.Target || !Apply(single, false)) throw new ArgumentException("Follower movement interrupted or authority changed.");
+            }
+            var final = ReviewFollowers();
+            if (final.Target != current.Target || final.Moves.Count > 0) throw new ArgumentException("Follower set or authority changed during execution.");
+            Messages.Message("FB_Complete".Translate(current.Moves.Count), MessageTypeDefOf.NeutralEvent);
+        }
+        catch (ArgumentException)
+        { Messages.Message("FB_Incomplete".Translate(), MessageTypeDefOf.RejectInput); Find.TickManager.Pause(); }
     }
     public void Recover(string id)
     {
@@ -146,6 +180,46 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         catch (ArgumentException) { Reject(); }
     }
     private static void Reject() => Messages.Message("CT_Unavailable".Translate(), MessageTypeDefOf.RejectInput);
+}
+
+public sealed class FollowerTransfersWindow : Window
+{
+    private FollowerTransferPlan review;
+    private Vector2 scroll;
+    private float height = 1000;
+    public FollowerTransfersWindow() { forcePause = true; doCloseX = true; doCloseButton = true; absorbInputAroundWindow = true; }
+    public override Vector2 InitialSize => new(850, 760);
+    public override void DoWindowContents(Rect rect)
+    {
+        var ledger = Current.Game.GetComponent<TerritoryAdministrationLedger>();
+        var area = new Rect(0, 0, rect.width, rect.height - 45);
+        Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
+        var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 12000));
+        list.Label("FB_Warning".Translate());
+        if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
+        else
+        {
+            if (list.ButtonText("FB_Review".Translate()))
+            {
+                try { review = ledger.ReviewFollowers(); }
+                catch (ArgumentException) { review = null; Messages.Message("CT_Unavailable".Translate(), MessageTypeDefOf.RejectInput); }
+            }
+            if (review != null)
+            {
+                list.Label("FB_Plan".Translate(ledger.OwnerLabel(review.Target), review.Moves.Count, review.Entries.Count));
+                foreach (var entry in review.Entries)
+                    list.Label("FB_Entry".Translate(ledger.FollowerLabel(entry.Charter), ledger.OwnerLabel(entry.Observation.Owner),
+                        (review.Moves.Contains(entry.Charter) ? "FB_Move" : "FB_Already").Translate()));
+                if (review.Moves.Count > 0 && list.ButtonText("FB_Confirm".Translate())) { ledger.ApplyFollowers(review); review = null; }
+            }
+            foreach (var pending in ledger.Ledger.Transfers.Where(t => t.Phase == TerritoryTransferPhase.Prepared).ToArray())
+            {
+                list.Label("FB_Pending".Translate(ledger.FollowerLabel(pending.Charter)));
+                if (list.ButtonText("CT_Recover".Translate())) { ledger.Recover(pending.Id); review = null; }
+            }
+        }
+        height = list.CurHeight + 20; list.End(); Widgets.EndScrollView();
+    }
 }
 
 public sealed class TerritoryAdministrationWindow : Window

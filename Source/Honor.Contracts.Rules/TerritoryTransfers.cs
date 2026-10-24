@@ -38,7 +38,7 @@ public sealed class TerritoryTransferLedger
         return actual with { NativeOwner = verified ? baseline : actual.NativeOwner, Eligible = actual.Eligible && verified };
     }
     public TerritoryTransfer Prepare(string id, CharterBook book, string charterId, TerritoryTransferObservation observed,
-        string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now)
+        string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration = null)
     {
         ArgumentNullException.ThrowIfNull(book); ArgumentNullException.ThrowIfNull(observed);
         Key(id); Key(target); Key(observed.Territory); Key(observed.Owner); Time(now);
@@ -57,7 +57,8 @@ public sealed class TerritoryTransferLedger
                 !book.Charters.Any(c => c.Phase == RecordedCharterPhase.Active && c.Terms.Subject == subject.Id), "Release must be complete with no competing active liege.");
         Require(target != book.Entity(charter.Terms.Liege).NativeOwner && observed.Owner != target &&
             observed.Exists && !observed.Player && !observed.HasMap && !observed.Visited && observed.Eligible &&
-            observed.TargetEligible && !observed.TargetPlayer && !observed.PendingDelivery && observed.SourceSettlements >= 2,
+            observed.TargetEligible && !observed.TargetPlayer && !observed.PendingDelivery &&
+            (observed.SourceSettlements >= 2 || observed.Owner == verifiedAdministration && observed.SourceSettlements == 1),
             "Only eligible untouched nonplayer cities with a surviving source base can move.");
         Require(VerifiedOwner(subject.Id, subject.NativeOwner, observed.Owner) && transfers.Count < Capacity &&
             !transfers.Any(t => t.Id == id || t.Phase == TerritoryTransferPhase.Prepared), "Resolve prior transfers and verify current ownership first.");

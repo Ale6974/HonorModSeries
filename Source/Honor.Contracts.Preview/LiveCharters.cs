@@ -136,6 +136,8 @@ public sealed class LiveCharterLedger : GameComponent
     public void Request(Settlement settlement, bool playerSubject)
     {
         Execute(() => {
+            if (playerSubject && settlement?.Faction?.def?.defName == RealmAdministrationLedger.DefName)
+                throw new ArgumentException("The player's administration cannot become their sovereign.");
             // Recheck current ownership, political eligibility and actual representative before recording NPC consent.
             if (settlement == null || settlement.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(settlement) || settlement.Faction == null ||
                 settlement.Faction == Faction.OfPlayer || !settlement.Faction.HasGoodwill || settlement.Faction.defeated ||
@@ -207,7 +209,7 @@ public sealed class LiveChartersWindow : Window
             {
                 list.Label("HCL_Target".Translate(target.Label, target.Faction?.Name ?? "HCL_Missing".Translate()));
                 list.Label("HCL_Terms".Translate());
-                if (list.ButtonText("HCL_SeekLiege".Translate())) ledger.Request(target, true);
+                if (target.Faction?.def?.defName != RealmAdministrationLedger.DefName && list.ButtonText("HCL_SeekLiege".Translate())) ledger.Request(target, true);
                 if (list.ButtonText("HCL_OfferProtection".Translate())) ledger.Request(target, false);
             }
             var observations = ledger.Observe(); long now = Find.TickManager.TicksGame;

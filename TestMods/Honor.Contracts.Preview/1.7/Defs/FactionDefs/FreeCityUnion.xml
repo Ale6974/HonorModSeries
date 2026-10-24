@@ -2,7 +2,7 @@
   <FactionDef ParentName="OutlanderFactionBase">
     <defName>HonorContracts_FreeCityUnion</defName>
     <label>free city union</label>
-    <description>A union of autonomous free cities sharing external diplomatic relations. Membership and military support are governed separately. Development preview: player membership and council votes are not connected yet.</description>
+    <description>A union of autonomous free cities sharing external diplomatic relations. Membership and military support are governed separately. Development preview: player membership uses separate confirmation; council votes are not connected yet.</description>
     <fixedName>Free City Union</fixedName>
     <pawnSingular>free citizen</pawnSingular>
     <pawnsPlural>free citizens</pawnsPlural>

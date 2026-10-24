@@ -1,0 +1,8 @@
+<LanguageData>
+  <HonorContracts_RealmAdministration.label>영지 관리청</HonorContracts_RealmAdministration.label>
+  <HonorContracts_RealmAdministration.description>플레이어 영지를 관리하는 NPC 세력입니다. 봉신 도시는 NPC 정착지로 유지되며 플레이어의 대외 외교를 공유합니다. 개발판은 산업 외지인 병력·거래·이념을 사용하고 플레이어 문화와 지역 자치를 보존하지는 않습니다.</HonorContracts_RealmAdministration.description>
+  <HonorContracts_RealmAdministration.fixedName>영지 관리청</HonorContracts_RealmAdministration.fixedName>
+  <HonorContracts_RealmAdministration.pawnSingular>영지민</HonorContracts_RealmAdministration.pawnSingular>
+  <HonorContracts_RealmAdministration.pawnsPlural>영지민들</HonorContracts_RealmAdministration.pawnsPlural>
+  <HonorContracts_RealmAdministration.leaderTitle>관리관</HonorContracts_RealmAdministration.leaderTitle>
+</LanguageData>

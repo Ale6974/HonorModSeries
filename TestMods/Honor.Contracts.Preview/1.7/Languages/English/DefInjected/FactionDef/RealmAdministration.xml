@@ -1,0 +1,8 @@
+<LanguageData>
+  <HonorContracts_RealmAdministration.label>realm administration</HonorContracts_RealmAdministration.label>
+  <HonorContracts_RealmAdministration.description>The player's NPC territory administration. Vassal towns retain NPC settlement behavior and share the player's external diplomacy. Development preview: uses industrial outlander troops, trade and ideology; player culture and local autonomy are not preserved yet.</HonorContracts_RealmAdministration.description>
+  <HonorContracts_RealmAdministration.fixedName>Realm Administration</HonorContracts_RealmAdministration.fixedName>
+  <HonorContracts_RealmAdministration.pawnSingular>realm subject</HonorContracts_RealmAdministration.pawnSingular>
+  <HonorContracts_RealmAdministration.pawnsPlural>realm subjects</HonorContracts_RealmAdministration.pawnsPlural>
+  <HonorContracts_RealmAdministration.leaderTitle>steward</HonorContracts_RealmAdministration.leaderTitle>
+</LanguageData>

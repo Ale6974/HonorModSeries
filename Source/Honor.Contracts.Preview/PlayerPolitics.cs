@@ -42,7 +42,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         get { var bond = Charters.RestoreFailed ? null : PlayerBond(); return bond == null ? null : Resolve(Charters.Book.RecordedPoliticalOwner(bond.Terms.Subject)); }
     }
     public string ReviewToken(Faction root) => root == null ? null : root.GetUniqueLoadID() + "/" +
-        string.Join(";", Find.FactionManager.AllFactionsListForReading.Where(f => f != root && !f.IsPlayer)
+        string.Join(";", Find.FactionManager.AllFactionsListForReading.Where(f => f != root && !f.IsPlayer && !IsAdministration(f))
             .OrderBy(f => f.GetUniqueLoadID(), StringComparer.Ordinal).Select(f => {
                 var r = root.RelationWith(f, true); return f.GetUniqueLoadID() + ":" + r?.baseGoodwill + ":" + r?.kind;
             }));
@@ -60,7 +60,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         if (RestoreFailed || Charters.RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended && !allowSuspended)
             throw new ArgumentException("No active shared authority.");
         var root = RecordedAuthority;
-        if (root == null || root.IsPlayer || root.Hidden || root.defeated || !root.HasGoodwill || root.HostileTo(Faction.OfPlayer))
+        if (root == null || root.IsPlayer || root.def.defName == RealmAdministrationLedger.DefName || root.Hidden || root.defeated || !root.HasGoodwill || root.HostileTo(Faction.OfPlayer))
             throw new ArgumentException("Recorded authority is missing or in internal conflict.");
         if (State.Mode == PlayerAllegianceMode.Vassal)
         {
@@ -73,14 +73,16 @@ public sealed class PlayerPoliticsLedger : GameComponent
         CheckProjection(root);
         return root;
     }
-    internal Faction TerritoryAuthority() => ValidateAuthority();
+    internal Faction TerritoryAuthority() => State.Mode == PlayerAllegianceMode.Independent
+        ? Current.Game.GetComponent<RealmAdministrationLedger>().TerritoryAuthority() : ValidateAuthority();
+    private static bool IsAdministration(Faction f) => f != null && f == Current.Game.GetComponent<RealmAdministrationLedger>().OwnedFaction;
     private static void CheckProjection(Faction root)
     {
         if (root.RelationWith(Faction.OfPlayer, true) == null || Faction.OfPlayer.RelationWith(root, true) == null)
             throw new ArgumentException("Missing internal reciprocal relation.");
         if (Find.GoodwillSituationManager.GetMaxGoodwill(root) < root.BaseGoodwillWith(Faction.OfPlayer))
             throw new ArgumentException("Internal relationship exceeds the player goodwill cap.");
-        foreach (var other in Find.FactionManager.AllFactionsListForReading.Where(f => f != root && !f.IsPlayer))
+        foreach (var other in Find.FactionManager.AllFactionsListForReading.Where(f => f != root && !f.IsPlayer && !IsAdministration(f)))
         {
             var relation = root.RelationWith(other, true);
             if (relation == null || Faction.OfPlayer.RelationWith(other, true) == null || other.RelationWith(Faction.OfPlayer, true) == null ||
@@ -99,7 +101,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
                 (Faction.OfPlayer.BaseGoodwillWith(root) != 100 || Faction.OfPlayer.RelationKindWith(root) != FactionRelationKind.Ally))
             throw new ArgumentException("Admission must not override an internal quest lock or player goodwill cap.");
     }
-    private static void Pair(Faction player, Faction other, int goodwill, FactionRelationKind kind)
+    internal static void Pair(Faction player, Faction other, int goodwill, FactionRelationKind kind)
     {
         var left = player.RelationWith(other, true); var right = other.RelationWith(player, true);
         if (left == null || right == null) throw new ArgumentException("Missing native reciprocal relation.");
@@ -133,7 +135,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         var bond = PlayerBond() ?? throw new ArgumentException("No active mutually signed player bond.");
         Charters.Book.ValidateCurrent(bond.Id, Charters.Observe());
         var root = Resolve(Charters.Book.RecordedPoliticalOwner(bond.Terms.Subject));
-        if (root == null || root.IsPlayer || root.Hidden || !root.HasGoodwill || root.defeated || reviewedToken != ReviewToken(root) || root.HostileTo(Faction.OfPlayer) || !OldReleased() ||
+        if (root == null || root.IsPlayer || root.def.defName == RealmAdministrationLedger.DefName || root.Hidden || !root.HasGoodwill || root.defeated || reviewedToken != ReviewToken(root) || root.HostileTo(Faction.OfPlayer) || !OldReleased() ||
             Current.Game.GetComponent<TributePaymentLedger>().RestoreFailed) throw new ArgumentException("Invalid superior.");
         // No union levy system is connected yet. Existing physical transfer reservations must still be resolved.
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
@@ -156,7 +158,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         try
         {
             var root = ValidateAuthority(); var player = Faction.OfPlayer;
-            var sources = Find.FactionManager.AllFactionsListForReading.Where(f => f != root && !f.IsPlayer).ToArray();
+            var sources = Find.FactionManager.AllFactionsListForReading.Where(f => f != root && !f.IsPlayer && !IsAdministration(f)).ToArray();
             var plan = SharedDiplomacyPlan.Build(player.GetUniqueLoadID(), root.GetUniqueLoadID(), sources.Select(f => {
                 var relation = root.RelationWith(f, true);
                 return new SharedRelation(f.GetUniqueLoadID(), relation.baseGoodwill, relation.kind switch {
@@ -183,6 +185,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         result = false;
         if (Current.ProgramState != ProgramState.Playing || routing || RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended ||
             actor != Faction.OfPlayer && other != Faction.OfPlayer) return false;
+        if (IsAdministration(actor) || IsAdministration(other)) return false; // Native player/own-administration events are internal, never foreign-root events.
         Faction root;
         try { root = ValidateAuthority(); } catch (ArgumentException) { Suspend(); return false; }
         if (actor == root || other == root) return false; // Internal conflict remains vanilla; it may suspend shared diplomacy.
@@ -241,6 +244,18 @@ public sealed class PlayerAllegianceWindow : Window
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 12000));
         list.Label("PA_Warning".Translate());
+        var administration = Current.Game.GetComponent<RealmAdministrationLedger>();
+        list.Label("AD_Warning".Translate());
+        if (administration.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
+        else if (administration.OwnedFaction == null && ledger.State.Mode == PlayerAllegianceMode.Independent)
+        { if (list.ButtonText("AD_Create".Translate())) administration.CreateOrResume(); }
+        else if (administration.OwnedFaction != null)
+        {
+            list.Label("AD_Status".Translate(administration.OwnedFaction.Name));
+            if (administration.Suspended)
+            { list.Label("AD_Suspended".Translate()); if (list.ButtonText("AD_Resume".Translate())) administration.CreateOrResume(); }
+        }
+        if (list.ButtonText("FB_Open".Translate())) Find.WindowStack.Add(new FollowerTransfersWindow());
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
         {
@@ -260,7 +275,7 @@ public sealed class PlayerAllegianceWindow : Window
             if (reviewed != null)
             {
                 list.Label("PA_Review".Translate(reviewed.Name));
-                foreach (var faction in Find.FactionManager.AllFactionsListForReading.Where(f => !f.IsPlayer && !f.Hidden && f != reviewed))
+                foreach (var faction in Find.FactionManager.AllFactionsListForReading.Where(f => !f.IsPlayer && !f.Hidden && f != reviewed && f != administration.OwnedFaction))
                 {
                     var relation = reviewed.RelationWith(faction, true);
                     if (relation != null) list.Label("PA_Relation".Translate(faction.Name, relation.baseGoodwill,

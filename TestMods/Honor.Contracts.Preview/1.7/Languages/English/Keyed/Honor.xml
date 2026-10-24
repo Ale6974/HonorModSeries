@@ -121,7 +121,7 @@
   <PA_Goodwill>Shared goodwill with {0}: {1} → {2}</PA_Goodwill>
   <PA_Rejected>Political change unavailable. Review current relations, authority consent, released prior ties, notice and pending transfers. Quest locks or player goodwill caps may prevent sharing.</PA_Rejected>
   <CT_Open>NPC territory membership</CT_Open>
-  <CT_Warning>DEVELOPMENT PREVIEW — Confirming changes this NPC town's REAL faction, shared diplomacy, future inhabitants, trade and faction ideology/technology. Player bases and pawns remain under player control. Only untouched nonplayer towns can move: no loaded map, generated inhabitants, generated trade stock, hostility or pending delivery; the source faction must keep another base. Active charters require a nonplayer shared authority already accepted by the player. An unaffiliated player's administrative faction is not implemented. Released towns need an existing Free City Union and no newer active contract. Movement is separate from signing/releasing; no automatic protection or warfare is added. Gameplay validation is deferred.</CT_Warning>
+  <CT_Warning>DEVELOPMENT PREVIEW — Confirming changes this NPC town's REAL faction, shared diplomacy, future inhabitants, trade and faction ideology/technology. Player bases and pawns remain under player control. Only untouched nonplayer towns can move: no loaded map, generated inhabitants, generated trade stock, hostility or pending delivery; real source factions must keep another base, while the verified player administration may become empty. Active charters use the established player administration or accepted nonplayer union/liege. Released towns need an existing Free City Union and no newer active contract. Movement is separate from signing/releasing; no automatic protection or warfare is added. Gameplay validation is deferred.</CT_Warning>
   <CT_Review>Review current destination and eligibility</CT_Review>
   <CT_Proposal>{0}: {1} → {2}</CT_Proposal>
   <CT_Active>Apply the mutually signed charter: the NPC town joins the player's current shared political authority while remaining an NPC town.</CT_Active>
@@ -134,4 +134,22 @@
   <CT_Prepared>Prepared; ownership not confirmed</CT_Prepared>
   <CT_Cancelled>Cancelled after verifying no movement</CT_Cancelled>
   <CT_Missing>Missing faction</CT_Missing>
+  <AD_Name>Realm Administration</AD_Name>
+  <AD_Warning>Optional NPC administration for your vassal towns. Establishing it adds a REAL faction with an internal +100 alliance; external diplomacy follows the player, and external goodwill events involving its towns affect player diplomacy. Your own bases and pawns remain player-controlled. This preview uses industrial outlander troops, trade and ideology, rather than preserving player/local culture. Quest or permanent relation conflicts suspend mirroring. Random raids, military aid and quest sites are disabled; compatibility with every other quest/mod is untested.</AD_Warning>
+  <AD_Create>Establish NPC territory administration</AD_Create>
+  <AD_Status>Territory administration: {0}</AD_Status>
+  <AD_Suspended>Administration diplomacy suspended. Resolve internal hostility, player allegiance suspension or quest/permanent relation conflicts, then resume. Existing towns and ownership records are preserved.</AD_Suspended>
+  <AD_Resume>Recheck and resume administration diplomacy</AD_Resume>
+  <AD_Unavailable>Administration unavailable. A live player colony and valid unique administration are required. Establish it while unaffiliated. A defeated/duplicate faction cannot be replaced; goodwill caps, locked relations or suspended player allegiance may block sharing.</AD_Unavailable>
+  <FB_Open>Align vassal towns with current polity</FB_Open>
+  <FB_Warning>Review ALL active NPC city vassals against your current administration/union/liege. This is a separate step after player allegiance changes. Every required move is checked before starting, including cumulative losses from the same source. Real source factions retain another base; your own administration alone may become empty. A visited town already at the destination needs no move; a visited town elsewhere blocks the batch. Transfers execute one city at a time. If interrupted, completed moves remain recorded; recover any pending city, then review the remaining group again. Gameplay validation is deferred.</FB_Warning>
+  <FB_Review>Review all active vassal towns</FB_Review>
+  <FB_Plan>Destination: {0} · Moves required: {1} / Active towns: {2}</FB_Plan>
+  <FB_Entry>{0} · Current faction: {1} · {2}</FB_Entry>
+  <FB_Move>Will move</FB_Move>
+  <FB_Already>Already at destination</FB_Already>
+  <FB_Confirm>Confirm reviewed vassal town alignment</FB_Confirm>
+  <FB_Complete>Vassal alignment completed: {0} faction changes verified.</FB_Complete>
+  <FB_Incomplete>Vassal alignment is incomplete or the reviewed state changed. Completed changes are retained. Resolve pending ownership, recheck player allegiance/diplomacy and review the whole group again.</FB_Incomplete>
+  <FB_Pending>Unconfirmed ownership change: {0}</FB_Pending>
 </LanguageData>

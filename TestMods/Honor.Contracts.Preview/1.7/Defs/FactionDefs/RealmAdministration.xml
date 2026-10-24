@@ -1,0 +1,20 @@
+<Defs>
+  <FactionDef ParentName="OutlanderFactionBase">
+    <defName>HonorContracts_RealmAdministration</defName>
+    <label>realm administration</label>
+    <description>The player's NPC territory administration. Vassal towns retain NPC settlement behavior and share the player's external diplomacy. Development preview: uses industrial outlander troops, trade and ideology; player culture and local autonomy are not preserved yet.</description>
+    <fixedName>Realm Administration</fixedName>
+    <pawnSingular>realm subject</pawnSingular>
+    <pawnsPlural>realm subjects</pawnsPlural>
+    <leaderTitle>steward</leaderTitle>
+    <requiredCountAtGameStart>0</requiredCountAtGameStart>
+    <startingCountAtWorldCreation>0</startingCountAtWorldCreation>
+    <maxConfigurableAtWorldCreation>0</maxConfigurableAtWorldCreation>
+    <displayInFactionSelection>false</displayInFactionSelection>
+    <settlementGenerationWeight>0</settlementGenerationWeight>
+    <raidsForbidden>true</raidsForbidden>
+    <canRequestMilitaryAid>false</canRequestMilitaryAid>
+    <canGenerateQuestSites>false</canGenerateQuestSites>
+    <colorSpectrum><li>(0.45, 0.35, 0.68)</li></colorSpectrum>
+  </FactionDef>
+</Defs>

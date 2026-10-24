@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 독립 플레이어 관리청과 일괄 이전 (0.3.5, 코드/빌드만)
+
+1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev 및 Harmony 3.0.0.0-rc.3을 재확인했다. 설치 FactionManager를 다시 조사했으며 FactionManagerTick은 GoodwillManagerTick·정착지 근접 우호도 검사·FactionTick을 호출한다. 일반 NPC 세력 조회는 비플레이어/숨김/멸망 등의 조건으로 이루어져 새 관리청이 모든 퀘스트에서 자동 제외된다고 가정하지 않는다. canGenerateQuestSites=false가 모든 퀘스트 차단 API라는 주장도 하지 않는다.
+
+기존 검증한 FactionGeneratorParms hidden override, FactionManager.Add, Scribe_References/Values, Faction.CanChangeGoodwillFor/관계 객체/알림을 사용한다. 영지 관리청의 외교 원본은 플레이어이며 외국 종주의 외교 복사 대상에서 제외한다. 관리청 사건을 플레이어 쌍으로 재전달할 때 원래 NPC 쌍의 변경 허용과 재진입 guard를 검사한다. 내부 플레이어/관리청 사건은 외국 종주로 우회하지 않는다. 실제 Harmony 설치 순서·게임 내 재진입·근접/자연 우호도·관리청 무영지 상태·주민/퀘스트 생성·저장 복원은 실행 검증하지 않았다.
+
 ## 계약에 따른 NPC 영지 소속 집행 (0.3.4, 코드/빌드만)
 
 Version.txt 1.7.4985 rev1269, runtimeconfig net10.0 / 10.0.13-waylithclr.dev 및 Harmony 3.0.0.0-rc.3을 재확인했다. 설치 DLL을 다시 조회한 WorldObject.SetFaction(Faction)은 def.canHaveFaction을 검사하고 factionInt를 설정하는 virtual 메서드다. Settlement에는 이를 도시 주민·재고 이전까지 수행하는 형태로 재정의한 메서드가 없으며, 플레이어 기지/맵 처리는 native faction에 의존한다. 따라서 대상과 목적지 모두 비플레이어로 한정하고 HasMap/EverVisited/previouslyGeneratedInhabitants 및 실제 세력 자격을 검사한다.
