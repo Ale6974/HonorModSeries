@@ -4,9 +4,9 @@
 
 ## 현재 상태
 
-첫 단계는 설계와 엔진 독립 규칙 구현이다. `Source/Honor.Contracts.Rules`와 `Tests/Honor.Contracts.Tests`에 세 계약 범위, 평화 협상과 항복·점령 경위, 고정 조항, 공납 일정·유예, 보호·복무 의무, 피습·포위 방어 요청, 분쟁·귀책·해약, 중복 종속·순환 방지 검사가 있다. 이 코드는 아직 기존 게임 모듈에서 호출하지 않는다.
+첫 단계는 설계와 엔진 독립 규칙 구현이다. `Source/Honor.Contracts.Rules`와 `Tests/Honor.Contracts.Tests`에 세 계약 범위, 평화 협상과 항복·점령 경위, 고정 조항, 공납 일정·유예, 보호·복무 의무, 피습·포위 방어 요청, 분쟁·귀책·해약, 중복 종속·순환 방지, 자유도시 판정과 성장에 따른 지위 선택 검사가 있다. 이 코드는 아직 기존 게임 모듈에서 호출하지 않는다.
 
-**Honor.Contracts는 아직 설치하거나 구독할 수 있는 모드가 아니다.** 게임 화면, Scribe 저장, 실물 공납, NPC 협상·보호 퀘스트, 실제 항복·점령 분기와 사건 생성기, 명예·기억 반영, 영·한 플레이어 문구 및 엔진 통합 검사는 미구현이다. 기존 공개 0.2.1 다섯 모드와 ZIP은 그대로다. 새 Workshop 항목이나 모음집 의존성을 추가하지 않았다.
+**Honor.Contracts는 아직 설치하거나 구독할 수 있는 모드가 아니다.** 게임 화면, Scribe 저장, 실물 공납, NPC 협상·보호 퀘스트, 실제 항복·점령 분기와 사건 생성기, 자유도시 표시·선택 편지·설정 화면, 명예·기억 반영, 영·한 플레이어 문구 및 엔진 통합 검사는 미구현이다. 기존 공개 0.2.1 다섯 모드와 ZIP은 그대로다. 새 Workshop 항목이나 모음집 의존성을 추가하지 않았다.
 
 ## 플레이 목표
 
@@ -19,6 +19,40 @@
 식민지계약은 한 정착지에만 적용한다. 같은 세력의 다른 정착지까지 자동 종속시키지 않는다. 기본 설계는 Settlement.Faction을 유지하고 계약에 종속 지위를 저장한다. 방문·상업·공격·퀘스트가 계약상 권리를 실제로 따르도록 연결해야 하며, 문구만으로 자치권이 구현됐다고 표시하지 않는다. 완전 병합·플레이어 맵 전환은 별도 기능이다.
 
 개인 봉신의 영주는 Royalty 작위가 없어도 될 수 있다. 귀족 작위에 따른 대우·민감도는 Nobility 연동으로 추가한다. 개인 봉신계약만으로 NPC를 강제 모집하거나 세력을 변경하지 않는다. 초기 협상은 성인·자유인·의사 표현이 가능한 대상에 한정할 계획이며, 결투 예외 허용 설정을 계약 동의 허용으로 재사용하지 않는다.
+
+## 자유도시와 성장에 따른 플레이어 선택
+
+사용자가 정의한 자유도시는 **아무와도 해당 도시에 적용되는 봉건계약을 맺지 않은 도시**다. 우선 새로운 종족/세력 Def 대신 정치적 지위로 취급하며 기존 NPC 정착지에도 같은 판정을 적용한다. 자유도시 전용 세력과 추가 정착지를 생성하는 월드 생성기는 현재 없다.
+
+자유도시는 종주에게 공납·복무할 의무가 없고 그 종주로부터의 계약상 보호도 없다. 일반 동맹·교역·우호 관계는 봉건계약으로 보지 않는다. 독립을 선택한 것만으로 명예 손실, 적대 전환, 무적/안전 보너스를 주지 않는다. 자유도시 또한 공격·포위·항복/점령 계약의 대상이 될 수 있다.
+
+`FreeCityRules`는 현재 활성·분쟁 중인 계약에서 지위를 계산한다. 별도의 영구 자유도시 플래그로 실제 계약을 덮어쓰지 않는다.
+
+- 도시의 소속 세력이 세력 봉신계약의 종속 또는 종주 당사자이면 그 세력의 도시들은 봉건 관계에 속한다.
+- 정착지 계약은 지정한 종속 정착지에만 적용하므로 같은 세력의 다른 정착지까지 자동 종속시키지 않는다. 단, 계약에서 종주 의무는 현재 Faction 범위이고 종주 도시 ID가 따로 없으므로 종주 세력은 자유도시 세력으로 취급하지 않는다.
+- 주민·영주의 개인 봉신계약은 해당 도시의 지위로 확대하지 않는다.
+- 제안만 했거나 한쪽만 서명한 계약은 독립을 없애지 않는다. 유효한 분쟁 계약은 여전히 구속력이 있어 자유도시 선언으로 연체를 지울 수 없다. 만기·합의 해약·파기 후 현재 지위는 장부에서 다시 계산하되 과거 위반 기록과 명예 결과는 지우지 않는다.
+
+플레이어에게는 도시 성장에 따라 **종주 선택 / 자유도시 선언** 결정을 제시한다. 초기 제안 기준은 해당 정착지의 바닐라 기지 가치 **100,000**이며 밸런스 확정값이 아니다. 설정에서 기준을 바꿀 수 있도록 할 계획이다. 규칙 API는 매 관측에 기준값을 받아들이므로 수치가 고정되어 있지 않지만 현재 게임 설정 UI는 없다.
+
+| 단계 | 플레이어에게 제공할 동작 | 규칙 계층의 현재 동작 |
+|---|---|---|
+| 성장 중 | 기준 미만에서는 일반 독립 정착지로 플레이 | Growing, 선택 강요 없음 |
+| 기준 도달 | 도시당 최초 한 번 지위 선택 편지, 나중에 장부에서 다시 열기 가능 | ChoicePending, 시각·당시 가치·기준값 기록 |
+| 자유도시 선택 | 봉건계약 없이 독립 유지 | FreeCityChosen, 계약·보상 생성 없음 |
+| 종주 후보 선택 | 실제 가능 후보의 조건을 보고 협상 | Negotiating, 후보 선택만으로 서명/공납 시작 안 함 |
+| 협상 취소·거절 | 자유도시 또는 다른 후보를 선택 | ChoicePending 복귀, 기준 도달 편지를 다시 발송하지 않음 |
+| 실제 계약 발효 | 약정한 의무·보호 적용, 현재 정치 지위 재계산 | FeudalAffiliationRecorded에 선택 경위 기록 |
+
+기준에 처음 도달하면 결정을 보류해도 진행은 가능하도록 한다. 문을 닫은 것만으로 임의 종주를 고르거나 계약을 맺지 않는다. 적격 종주가 없으면 자유도시 선택은 그대로 가능하다. 명예가 낮다고 독립 선택을 막지 않는다. 자유도시가 나중에 자발적으로 종주와 협상하는 것도 허용한다.
+
+발동 대상은 실제로 플레이어 소유인 정착지의 홈 맵이다. 임시 전장·야영지·적 기지·단순 이동체/중력선 홈 판정에 선택 편지를 발송하지 않는다. 여러 플레이어 정착지는 각자의 기지 가치로 관측한다. 이미 해당 범위의 봉건계약이 있으면 모순되는 새 지위 선택을 발송하지 않는다. 맵을 불러올 때 이미 기준을 넘은 도시도 조건을 만족하면 최초 한 번 관측할 계획이다.
+
+가치 조회에는 `map.wealthWatcher.WealthTotal`의 물품·건물·주민 합계를 사용한다. 습격 난이도용 PlayerWealthForStoryteller와 혼용하지 않으며, 계약을 위한 별도 부/평판 화폐를 만들지 않는다. 가치가 떨어지거나 기준 설정을 바꿔도 이미 발생한 선택을 회수하거나 완료한 선택 편지를 다시 띄우지 않는다. 계약 해약 후에는 자동 반복 편지 대신 장부에서 수동으로 재검토할 수 있다.
+
+`CityRecognition`은 선택 경위를 기록하는 엔진 독립 객체다. FeudalAffiliationRecorded나 FreeCityChosen은 현재 외교 지위를 고정하는 플래그가 아니다. 실제 지위는 매번 현재 계약 장부로 계산하고, 활성 계약이 있는 동안에는 오래 열린 선택 화면에서도 자유도시 선언을 거절해야 한다. 원 소유권·홈 맵 조건과 후보의 실제 외교 상태는 게임 어댑터가 클릭/서명 직전에 다시 검증한다. 후보 목록의 표시는 상대의 합의를 뜻하지 않으며 기존 계약 체결·중복 종속 검사를 통과해야 한다.
+
+후속 저장에는 정착지와 소유 세력 참조, 최초 인식 시각·가치·기준, 선택 단계와 협상 후보를 포함한다. 정치 지위 조회 전에 장부의 만기·분쟁 상태를 현재 틱까지 갱신해야 한다. 정착지 상실·파괴·재정착·소속 변경 시 이전 소유자의 선택 기록을 새 도시로 복제하지 않는다. 현재 영·한 편지/장부 UI, 설정, 저장·재로딩, NPC 표시와 세계 생성은 미구현이다.
 
 ## 명예가 하는 일
 
@@ -117,11 +151,11 @@ UI와 사건·편지·Def 설명은 기존 방식대로 영어/한국어 두 언
 ## 단계별 완료 기준
 
 1. **완료:** 위 세 계약 범위의 설계, 엔진 독립 규칙과 자동 검사, 공개 GitHub 소스.
-2. **다음:** Honor.Contracts GameComponent·Scribe·장부 UI·양측 협상, 세 범위의 실제 대상·권한·중복 검사, 영·한 문구. 이 단계만으로 공납/보호가 완성됐다고 게시하지 않는다.
+2. **다음:** Honor.Contracts GameComponent·Scribe·장부 UI·양측 협상, 세 범위의 실제 대상·권한·중복 검사, 영·한 문구. 자유도시 지위·기지 가치 관측·성장 선택 편지·종주 후보와 설정을 연결한다. 이 단계만으로 공납/보호가 완성됐다고 게시하지 않는다.
 3. **플레이 가능한 첫 버전:** 세 계약의 실물 인수, 유한한 보호/복무 임무, 권리 침해·귀책 판정, Core 명예·소셜 기억/우호도 반영, 해약·만기. 개인 봉신 대우와 식민지 자치권은 실제로 작동하는 조항만 노출한다.
 4. **군사 경로:** 실제 공격/포위→항복 또는 점령→정착지 보존·계약, 봉신 피습/포위 사건→방어 퀘스트→결과·계약 반영. 세력 전체 강화는 정착지 하나의 항복과 별도 구현한다. 군사 계약과 방어 요청의 엔진 독립 규칙은 구현했고 이 단계의 게임 연결은 미구현이다.
-5. **공개 전:** 격리 저장에서 협상→이행/분쟁→종료→재로딩, 만기 경계·사망/멸망·종속 순환·자원 복제·양측 위반·DLC 없는 구성·영한 전환을 엔진 검사한다. 군사 경로는 정착지/마지막 세력 보존, 관리하지 않는 정착지의 기본 패배, 항복 후 공격, 철수·초토화, 동일 사건 중복·포위 전환·기한·구원 실패를 검사한다. 그 뒤 로컬 설치, 새 Workshop 항목과 정확한 의존성 등록, 기존 추천 모음집에 추가한다.
+5. **공개 전:** 격리 저장에서 협상→이행/분쟁→종료→재로딩, 만기 경계·사망/멸망·종속 순환·자원 복제·양측 위반·DLC 없는 구성·영한 전환을 엔진 검사한다. 군사 경로는 정착지/마지막 세력 보존, 관리하지 않는 정착지의 기본 패배, 항복 후 공격, 철수·초토화, 동일 사건 중복·포위 전환·기한·구원 실패를 검사한다. 도시 선택은 실제 WealthTotal 경계·빈 후보·기존 계약·다중 정착지·임시 맵 제외·저장 후 반복 편지 방지·언어 전환을 검사한다. 그 뒤 로컬 설치, 새 Workshop 항목과 정확한 의존성 등록, 기존 추천 모음집에 추가한다.
 
 기존 모음집의 마지막 웹 공개 버튼은 사용자가 나중에 처리하기로 한 상태를 유지한다.
 
-English: Planned Honor.Contracts covers faction vassalage, personal liege/vassal bonds, and charters over individual foreign settlements. Engine-independent rules now also distinguish accepted military capitulation from imposed occupation charters and route verified attacks/sieges against vassals into protection duties. Occupation never fabricates a defender's signature or annexes the whole faction. It is **not yet a playable or published Workshop mod**. Actual surrender/occupation hooks, siege mechanics, event generation and defense quests, persistence, transfers, honor/social consequences, rights enforcement and English/Korean UI remain to be implemented.
+English: Planned Honor.Contracts covers faction vassalage, personal liege/vassal bonds, and charters over individual foreign settlements. Rules distinguish capitulation from occupation and route attacks/sieges into protection duties. Free cities have no applicable active feudal contracts. A per-settlement wealth milestone offers a free-city declaration or negotiations with an eligible suzerain; choosing a candidate never signs a contract. The proposed threshold is 100,000 vanilla total wealth, supplied as a configurable rules input. It is **not yet a playable or published Workshop mod**. Game hooks, event/quest generation, persistence, transfers, actual wealth-triggered letters, settings, honor/social consequences, rights enforcement and English/Korean UI remain to be implemented.

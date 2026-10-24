@@ -75,3 +75,11 @@ Verse.GenGrid.Standable은 Walkable뿐 아니라 같은 셀 Thing의 def.passabi
 `RimWorld.RaidStrategyWorker_Siege.MakeLordJob(IncidentParms,Map,List<Pawn>,int)`는 LordJob_Siege를 생성하고, CanUseWith는 기본 조건과 faction.def.canSiege를 확인합니다. 이는 맵의 습격 전략이며 플레이어 상단의 월드 포위·NPC 정착지에 대한 범용 사건 생성기가 이미 있다는 뜻은 아닙니다. Faction.RelationWith(Faction,bool)는 세력 쌍 관계로서 정착지별 정전 API로 간주하지 않습니다.
 
 이번 변경도 엔진 독립 규칙만 포함합니다. 위 지점을 실제로 패치하거나 구원 사건을 게임에서 생성하지 않았으며 항복/점령과 봉신 방어의 엔진 성공을 주장하지 않습니다. 역컴파일 코드는 작업 폴더에서만 확인하고 Git/배포물에 포함하지 않습니다.
+
+## 자유도시·기지 가치 설계 검토 (2026-10-24)
+
+Version.txt의 1.7.4985 rev1269를 다시 확인하고 설치 DLL의 `Verse.Map` 및 `RimWorld.WealthWatcher`를 조사했습니다. Map.wealthWatcher는 WealthWatcher 필드이며, WealthTotal은 RecountIfNeeded 후 물품·건물·Pawn 가치를 합산합니다. 재계산에는 5000틱 캐시 조건이 있어 매 관측마다 강제로 전체 재집계하지 않도록 설계합니다. 실제 선택 시점은 게임의 집계 갱신 간격에 영향을 받을 수 있습니다.
+
+`Map.PlayerWealthForStoryteller`는 고정 부 모드/건물 가중치 등에 따라 WealthTotal과 다를 수 있으므로 이번 기지 가치 기준으로 사용하지 않습니다. `Map.IsPlayerHome`은 중력선 착륙/엔진 조건으로도 true가 될 수 있어 도시 관측은 이 속성만으로 판단하지 않고 실제 Settlement 부모·현재 플레이어 소속도 확인해야 합니다. 임시 전투 맵이나 이동체가 홈으로 분류됐다고 도시 지위 선택을 생성하지 않습니다.
+
+이번 구현은 기지 가치/소유권 관측값을 입력받는 엔진 독립 규칙입니다. 게임에서 WealthWatcher를 호출하는 새 모듈이나 편지·설정·저장을 추가하지 않았고, 실제 게임의 가치 변화/인식 선택 검사는 아직 하지 않았습니다.

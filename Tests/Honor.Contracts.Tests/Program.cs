@@ -158,4 +158,5 @@ try { overflow.Sign(ContractSide.Liege, long.MaxValue - 10); } catch (OverflowEx
 Check(overflowRejected && overflow.Phase == ContractPhase.Proposed && overflow.Obligations.Count == 0, "overflow cannot partially activate");
 
 assertions += MilitaryTests.Run();
+assertions += CityTests.Run();
 Console.WriteLine($"PASS: {assertions} contract assertions (three scopes, consent and conquest origins, deadlines, reciprocal duties, evidence reuse guards, quotas, binding cycles, validation).");
