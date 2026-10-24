@@ -1,0 +1,6 @@
+<Defs>
+<ThoughtDef><defName>HonorSociety_Rival</defName><thoughtClass>Thought_MemorySocial</thoughtClass><durationDays>30</durationDays><stackLimit>1</stackLimit><stages><li><label>repeated insults: rival</label><baseOpinionOffset>-20</baseOpinionOffset></li></stages></ThoughtDef>
+<ThoughtDef><defName>HonorSociety_Apology</defName><thoughtClass>Thought_MemorySocial</thoughtClass><durationDays>5</durationDays><stackLimit>1</stackLimit><stages><li><label>accepted apology</label><baseOpinionOffset>6</baseOpinionOffset></li></stages></ThoughtDef>
+<ThoughtDef><defName>HonorSociety_Witness</defName><thoughtClass>Thought_MemorySocial</thoughtClass><durationDays>5</durationDays><stackLimit>1</stackLimit><stages><li><label>witnessed honorable victory</label><baseOpinionOffset>4</baseOpinionOffset></li></stages></ThoughtDef>
+<ThoughtDef><defName>HonorSociety_Rumor</defName><thoughtClass>Thought_MemorySocial</thoughtClass><durationDays>5</durationDays><stackLimit>1</stackLimit><stages><li><label>heard of honorable victory</label><baseOpinionOffset>2</baseOpinionOffset></li></stages></ThoughtDef>
+</Defs>

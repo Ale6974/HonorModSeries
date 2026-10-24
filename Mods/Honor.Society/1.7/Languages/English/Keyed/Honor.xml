@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <HS_Accept>Accept apology</HS_Accept>
+  <HS_Desc>Before staging, the offender may apologize. Only the insulted pawn can accept. Both must be awake and within 12 cells.</HS_Desc>
+  <HS_NotReady>No valid apology is available. Check the pending duel, distance and consciousness.</HS_NotReady>
+  <HS_Offer>Offer apology</HS_Offer>
+  <HS_Offered>{0} has offered an apology to {1}. Select the recipient to accept.</HS_Offered>
+</LanguageData>

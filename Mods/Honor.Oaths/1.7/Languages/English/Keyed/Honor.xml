@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <HO_Broken>{0} broke an oath and lost honor.</HO_Broken>
+  <HO_Complete>{0} fulfilled an oath and earned the Oathkeeper title.</HO_Complete>
+  <HO_Desc>Hold a short witnessed ceremony. Win a lawful duel within five days, or avoid insults and dishonor for five days. Oaths affect honor and mood. Titles are ceremonial.</HO_Desc>
+  <HO_Oath>Swear oath</HO_Oath>
+  <HO_Peace>Oath: keep the peace for five days</HO_Peace>
+  <HO_Status>An oath is active: {0} days remain.</HO_Status>
+  <HO_Sworn>{0} has sworn a public oath lasting five days.</HO_Sworn>
+  <HO_Title>Oathkeeper: swear oath</HO_Title>
+  <HO_Win>Oath: win a lawful duel in five days</HO_Win>
+  <HO_Witnesses>The ceremony needs two awake colonists within 10 cells, clear sight, and an undrafted, conscious participant without another oath.</HO_Witnesses>
+</LanguageData>

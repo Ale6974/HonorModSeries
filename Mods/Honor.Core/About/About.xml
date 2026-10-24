@@ -1,13 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ModMetaData>
-  <name>Honor.Core — development MVP</name>
+  <name>Honor.Core</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.core</packageId>
-  <modVersion>0.1.1</modVersion>
-  <supportedVersions><li>1.7</li></supportedVersions>
-  <modDependencies><li><packageId>brrainz.harmony</packageId><displayName>Harmony 3 (1.7)</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl></li></modDependencies>
-  <loadAfter><li>brrainz.harmony</li><li>Ludeon.RimWorld</li></loadAfter>
-  <description>Experimental MVP: honor needs, mandatory insult challenges, controlled duels and emergency field tending. English and Korean follow the game language setting. Source: https://github.com/Ale6974/HonorModSeries
-
-개발용 MVP: 명예 욕구, 모욕에 대한 강제 결투, 결투장과 즉시 응급처치. 영어·한국어가 게임 언어 설정에 따라 자동 적용됩니다. 기존 정착지에 적용하기 전에 README와 현재 구현 범위를 확인하세요.</description>
+  <modVersion>0.2.0</modVersion>
+  <supportedVersions>
+    <li>1.7</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony 3 (1.7)</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+    <li>Ludeon.RimWorld</li>
+  </loadAfter>
+  <description>Honor.CoreThe base module: five honor Need tiers, event changes, slow decay with tier floors, mandatory insult duels, challenger ideology rules, matched swords/knives/revolvers, armor removal, arena safety, immediate field tending, honor traits, settings and save/load. No DLC required. Requires Harmony 3 for 1.7.
+한국어: 기본 명예 욕구·5단계 하한·강제 결투·동일 장비·방어구 탈의·결투장·응급처치·특성·설정·저장. Harmony 3 필수, DLC 필수 아님.
+Source: https://github.com/Ale6974/HonorModSeries
+Collection: https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644</description>
 </ModMetaData>

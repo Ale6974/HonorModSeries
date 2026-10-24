@@ -38,3 +38,18 @@
 - 무기·의복 Def명과 Armor 태그는 설치 게임 XML에서 확인합니다. Ideology 전용 교리는 `MayRequire`로 분리하고 Core는 DLC가 없어도 교리 없는 기술 fallback을 사용하도록 작성했습니다. DLC 없는 실행 자체는 별도 테스트 대상입니다.
 
 게임 DLL·역컴파일된 게임 소스는 이 저장소나 배포 파일에 포함하지 않습니다. 향후 unstable 업데이트 후 위 해시가 달라지면 빌드·패치·실플레이 검사를 다시 수행해야 합니다.
+
+## 0.2.0 부속 모드 API 확인 (2026-10-24)
+
+같은 설치 Assembly-CSharp.dll의 실제 서명과 XML을 기준으로 컴파일·엔진 검사했습니다.
+
+- Pawn_RoyaltyTracker.MostSeniorTitle.def.seniority / SetTitle(Faction,RoyalTitleDef,bool,bool,bool): 귀족 배율 및 실제 작위 테스트.
+- Pawn_RelationsTracker.FamilyByBlood / AddDirectRelation: 혈연 명예. Thought_MemorySocial: 목격·소문·숙적 의견.
+- QuestNode.RunInt() / TestRunInt(Slate), QuestUtility.GenerateQuestAndMakeAvailable(QuestScriptDef,Slate), Quest.AddPart, Quest.End: 추정한 구버전 QuestNode 서명을 쓰지 않습니다.
+- MapParent.PostMapGenerate, protected TickInterval(int), ShouldRemoveMapNow(out bool), CanBeSettled, 기본 CaravanArrivalAction_Enter: 대표 장소·만료·기본 상단 진입.
+- TileFinder.TryFindNewSiteTile(out PlanetTile,PlanetTile,int,int,...), Verse.GetOrGenerateMapUtility.GetOrGenerateMap(PlanetTile,IntVec3,WorldObjectDef,...): PlanetTile와 실제 위치 생성.
+- Faction.Notify_MemberTookDamage(Pawn,DamageInfo)와 TryAffectGoodwillWith(Faction,int,...): 합의된 대표 타격에만 기본 외교 피해 페널티를 억제하고 지정 승패 우호도를 적용합니다. 다른 대상 공격은 그대로입니다.
+- JobDriver + Toils_General.Wait/Do, GameComponentTick, Scribe 컬렉션/참조: 의식·맹세·저장/재개.
+- 설치 Core XML의 StaticWorldObjectBase, PeaceTalks 텍스처 경로, QuestScriptDef의 autoAccept/questNameRules/questDescriptionRules를 사용합니다.
+
+Steam의 필수 항목/모음집 구성은 공식 [ISteamUGC 문서](https://partner.steamgames.com/doc/api/ISteamUGC)의 CreateItem/SetItemVisibility/AddDependency/AddAppDependency와 설치 Steamworks.NET 바인딩 서명을 확인해 사용합니다. 게시 후 QueryUGC children과 GetAppDependencies로 다시 읽습니다. Steamworks DLL은 소스/모드 배포에 포함하지 않습니다.

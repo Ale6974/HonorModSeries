@@ -21,6 +21,10 @@ public sealed class Need_Honor : Need
 public static class HonorApi
 {
     public static event Action<DuelRecord> DuelEnded;
+    public static event Action<Pawn, Pawn> InsultOccurred;
+    public static event Action<DuelRecord, Pawn> DishonorOccurred;
+    public static readonly List<Func<Pawn, bool>> AdditionalParticipantValidators = [];
+    public static int PendingDelayTicks;
     public static readonly List<Func<Pawn, float>> SensitivityModifiers = [];
     public static Need_Honor Need(Pawn pawn) => pawn?.needs?.TryGetNeed<Need_Honor>();
     public static void Change(Pawn pawn, float delta, string reason)
@@ -42,6 +46,18 @@ public static class HonorApi
         if (DuelEnded == null) return;
         foreach (Action<DuelRecord> handler in DuelEnded.GetInvocationList())
             try { handler(duel); } catch (Exception e) { Log.Error("[Honor.Core] Extension failed: " + e); }
+    }
+    internal static void NotifyInsult(Pawn offender, Pawn victim)
+    {
+        if (InsultOccurred == null) return;
+        foreach (Action<Pawn, Pawn> handler in InsultOccurred.GetInvocationList())
+            try { handler(offender, victim); } catch (Exception e) { Log.Error("[Honor.Core] Insult extension failed: " + e); }
+    }
+    internal static void NotifyDishonor(DuelRecord duel, Pawn pawn)
+    {
+        if (DishonorOccurred == null) return;
+        foreach (Action<DuelRecord, Pawn> handler in DishonorOccurred.GetInvocationList())
+            try { handler(duel, pawn); } catch (Exception e) { Log.Error("[Honor.Core] Dishonor extension failed: " + e); }
     }
 }
 

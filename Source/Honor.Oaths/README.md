@@ -1,5 +1,3 @@
-# Honor.Oaths — 후속 구현 경계
+# Honor.Oaths
 
-Core를 의존합니다. 맹세의 이행·위반, 의식, 명예 칭호를 소유합니다. Ideology 의식 연동은 선택적 DLC 의존입니다. 현재 실행 코드는 없습니다.
-
-맹세 발동·완수·실패·만료를 사건으로 명예에 반영하고, 의식 보상과 칭호의 출처를 저장해야 합니다. Royalty의 실제 작위와 모드 명예 칭호는 다른 데이터로 취급합니다.
+0.2.0 playable expansion. See [README](../../README.md), [STATUS](../../docs/STATUS.md) and [dependencies](../../docs/DEPENDENCIES.md). Build with tools/Build.ps1; deploy only Mods/Honor.Oaths. Tests are under Tests/Honor.SeriesTests. Each expansion requires Core 0.2.0+ and Harmony; Nobility additionally requires Royalty.

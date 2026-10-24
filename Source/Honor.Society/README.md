@@ -1,5 +1,3 @@
-# Honor.Society — 후속 구현 경계
+# Honor.Society
 
-Core를 의존합니다. 사과의 성립·명예 복구, 직접 목격과 전파된 소문, 가족 명예의 파급, 숙적 관계와 소셜 기억을 소유합니다. Core의 모욕 감지·결투 실행을 복제하지 않습니다. 현재 실행 코드와 별도 설치 모드는 제공하지 않습니다.
-
-확장할 사건은 실제 소셜 메모리·가족 관계 API를 DLL에서 확인한 뒤 정의합니다. 목격 범위·소문 지연·유효기간을 설정하고 현재 맵·월드 폰 참조 저장을 검증합니다. 사과에 의한 의무 해제는 Core에 별도의 명시적 해결 API가 추가된 뒤 연결합니다.
+0.2.0 playable expansion. See [README](../../README.md), [STATUS](../../docs/STATUS.md) and [dependencies](../../docs/DEPENDENCIES.md). Build with tools/Build.ps1; deploy only Mods/Honor.Society. Tests are under Tests/Honor.SeriesTests. Each expansion requires Core 0.2.0+ and Harmony; Nobility additionally requires Royalty.

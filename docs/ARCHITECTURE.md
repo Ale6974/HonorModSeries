@@ -1,22 +1,22 @@
-# 모듈 구조와 단계
+# 모듈 구조 — 0.2.0
 
-| 모듈 | 소유 기능 | 현재 단계 |
-|---|---|---|
-| Honor.Rules | 엔진 독립 명예 수치·참가 자격·결투 종료 규칙 | 구현·테스트 |
-| Honor.Core | Need, 모욕 훅, 대기열·결투 상태기계, JobDriver, 안전, 응급처치, 소셜 기억, 설정·저장·API | MVP 구현 |
-| Honor.Society | 사과, 목격·소문 전파, 가족 명예, 숙적 | 소스 경계·명세만 준비 |
-| Honor.Nobility | Royalty 작위별 민감도, 대리인 자격·대리 결투 | 소스 경계·명세만 준비 |
-| Honor.Diplomacy | 정착지 모욕, 월드맵 대표 결투 퀘스트 | 소스 경계·명세만 준비 |
-| Honor.Oaths | 맹세, 의식, 칭호 | 소스 경계·명세만 준비 |
+Core는 다른 부속 모드에 의존하지 않습니다. 부속 모드는 Core/Rules/Harmony API만 참조하며 서로 어셈블리를 참조하지 않습니다. Honor.Rules.dll은 Core에만 포함하고 각 부속 모드에는 자신의 DLL만 배포합니다. Nobility는 Royalty DLC가 필요합니다.
 
-Core는 다른 확장 모듈에 의존하지 않습니다. 각 확장은 Core에만 의존하고 게임/DLC 타입은 실제 해당 버전 DLL 검증 후 사용합니다. 아직 동작하지 않는 빈 확장 모드를 플레이어에게 제공하지 않습니다.
+| 모듈 | 소유 데이터와 연결 |
+|---|---|
+| Honor.Rules | 엔진 독립 명예 수치·자격·종료 규칙 |
+| Honor.Core | Need, Harmony 모욕/피해 훅, MapComponent 결투, 전용 JobDriver, 설정, principal/대리인 참조 |
+| Honor.Society | MapComponent 쌍별 모욕/사과와 소문 목록; 바닐라 Thought_MemorySocial와 혈연 사용 |
+| Honor.Nobility | 최고 작위의 seniority에 따른 SensitivityModifiers, Core.AssignProxy |
+| Honor.Diplomacy | QuestNode + QuestPart + MapParent, 대표 Pawn 참조; GameComponent 세력 대기 기간; 합의된 대표 결투 타격만 바닐라 외교 공격에서 제외 |
+| Honor.Oaths | GameComponent 맹세 목록, 전용 의식 JobDriver, Core 사건 구독 |
 
-Core에서 `Pending → Gathering → Fighting → Completed/Cancelled`를 관리합니다. 같은 맵에서는 한 결투만 진행하며 한 참가자에게 중복 의무를 만들지 않습니다. 참가자를 참조로, 상태·규칙·위치·제거 방어구·종료 처리 여부를 Scribe로 저장합니다. 종료 상태를 먼저 기록해 재진입이나 중복 호출이 명예 보상을 복제하지 않도록 합니다. 최근 결과는 한 게임일 유지하고 정리하며, 미해결 의무는 유지합니다.
+Core 상태는 Pending → Gathering → Fighting → Completed/Cancelled입니다. 종료를 먼저 기록하고 처치·보상·이벤트를 호출해 재진입으로 복제하지 않습니다. Diplomacy도 Resolved를 먼저 기록해 은/우호도/퀘스트 결과를 한 번만 반영합니다. pending 의무와 확장 상태는 Scribe로 저장합니다.
 
-`HonorApi.Change(pawn, delta, reason)`는 사건 변화를 적용합니다. `HonorApi.Need`로 Need를 조회합니다. `HonorApi.DuelEnded`는 종료 알림이고 확장 구독자 예외는 분리해서 기록합니다. `HonorApi.SensitivityModifiers`에 곱셈 함수를 등록할 수 있습니다. Nobility는 이 지점에 작위별 민감도를 추가할 예정입니다. 게임 객체 접근과 API 호출은 게임 스레드에서 수행합니다.
+확장 API: HonorApi.Need/Change, DuelEnded, InsultOccurred, DishonorOccurred, SensitivityModifiers, AdditionalParticipantValidators, PendingDelayTicks. 구독자 예외는 Core가 분리해 기록합니다. Diplomacy는 지정된 장소의 살아 있는 대표만 추가 자격으로 인정하며 모든 방문객을 허용하지 않습니다. Society/Nobility는 자동 준비 지연을 최소 600틱으로 올립니다. 수동 TryBegin은 즉시 가능합니다.
 
-`DuelRuleExtension`은 `PreceptDef`의 DefModExtension입니다. 신청자에게 있는 교리만 읽습니다. 다른 모드가 충돌하는 교리를 여러 개 추가한 경우 defName 순서로 결정합니다. 이 결정은 결투 신청 시 고정해 진행 도중 이념이 변해도 규칙이 바뀌지 않습니다.
+DuelRecord.Beneficiary는 실제 전투자에서 귀족 본인으로 결과를 매핑합니다. AssignProxy는 pending 상태에서만 허용하고 최초 신청 시 고정한 Mode를 바꾸지 않습니다. Involves는 전투자와 본인 모두를 바쁜 참가자로 취급합니다.
 
-관계 평판은 `Thought_MemorySocial`과 바닐라 관계·우호도 시스템만 이용합니다. 독립 평판 통화·원장은 없습니다. 장래 보상 협상은 패자의 실제 자원·세력 권한·승자의 합리적 상한을 검증한 뒤 한 번만 처리해야 합니다.
+DuelRuleExtension은 PreceptDef 확장입니다. 최초 신청자 교리만 읽고 충돌 시 defName 순서로 고릅니다. 별도 평판 화폐는 없고 바닐라 관계 기억/혈연/세력 우호도를 사용합니다.
 
-개발 순서: (1) 현재 Core 루프와 저장 재개 검증 → (2) 의도적인 규칙 위반 판별·협상 요구와 결과 UI → (3) Society → (4) Nobility → (5) Diplomacy → (6) Oaths. 각 단계는 별도 플레이 점검과 호환성 확인 뒤 배포 범위를 넓힙니다.
+모든 게임 객체 접근은 게임 스레드에서 수행합니다. 실제 게임/DLC 타입은 설치 DLL로 검증하며 게임 DLL·역컴파일본은 배포하지 않습니다. 계획과 출시 범위는 STATUS, 증거는 TESTING을 참조하세요.

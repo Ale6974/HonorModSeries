@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <HD_Champion>Represent the colony</HD_Champion>
+  <HD_ChampionDesc>Challenge this delegation&apos;s representative. Both fighters need to be awake, healthy and undrafted. The arena must be clear. The opponent matches your allowed weapon, material, quality and condition.</HD_ChampionDesc>
+  <HD_Lost>The delegation duel failed: -5 goodwill.</HD_Lost>
+  <HD_NotReady>Cannot begin. Equip an allowed weapon and check health, consciousness and pending duels.</HD_NotReady>
+  <HD_Quest>Honor delegation: {0}</HD_Quest>
+  <HD_QuestDesc>A settlement of {0} has insulted your colony. Travel to the marked delegation within ten days and choose a champion. Bring an allowed weapon; the representative will match it. The challenger&apos;s duel rules apply. Victory: 100 silver on site and +10 goodwill. Defeat, interruption or expiry: -5 goodwill. Other caravan members must stay outside the arena.</HD_QuestDesc>
+  <HD_Request>Answer a settlement insult</HD_Request>
+  <HD_RequestDesc>Begin a representative duel with this non-hostile faction. Creates a world quest near this settlement for ten days. Send an armed caravan and select its champion on arrival. A lawful victory earns 100 silver and +10 goodwill; failure costs 5 goodwill.</HD_RequestDesc>
+  <HD_Unavailable>No suitable site is available, or this faction already has a delegation or cooldown.</HD_Unavailable>
+  <HD_Won>Your champion won the delegation duel: +10 goodwill and 100 silver at the arena.</HD_Won>
+</LanguageData>

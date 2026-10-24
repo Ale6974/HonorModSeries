@@ -1,0 +1,111 @@
+Honor Mod Series 0.2.0 — selected engine test messages, 2026-10-24
+RimWorld 1.7.4985 rev1269 / .NET 10 / installed Harmony 3
+Full logs, saves and personal paths are excluded.
+
+=== Korean-all-modules ===
+[Honor.Tests] ASSERT PASS: native game language
+[Honor.Tests] ASSERT PASS: Society keyed language
+[Honor.Tests] ASSERT PASS: Oaths keyed language
+[Honor.Tests] ASSERT PASS: Diplomacy keyed language
+[Honor.Tests] ASSERT PASS: Nobility keyed language
+[Honor.Tests] ASSERT PASS: Society injected memory
+[Honor.Tests] ASSERT PASS: Oaths injected memory
+[Honor.Tests] ASSERT PASS: no Honor translation errors
+[Honor.Tests] ASSERT PASS: all Honor injections applied
+[Honor.Tests] PASS: series localization
+
+=== English-no-DLC ===
+[Honor.Tests] ASSERT PASS: native game language
+[Honor.Tests] ASSERT PASS: Society keyed language
+[Honor.Tests] ASSERT PASS: Oaths keyed language
+[Honor.Tests] ASSERT PASS: Diplomacy keyed language
+[Honor.Tests] ASSERT PASS: Society injected memory
+[Honor.Tests] ASSERT PASS: Oaths injected memory
+[Honor.Tests] ASSERT PASS: no Honor translation errors
+[Honor.Tests] PASS: series localization
+
+=== Gameplay-no-DLC ===
+[Honor.Tests] ASSERT PASS: Core patches ready
+[Honor.Tests] ASSERT PASS: apology requires offer
+[Honor.Tests] ASSERT PASS: offer and victim acceptance
+[Honor.Tests] ASSERT PASS: apology cancels duel and records vanilla social memory
+[Honor.Tests] ASSERT PASS: repeated insults make rivals
+[Honor.Tests] ASSERT PASS: witnessed peace oath
+[Honor.Tests] ASSERT PASS: insult breaks peace oath
+[Honor.Tests] ASSERT PASS: victory oath
+[Honor.Tests] ASSERT PASS: proxy result fulfills principal oath
+[Honor.Tests] ASSERT PASS: blood relative honor and witnessed social memory
+[Honor.Tests] ASSERT PASS: active oath for persistence
+[Honor.Tests] ASSERT PASS: ceremony job completed
+[Honor.Tests] ASSERT PASS: rumor tick processed
+[Honor.Tests] ASSERT PASS: delayed rumor becomes vanilla social memory
+[Honor.Tests] ASSERT PASS: peace oath completes on deadline
+[Honor.Tests] ASSERT PASS: real world quest generated
+[Honor.Tests] ASSERT PASS: faction duplicate/cooldown blocked
+[Honor.Tests] ASSERT PASS: delegation map and NPC generated
+[Honor.Tests] ASSERT PASS: foreign representative admitted through API
+[Honor.Tests] ASSERT PASS: delegation stages:
+[Honor.Tests] ASSERT PASS: real representative combat resolved quest
+[Honor.Tests] ASSERT PASS: both fighters stabilized
+[Honor.Tests] ASSERT PASS: quest ended
+[Honor.Tests] ASSERT PASS: faction goodwill result
+[Honor.Tests] ASSERT PASS: silver reward spawned
+[Honor.Tests] ASSERT PASS: reward idempotence
+[Honor.Tests] PASS: series gameplay and persistence
+
+=== Checkpoint-all-modules ===
+[Honor.Tests] ASSERT PASS: Core patches ready
+[Honor.Tests] ASSERT PASS: apology requires offer
+[Honor.Tests] ASSERT PASS: offer and victim acceptance
+[Honor.Tests] ASSERT PASS: apology cancels duel and records vanilla social memory
+[Honor.Tests] ASSERT PASS: repeated insults make rivals
+[Honor.Tests] ASSERT PASS: royal sensitivity
+[Honor.Tests] ASSERT PASS: royal proxy appointment
+[Honor.Tests] ASSERT PASS: proxy keeps principal and original rules
+[Honor.Tests] ASSERT PASS: witnessed peace oath
+[Honor.Tests] ASSERT PASS: insult breaks peace oath
+[Honor.Tests] ASSERT PASS: victory oath
+[Honor.Tests] ASSERT PASS: proxy result fulfills principal oath
+[Honor.Tests] ASSERT PASS: blood relative honor and witnessed social memory
+[Honor.Tests] ASSERT PASS: active oath for persistence
+[Honor.Tests] ASSERT PASS: ceremony job completed
+[Honor.Tests] ASSERT PASS: rumor tick processed
+[Honor.Tests] ASSERT PASS: delayed rumor becomes vanilla social memory
+[Honor.Tests] ASSERT PASS: peace oath completes on deadline
+[Honor.Tests] ASSERT PASS: real world quest generated
+[Honor.Tests] ASSERT PASS: faction duplicate/cooldown blocked
+[Honor.Tests] ASSERT PASS: delegation map and NPC generated
+[Honor.Tests] ASSERT PASS: foreign representative admitted through API
+[Honor.Tests] ASSERT PASS: delegation stages:
+[Honor.Tests] CHECKPOINT PASS: series saved during delegation combat
+
+=== Resume-all-modules ===
+[Honor.Tests] ASSERT PASS: saved quest/site/representative references
+[Honor.Tests] ASSERT PASS: saved faction cooldown
+[Honor.Tests] ASSERT PASS: saved Society record
+[Honor.Tests] ASSERT PASS: saved active oath
+[Honor.Tests] ASSERT PASS: saved delegation duel
+[Honor.Tests] ASSERT PASS: real representative combat resolved quest
+[Honor.Tests] ASSERT PASS: both fighters stabilized
+[Honor.Tests] ASSERT PASS: quest ended
+[Honor.Tests] ASSERT PASS: faction goodwill result
+[Honor.Tests] ASSERT PASS: silver reward spawned
+[Honor.Tests] ASSERT PASS: reward idempotence
+[Honor.Tests] PASS: series gameplay and persistence
+
+=== Installed Core only, no DLC ===
+[Honor.Tests] ASSERT PASS: Harmony ready
+[Honor.Tests] ASSERT PASS: real insult succeeds
+[Honor.Tests] ASSERT PASS: insult direction
+[Honor.Tests] ASSERT PASS: no parallel social fight
+[Honor.Tests] ASSERT PASS: duel stages immediately in prepared arena:
+[Honor.Tests] ASSERT PASS: armor removed A
+[Honor.Tests] ASSERT PASS: armor removed B
+[Honor.Tests] ASSERT PASS: ordinary clothing retained
+[Honor.Tests] ASSERT PASS: winner and honor applied
+[Honor.Tests] ASSERT PASS: survival / death rule
+[Honor.Tests] ASSERT PASS: immediate tending
+[Honor.Tests] ASSERT PASS: combat jobs ended
+[Honor.Tests] ASSERT PASS: armor restored to survivor
+[Honor.Tests] ASSERT PASS: idempotent result
+[Honor.Tests] PASS: real insult -> gathering -> combat -> FirstBlood -> tending -> honor; save requested.

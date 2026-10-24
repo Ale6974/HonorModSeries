@@ -1,0 +1,30 @@
+<ModMetaData>
+  <name>Honor.Society</name>
+  <author>Honor Mod Series</author>
+  <packageId>honor.series.society</packageId>
+  <modVersion>0.2.0</modVersion>
+  <supportedVersions>
+    <li>1.7</li>
+  </supportedVersions>
+  <modDependencies>
+    <li>
+      <packageId>brrainz.harmony</packageId>
+      <displayName>Harmony 3</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/2009463077</steamWorkshopUrl>
+    </li>
+    <li>
+      <packageId>honor.series.core</packageId>
+      <displayName>Honor.Core 0.2.0+</displayName>
+      <steamWorkshopUrl>steam://url/CommunityFilePage/3825494597</steamWorkshopUrl>
+    </li>
+  </modDependencies>
+  <loadAfter>
+    <li>brrainz.harmony</li>
+    <li>honor.series.core</li>
+    <li>Ludeon.RimWorld.Royalty</li>
+  </loadAfter>
+  <description>Honor.SocietyApologies before staging, witness social memories, one-day colony rumors, blood-family honor and repeated-insult rivals. The offender may offer; only the victim may accept. Both need to be awake and within 12 cells. Adds a 600-tick preparation window. Requires Core 0.2.0+ and Harmony 3; NO DLC required.
+한국어: 사과 제안·당사자 수락·목격·하루 뒤 정착지 소문·혈연 명예·반복 모욕 숙적. 결투 준비 전 600틱 여유가 있습니다. Core 0.2.0 이상과 Harmony 필수, DLC 필수 아님.
+Source: https://github.com/Ale6974/HonorModSeries
+Collection: https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644</description>
+</ModMetaData>

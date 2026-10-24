@@ -1,0 +1,5 @@
+<Defs>
+<JobDef><defName>HonorOaths_Swear</defName><driverClass>Honor.Oaths.JobDriver_SwearOath</driverClass><reportString>swearing a public oath.</reportString><casualInterruptible>false</casualInterruptible></JobDef>
+<ThoughtDef><defName>HonorOaths_Fulfilled</defName><thoughtClass>Thought_Memory</thoughtClass><durationDays>5</durationDays><stackLimit>1</stackLimit><stages><li><label>fulfilled an oath</label><description>I kept my word before witnesses.</description><baseMoodEffect>5</baseMoodEffect></li></stages></ThoughtDef>
+<ThoughtDef><defName>HonorOaths_Broken</defName><thoughtClass>Thought_Memory</thoughtClass><durationDays>5</durationDays><stackLimit>1</stackLimit><stages><li><label>broke an oath</label><description>I failed to keep my sworn word.</description><baseMoodEffect>-8</baseMoodEffect></li></stages></ThoughtDef>
+</Defs>

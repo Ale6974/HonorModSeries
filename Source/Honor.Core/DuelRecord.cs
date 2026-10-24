@@ -8,6 +8,9 @@ public sealed class DuelRecord : IExposable
 {
     public int Id, CreatedTick, StartedTick, EndedTick;
     public Pawn Challenger, Offender, Winner;
+    public Pawn PrincipalChallenger, PrincipalOffender;
+    public Pawn Beneficiary(Pawn combatant) => combatant == Challenger ? PrincipalChallenger ?? Challenger : PrincipalOffender ?? Offender;
+    public bool Involves(Pawn p) => Contains(p) || p != null && (p == PrincipalChallenger || p == PrincipalOffender);
     public ThingWithComps WeaponLeft, WeaponRight;
     public DuelPhase Phase;
     public DuelMode Mode;
@@ -28,6 +31,8 @@ public sealed class DuelRecord : IExposable
         Scribe_References.Look(ref Challenger, "challenger");
         Scribe_References.Look(ref Offender, "offender");
         Scribe_References.Look(ref Winner, "winner");
+        Scribe_References.Look(ref PrincipalChallenger, "principalChallenger");
+        Scribe_References.Look(ref PrincipalOffender, "principalOffender");
         Scribe_References.Look(ref WeaponLeft, "weaponLeft");
         Scribe_References.Look(ref WeaponRight, "weaponRight");
         Scribe_Values.Look(ref Phase, "phase");

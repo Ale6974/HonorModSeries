@@ -22,17 +22,18 @@ public sealed class DuelMapComponent : MapComponent
     {
         var s = HonorMod.Settings;
         return HonorMod.PatchesReady && p is { Spawned: true, Dead: false } && p.RaceProps.Humanlike &&
-            (p.Faction == Faction.OfPlayer || p.IsPrisonerOfColony) &&
+            (p.Faction == Faction.OfPlayer || p.IsPrisonerOfColony || HonorApi.AdditionalParticipantValidators.Any(v => v(p))) &&
             !p.WorkTagIsDisabled(WorkTags.Violent) && HonorRules.Eligible(p.ageTracker.AgeBiologicalYears >= 18,
             p.IsSlave, p.IsPrisoner, s.AllowMinors, s.AllowSlaves, s.AllowPrisoners);
     }
     public bool CanRegister(Pawn challenger, Pawn offender) => challenger != offender && Eligible(challenger) &&
         Eligible(offender) && challenger.Map == offender.Map && !challenger.HostileTo(offender) &&
-        !Duels.Any(d => (d.Active || d.Phase == DuelPhase.Pending) && (d.Contains(challenger) || d.Contains(offender)));
+        !Duels.Any(d => (d.Active || d.Phase == DuelPhase.Pending) && (d.Involves(challenger) || d.Involves(offender)));
 
     public void RegisterInsult(Pawn offender, Pawn recipient)
     {
         HonorApi.Change(recipient, -.04f, "insult");
+        HonorApi.NotifyInsult(offender, recipient);
         if (!CanRegister(recipient, offender)) return;
         var d = new DuelRecord { Id = nextId++, Challenger = recipient, Offender = offender,
             CreatedTick = Find.TickManager.TicksGame, Mode = ResolveMode(recipient), Phase = DuelPhase.Pending };
@@ -48,6 +49,22 @@ public sealed class DuelMapComponent : MapComponent
         return HonorRules.Resolve(ext?.mode, (challenger.Faction?.def.techLevel ?? TechLevel.Industrial) >= TechLevel.Industrial);
     }
     public DuelRecord ActiveFor(Pawn p) => Duels.FirstOrDefault(d => d.Active && d.Contains(p));
+    public bool AcceptApology(DuelRecord d, Pawn victim)
+    {
+        if (d.Phase != DuelPhase.Pending || (d.PrincipalChallenger ?? d.Challenger) != victim) return false;
+        HonorApi.Change(victim, .04f, "apology accepted");
+        Finish(d, null, "apology accepted"); return true;
+    }
+    public bool AssignProxy(DuelRecord d, Pawn principal, Pawn proxy)
+    {
+        if (d.Phase != DuelPhase.Pending || !Eligible(proxy) || proxy.Map != map || d.Involves(proxy) ||
+            Duels.Any(x => x != d && (x.Active || x.Phase == DuelPhase.Pending) && x.Involves(proxy))) return false;
+        if ((d.PrincipalChallenger ?? d.Challenger) == principal)
+        { d.PrincipalChallenger = principal; d.Challenger = proxy; return true; }
+        if ((d.PrincipalOffender ?? d.Offender) == principal)
+        { d.PrincipalOffender = principal; d.Offender = proxy; return true; }
+        return false;
+    }
     public DuelRecord RecentFor(Pawn p) => Duels.LastOrDefault(d => d.Contains(p) &&
         (d.Active || (d.EndedTick > 0 && Find.TickManager.TicksGame - d.EndedTick < 600)));
     public override void MapComponentTick()
@@ -76,6 +93,7 @@ public sealed class DuelMapComponent : MapComponent
             if (d.Challenger == null || d.Offender == null || d.Challenger.Dead || d.Offender.Dead)
             { Finish(d, null, "participant unavailable"); continue; }
             if (!HonorMod.Settings.AutoChallenge || Duels.Any(x => x.Active)) break;
+            if (tick - d.CreatedTick < HonorApi.PendingDelayTicks) continue;
             TryBegin(d);
         }
         // Bound history, retain pending obligations and projectile grace windows.
@@ -184,7 +202,8 @@ public sealed class DuelMapComponent : MapComponent
         if (winner != null && !d.RewardApplied)
         {
             d.RewardApplied = true;
-            HonorApi.Change(winner, .08f, "duel victory"); HonorApi.Change(d.Other(winner), -.04f, "duel defeat");
+            HonorApi.Change(d.Beneficiary(winner), .08f, "duel victory"); HonorApi.Change(d.Beneficiary(d.Other(winner)), -.04f, "duel defeat");
+            if (d.Beneficiary(winner) != winner) HonorApi.Change(winner, .02f, "proxy victory");
             d.Other(winner)?.needs?.mood?.thoughts?.memories?.TryGainMemory(HonorDefOf.Honor_Respected, winner);
         }
         Trace(d, reason);
@@ -200,6 +219,7 @@ public sealed class DuelMapComponent : MapComponent
             p.Position.InHorDistOf(killer.Position, 20) && GenSight.LineOfSight(p.Position, killer.Position, map)))
             witness.needs?.mood?.thoughts?.memories?.TryGainMemory(HonorDefOf.Honor_Dishonorable, killer);
         Trace(d, "dishonorable killing by " + killer.ThingID);
+        HonorApi.NotifyDishonor(d, killer);
     }
     private void EmergencyTend(Pawn patient)
     {

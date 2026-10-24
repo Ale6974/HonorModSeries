@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <HonorOaths_Broken.stages.0.description>맹세한 약속을 지키지 못했다.</HonorOaths_Broken.stages.0.description>
+  <HonorOaths_Broken.stages.0.label>맹세를 어김</HonorOaths_Broken.stages.0.label>
+  <HonorOaths_Fulfilled.stages.0.description>목격자들 앞에서 한 약속을 지켰다.</HonorOaths_Fulfilled.stages.0.description>
+  <HonorOaths_Fulfilled.stages.0.label>맹세를 지킴</HonorOaths_Fulfilled.stages.0.label>
+</LanguageData>

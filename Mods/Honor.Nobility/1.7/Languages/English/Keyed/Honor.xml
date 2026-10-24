@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <HN_Desc>A titled noble may appoint an eligible colonist for a pending duel. The original challenger&apos;s rules still apply; the principal receives the honor result.</HN_Desc>
+  <HN_Failed>This champion cannot join the pending duel.</HN_Failed>
+  <HN_Proxy>Appoint champion</HN_Proxy>
+</LanguageData>

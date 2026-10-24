@@ -1,0 +1,11 @@
+<Project>
+  <PropertyGroup><AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath><OutputPath>../../Mods/$(MSBuildProjectName)/1.7/Assemblies/</OutputPath></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Honor.Core/Honor.Core.csproj"><Private>false</Private></ProjectReference>
+    <ProjectReference Include="../Honor.Rules/Honor.Rules.csproj"><Private>false</Private></ProjectReference>
+    <Reference Include="Assembly-CSharp"><HintPath>$(RimWorldDir)/Assembly-CSharp.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="UnityStubs"><HintPath>$(RimWorldDir)/UnityStubs.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="Waylith"><HintPath>$(RimWorldDir)/Waylith.dll</HintPath><Private>false</Private></Reference>
+    <Reference Include="0Harmony"><HintPath>$(HarmonyDll)</HintPath><Private>false</Private></Reference>
+  </ItemGroup>
+</Project>

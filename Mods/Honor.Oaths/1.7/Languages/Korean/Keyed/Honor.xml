@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LanguageData>
+  <HO_Broken>{0}이(가) 맹세를 어겨 명예를 잃었습니다.</HO_Broken>
+  <HO_Complete>{0}이(가) 맹세를 지켜 맹세 수호자 칭호를 얻었습니다.</HO_Complete>
+  <HO_Desc>짧은 입회 의식을 진행합니다. 5일 안에 정당한 결투에서 승리하거나 5일간 모욕과 불명예를 삼가세요. 맹세는 명예와 기분에 영향을 줍니다. 칭호는 의례적인 호칭입니다.</HO_Desc>
+  <HO_Oath>맹세하기</HO_Oath>
+  <HO_Peace>맹세: 5일간 평화 유지</HO_Peace>
+  <HO_Status>맹세가 진행 중입니다. 남은 기간: {0}일.</HO_Status>
+  <HO_Sworn>{0}이(가) 5일간의 공개 맹세를 했습니다.</HO_Sworn>
+  <HO_Title>맹세 수호자: 맹세하기</HO_Title>
+  <HO_Win>맹세: 5일 안에 정당한 결투 승리</HO_Win>
+  <HO_Witnesses>의식에는 시야가 트인 10칸 이내의 깨어 있는 정착민 두 명이 필요합니다. 맹세자는 의식이 있고 징집되지 않았으며 진행 중인 맹세가 없어야 합니다.</HO_Witnesses>
+</LanguageData>

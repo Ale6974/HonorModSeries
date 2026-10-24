@@ -1,25 +1,36 @@
-# GitHub 및 Steam 게시
+# 게시 상태와 절차 — 0.2.0
 
-사용자가 2026-10-24에 승인한 게시 위치는 공개 GitHub `Ale6974/HonorModSeries`, Steam은 **비공개 시험 게시**입니다. 이 승인으로 Steam 공개 배포까지 허용한 것은 아닙니다.
+2026-10-24 사용자가 Core/네 부속 모드의 공개 게시와 공개 모음집을 승인했습니다. 각 모드는 공개 업로드했고 비로그인 페이지 접근도 확인했습니다. **모음집은 API의 Public 설정과 6개 항목 등록까지 완료했지만 Steam 웹의 마지막 ‘공개’ 단계가 남아 있습니다.** 사용자는 외출 중이라 이 버튼을 나중에 직접 누르겠다고 답했습니다. 모음집 완료 전에는 일반 사용자에게 공개된 모음집이라고 안내하지 마세요.
+
+| 항목 | 링크 | 상태 |
+|---|---|---|
+| Core | https://steamcommunity.com/sharedfiles/filedetails/?id=3825494597 | 공개, Harmony 필수 |
+| Society | https://steamcommunity.com/sharedfiles/filedetails/?id=3825925256 | 공개, Core/Harmony 필수 |
+| Nobility | https://steamcommunity.com/sharedfiles/filedetails/?id=3825925320 | 공개, Core/Harmony/Royalty 필수 |
+| Diplomacy | https://steamcommunity.com/sharedfiles/filedetails/?id=3825925370 | 공개, Core/Harmony 필수 |
+| Oaths | https://steamcommunity.com/sharedfiles/filedetails/?id=3825925424 | 공개, Core/Harmony 필수 |
+| 추천 모음집 | https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644 | 6개 등록, 마지막 공개 버튼 대기 |
 
 ## GitHub
 
-검증한 소스·번역·개발 문서·테스트를 https://github.com/Ale6974/HonorModSeries 에 게시합니다. 게임·Harmony·Steamworks DLL, 실제 개인 모드 설정, 세이브, 인증정보, 전체 엔진 로그는 게시하지 않습니다. 검사 로그에는 필요한 Honor 메시지만 남깁니다. 게임 DLL이 필요 없는 규칙 테스트는 독립 실행할 수 있고, 전체 빌드는 사용자 소유 게임 설치를 참조해야 합니다.
+검증 소스·번역·개발 문서·테스트·게시 ID는 https://github.com/Ale6974/HonorModSeries 에 게시합니다. 게임/Harmony/Steamworks DLL, 실제 개인 모드 설정, 세이브, 인증정보, 전체 엔진 로그, 디버그 심볼은 게시하지 않습니다. 로컬 Git Credential Manager 인증을 사용하며 비밀값을 출력하지 않습니다.
 
-로컬 Git Credential Manager의 인증으로 원래 커밋 기록을 보존해 게시합니다. 이 환경의 연결 앱은 파일 쓰기를 403으로 거부하므로 업로드에는 로컬 Git을 사용합니다. 인증값을 채팅이나 저장소에 복사하지 않습니다.
+## Steam 도구
 
-## Steam
-
-`tools/SteamWorkshopUploader`는 설치된 게임의 Steamworks.NET DLL과 `steam_api64.dll`을 참조하는 로컬 전용 도구입니다. 소스만 GitHub에 게시하며 참조한 DLL은 배포하지 않습니다. 사용자의 로그인된 Steam 데스크톱 세션에서 RimWorld 소유권을 확인합니다. 비밀번호·API 키 입력은 받지 않습니다.
+`tools/SteamWorkshopUploader`는 사용자 소유 게임의 Steamworks.NET / steam_api64.dll과 로그인된 데스크톱 Steam 세션을 사용합니다. DLL은 도구의 무시된 빌드 폴더에만 참조하며 모드/저장소에 포함하지 않습니다. 공개 실행은 사용자의 명시적 공개 승인에 근거합니다.
 
 ```powershell
-dotnet run --project tools/SteamWorkshopUploader -c Release -- status 'F:/SteamLibrary/steamapps/common/RimWorld'
-dotnet run --project tools/SteamWorkshopUploader -c Release -- publish-private 'F:/SteamLibrary/steamapps/common/RimWorld' 'F:/SteamLibrary/steamapps/common/RimWorld/mods/Honor.Core' '.local/steam-workshop.json' 'release/steam-description.txt'
-dotnet run --project tools/SteamWorkshopUploader -c Release -- verify 'F:/SteamLibrary/steamapps/common/RimWorld' '.local/steam-workshop.json'
+# 먼저 게임 경로를 GamePaths.props에 설정하고 Build.ps1 실행
+# 아래 'GAME', 'MOD', 'STATE', 'DESCRIPTION'은 해당 경로로 대체
+ dotnet run --project tools/SteamWorkshopUploader -c Release -- status GAME
+ dotnet run --project tools/SteamWorkshopUploader -c Release -- publish-public GAME MOD STATE DESCRIPTION
+ dotnet run --project tools/SteamWorkshopUploader -c Release -- require GAME PARENT_ID CHILD_ID
+ dotnet run --project tools/SteamWorkshopUploader -c Release -- require-app GAME ITEM_ID DLC_APP_ID
+ dotnet run --project tools/SteamWorkshopUploader -c Release -- verify-series GAME release/workshop-items.json
 ```
 
-최초 생성 직후 ID를 `.local/steam-workshop.json`에 저장해 재시도 시 같은 항목을 갱신합니다. 업로드 전 `Private`를 명시하고, 업로드 후 Steam에서 읽은 앱·소유자·공개 범위를 확인합니다. 기존 항목이 공개 상태이면 이 시험 도구는 변경을 거절합니다. 도구에는 공개 게시 명령이 없습니다.
+CreateItem 직후 ID를 무시된 `.local/steam-*.json`에 저장합니다. 모드는 About/PublishedFileId.txt에서도 복구하므로 재시도에 중복 항목을 만들지 않습니다. collection 명령은 preview 폴더, 상태 파일과 설명 파일을 받습니다. 모음집은 별도로 Steam 웹의 **공개** 버튼을 눌러야 합니다. API의 Public 값만으로 웹 게시 완료를 판단하지 마세요. 마지막 단계 뒤 비로그인 페이지에서 모음집 제목과 6개 항목이 보이는지 확인하세요.
 
-비공개 시험 항목: https://steamcommunity.com/sharedfiles/filedetails/?id=3825494597 . 첫 업로드에서 Steam API로 앱 294100, 현재 로그인 사용자의 소유, 공개 범위 `Private`, 파일 크기 81,814바이트를 확인했습니다. 첫 게시에서 새 약관 동의는 요구되지 않았습니다. 비공개 항목은 게시 계정으로 로그인해야 볼 수 있습니다. ID는 `About/PublishedFileId.txt`에도 기록하며, `.local` 상태 파일이 없어져도 기존 ID를 우선 사용합니다.
+필수 항목은 AddDependency, Nobility의 Royalty는 AddAppDependency(1149640)로 등록했습니다. verify-series는 release/workshop-items.json과 실제 공개 범위·소유권·금지 여부·children·DLC 목록을 비교합니다. API 읽기 검증은 모두 통과했지만 모음집 웹 워크플로 완료를 대신하지 않습니다.
 
-새 Steam 약관 동의가 필요하면 도구는 이를 알리고 멈춥니다. 사용자가 직접 동의한 뒤 저장된 ID로 재실행합니다. 업로드 설명은 `release/steam-description.txt`의 영어·한국어 문구를 사용합니다. 공개 출시 전에는 현재 MVP 제한, 호환성, 미구현 기능, 미리보기·스크린샷을 다시 검토합니다.
+새 법적 약관 동의가 요구되면 도구가 멈추며 사용자가 직접 처리합니다. 이번 업로드에서는 새 동의가 요구되지 않았습니다. 미리보기는 tools/New-WorkshopPreview.ps1로 만든 자체 타이포그래피이며 외부 게임 이미지나 제삼자 DLL을 재배포하지 않습니다. 버전/검증/미구현 범위는 README·STATUS·TESTING 및 각 영어/한국어 게시 설명에 명시합니다.

@@ -1,0 +1,8 @@
+[
+  {"Name":"Honor.Core","Id":3825494597,"Dependencies":[2009463077],"AppDependencies":[]},
+  {"Name":"Honor.Society","Id":3825925256,"Dependencies":[2009463077,3825494597],"AppDependencies":[]},
+  {"Name":"Honor.Nobility","Id":3825925320,"Dependencies":[2009463077,3825494597],"AppDependencies":[1149640]},
+  {"Name":"Honor.Diplomacy","Id":3825925370,"Dependencies":[2009463077,3825494597],"AppDependencies":[]},
+  {"Name":"Honor.Oaths","Id":3825925424,"Dependencies":[2009463077,3825494597],"AppDependencies":[]},
+  {"Name":"Honor Mod Series collection","Id":3825922644,"Dependencies":[2009463077,3825494597,3825925256,3825925320,3825925370,3825925424],"AppDependencies":[]}
+]
