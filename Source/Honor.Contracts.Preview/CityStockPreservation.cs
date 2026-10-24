@@ -22,12 +22,20 @@ internal static class CityStockPreservation
         if (stock != null)
             foreach (var thing in stock)
             {
-                if (thing == null || thing.Destroyed || thing.def.category != ThingCategory.Item || thing is MinifiedThing ||
-                    thing is Corpse || thing is IThingHolder || thing is ThingWithComps c && c.AllComps.Any(comp => comp is IThingHolder)) return null;
+                if (StockExclusion(thing) != null) return null;
                 goods.Add(new(thing.GetUniqueLoadID(), thing.def.defName, thing.Stuff?.defName, thing.stackCount, thing.HitPoints,
                     thing.TryGetQuality(out var quality) ? (int)quality : null));
             }
         return CityStockProof.Capture(city.EverVisited, stock != null, city.trader.NextRestockTick, goods);
+    }
+    // Shared by the read-only audit and execution guard, without generating or enumerating nested stock.
+    internal static string StockExclusion(Thing thing)
+    {
+        if (thing == null || thing.Destroyed) return "CA_Invalid";
+        if (thing is Pawn pawn) return pawn.RaceProps.Humanlike ? "CA_People" : "CA_Animals";
+        if (thing is Corpse) return "CA_Corpses";
+        if (thing is MinifiedThing || thing is IThingHolder || thing is ThingWithComps c && c.AllComps.Any(comp => comp is IThingHolder)) return "CA_Containers";
+        return thing.def.category == ThingCategory.Item ? null : "CA_Other";
     }
     internal static void InvalidateMaterial(Settlement city)
     {

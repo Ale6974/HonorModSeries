@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 저장 주민의 세력 변경 부작용과 읽기 전용 점검 (0.3.8)
+
+설치 Version.txt 1.7.4985 rev1269, runtimeconfig 10.0.13-waylithclr.dev/net10.0, Harmony 3.0.0.0-rc.3+3c0e32cd3fd20e4ae27c47cb8c888844766f9f1a를 재확인했다. Assembly-CSharp의 Verse.Pawn을 다시 조사했다. SetFaction(Faction,Pawn)는 guest.SetGuestStatus(null), 지도 등록/예약/Lord 변경, 지도자 상실 처리, health.surgeryBills.Clear, playerSettings.ResetMedicalCare, ClearMind_NewTemp, needs/relations/Ideo 알림 등을 호출한다. NPC 비플레이어 간 변경도 주민의 모든 상태를 그대로 보존하는 경로라고 가정할 수 없다. 이번에는 이 메서드나 private faction 필드를 쓰는 우회를 추가하지 않는다.
+
+Settlement.ExposeData는 previouslyGeneratedInhabitants를 참조로 저장하며 Notify_MyMapRemoved는 destroyed/non-world-pawn 참조를 제거한다. 이 목록 자체가 현재 주민의 소속 이전 권한을 증명하지는 않는다. 점검은 기존 Settlement/Pawn 참조, Faction, Spawned, holdingOwner, IsWorldPawn, IsPrisoner/IsSlave, PawnUtility.IsFactionLeader와 현재 재고 보관자를 읽는다. 실제 주민 재등장·다른 곳의 참조·정신/예약 상태·UI 렌더링·저장/복구는 실행 검증하지 않았다.
+
 ## 방문 도시의 일반 물품 보존 (0.3.7, 코드/빌드만)
 
 2026-10-25에 설치 Version.txt 1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev, Harmony 3.0.0.0-rc.3+3c0e32cd3fd20e4ae27c47cb8c888844766f9f1a를 재확인하고 Assembly-CSharp의 Settlement와 Settlement_TraderTracker를 다시 조사했다. GetDirectlyHeldThings()는 stock 필드를 그대로 반환하며 재생성하지 않는다. StockListForReading은 null/빈 재고에서 RegenerateStock을 호출하므로 이번 검사에서 사용하지 않는다. EverVisited는 everGeneratedStock, NextRestockTick은 보관자/생성 이력/마지막 생성 시각에 따른 조회다. TraderKind는 현재 settlement.Faction.def.baseTraderKinds에서 선택하므로 별도 캐시 초기화를 추측해 추가하지 않는다.

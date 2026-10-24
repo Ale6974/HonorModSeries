@@ -272,6 +272,7 @@ public sealed class PlayerAllegianceWindow : Window
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 12000));
         list.Label("PA_Warning".Translate()); list.Label("PS_Warning".Translate());
         list.Label("AD_Warning".Translate());
+        if (list.ButtonText("CA_OpenAll".Translate())) territories.OpenPreservationAudit();
         if (administration.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else if (!transition.BlocksChanges && administration.OwnedFaction == null && ledger.State.Mode == PlayerAllegianceMode.Independent)
         { if (list.ButtonText("AD_Create".Translate())) administration.CreateOrResume(); }

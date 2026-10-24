@@ -166,4 +166,39 @@
   <PS_DebtsRetained>Old contracts, unpaid bills and receipts remain in their ledgers. Union return or a new liege does not forgive debt. Union levies and unilateral independence are not implemented.</PS_DebtsRetained>
   <PS_Rejected>Political review unavailable. Check actual mutual release/new contract, union notice, live destination consent, quest/goodwill limits, pending goods/city transfers, unloaded towns without saved inhabitants, preserved ordinary stock and cumulative source bases. A future hostile relationship with a follower's source blocks this preview's peaceful move. An existing union is required for return.</PS_Rejected>
   <PS_Incomplete>Political transition is incomplete or the review changed. Verified stages and cities are retained. Check pending ownership, then review/resume here. If allegiance never changed and the city journal is unchanged, cancel preparation instead. No automatic rollback or restart was performed.</PS_Incomplete>
+  <CA_Open>Inspect this town's residents and stock</CA_Open>
+  <CA_OpenAll>Choose a vassal town to inspect</CA_OpenAll>
+  <CA_Refresh>Refresh observations</CA_Refresh>
+  <CA_Note>READ-ONLY INSPECTION. No ownership, pawn status, inventory, contract or saved journal is changed. This report does not approve a move or recover an interrupted one. Saved residents remain unsupported: the native pawn faction API also resets guest status, surgery bills, medical settings and mental/job state. Stock is read without generating or restocking it. Counts refer to saved references or stock entries, not stack units. Flags may overlap. Inspect again after changes; actual transfer review still applies all contract, destination, diplomacy and resource checks. Gameplay validation is deferred.</CA_Note>
+  <CA_Missing>This town no longer exists or its saved reference is unavailable.</CA_Missing>
+  <CA_City>Town: {0} — current faction: {1}</CA_City>
+  <CA_MapLoaded>A map is loaded. Ownership migration is blocked.</CA_MapLoaded>
+  <CA_MapUnloaded>No map is currently loaded. This alone does not authorize migration.</CA_MapUnloaded>
+  <CA_SourceBases>Current source faction settlement count: {0}. Real sources must retain another base; only the verified player administration may become empty.</CA_SourceBases>
+  <CA_Custom>Unknown settlement or trader type/reference. Stock inspection and migration are not supported.</CA_Custom>
+  <CA_Stock>Existing stock entries: {0}. Previously generated stock: {1}.</CA_Stock>
+  <CA_NoStock>No current stock container. Inspection has not generated replacement goods.</CA_NoStock>
+  <CA_Yes>yes</CA_Yes>
+  <CA_No>no</CA_No>
+  <CA_Excluded>{0}: {1}</CA_Excluded>
+  <CA_Invalid>Missing or destroyed reference</CA_Invalid>
+  <CA_People>People in trade stock</CA_People>
+  <CA_Animals>Animals or other pawns in trade stock</CA_Animals>
+  <CA_Corpses>Corpses in trade stock</CA_Corpses>
+  <CA_Containers>Minified things or nested stock holders</CA_Containers>
+  <CA_Other>Other unsupported stock</CA_Other>
+  <CA_RosterMissing>The saved resident list is unavailable. Migration remains blocked.</CA_RosterMissing>
+  <CA_Roster>Saved resident references: {0}.</CA_Roster>
+  <CA_ResidentsBlocked>These residents have NOT been transferred. A resident-preserving execution and recovery path is still required.</CA_ResidentsBlocked>
+  <CA_Duplicate>Repeated resident reference</CA_Duplicate>
+  <CA_Dead>Dead or destroyed resident</CA_Dead>
+  <CA_Elsewhere>Spawned, held elsewhere or absent from world pawns</CA_Elsewhere>
+  <CA_Player>Player pawn reference</CA_Player>
+  <CA_Foreign>Different or missing faction</CA_Foreign>
+  <CA_Leader>Faction leader</CA_Leader>
+  <CA_Captive>Prisoner or slave</CA_Captive>
+  <CA_Resident>{0} — faction: {1}; {2}</CA_Resident>
+  <CA_Unverified>no listed flag; preservation and transfer authority remain unverified</CA_Unverified>
+  <CA_Truncated>{0} further resident references omitted from the name list; all references are included in the counts.</CA_Truncated>
+  <CA_Empty>No active direct NPC vassal towns are registered.</CA_Empty>
 </LanguageData>

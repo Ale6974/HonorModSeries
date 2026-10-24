@@ -165,6 +165,26 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         }
     }
     public string FollowerLabel(string charterId) => Charters.Label(Charters.Book.Charter(charterId).Terms.Subject);
+    public void OpenPreservationAudit(string charterId = null)
+    {
+        if (Charters.RestoreFailed) { Reject(); return; }
+        try
+        {
+            if (charterId != null)
+            {
+                var binding = Charters.Binding(Charters.Book.Charter(charterId).Terms.Subject);
+                if (binding.PlayerGroup || binding.FactionGroup) throw new ArgumentException("No single NPC subject.");
+                Find.WindowStack.Add(new CityPreservationAuditWindow(binding.Settlement));
+                return;
+            }
+            var options = Charters.Book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active &&
+                Charters.Book.Entity(c.Terms.Liege).Player && !Charters.Book.Entity(c.Terms.Subject).Player)
+                .Select(c => new FloatMenuOption(FollowerLabel(c.Id), () => OpenPreservationAudit(c.Id))).ToList();
+            if (options.Count == 0) { Messages.Message("CA_Empty".Translate(), MessageTypeDefOf.NeutralEvent); return; }
+            Find.WindowStack.Add(new FloatMenu(options));
+        }
+        catch (ArgumentException) { Reject(); }
+    }
     public void ApplyFollowers(FollowerTransferPlan reviewed)
     {
         if (Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) { Reject(); return; }
@@ -223,6 +243,7 @@ public sealed class FollowerTransfersWindow : Window
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 12000));
         list.Label("FB_Warning".Translate());
+        if (list.ButtonText("CA_OpenAll".Translate())) ledger.OpenPreservationAudit();
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
         {
@@ -264,6 +285,7 @@ public sealed class TerritoryAdministrationWindow : Window
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 12000));
         list.Label("CT_Warning".Translate());
+        if (list.ButtonText("CA_Open".Translate())) ledger.OpenPreservationAudit(charter);
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
         {
