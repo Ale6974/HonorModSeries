@@ -1,0 +1,36 @@
+<LanguageData>
+  <HCP_Open>Contracts preview</HCP_Open>
+  <HCP_Warning>DEVELOPMENT MODEL — fictional domains and simulated receipts. No real items, native factions or combat are changed. Gameplay validation is deferred. Capture outcomes do not yet transfer territory. This window pauses the game.</HCP_Warning>
+  <HCP_Rejected>Model action unavailable: check the bond, deadline, available troops and existing obligations.</HCP_Rejected>
+  <HCP_RestoreFailed>Model restore failed. The original snapshot is preserved; this preview is disabled. See the log.</HCP_RestoreFailed>
+  <HCP_Interval>World turn interval: {0} days (fixed for this preview save).</HCP_Interval>
+  <HCP_Create>Create isolated development model</HCP_Create>
+  <HCP_Time>Model day {0} · turn interval {1} days</HCP_Time>
+  <HCP_FollowTime>Advance the model with game time while this window is closed</HCP_FollowTime>
+  <HCP_Day>Advance model by one day</HCP_Day>
+  <HCP_Domain>{0} · political group: {1} · available/total troops {2}/{3} · honor {4} · prosperity {5}</HCP_Domain>
+  <HCP_Bind>Agree model charter: town becomes player vassal</HCP_Bind>
+  <HCP_Bond>Fixed tribute value {0}; subject-delivery receipt {1} after transport allowance · trust {2}. Due every 5 days, grace 1 day. Protection requires a troop response by the attack deadline.</HCP_Bond>
+  <HCP_Bill>Due day {0}: delivery value {1} · {2}</HCP_Bill>
+  <HCP_Pay>Record fictional delivery (no real goods)</HCP_Pay>
+  <HCP_Notice>Town delivers cure notice: 3 days to address abandoned protection</HCP_Notice>
+  <HCP_CureUntil>Cure deadline: model day {0}.</HCP_CureUntil>
+  <HCP_Remedy>Record a mutually accepted model remedy (no real compensation)</HCP_Remedy>
+  <HCP_Secede>Town exercises justified independence</HCP_Secede>
+  <HCP_Release>Record mutual release; town joins union</HCP_Release>
+  <HCP_Attack>Open fictional attack on town: 50 troops, 3-day response</HCP_Attack>
+  <HCP_AttackInfo>Attack strength {0} · relief troops {1} · response deadline day {2}</HCP_AttackInfo>
+  <HCP_Relief>Deploy 50 model player troops to relief</HCP_Relief>
+  <HCP_Result>Recorded model outcome: {0}</HCP_Result>
+  <HCP_Relieved>Attack repelled</HCP_Relieved>
+  <HCP_Captured>Town defeated (ownership transfer pending implementation)</HCP_Captured>
+  <HCP_Grace>Grace period</HCP_Grace>
+  <HCP_Overdue>Overdue; attribution unresolved</HCP_Overdue>
+  <HCP_Upcoming>Upcoming</HCP_Upcoming>
+  <HCP_Paid>Paid</HCP_Paid>
+  <HCP_Union>Free City Union</HCP_Union>
+  <HCP_Name_player>Model player</HCP_Name_player>
+  <HCP_Name_town>Model town</HCP_Name_town>
+  <HCP_Name_enemy>Model attacker</HCP_Name_enemy>
+  <HCP_Name_rival>Model rival</HCP_Name_rival>
+</LanguageData>

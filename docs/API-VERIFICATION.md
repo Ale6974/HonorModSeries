@@ -1,5 +1,20 @@
 # 1.7 API·런타임 검증 기록
 
+## Contracts 개발 미리보기 바인딩 (2026-10-24, 코드 검증만)
+
+설치 Version.txt 1.7.4985 rev1269 및 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. Harmony 제품 버전은 3.0.0.0-rc.3. GameComponent의 GameComponentTick/ExposeData를 설치 DLL에서 재조회하고, 기존 검증한 Settlement.GetGizmos 패턴과 Window/Listing_Standard/Widgets/Scribe_Values API를 사용해 별도 Preview를 컴파일했다. 실제 게임 실행·Scribe 게임 저장 복구·창 표시·Harmony 패치 성공 증거는 아니다.
+
+참조 DLL SHA-256(파일 자체는 저장소에 포함하지 않음):
+
+| DLL | SHA-256 |
+|---|---|
+| Assembly-CSharp.dll | 0BE7A7EA4B3111D4430F45B36C234A5E43287880B0514B23915F2EF9A0629E16 |
+| UnityStubs.dll | EA962C9274514E0633D4E4C5471A1A98AFF5FC52AF20CA2E506C16DCD8BE6F81 |
+| Waylith.dll | C69C2A2828C5594B58C9B28F0D19D5B25FF5CB16CEB46DC64F34DD59B7AFFC26 |
+| 0Harmony.dll | C8EF7856B2BE3CF24B345C9B5C2F197F68FCF92649635064FCE7B3CCC8F77CB0 |
+
+새 정치 모델은 게임 Faction을 변경하지 않고, 모델의 공격 결과를 실제 점령 증거로 취급하지 않는다. 상세 범위는 CONTRACTS-PREVIEW.md를 참조한다. 최신 사용자 지시에 따라 게임 실행 검증은 보류했다.
+
 확인일: 2026-10-24 (Asia/Seoul). 추측한 1.6 API를 1.7 사실로 취급하지 않습니다.
 
 ## 1차 출처

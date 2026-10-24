@@ -1,5 +1,7 @@
 # 모듈 구조 — 0.2.1
 
+Contracts 개발 분기: `PoliticalWorld`는 영지/계약의 정치 ID를 native faction ID와 분리한 독립 모델이다. `Honor.Contracts.Preview`는 별도 `TestMods` 출력과 선택형 GameComponent/Window를 소유하며 모델 JSON만 Scribe에 저장한다. Core는 이를 참조하지 않는다. Preview의 가상 사건은 기존 Core Need/우호도·실물·점령 결과에 연결하지 않는다. 초기 Contracts 프로토콜과 새 모델의 통합, 실제 게임 어댑터는 후속 작업이다. 사용자 확정 요구사항은 CONTRACTS-DECISIONS.md를 기준으로 한다.
+
 Core는 다른 부속 모드에 의존하지 않습니다. 부속 모드는 Core/Rules/Harmony API만 참조하며 서로 어셈블리를 참조하지 않습니다. Honor.Rules.dll은 Core에만 포함하고 각 부속 모드에는 자신의 DLL만 배포합니다. Nobility는 Royalty DLC가 필요합니다.
 
 | 모듈 | 소유 데이터와 연결 |

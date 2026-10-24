@@ -1,5 +1,7 @@
 # Honor Mod Series — RimWorld 1.7
 
+Contracts 개발 진행: [확정 요구사항](docs/CONTRACTS-DECISIONS.md) · [선택형 개발 미리보기와 설치](docs/CONTRACTS-PREVIEW.md). 계약 → 공납 → 공격/구원 → 시정/이탈을 연결한 가상 모델입니다. 기존 공개 0.2.1 모드의 기능이나 실제 게임 세계의 봉건계약 구현으로 보지 마세요. 신규 개발은 코드/빌드 검증만 진행하며 직접 플레이 검증은 보류 중입니다.
+
 **0.2.1 공개 실험판.** 실제 RimWorld **1.7.4985 rev1269 unstable / Waylith** 설치 DLL로 빌드하고 별도 저장 폴더에서 엔진 통합 검사를 수행합니다. 초기 명세 전체의 완성판은 아닙니다.
 
 [추천 모음집 — 마지막 공개 단계 대기](https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644) · [공개 GitHub 소스](https://github.com/Ale6974/HonorModSeries) · [창작마당 Core](https://steamcommunity.com/sharedfiles/filedetails/?id=3825494597) · [필수 항목 및 권장 구성](docs/DEPENDENCIES.md)

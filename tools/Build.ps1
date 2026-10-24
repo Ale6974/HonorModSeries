@@ -10,6 +10,8 @@ try {
     if ($LASTEXITCODE) { throw 'Rule tests failed.' }
     & $DotnetPath run --project Tests/Honor.Contracts.Tests -c Release
     if ($LASTEXITCODE) { throw 'Contract rule tests failed.' }
+    & $DotnetPath build Source/Honor.Contracts.Preview/Honor.Contracts.Preview.csproj -c Release
+    if ($LASTEXITCODE) { throw 'Contracts preview build failed.' }
     & $DotnetPath build Tests/Honor.InGame/Honor.InGame.csproj -c Release
     if ($LASTEXITCODE) { throw 'In-game test build failed.' }
     foreach ($module in 'Society','Nobility','Diplomacy','Oaths') {
@@ -21,7 +23,7 @@ try {
     Get-ChildItem Mods,TestMods -Recurse -Filter *.xml | ForEach-Object {
         [xml](Get-Content -LiteralPath $_.FullName -Raw) | Out-Null
     }
-    foreach ($mod in Get-ChildItem Mods -Directory) {
+    foreach ($mod in @((Get-ChildItem Mods -Directory)) + @(Get-Item TestMods/Honor.Contracts.Preview)) {
     [xml]$english = Get-Content "$($mod.FullName)/1.7/Languages/English/Keyed/Honor.xml" -Raw
     [xml]$korean = Get-Content "$($mod.FullName)/1.7/Languages/Korean/Keyed/Honor.xml" -Raw
     $englishKeys = @($english.LanguageData.ChildNodes | Where-Object NodeType -eq Element | ForEach-Object Name)

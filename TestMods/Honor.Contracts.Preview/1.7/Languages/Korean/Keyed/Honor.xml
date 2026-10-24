@@ -1,0 +1,36 @@
+<LanguageData>
+  <HCP_Open>계약 개발 미리보기</HCP_Open>
+  <HCP_Warning>개발 모델 — 가상 영지와 모의 영수증을 사용합니다. 실제 물품·게임 세력·전투에는 효과가 없으며 플레이 검증은 보류 중입니다. 함락 결과의 영지 이전은 아직 미구현입니다. 이 창은 게임을 일시정지합니다.</HCP_Warning>
+  <HCP_Rejected>현재 모델에서 실행할 수 없습니다. 계약·기한·가용 병력·기존 의무를 확인하세요.</HCP_Rejected>
+  <HCP_RestoreFailed>모델 복원 실패. 원본 저장 내용을 보존하고 미리보기를 중지했습니다. 로그를 확인하세요.</HCP_RestoreFailed>
+  <HCP_Interval>월드 턴 간격: {0}일 (이 미리보기 저장에서는 고정)</HCP_Interval>
+  <HCP_Create>독립된 개발 모델 생성</HCP_Create>
+  <HCP_Time>모델 {0}일 · 턴 간격 {1}일</HCP_Time>
+  <HCP_FollowTime>창이 닫혀 있을 때 게임 시간에 따라 모델 진행</HCP_FollowTime>
+  <HCP_Day>모델 시간 하루 진행</HCP_Day>
+  <HCP_Domain>{0} · 정치 소속: {1} · 가용/전체 병력 {2}/{3} · 명예 {4} · 번영 {5}</HCP_Domain>
+  <HCP_Bind>모의 영지계약 합의: 도시가 플레이어 봉신이 됨</HCP_Bind>
+  <HCP_Bond>고정 공납 가치 {0}, 운송 몫 공제 후 배송 인수 가치 {1} · 신뢰 {2}. 주기 5일·유예 1일. 보호 의무는 공격 대응 기한까지 병력 파견입니다.</HCP_Bond>
+  <HCP_Bill>납기 {0}일: 배송 가치 {1} · {2}</HCP_Bill>
+  <HCP_Pay>가상 배송 인수 기록 (실제 물품 없음)</HCP_Pay>
+  <HCP_Notice>도시의 시정 요구: 보호 방기에 대한 대응 기한 3일</HCP_Notice>
+  <HCP_CureUntil>시정 기한: 모델 {0}일.</HCP_CureUntil>
+  <HCP_Remedy>양측이 수락한 모의 시정 합의 기록 (실제 배상 없음)</HCP_Remedy>
+  <HCP_Secede>도시의 정당한 독립 실행</HCP_Secede>
+  <HCP_Release>합의 해약 기록: 도시의 연합 편입</HCP_Release>
+  <HCP_Attack>도시 대상 가상 공격 생성: 병력 50·대응 기한 3일</HCP_Attack>
+  <HCP_AttackInfo>공격 병력 {0} · 구원 병력 {1} · 대응 기한 {2}일</HCP_AttackInfo>
+  <HCP_Relief>플레이어 모의 병력 50명 구원 파견</HCP_Relief>
+  <HCP_Result>기록한 모델 결과: {0}</HCP_Result>
+  <HCP_Relieved>공격 격퇴</HCP_Relieved>
+  <HCP_Captured>도시 패배 (소속 이전 미구현)</HCP_Captured>
+  <HCP_Grace>납부 유예 중</HCP_Grace>
+  <HCP_Overdue>미납·귀책 미확정</HCP_Overdue>
+  <HCP_Upcoming>납기 전</HCP_Upcoming>
+  <HCP_Paid>납부 완료</HCP_Paid>
+  <HCP_Union>자유도시연합</HCP_Union>
+  <HCP_Name_player>모의 플레이어</HCP_Name_player>
+  <HCP_Name_town>모의 도시</HCP_Name_town>
+  <HCP_Name_enemy>모의 공격 세력</HCP_Name_enemy>
+  <HCP_Name_rival>모의 경쟁 세력</HCP_Name_rival>
+</LanguageData>
