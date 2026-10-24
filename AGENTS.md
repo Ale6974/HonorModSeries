@@ -2,7 +2,8 @@
 
 - Target RimWorld 1.7. Validate the user's actual Version.txt, runtimeconfig and game/Harmony DLLs before changing engine bindings. Record build-specific evidence in docs/API-VERIFICATION.md. Do not assume 1.6 signatures or stable 1.7 support.
 - Keep game DLLs, decompiled game code, local paths/configuration, saves and downloaded tools out of Git and distributions.
-- Honor is a Need. Natural decay stays within the current tier; events can lower it. Reputation uses vanilla social memories/relations, without a separate currency.
+- Personal honor is a Need. Natural decay stays within the current tier; events can lower it. Reputation uses vanilla social memories/relations, without a separate currency.
+- On 2026-10-24 the user additionally requested faction honor, reduced contractual trust when it falls, and accelerated territorial secession. Contracts may own an event-driven faction honor metric and directional contract trust/pressure. These are not spendable currencies and must not replace personal Needs or automatically blame every member. Current implementation is engine-independent rules only; game attribution, routing, persistence, UI and actual secession remain unimplemented.
 - The insult recipient is the challenger. Offenders cannot refuse. Minors, slaves and prisoners are excluded by default; incapacitation postpones staging. Challenger ideology takes precedence.
 - Core must not depend on Society, Nobility, Diplomacy or Oaths. Keep unimplemented features explicit in docs/STATUS.md.
 - Build and rule tests: tools/Build.ps1 with an installed .NET 10 SDK and local GamePaths.props. Test real engine changes with tools/Test-InGame.ps1, one process at a time, in separate save data. Tests must never use the user's real colony or modify ModsConfig.xml. The user-authorized local installer may install and activate the user-requested Honor suite after backing up the configuration and preserving other mod entries/order.
