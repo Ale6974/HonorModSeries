@@ -135,8 +135,9 @@ public sealed class PlayerPoliticsLedger : GameComponent
         else
         {
             var bond = PlayerBond() ?? throw new ArgumentException("No mutually signed player bond.");
-            Charters.Book.ValidateCurrent(bond.Id, Charters.Observe());
             root = Resolve(Charters.Book.RecordedPoliticalOwner(bond.Terms.Subject));
+            var releasedSource = Current.Game.GetComponent<PoliticalTransitionLedger>().ReleasedMigrationSource(root);
+            Charters.Book.ValidateCurrent(bond.Id, Charters.ObserveForMigration(releasedSource));
             command = new(AllegianceAction.BindLiege, Find.TickManager.TicksGame, root?.GetUniqueLoadID(), bond.Id,
                 Consent: true, OldContractReleased: true, UnionDuesSettled: true);
         }
@@ -269,10 +270,11 @@ public sealed class PlayerAllegianceWindow : Window
         var administration = Current.Game.GetComponent<RealmAdministrationLedger>();
         var area = new Rect(0, 0, rect.width, rect.height - 45);
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
-        var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 12000));
-        list.Label("PA_Warning".Translate()); list.Label("PS_Warning".Translate());
+        var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(12000, height + 1000)));
+        list.Label("PA_Warning".Translate()); list.Label("PS_Warning".Translate()); list.Label("WM_Warning".Translate());
         list.Label("AD_Warning".Translate());
         if (list.ButtonText("CA_OpenAll".Translate())) territories.OpenPreservationAudit();
+        if (list.ButtonText("NS_Open".Translate())) Find.WindowStack.Add(new NpcSubchartersWindow());
         if (administration.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else if (!transition.BlocksChanges && administration.OwnedFaction == null && ledger.State.Mode == PlayerAllegianceMode.Independent)
         { if (list.ButtonText("AD_Create".Translate())) administration.CreateOrResume(); }

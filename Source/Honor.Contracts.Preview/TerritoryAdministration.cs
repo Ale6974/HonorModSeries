@@ -59,7 +59,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                 var charter = Charters.Book.Charter(t.Charter); var entity = Charters.Book.Entity(t.Territory);
                 var binding = Charters.Binding(t.Territory); var reference = references.Single(r => r.Id == t.Id);
                 if (entity.Player || binding.PlayerGroup || binding.FactionGroup || entity.NativeOwner != t.BaselineOwner ||
-                    charter.Terms.Subject != t.Territory || !Charters.Book.Entity(charter.Terms.Liege).Player ||
+                    charter.Terms.Subject != t.Territory || !Charters.Book.Entity(charter.Terms.Liege).Player && charter.NpcAuthority == null ||
                     !charter.PlayerSignedTick.HasValue || !charter.NpcSignedTick.HasValue ||
                     Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value) > t.PreparedTick ||
                     binding.Settlement != reference.City || reference.City != null && "territory/" + reference.City.GetUniqueLoadID() != t.Territory ||
@@ -77,17 +77,18 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     internal string OwnerLabel(string id) => Find.FactionManager.AllFactionsListForReading.FirstOrDefault(f => f.GetUniqueLoadID() == id)?.Name
         ?? "CT_Missing".Translate();
     private static Settlement[] Cities() => Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Where(s => !s.Destroyed).ToArray();
-    private static bool Eligible(Faction faction) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
+    private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
         !faction.defeated && faction.HasGoodwill && faction.def.humanlikeFaction && !faction.def.permanentEnemy &&
-        !(faction.def.royalTitleTags?.Count > 0) && !faction.HostileTo(Faction.OfPlayer);
-    private static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target)
+        !(faction.def.royalTitleTags?.Count > 0) && (!faction.HostileTo(Faction.OfPlayer) || faction.GetUniqueLoadID() == releasedSource);
+    private static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null)
     {
         var all = Cities(); bool exists = city != null && all.Contains(city); var owner = exists ? city.Faction : null;
-        string proof = exists ? CityStockPreservation.Capture(city) : null;
+        int format = 0;
+        string proof = exists ? CityStockPreservation.Capture(city, out format) : null;
         return new(territory, owner?.GetUniqueLoadID(), all.Count(s => s.Faction == owner), exists, owner?.IsPlayer == true,
             exists && city.HasMap, !exists || proof == null || city.EverVisited,
-            exists && city.def.canHaveFaction && Eligible(owner), Eligible(target), target?.IsPlayer == true,
-            HasInhabitants: !exists || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count > 0, StockProof: proof);
+            exists && city.def.canHaveFaction && Eligible(owner, releasedSource), Eligible(target), target?.IsPlayer == true,
+            HasInhabitants: !exists || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count > 0, StockProof: proof, StockFormat: format);
     }
     private (RecordedCharter Charter, Settlement City, Faction Target, TerritoryTransferObservation Observation, TerritoryTransferPurpose Purpose) Context(string id, Faction proposed = null)
     {
@@ -95,13 +96,14 @@ public sealed class TerritoryAdministrationLedger : GameComponent
             throw new ArgumentException("Resolve unavailable journals and pending deliveries.");
         var charter = Charters.Book.Charter(id); var binding = Charters.Binding(charter.Terms.Subject);
         if (binding.PlayerGroup || binding.FactionGroup || binding.Settlement == null) throw new ArgumentException("Only single NPC city subjects.");
-        Charters.Book.ValidateCurrent(id, Charters.Observe());
         bool released = charter.Phase == RecordedCharterPhase.Released;
         var union = Current.Game.GetComponent<UnionPoliticsLedger>();
         var target = released ? (!union.RestoreFailed ? union.Union : null) : proposed ?? Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
         if (target == null || !Find.FactionManager.AllFactionsListForReading.Contains(target))
             throw new ArgumentException("Configure a live union or player shared authority first.");
-        var observed = Observe(binding.Settlement, binding.Identity, target);
+        string releasedSource = Current.Game.GetComponent<PoliticalTransitionLedger>().ReleasedMigrationSource(target);
+        Charters.Book.ValidateCurrent(id, Charters.ObserveForMigration(releasedSource));
+        var observed = Observe(binding.Settlement, binding.Identity, target, releasedSource);
         return (charter, binding.Settlement, target, observed, released ? TerritoryTransferPurpose.ReleasedToUnion : TerritoryTransferPurpose.ActiveCharter);
     }
     public TerritoryAdministrationReview Review(string id) => ReviewForTarget(id, null);
@@ -142,8 +144,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     internal FollowerTransferPlan ReviewFollowersFor(Faction target)
     {
         if (RestoreFailed || Charters.RestoreFailed) throw new ArgumentException("Execution or consent journal unavailable.");
-        var entries = Charters.Book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active &&
-            Charters.Book.Entity(c.Terms.Liege).Player && !Charters.Book.Entity(c.Terms.Subject).Player).Select(c => {
+        var entries = Charters.Book.PlayerFollowers().Select(c => {
                 var context = Context(c.Id, target);
                 if (context.Target != target) throw new ArgumentException("Authority changed during review.");
                 return new FollowerCandidate(c.Id, context.Observation);
@@ -177,8 +178,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                 Find.WindowStack.Add(new CityPreservationAuditWindow(binding.Settlement));
                 return;
             }
-            var options = Charters.Book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active &&
-                Charters.Book.Entity(c.Terms.Liege).Player && !Charters.Book.Entity(c.Terms.Subject).Player)
+            var options = Charters.Book.PlayerFollowers()
                 .Select(c => new FloatMenuOption(FollowerLabel(c.Id), () => OpenPreservationAudit(c.Id))).ToList();
             if (options.Count == 0) { Messages.Message("CA_Empty".Translate(), MessageTypeDefOf.NeutralEvent); return; }
             Find.WindowStack.Add(new FloatMenu(options));

@@ -5,6 +5,7 @@ using System.Text.Json;
 namespace Honor.Contracts.Rules;
 
 public sealed record CityStockItem(string Id, string Def, string Stuff, int Count, int HitPoints, int? Quality);
+public sealed record CityTradeAnimal(string Id, string Def, string Faction, string Health, string Gear, string Status);
 
 /// <summary>Owner-independent evidence for ordinary, non-nested goods; never a stock generator.</summary>
 public static class CityStockProof
@@ -23,6 +24,21 @@ public static class CityStockProof
             throw new ArgumentException("Invalid ordinary city stock evidence.");
         var snapshot = new { Version = 1, Visited = visited, ContainerExists = containerExists, NextRestockTick = nextRestockTick,
             Goods = items.OrderBy(i => i.Id, StringComparer.Ordinal).ToArray() };
+        return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(snapshot))));
+    }
+    public static string CaptureAnimals(bool visited, bool containerExists, int nextRestockTick,
+        IEnumerable<CityStockItem> goods, IEnumerable<CityTradeAnimal> animals)
+    {
+        RuntimeCompat.NotNull(goods); RuntimeCompat.NotNull(animals);
+        var ordinary = goods.Take(10001).ToArray(); var pawns = animals.Take(10001).ToArray();
+        static bool Key(string key) => !string.IsNullOrWhiteSpace(key) && key.Length <= 120 && !key.Any(char.IsControl);
+        if (!visited || !containerExists || pawns.Length == 0 || ordinary.Length + pawns.Length > 10000 ||
+            pawns.Any(p => p == null || !Key(p.Id) || !Key(p.Def) || p.Faction != null && !Key(p.Faction) ||
+                !Valid(p.Health) || !Valid(p.Gear) || !Valid(p.Status)) ||
+            ordinary.Select(g => g?.Id).Concat(pawns.Select(p => p.Id)).Distinct(StringComparer.Ordinal).Count() != ordinary.Length + pawns.Length)
+            throw new ArgumentException("Invalid animal stock evidence.");
+        var snapshot = new { Version = 2, Ordinary = Capture(visited, containerExists, nextRestockTick, ordinary),
+            Animals = pawns.OrderBy(p => p.Id, StringComparer.Ordinal).ToArray() };
         return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(snapshot))));
     }
 }

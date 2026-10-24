@@ -22,7 +22,7 @@ public sealed class TerritoryBinding : IExposable
 }
 
 /// <summary>Actual references and bilateral consent. Physical and political execution use separate journals.</summary>
-public sealed class LiveCharterLedger : GameComponent
+public sealed partial class LiveCharterLedger : GameComponent
 {
     private string snapshot;
     private List<TerritoryBinding> bindings = [];
@@ -37,11 +37,13 @@ public sealed class LiveCharterLedger : GameComponent
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) snapshot = Book.Export();
         Scribe_Values.Look(ref snapshot, "honorLiveChartersV1");
         Scribe_Collections.Look(ref bindings, "honorLiveTerritories", LookMode.Deep);
+        ExposeNpcWorld();
         if (Scribe.mode != LoadSaveMode.PostLoadInit) return;
         bindings ??= [];
         try
         {
             if (snapshot != null) Book = CharterBook.Restore(snapshot);
+            ValidateNpcWorld();
             if (bindings.Any(b => b == null || string.IsNullOrWhiteSpace(b.Identity)) ||
                 bindings.GroupBy(b => b.Identity, StringComparer.Ordinal).Any(g => g.Count() != 1) ||
                 Book.Entities.Any(e => bindings.All(b => b.Identity != e.Id)) || bindings.Count != Book.Entities.Count ||
@@ -54,9 +56,11 @@ public sealed class LiveCharterLedger : GameComponent
             Log.Error("[Honor.Contracts.Preview] Live charter restore rejected; original data preserved. " + e.GetType().Name);
         }
     }
-    public TerritoryObservation[] Observe()
+    public TerritoryObservation[] Observe() => ObserveForMigration(null);
+    internal TerritoryObservation[] ObserveForMigration(string releasedSource)
     {
         var settlements = Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Where(s => !s.Destroyed).ToArray();
+        var followers = new HashSet<string>(releasedSource == null ? [] : Book.PlayerFollowers().Select(c => c.Terms.Subject), StringComparer.Ordinal);
         return bindings.Select(b => {
             if (b.PlayerGroup)
             {
@@ -77,7 +81,7 @@ public sealed class LiveCharterLedger : GameComponent
                 b.Identity == "territory/" + settlement.GetUniqueLoadID();
             var owner = alive ? settlement.Faction : null;
             bool eligible = owner != null && owner != Faction.OfPlayer && owner.HasGoodwill && !owner.defeated &&
-                !owner.def.permanentEnemy && !owner.HostileTo(Faction.OfPlayer);
+                !owner.def.permanentEnemy && (!owner.HostileTo(Faction.OfPlayer) || owner.GetUniqueLoadID() == releasedSource && followers.Contains(b.Identity));
             var administration = Current.Game.GetComponent<TerritoryAdministrationLedger>();
             string baseline = Book.Entity(b.Identity).NativeOwner;
             // Only this journal's completed, still-current transfer can account for an owner change.
@@ -152,12 +156,13 @@ public sealed class LiveCharterLedger : GameComponent
             string id = Guid.NewGuid().ToString("N"); long now = Find.TickManager.TicksGame;
             var terms = new RecordedCharterTerms(playerSubject ? npc : player, playerSubject ? player : npc,
                 100, PoliticalWorld.Day * 5, PoliticalWorld.Day, TributeTransport.SubjectDelivery, .1m);
-            Book.Offer(id, terms, now, PoliticalWorld.Day * 3, Observe());
+            var source = playerSubject ? Current.Game.GetComponent<PoliticalTransitionLedger>().ReleasedMigrationSource(settlement.Faction) : null;
+            Book.Offer(id, terms, now, PoliticalWorld.Day * 3, ObserveForMigration(source));
             // Initial transparent policy, pending richer honor/obligation negotiations. No hidden random acceptance.
             int minimum = playerSubject ? 0 : 50;
             if (settlement.Faction.GoodwillWith(Faction.OfPlayer) >= minimum)
             {
-                Book.Sign(id, false, now, Observe());
+                Book.Sign(id, false, now, ObserveForMigration(source));
                 Messages.Message("HCL_NpcAgreed".Translate(), MessageTypeDefOf.NeutralEvent);
             }
             else
@@ -167,11 +172,20 @@ public sealed class LiveCharterLedger : GameComponent
             }
         });
     }
-    public void Accept(string id) => Execute(() => Book.Sign(id, true, Find.TickManager.TicksGame, Observe()));
+    public void Accept(string id) => Execute(() => {
+        var c = Book.Charter(id);
+        string source = Book.Entity(c.Terms.Subject).Player
+            ? Current.Game.GetComponent<PoliticalTransitionLedger>().ReleasedMigrationSource(CounterpartyFaction(id)) : null;
+        Book.Sign(id, true, Find.TickManager.TicksGame, ObserveForMigration(source));
+    });
     public void Decline(string id) => Execute(() => Book.Decline(id, Find.TickManager.TicksGame));
     public void RequestRelease(string id)
     {
         Execute(() => {
+            if (Book.Charter(id).NpcAuthority != null) throw new ArgumentException("NPC subcharters require bilateral current NPC authority.");
+            var release = Book.Charter(id);
+            if (!Book.Entity(release.Terms.Subject).Player && Book.PlayerFollowers().Any(c => Book.IsBelow(c.Terms.Subject, release.Terms.Subject)))
+            { Messages.Message("NS_ReleaseBlocked".Translate(), MessageTypeDefOf.RejectInput); return; }
             if (Current.Game.GetComponent<TributePaymentLedger>().HasPending(id)) throw new ArgumentException("Resolve pending physical delivery before release.");
             var charter = Book.Charter(id);
             string npcId = Book.Entity(charter.Terms.Liege).Player ? charter.Terms.Subject : charter.Terms.Liege;
@@ -202,7 +216,7 @@ public sealed class LiveChartersWindow : Window
         var ledger = Current.Game.GetComponent<LiveCharterLedger>();
         var area = new Rect(0, 0, rect.width, rect.height - 45);
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
-        var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 3000));
+        var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(3000, height + 1000)));
         list.Label("HCL_Warning".Translate()); list.Gap();
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
@@ -215,6 +229,8 @@ public sealed class LiveChartersWindow : Window
                 if (list.ButtonText("HCL_OfferProtection".Translate())) ledger.Request(target, false);
             }
             var observations = ledger.Observe(); long now = Find.TickManager.TicksGame;
+            if (list.ButtonText("NS_Open".Translate())) Find.WindowStack.Add(new NpcSubchartersWindow());
+            if (list.ButtonText("NW_Open".Translate())) Find.WindowStack.Add(new NpcWorldSetupWindow());
             foreach (var entity in ledger.Book.Entities)
                 list.Label("HCL_Territory".Translate(ledger.Label(entity.Id), ledger.PoliticalOwner(entity.Id),
                     ("HCL_" + ledger.Book.Availability(entity.Id, observations)).Translate()));
@@ -225,14 +241,15 @@ public sealed class LiveChartersWindow : Window
                 var phase = ledger.Book.Phase(charter, now);
                 list.Label("HCL_Charter".Translate(ledger.Label(charter.Terms.Liege), ledger.Label(charter.Terms.Subject), ("HCL_" + phase).Translate()));
                 list.Label("HCL_Terms".Translate());
-                if (phase == RecordedCharterPhase.Offered)
+                if (phase == RecordedCharterPhase.Offered && charter.NpcAuthority == null)
                 {
                     list.Label("HCL_Expiry".Translate(((charter.ExpiresTick - now) / (double)PoliticalWorld.Day).ToString("F1")));
                     if (charter.NpcSignedTick.HasValue && !charter.PlayerSignedTick.HasValue && list.ButtonText("HCL_Accept".Translate())) ledger.Accept(charter.Id);
                     if (list.ButtonText("HCL_Decline".Translate())) ledger.Decline(charter.Id);
                 }
-                if (phase == RecordedCharterPhase.Active && list.ButtonText("HCL_Release".Translate())) ledger.RequestRelease(charter.Id);
-                if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && !ledger.Book.Entity(charter.Terms.Subject).Player &&
+                if (phase == RecordedCharterPhase.Active && charter.NpcAuthority == null && list.ButtonText("HCL_Release".Translate())) ledger.RequestRelease(charter.Id);
+                if (charter.NpcAuthority != null) list.Label("NS_NpcConsent".Translate());
+                if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && ledger.Book.PlayerManaged(charter) &&
                     list.ButtonText("CT_Open".Translate())) Find.WindowStack.Add(new TerritoryAdministrationWindow(charter.Id));
                 if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && ledger.Book.Entity(charter.Terms.Subject).Player)
                     TributePaymentWindow.DrawAccount(list, ledger, charter);

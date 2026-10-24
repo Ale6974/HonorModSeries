@@ -7,11 +7,12 @@ public enum TerritoryTransferPhase { Prepared, Applied, Cancelled }
 public sealed record TerritoryTransferObservation(string Territory, string Owner, int SourceSettlements,
     bool Exists = true, bool Player = false, bool HasMap = false, bool Visited = false,
     bool Eligible = true, bool TargetEligible = true, bool TargetPlayer = false, bool PendingDelivery = false,
-    bool HasInhabitants = false, string StockProof = null);
+    bool HasInhabitants = false, string StockProof = null, int StockFormat = 0);
 public sealed record TerritoryTransfer(string Id, string Territory, string BaselineOwner, string FromOwner,
     string TargetOwner, string Charter, TerritoryTransferPurpose Purpose, long PreparedTick,
     TerritoryTransferPhase Phase = TerritoryTransferPhase.Prepared, long? ResolvedTick = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string StockProof = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string StockProof = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] int StockFormat = 0);
 public sealed record TerritoryTransfersSave(int Version, long LastTick, TerritoryTransfer[] Transfers);
 
 /// <summary>Explicit ownership execution journal, separate from consent and the immutable original identity.</summary>
@@ -48,30 +49,31 @@ public sealed class TerritoryTransferLedger
         var charter = book.Charter(charterId); var subject = book.Entity(charter.Terms.Subject);
         Require(!book.Charters.Any(c => c.Terms.Subject == subject.Id && book.Phase(c, now) == RecordedCharterPhase.Offered),
             "Resolve open proposals before changing the NPC authority that granted consent.");
-        Require(RuntimeCompat.IsDefined(purpose) && !subject.Player && book.Entity(charter.Terms.Liege).Player &&
+        Require(RuntimeCompat.IsDefined(purpose) && !subject.Player && book.PlayerManaged(charter) &&
             observed.Territory == subject.Id && charter.PlayerSignedTick.HasValue && charter.NpcSignedTick.HasValue &&
-            now >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value), "A mutually signed player-liege/NPC-city charter is required.");
+            now >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value), "A mutually signed NPC charter below the player is required.");
         if (purpose == TerritoryTransferPurpose.ActiveCharter)
             Require(charter.Phase == RecordedCharterPhase.Active && target == verifiedAuthority, "Target must be the live player's shared authority.");
         else
             Require(charter.Phase == RecordedCharterPhase.Released && charter.PlayerReleaseTick.HasValue && charter.NpcReleaseTick.HasValue &&
                 now >= Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value) && target == verifiedUnion &&
                 !book.Charters.Any(c => c.Phase == RecordedCharterPhase.Active && c.Terms.Subject == subject.Id), "Release must be complete with no competing active liege.");
-        Require(target != book.Entity(charter.Terms.Liege).NativeOwner && observed.Owner != target &&
+        Require(!book.Entities.Any(e => e.Player && e.NativeOwner == target) && observed.Owner != target &&
             observed.Exists && !observed.Player && Preserved(observed, observed.StockProof) && observed.Eligible &&
             observed.TargetEligible && !observed.TargetPlayer && !observed.PendingDelivery &&
             (observed.SourceSettlements >= 2 || observed.Owner == verifiedAdministration && observed.SourceSettlements == 1),
             "Only unloaded nonplayer cities with preserved ordinary stock, no inhabitants and a surviving source base can move.");
         Require(VerifiedOwner(subject.Id, subject.NativeOwner, observed.Owner) && transfers.Count < Capacity &&
             !transfers.Any(t => t.Id == id || t.Phase == TerritoryTransferPhase.Prepared), "Resolve prior transfers and verify current ownership first.");
-        var result = new TerritoryTransfer(id, subject.Id, subject.NativeOwner, observed.Owner, target, charterId, purpose, now, StockProof: observed.StockProof);
+        var result = new TerritoryTransfer(id, subject.Id, subject.NativeOwner, observed.Owner, target, charterId, purpose, now,
+            StockProof: observed.StockProof, StockFormat: observed.StockFormat);
         transfers.Add(result); LastTick = now; return result;
     }
     public void Confirm(string id, TerritoryTransferObservation actual, long now)
     {
         RuntimeCompat.NotNull(actual); Time(now); var transfer = Transfer(id);
         Require(transfer.Phase == TerritoryTransferPhase.Prepared && actual.Territory == transfer.Territory && actual.Exists &&
-            actual.Owner == transfer.TargetOwner && !actual.Player && Preserved(actual, transfer.StockProof),
+            actual.Owner == transfer.TargetOwner && !actual.Player && actual.StockFormat == transfer.StockFormat && Preserved(actual, transfer.StockProof),
             "Applied transfer needs actual intended nonplayer ownership and matching preserved stock evidence.");
         transfers[transfers.IndexOf(transfer)] = transfer with { Phase = TerritoryTransferPhase.Applied, ResolvedTick = now }; LastTick = now;
     }
@@ -79,12 +81,13 @@ public sealed class TerritoryTransferLedger
     {
         RuntimeCompat.NotNull(actual); Time(now); var transfer = Transfer(id);
         Require(transfer.Phase == TerritoryTransferPhase.Prepared && actual.Territory == transfer.Territory && actual.Exists &&
-            actual.Owner == transfer.FromOwner && !actual.Player && Preserved(actual, transfer.StockProof),
+            actual.Owner == transfer.FromOwner && !actual.Player && actual.StockFormat == transfer.StockFormat && Preserved(actual, transfer.StockProof),
             "Only verified unmoved ownership with unchanged stock can cancel a transfer.");
         transfers[transfers.IndexOf(transfer)] = transfer with { Phase = TerritoryTransferPhase.Cancelled, ResolvedTick = now }; LastTick = now;
     }
     public string Export() => JsonSerializer.Serialize(new TerritoryTransfersSave(Version, LastTick, transfers.ToArray()));
-    private static bool Preserved(TerritoryTransferObservation actual, string proof) => !actual.HasMap && !actual.HasInhabitants &&
+    private static bool Preserved(TerritoryTransferObservation actual, string proof) => actual.StockFormat is 0 or 1 &&
+        (actual.StockFormat == 0 || proof != null) && !actual.HasMap && !actual.HasInhabitants &&
         (proof == null ? !actual.Visited : CityStockProof.Valid(proof) && actual.StockProof == proof);
     public static TerritoryTransferLedger Restore(string json)
     {
@@ -97,7 +100,8 @@ public sealed class TerritoryTransferLedger
         {
             RuntimeCompat.NotNull(item);
             foreach (var key in new[] { item.Id, item.Territory, item.BaselineOwner, item.FromOwner, item.TargetOwner, item.Charter }) Key(key);
-            Require((item.StockProof == null || CityStockProof.Valid(item.StockProof)) &&
+            Require(item.StockFormat is 0 or 1 && (item.StockFormat == 0 || item.StockProof != null) &&
+                (item.StockProof == null || CityStockProof.Valid(item.StockProof)) &&
                 RuntimeCompat.IsDefined(item.Purpose) && RuntimeCompat.IsDefined(item.Phase) && item.FromOwner != item.TargetOwner &&
                 item.PreparedTick >= result.LastTick && item.PreparedTick <= save.LastTick &&
                 (item.Phase == TerritoryTransferPhase.Prepared ? !item.ResolvedTick.HasValue : item.ResolvedTick >= item.PreparedTick && item.ResolvedTick <= save.LastTick) &&

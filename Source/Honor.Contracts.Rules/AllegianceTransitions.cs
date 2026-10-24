@@ -12,6 +12,18 @@ public sealed record AllegianceTransitionSave(int Version, AllegianceTransition 
 
 public static class AllegianceChangeSource
 {
+    public static string ReleasedMigrationSource(CharterBook book, PlayerAllegianceState before, string target, long now)
+    {
+        RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(before);
+        if (before.Mode != PlayerAllegianceMode.Vassal || before.Authority == target || string.IsNullOrWhiteSpace(target) || target.Length > 120 || target.Any(char.IsControl) ||
+            book.Entities.Any(e => e.Player && e.NativeOwner == target) || now < book.LastTick || now > int.MaxValue)
+            return null;
+        var old = book.Charter(before.Contract);
+        return old.Phase == RecordedCharterPhase.Released && old.NpcAuthority == null && book.Entity(old.Terms.Subject).Player &&
+            book.Entity(old.Terms.Liege).NativeOwner == before.Authority && book.RecordedPoliticalOwner(old.Terms.Liege) == before.Authority &&
+            old.PlayerReleaseTick.HasValue && old.NpcReleaseTick.HasValue &&
+            Math.Max(old.PlayerReleaseTick.Value, old.NpcReleaseTick.Value) <= now ? before.Authority : null;
+    }
     public static void Validate(CharterBook book, PlayerAllegianceState before, AllegianceCommand command, TributeLedger payments)
     {
         RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(before);

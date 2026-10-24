@@ -12,7 +12,7 @@ public static class FollowerTransfers
     {
         RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(ledger); RuntimeCompat.NotNull(candidates);
         var entries = candidates.OrderBy(c => c?.Charter, StringComparer.Ordinal).ToArray();
-        var required = book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active && book.Entity(c.Terms.Liege).Player && !book.Entity(c.Terms.Subject).Player)
+        var required = book.PlayerFollowers()
             .Select(c => c.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray();
         if (string.IsNullOrWhiteSpace(target) || target.Length > 120 || target.Any(char.IsControl) || book.Entities.Any(e => e.Player && e.NativeOwner == target) ||
             now < book.LastTick || now < ledger.LastTick || now > int.MaxValue ||
@@ -31,7 +31,7 @@ public static class FollowerTransfers
         {
             var c = book.Charter(entry.Charter); var entity = book.Entity(c.Terms.Subject); var o = entry.Observation;
             if (o.Territory != entity.Id || !o.Exists || o.Player || !o.Eligible || !o.TargetEligible || o.TargetPlayer || o.PendingDelivery ||
-                !copy.VerifiedOwner(entity.Id, entity.NativeOwner, o.Owner) || target == book.Entity(c.Terms.Liege).NativeOwner)
+                !copy.VerifiedOwner(entity.Id, entity.NativeOwner, o.Owner))
                 throw new ArgumentException("Follower is missing, changed owner or is ineligible.");
             if (o.Owner == target) continue; // A visited city already at the destination needs no ownership change.
             string id = "follower-review-" + Guid.NewGuid().ToString("N");

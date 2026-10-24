@@ -48,12 +48,25 @@ public sealed class PoliticalTransitionLedger : GameComponent
     private void FutureRelations(Faction target, FollowerTransferPlan plan)
     {
         var administration = Current.Game.GetComponent<RealmAdministrationLedger>().OwnedFaction;
+        string released = ReleasedMigrationSource(target);
         foreach (var follower in plan.Entries)
         {
             var owner = Find.FactionManager.AllFactionsListForReading.SingleOrDefault(f => f.GetUniqueLoadID() == follower.Observation.Owner);
-            if (owner == null || owner != target && owner != administration && target.HostileTo(owner))
+            if (owner == null || owner != target && owner != administration && owner.GetUniqueLoadID() != released && target.HostileTo(owner))
                 throw new ArgumentException("Future diplomacy would make a follower source hostile; this transfer needs a later wartime adapter.");
         }
+    }
+    internal string ReleasedMigrationSource(Faction target)
+    {
+        if (RestoreFailed || Charters.RestoreFailed || target == null) return null;
+        var before = Politics.State;
+        if (Journal.Pending)
+        {
+            if (!Journal.IsBefore(Politics.Model) && !Journal.IsAfter(Politics.Model) ||
+                PlayerAllegiance.Restore(Journal.Current.After).State.Authority != target.GetUniqueLoadID()) return null;
+            before = PlayerAllegiance.Restore(Journal.Current.Before).State;
+        }
+        return AllegianceChangeSource.ReleasedMigrationSource(Charters.Book, before, target.GetUniqueLoadID(), Find.TickManager.TicksGame);
     }
     private string Stamp(Faction root, AllegianceCommand command, FollowerTransferPlan plan) => JsonSerializer.Serialize(new {
         Command = command, Allegiance = Politics.Model.Export(), Intent = Journal.Export(), Followers = plan.Stamp, Relations = Politics.ReviewToken(root) });

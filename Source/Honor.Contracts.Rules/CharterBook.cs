@@ -8,9 +8,11 @@ public sealed record TerritoryIdentity(string Id, string NativeOwner, bool Playe
 public sealed record TerritoryObservation(string Id, string NativeOwner, bool Exists, bool Player, bool Eligible);
 public sealed record RecordedCharterTerms(string Liege, string Subject, decimal TributeValue,
     long IntervalTicks, long GraceTicks, TributeTransport Transport, decimal TransportRate);
+public sealed record NpcCharterAuthority(string LiegeRepresentative, string SubjectRepresentative);
 public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long OfferedTick, long ExpiresTick,
     RecordedCharterPhase Phase = RecordedCharterPhase.Offered, long? PlayerSignedTick = null,
-    long? NpcSignedTick = null, long? PlayerReleaseTick = null, long? NpcReleaseTick = null);
+    long? NpcSignedTick = null, long? PlayerReleaseTick = null, long? NpcReleaseTick = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] NpcCharterAuthority NpcAuthority = null);
 public sealed record CharterBookSave(int Version, long LastTick, TerritoryIdentity[] Entities, RecordedCharter[] Charters);
 
 /// <summary>
@@ -67,11 +69,38 @@ public sealed class CharterBook
         }
     }
     public string RecordedPoliticalOwner(string entityId) => Entity(Root(entityId)).NativeOwner;
-    private void Terms(RecordedCharterTerms terms)
+    public bool IsBelow(string node, string ancestor)
+    {
+        Entity(node); Entity(ancestor);
+        if (node == ancestor) return false;
+        var visited = new HashSet<string>(StringComparer.Ordinal);
+        while (visited.Add(node))
+        {
+            var parent = Active().SingleOrDefault(c => c.Terms.Subject == node);
+            if (parent == null) return false;
+            node = parent.Terms.Liege;
+            if (node == ancestor) return true;
+        }
+        throw new ArgumentException("Cyclic charter hierarchy.");
+    }
+    public bool PlayerManaged(RecordedCharter charter)
+    {
+        var player = entities.Values.SingleOrDefault(e => e.Player);
+        return player != null && !Entity(charter.Terms.Subject).Player &&
+            (charter.Terms.Liege == player.Id || IsBelow(charter.Terms.Liege, player.Id));
+    }
+    public RecordedCharter[] PlayerFollowers() => Active().Where(PlayerManaged).ToArray();
+    private void Terms(RecordedCharterTerms terms, NpcCharterAuthority authority = null)
     {
         RuntimeCompat.NotNull(terms);
         Require(Entity(terms.Liege).Id != Entity(terms.Subject).Id, "Self-contract.");
-        Require(Entity(terms.Liege).Player != Entity(terms.Subject).Player, "This adapter currently supports one player party and one NPC settlement.");
+        if (authority == null)
+            Require(Entity(terms.Liege).Player != Entity(terms.Subject).Player, "Player/NPC consent cannot create an NPC-only charter.");
+        else
+        {
+            Require(!Entity(terms.Liege).Player && !Entity(terms.Subject).Player, "NPC consent requires two NPC parties.");
+            Key(authority.LiegeRepresentative); Key(authority.SubjectRepresentative);
+        }
         Require(terms.TributeValue is > 0 and <= 10000000 && terms.IntervalTicks is >= PoliticalWorld.Day and <= PoliticalWorld.Day * 60 &&
             terms.GraceTicks is >= 0 and <= PoliticalWorld.Day * 30 && RuntimeCompat.IsDefined(terms.Transport) && terms.TransportRate is >= 0 and <= .5m,
             "Invalid fixed-value tribute terms.");
@@ -111,15 +140,38 @@ public sealed class CharterBook
     }
     public void ValidateCurrent(string charterId, IEnumerable<TerritoryObservation> observations) => Fresh(Charter(charterId).Terms, observations);
     public RecordedCharter Offer(string id, RecordedCharterTerms terms, long now, long responseTicks, IEnumerable<TerritoryObservation> observations)
+        => OfferCore(id, terms, now, responseTicks, observations, null);
+    public RecordedCharter OfferNpc(string id, RecordedCharterTerms terms, NpcCharterAuthority authority,
+        long now, long responseTicks, IEnumerable<TerritoryObservation> observations)
     {
-        Key(id); Time(now); Terms(terms); Fresh(terms, observations); Topology(terms);
+        RuntimeCompat.NotNull(authority);
+        return OfferCore(id, terms, now, responseTicks, observations, authority);
+    }
+    private RecordedCharter OfferCore(string id, RecordedCharterTerms terms, long now, long responseTicks,
+        IEnumerable<TerritoryObservation> observations, NpcCharterAuthority authority)
+    {
+        Key(id); Time(now); Terms(terms, authority); Fresh(terms, observations); Topology(terms);
         Require(!charters.ContainsKey(id) && charters.Count < MaxCharters && responseTicks >= PoliticalWorld.Day &&
             responseTicks <= PoliticalWorld.Day * 30 && now <= int.MaxValue - responseTicks, "Invalid offer capacity, ID or response period.");
         Require(!charters.Values.Any(c => Phase(c, now) == RecordedCharterPhase.Offered && c.Terms.Subject == terms.Subject), "One pending proposal per subject.");
-        var offer = new RecordedCharter(id, terms, now, now + responseTicks);
+        var offer = new RecordedCharter(id, terms, now, now + responseTicks, NpcAuthority: authority);
         charters.Add(id, offer); LastTick = now; return offer;
     }
     public void Sign(string id, bool player, long now, IEnumerable<TerritoryObservation> observations)
+    {
+        Require(Charter(id).NpcAuthority == null, "Player consent slots cannot sign NPC-only contracts.");
+        SignCore(id, player, now, observations);
+    }
+    public void SignNpc(string id, string party, string representative, long now, IEnumerable<TerritoryObservation> observations)
+    {
+        var c = Charter(id); RuntimeCompat.NotNull(c.NpcAuthority);
+        Require(party == c.Terms.Liege || party == c.Terms.Subject, "Unknown NPC party.");
+        bool liege = party == c.Terms.Liege;
+        Require(representative == (liege ? c.NpcAuthority.LiegeRepresentative : c.NpcAuthority.SubjectRepresentative), "NPC representative differs from the reviewed authority.");
+        SignCore(id, liege, now, observations);
+    }
+    // Historic JSON slot names are retained: on NPC-only records the first slot is liege, second is subject.
+    private void SignCore(string id, bool player, long now, IEnumerable<TerritoryObservation> observations)
     {
         Time(now); var offer = Charter(id);
         Require(Phase(offer, now) == RecordedCharterPhase.Offered, "Offer is not open.");
@@ -136,6 +188,18 @@ public sealed class CharterBook
         charters[id] = offer with { Phase = RecordedCharterPhase.Declined }; LastTick = now;
     }
     public void ConsentToRelease(string id, bool player, long now, IEnumerable<TerritoryObservation> observations)
+    {
+        Require(Charter(id).NpcAuthority == null, "Player release slots cannot release NPC-only contracts.");
+        ReleaseCore(id, player, now, observations);
+    }
+    public void ConsentNpcRelease(string id, string party, long now, IEnumerable<TerritoryObservation> observations)
+    {
+        var c = Charter(id);
+        Require(c.NpcAuthority != null && (party == c.Terms.Liege || party == c.Terms.Subject), "Unknown NPC release party.");
+        // The live adapter must validate CURRENT representatives. Old signatories may have died or been succeeded.
+        ReleaseCore(id, party == c.Terms.Liege, now, observations);
+    }
+    private void ReleaseCore(string id, bool player, long now, IEnumerable<TerritoryObservation> observations)
     {
         Time(now); var charter = Charter(id);
         Require(charter.Phase == RecordedCharterPhase.Active && (player ? !charter.PlayerReleaseTick.HasValue : !charter.NpcReleaseTick.HasValue), "No active unsigned release.");
@@ -158,7 +222,7 @@ public sealed class CharterBook
         foreach (var entity in save.Entities) book.Register(entity, 0);
         foreach (var charter in save.Charters)
         {
-            RuntimeCompat.NotNull(charter); Key(charter.Id); book.Terms(charter.Terms);
+            RuntimeCompat.NotNull(charter); Key(charter.Id); book.Terms(charter.Terms, charter.NpcAuthority);
             Require(!book.charters.ContainsKey(charter.Id) && RuntimeCompat.IsDefined(charter.Phase) && charter.Phase != RecordedCharterPhase.Expired &&
                 charter.OfferedTick >= 0 && charter.OfferedTick <= save.LastTick && charter.ExpiresTick > charter.OfferedTick &&
                 charter.ExpiresTick - charter.OfferedTick is >= PoliticalWorld.Day and <= PoliticalWorld.Day * 30 && charter.ExpiresTick <= int.MaxValue,

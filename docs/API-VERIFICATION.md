@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## NPC 실계약 계층·거래 동물·제한된 적대 전환 (0.3.11)
+
+예약 재개 시 GitHub main과 로컬 6248b5d 일치를 확인했다. 설치 Version.txt 1.7.4985 rev1269, runtime net10.0 / 10.0.13-waylithclr.dev를 다시 읽었다. 기존 검증한 Faction/Settlement/Pawn/ThingOwner/Scribe 참조를 사용한다. 설치 Pawn 코드의 RaceProps.Animal과 carryTracker.CarriedThing 사용을 확인했다. NPC 초기 내부 계약은 실제 세력 대표와 현재 정착지·원 소속을 읽고 동일 LiveCharterLedger/CharterBook에 저장하며 NativeFaction 변경·주민/재고 쓰기 호출은 하지 않는다. NPC 하위 계약 교체는 복사본에서 양측 동의/한도 검사를 끝낸 뒤 장부·참조를 교체한다.
+
+실제 소속 집행은 지원 거래 동물의 기존 Pawn·소속·관측 건강/장비/상태와 재고 형식을 전후 대조한다. Pawn.SetFaction·건강/훈련/장비 쓰기를 호출하지 않는다. 시민의 소속 변경이나 전체 동물 컴포넌트 상태의 보존 증거와 구분한다. 합의 해약한 이전 종주의 적대 이전은 실제 기존 계약의 양측 해약과 이전 정치 명령에서만 출발 세력을 유도하고, 현재 플레이어 후손과 대상 세력·진행 의도에 한정해 관측 자격을 허용한다. 일반 정치/선전포고·관계 잠금 우회나 임의 소유권 정당화 API가 아니다.
+
+1.6은 동일 코드의 참조/net472 빌드이며 설치 1.6 게임 구현 검증이 아니다. 1.7도 이번 변경을 게임에서 실행하지 않았다. 실제 NPC 대표·지도/거래·적대 전환·Harmony·Scribe 저장 복구/초기 배치·원 세력 멸망은 런타임 검증 대상이다. 의료/정신/작업을 초기화하는 Pawn.SetFaction을 주민 보존 경로로 조용히 사용하거나 raw faction 필드를 쓰지 않는다. 1단계 완료로 판정하지 않는다.
+
 ## 1.6/1.7 호환성 빌드 (0.2.2 / Contracts 0.3.10, 2026-10-25)
 
 설치 게임은 계속 1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev다. 1.6 게임을 설치하거나 Steam 분기를 변경하지 않았다. [Ludeon 허가를 받아 배포하는 RimRef](https://github.com/krafs/RimRef)의 고정 Krafs.Rimworld.Ref 1.6.4871 서명 참조를 사용해 6개 모듈을 net472로 컴파일했다. 1.6 게임 구현/Mono 실행을 확인한 것은 아니다. 설치 Harmony 1.6 DLL은 2.4.3.0+b79f2f1ac971e5bc224cda3efedbbb4084efbfb6, 1.7 DLL은 3.0.0-rc.3이다. 1.6 API 바인딩은 서명·타입 검사이고 Harmony 설치/역패치·퀘스트/맵/저장 동작의 성공 증거가 아니다.

@@ -60,7 +60,11 @@ public sealed class ResidentBaselineStore : GameComponent
             throw new ArgumentException("Only available unloaded NPC city references can be recorded.");
         var evidence = new List<ResidentEvidence>();
         foreach (var pawn in city.previouslyGeneratedInhabitants)
-        {
+            evidence.Add(Evidence(pawn));
+        return ResidentBaseline.Capture(city.GetUniqueLoadID(), city.Faction.GetUniqueLoadID(), Find.TickManager.TicksGame, evidence);
+    }
+    internal static ResidentEvidence Evidence(Pawn pawn)
+    {
             if (pawn == null || pawn.GetType() != typeof(Pawn) || pawn.health?.hediffSet?.hediffs == null || pawn.health.hediffSet.hediffs.Count > 10000)
                 throw new ArgumentException("Unverifiable resident reference.");
             if (pawn.health.hediffSet.hediffs.Any(h => h == null || h.def == null || !RuntimeCompat.IsFinite(h.Severity)))
@@ -71,8 +75,6 @@ public sealed class ResidentBaselineStore : GameComponent
                 Inventory = Gear(pawn.inventory?.innerContainer) };
             var status = new { pawn.Dead, pawn.Destroyed, pawn.Spawned, WorldPawn = pawn.IsWorldPawn(), Held = pawn.holdingOwner != null,
                 pawn.IsPrisoner, pawn.IsSlave, Leader = PawnUtility.IsFactionLeader(pawn), pawn.InMentalState, Job = pawn.CurJob?.def.defName };
-            evidence.Add(new(pawn.GetUniqueLoadID(), pawn.Faction?.GetUniqueLoadID(), Digest(health), Digest(gear), Digest(status)));
-        }
-        return ResidentBaseline.Capture(city.GetUniqueLoadID(), city.Faction.GetUniqueLoadID(), Find.TickManager.TicksGame, evidence);
+            return new(pawn.GetUniqueLoadID(), pawn.Faction?.GetUniqueLoadID(), Digest(health), Digest(gear), Digest(status));
     }
 }
