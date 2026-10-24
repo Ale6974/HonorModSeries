@@ -72,10 +72,10 @@ try
     if (!collection) Need(SteamUGC.SetItemContent(update, modDir), "content");
     var preview = Path.Combine(modDir, "About", "Preview.png");
     if (File.Exists(preview)) Need(SteamUGC.SetItemPreview(update, preview), "preview");
-    var submitted = Wait<SubmitItemUpdateResult_t>(() => SteamUGC.SubmitItemUpdate(update, "0.2.0: playable modular Honor series, English/Korean and dependency metadata. Experimental RimWorld 1.7 build."));
+    var submitted = Wait<SubmitItemUpdateResult_t>(() => SteamUGC.SubmitItemUpdate(update, "0.2.1 release review: state validation, oath deadlines, honor rewards and tournament loan weapon cleanup."));
     Require(submitted.m_eResult, "SubmitItemUpdate");
     record.LegalAgreementRequired = submitted.m_bUserNeedsToAcceptWorkshopLegalAgreement; record.UploadedUtc = DateTime.UtcNow; record.Visibility = "Public"; WriteState(stateFile, record);
-    if (!collection) File.WriteAllText(idPath, record.PublishedFileId.ToString());
+    if (!collection) File.WriteAllText(idPath, record.PublishedFileId + "\n");
     if (record.LegalAgreementRequired) throw new InvalidOperationException("WORKSHOP_LEGAL_AGREEMENT_REQUIRED: user must accept personally.");
     Verify(record.PublishedFileId, true);
     Console.WriteLine("PUBLISHED: https://steamcommunity.com/sharedfiles/filedetails/?id=" + record.PublishedFileId); return 0;

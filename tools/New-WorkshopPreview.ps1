@@ -22,7 +22,7 @@ foreach ($name in @('Core','Society','Nobility','Diplomacy','Oaths','Series')) {
         $graphics.DrawString($name.ToUpperInvariant(),$mid,$gold,102,370)
         $sub = switch ($name) { Core {'Honor. Challenge. Duel.'} Society {'Apologies. Witnesses. Family.'} Nobility {'Royal titles. Proxy champions.'} Diplomacy {'World quests. Representative duels.'} Oaths {'Ceremonies. Promises. Consequences.'} Series {'The complete modular collection.'} }
         $graphics.DrawString($sub,$small,$white,108,470)
-        $graphics.DrawString('RIMWORLD 1.7  /  EN + KO  /  EXPERIMENTAL 0.2.0',$small,$gray,108,584)
+        $graphics.DrawString('RIMWORLD 1.7  /  EN + KO  /  EXPERIMENTAL 0.2.1',$small,$gray,108,584)
         $bitmap.Save($path,[Drawing.Imaging.ImageFormat]::Png)
     } finally {
         foreach ($item in @($big,$mid,$small,$gold,$white,$gray,$line,$graphics,$bitmap)) { $item.Dispose() }

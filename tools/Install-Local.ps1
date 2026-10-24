@@ -4,7 +4,17 @@ $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 $gameRoot = (Resolve-Path -LiteralPath $RimWorldDir).Path
 if (Get-Process -Name RimWorld -ErrorAction SilentlyContinue) { throw 'Close RimWorld before installation.' }
-$backupDir = Join-Path $repoRoot ('.local/install-' + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+$Modules = @('Core') + @($Modules | Where-Object { $_ -ne 'Core' } | Select-Object -Unique)
+# Validate the entire requested set before moving any installed folder.
+foreach ($module in $Modules) {
+    if (!(Test-Path -LiteralPath (Join-Path $repoRoot "Mods/Honor.$module/1.7/Assemblies/Honor.$module.dll"))) { throw "Build $module first." }
+    $target = Join-Path $gameRoot "mods/Honor.$module"
+    if (Test-Path -LiteralPath $target) {
+        [xml]$about = Get-Content -LiteralPath (Join-Path $target 'About/About.xml') -Raw
+        if ($about.ModMetaData.packageId -ne "honor.series.$($module.ToLowerInvariant())") { throw 'Refusing to replace a different mod.' }
+    }
+}
+$backupDir = Join-Path $repoRoot ('.local/install-' + (Get-Date -Format 'yyyyMMdd-HHmmss') + '-' + [guid]::NewGuid().ToString('N').Substring(0,8))
 New-Item -ItemType Directory -Path $backupDir -Force | Out-Null
 foreach ($module in $Modules) {
     $source = Join-Path $repoRoot "Mods/Honor.$module"

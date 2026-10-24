@@ -21,7 +21,7 @@ internal static class SocialFightPatch
     private static bool Prefix(Pawn ___pawn, Pawn initiator, InteractionDef interaction, ref bool __result)
     {
         if (interaction != InteractionDefOf.Insult ||
-            ___pawn.Map?.GetComponent<DuelMapComponent>().CanRegister(___pawn, initiator) != true) return true;
+            ___pawn.Map?.GetComponent<DuelMapComponent>().CanPair(___pawn, initiator) != true) return true;
         __result = false; return false;
     }
 }

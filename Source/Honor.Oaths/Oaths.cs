@@ -12,11 +12,13 @@ public sealed class OathRecord : IExposable
     public Pawn Pawn;
     public OathKind Kind;
     public int Deadline;
+    public int ResolvedTick = -1;
     public bool Completed, Broken;
     public void ExposeData()
     {
         Scribe_References.Look(ref Pawn, "pawn"); Scribe_Values.Look(ref Kind, "kind");
         Scribe_Values.Look(ref Deadline, "deadline"); Scribe_Values.Look(ref Completed, "completed"); Scribe_Values.Look(ref Broken, "broken");
+        Scribe_Values.Look(ref ResolvedTick, "resolvedTick", -1);
     }
 }
 public sealed class OathsMod : Mod
@@ -35,11 +37,26 @@ public sealed class OathLedger : GameComponent
 {
     public List<OathRecord> Records = [];
     public OathLedger(Game game) { }
-    public OathRecord Active(Pawn p) => Records.FirstOrDefault(r => r.Pawn == p && !r.Completed && !r.Broken);
-    public bool HasTitle(Pawn p) => Records.Any(r => r.Pawn == p && r.Completed) && !Records.Any(r => r.Pawn == p && r.Broken && r.Deadline > Find.TickManager.TicksGame - 300000);
+    public override void LoadedGame()
+    {
+        // Migrate old records after the complete game clock and deep collections have loaded.
+        int now = Math.Max(0, Find.TickManager.TicksGame);
+        foreach (var r in Records.Where(r => (r.Completed || r.Broken) && r.ResolvedTick < 0))
+            r.ResolvedTick = Math.Clamp(r.Deadline, 0, now);
+    }
+    public OathRecord Active(Pawn p)
+    {
+        var oath = Records.FirstOrDefault(r => r.Pawn == p && !r.Completed && !r.Broken);
+        if (oath != null && Find.TickManager.TicksGame >= oath.Deadline)
+        { Resolve(oath, oath.Kind == OathKind.KeepPeace); return null; }
+        return oath;
+    }
+    public bool HasTitle(Pawn p) => Records.Any(r => r.Pawn == p && r.Completed) &&
+        !Records.Any(r => r.Pawn == p && r.Broken && r.ResolvedTick > Find.TickManager.TicksGame - 300000);
     public bool Swear(Pawn p, OathKind kind)
     {
-        if (p?.Map == null || !DuelMapComponent.Eligible(p) || p.Downed || p.Drafted || Active(p) != null ||
+        if (!Enum.IsDefined(kind) || p?.Map == null || !DuelMapComponent.Eligible(p) || p.Downed || p.Drafted ||
+            !p.Awake() || p.InMentalState || Active(p) != null ||
             p.Map.mapPawns.FreeColonistsSpawned.Count(w => w != p && !w.Downed && w.Awake() &&
                 w.Position.InHorDistOf(p.Position, 10) && GenSight.LineOfSight(w.Position, p.Position, p.Map)) < 2) return false;
         Records.Add(new OathRecord { Pawn = p, Kind = kind, Deadline = Find.TickManager.TicksGame + 300000 });
@@ -55,6 +72,7 @@ public sealed class OathLedger : GameComponent
     {
         if (oath.Completed || oath.Broken) return;
         oath.Completed = success; oath.Broken = !success;
+        oath.ResolvedTick = Find.TickManager.TicksGame;
         if (oath.Pawn == null || oath.Pawn.Dead) return;
         HonorApi.Change(oath.Pawn, success ? .06f : -.1f, success ? "oath fulfilled" : "oath broken");
         oath.Pawn.needs?.mood?.thoughts?.memories?.TryGainMemory(DefDatabase<ThoughtDef>.GetNamed(success ? "HonorOaths_Fulfilled" : "HonorOaths_Broken"));
@@ -65,7 +83,7 @@ public sealed class OathLedger : GameComponent
         if (Find.TickManager.TicksGame % 250 != 0) return;
         foreach (var r in Records.Where(r => !r.Completed && !r.Broken))
         {
-            if (r.Pawn == null || r.Pawn.Dead) { r.Broken = true; continue; }
+            if (r.Pawn == null || r.Pawn.Dead) { Resolve(r, false); continue; }
             if (Find.TickManager.TicksGame >= r.Deadline) Resolve(r, r.Kind == OathKind.KeepPeace);
         }
     }

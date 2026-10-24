@@ -26,9 +26,13 @@ public sealed class DuelMapComponent : MapComponent
             !p.WorkTagIsDisabled(WorkTags.Violent) && HonorRules.Eligible(p.ageTracker.AgeBiologicalYears >= 18,
             p.IsSlave, p.IsPrisoner, s.AllowMinors, s.AllowSlaves, s.AllowPrisoners);
     }
-    public bool CanRegister(Pawn challenger, Pawn offender) => challenger != offender && Eligible(challenger) &&
-        Eligible(offender) && challenger.Map == offender.Map && !challenger.HostileTo(offender) &&
+    public bool CanPair(Pawn challenger, Pawn offender) => challenger != offender && Eligible(challenger) &&
+        Eligible(offender) && challenger.Map == map && offender.Map == map && !challenger.HostileTo(offender);
+    public bool CanRegister(Pawn challenger, Pawn offender) => CanPair(challenger, offender) &&
         !Duels.Any(d => (d.Active || d.Phase == DuelPhase.Pending) && (d.Involves(challenger) || d.Involves(offender)));
+    private bool Present(Pawn p) => p is { Spawned: true, Dead: false } && p.Map == map;
+    private bool PrincipalsPresent(DuelRecord d) => (d.PrincipalChallenger == null || Present(d.PrincipalChallenger)) &&
+        (d.PrincipalOffender == null || Present(d.PrincipalOffender));
 
     public void RegisterInsult(Pawn offender, Pawn recipient)
     {
@@ -51,13 +55,15 @@ public sealed class DuelMapComponent : MapComponent
     public DuelRecord ActiveFor(Pawn p) => Duels.FirstOrDefault(d => d.Active && d.Contains(p));
     public bool AcceptApology(DuelRecord d, Pawn victim)
     {
-        if (d.Phase != DuelPhase.Pending || (d.PrincipalChallenger ?? d.Challenger) != victim) return false;
+        if (!Duels.Contains(d) || d.Phase != DuelPhase.Pending || !Present(d.Challenger) || !Present(d.Offender) ||
+            !PrincipalsPresent(d) || (d.PrincipalChallenger ?? d.Challenger) != victim) return false;
         HonorApi.Change(victim, .04f, "apology accepted");
         Finish(d, null, "apology accepted"); return true;
     }
     public bool AssignProxy(DuelRecord d, Pawn principal, Pawn proxy)
     {
-        if (d.Phase != DuelPhase.Pending || !Eligible(proxy) || proxy.Map != map || d.Involves(proxy) ||
+        if (!Duels.Contains(d) || d.Phase != DuelPhase.Pending || !PrincipalsPresent(d) || !Present(principal) ||
+            !Eligible(proxy) || proxy.Map != map || proxy.Faction != principal.Faction || d.Involves(proxy) ||
             Duels.Any(x => x != d && (x.Active || x.Phase == DuelPhase.Pending) && x.Involves(proxy))) return false;
         if ((d.PrincipalChallenger ?? d.Challenger) == principal)
         { d.PrincipalChallenger = principal; d.Challenger = proxy; return true; }
@@ -73,13 +79,13 @@ public sealed class DuelMapComponent : MapComponent
         foreach (var d in Duels.Where(x => x.Active).ToList())
         {
             if (d.Challenger == null || d.Offender == null || !d.Challenger.Spawned || !d.Offender.Spawned ||
-                d.Challenger.Map != map || d.Offender.Map != map)
+                d.Challenger.Map != map || d.Offender.Map != map || !PrincipalsPresent(d))
             { Finish(d, null, "participant left map"); continue; }
             if (CheckEnd(d)) continue;
             if (tick - d.StartedTick > 15000 || d.Challenger.InMentalState || d.Offender.InMentalState ||
                 !Eligible(d.Challenger) || !Eligible(d.Offender) || !JobsIntact(d) || !EquipmentIntact(d))
             { Finish(d, null, "interrupted or equipment changed"); continue; }
-            if (tick % 30 == 0 && !ArenaClear(d)) { Finish(d, null, "arena unsafe"); continue; }
+            if (tick % 30 == 0 && !ArenaClear(d)) { Finish(d, null, "arena unsafe: " + d.Reason); continue; }
             if (d.Phase == DuelPhase.Gathering && d.Challenger.Position == d.Left && d.Offender.Position == d.Right)
             {
                 if (!StripArmor(d.Challenger, d.ArmorLeft) || !StripArmor(d.Offender, d.ArmorRight))
@@ -90,9 +96,9 @@ public sealed class DuelMapComponent : MapComponent
         if (tick % 60 != 0) return;
         foreach (var d in Duels.Where(x => x.Phase == DuelPhase.Pending).ToList())
         {
-            if (d.Challenger == null || d.Offender == null || d.Challenger.Dead || d.Offender.Dead)
+            if (!Present(d.Challenger) || !Present(d.Offender) || !PrincipalsPresent(d))
             { Finish(d, null, "participant unavailable"); continue; }
-            if (!HonorMod.Settings.AutoChallenge || Duels.Any(x => x.Active)) break;
+            if (!HonorMod.Settings.AutoChallenge || Duels.Any(x => x.Active)) continue;
             if (tick - d.CreatedTick < HonorApi.PendingDelayTicks) continue;
             TryBegin(d);
         }
@@ -109,7 +115,7 @@ public sealed class DuelMapComponent : MapComponent
     {
         if (d.Phase != DuelPhase.Pending || Duels.Any(x => x.Active)) return Block(d, "another duel is active");
         if (!Arena.IsValid) return Block(d, "no arena selected");
-        if (!Eligible(d.Challenger) || !Eligible(d.Offender)) return Block(d, "participant eligibility changed");
+        if (!CanPair(d.Challenger, d.Offender) || !PrincipalsPresent(d)) return Block(d, "participant eligibility or map changed");
         if (!Ready(d.Challenger)) return Block(d, "challenger not awake, undrafted, healthy or capable");
         if (!Ready(d.Offender)) return Block(d, "offender not awake, undrafted, healthy or capable");
         if (!WeaponsMatch(d.Challenger, d.Offender, out bool ranged)) return Block(d, "allowed weapons do not match");
@@ -117,7 +123,7 @@ public sealed class DuelMapComponent : MapComponent
         d.WeaponLeft = d.Challenger.equipment.Primary; d.WeaponRight = d.Offender.equipment.Primary;
         d.Left = Arena + new IntVec3(ranged ? -5 : -1, 0, 0);
         d.Right = Arena + new IntVec3(ranged ? 5 : 1, 0, 0);
-        if (!ArenaClear(d)) return Block(d, "arena blocked, occupied, burning or threatened");
+        if (!ArenaClear(d)) return false;
         if (!GenSight.LineOfSight(d.Left, d.Right, map)) return Block(d, "firing line blocked");
         if (!d.Challenger.CanReach(d.Left, PathEndMode.OnCell, Danger.None) ||
             !d.Offender.CanReach(d.Right, PathEndMode.OnCell, Danger.None)) return Block(d, "no safe path to arena");
@@ -144,10 +150,16 @@ public sealed class DuelMapComponent : MapComponent
         if (wa == null || wb == null || wa.def != wb.def || wa.Stuff != wb.Stuff) return false;
         wa.TryGetQuality(out var qa); wb.TryGetQuality(out var qb);
         if (qa != qb || Math.Abs(wa.HitPoints / (float)wa.MaxHitPoints - wb.HitPoints / (float)wb.MaxHitPoints) > .1f) return false;
-        bool basic = wa.def.defName is "MeleeWeapon_LongSword" or "MeleeWeapon_Knife" or "Gun_Revolver";
+        return AllowedWeapon(wa);
+    }
+    public static bool AllowedWeapon(ThingWithComps weapon)
+    {
+        if (weapon == null) return false;
+        bool ranged = weapon.def.IsRangedWeapon;
+        bool basic = weapon.def.defName is "MeleeWeapon_LongSword" or "MeleeWeapon_Knife" or "Gun_Revolver";
         // Explosive / beam / modded verbs have unbounded collateral paths; MVP permits only vanilla bullets.
         if (!basic && !(HonorMod.Settings.AllowLongRange && ranged)) return false;
-        if (ranged && (wa.def.Verbs == null || wa.def.Verbs.Any(v => v.defaultProjectile == null ||
+        if (ranged && (weapon.def.Verbs == null || weapon.def.Verbs.Any(v => v.defaultProjectile == null ||
             v.defaultProjectile.projectile == null || v.defaultProjectile.projectile.explosionRadius > 0 ||
             v.defaultProjectile.projectile.damageDef != DamageDefOf.Bullet))) return false;
         return true;
@@ -157,12 +169,15 @@ public sealed class DuelMapComponent : MapComponent
         int radius = d.Ranged ? 7 : 4;
         foreach (var c in GenRadial.RadialCellsAround(Arena, radius, true))
         {
-            if (!c.InBounds(map) || !c.Standable(map) || c.GetDoor(map) != null || c.GetThingList(map).Any(t => t is Fire)) return false;
-            if (c.GetThingList(map).OfType<Pawn>().Any(p => !d.Contains(p))) return false;
+            if (!c.InBounds(map) || !c.Standable(map) || c.GetDoor(map) != null || c.GetThingList(map).Any(t => t is Fire))
+                return Block(d, "blocked terrain, door or fire at " + c);
+            if (c.GetThingList(map).OfType<Pawn>().Any(p => !d.Contains(p)))
+                return Block(d, "third party in arena at " + c);
         }
-        return !map.mapPawns.AllPawnsSpawned.Any(p => !d.Contains(p) && !p.Downed && p.Awake() &&
+        var threat = map.mapPawns.AllPawnsSpawned.FirstOrDefault(p => !d.Contains(p) && !p.Downed && p.Awake() &&
             p.Position.InHorDistOf(Arena, radius + 20) && GenSight.LineOfSight(p.Position, Arena, map) &&
             (p.HostileTo(d.Challenger) || p.CurJobDef == JobDefOf.AttackStatic));
+        return threat == null || Block(d, "nearby threat: " + threat.def.defName + "/" + threat.CurJobDef?.defName + " at " + threat.Position);
     }
     private static bool StripArmor(Pawn p, List<Apparel> removed)
     {
@@ -199,7 +214,7 @@ public sealed class DuelMapComponent : MapComponent
             if (hadStarted && !p.Dead) EmergencyTend(p);
         }
         Restore(d.Challenger, d.ArmorLeft); Restore(d.Offender, d.ArmorRight);
-        if (winner != null && !d.RewardApplied)
+        if (winner != null && !d.RewardApplied && !d.DishonorApplied)
         {
             d.RewardApplied = true;
             HonorApi.Change(d.Beneficiary(winner), .08f, "duel victory"); HonorApi.Change(d.Beneficiary(d.Other(winner)), -.04f, "duel defeat");

@@ -44,6 +44,9 @@ public sealed class SocialLedger : MapComponent
     public List<SocialRecord> Records = [];
     public SocialLedger(Map map) : base(map) { }
     public SocialRecord Pair(Pawn offender, Pawn victim) => Records.FirstOrDefault(r => r.Offender == offender && r.Victim == victim);
+    private bool CanDiscuss(Pawn a, Pawn b) => a is { Spawned: true, Dead: false } && b is { Spawned: true, Dead: false } &&
+        a.Map == map && b.Map == map && !a.Downed && !b.Downed && a.Awake() && b.Awake() &&
+        a.Position.InHorDistOf(b.Position, 12);
     public void Insult(Pawn offender, Pawn victim)
     {
         if (offender == null || victim == null || offender.Faction != Faction.OfPlayer || victim.Faction != Faction.OfPlayer) return;
@@ -59,7 +62,7 @@ public sealed class SocialLedger : MapComponent
     {
         var victim = duel.PrincipalChallenger ?? duel.Challenger;
         if (duel.Phase != DuelPhase.Pending || (duel.PrincipalOffender ?? duel.Offender) != offender ||
-            offender.Downed || victim.Downed || !offender.Awake() || !victim.Awake() || !offender.Position.InHorDistOf(victim.Position, 12)) return false;
+            !CanDiscuss(offender, victim)) return false;
         var r = Pair(offender, victim);
         if (r == null) return false;
         r.ApologyOffered = true;
@@ -69,7 +72,7 @@ public sealed class SocialLedger : MapComponent
     {
         var offender = duel.PrincipalOffender ?? duel.Offender;
         var r = Pair(offender, victim);
-        if (r?.ApologyOffered != true || !map.GetComponent<DuelMapComponent>().AcceptApology(duel, victim)) return false;
+        if (r?.ApologyOffered != true || !CanDiscuss(offender, victim) || !map.GetComponent<DuelMapComponent>().AcceptApology(duel, victim)) return false;
         r.ApologyOffered = false; r.Insults = Math.Max(0, r.Insults - 1);
         SocietyMod.Memory(victim, offender, "HonorSociety_Apology");
         HonorApi.Change(offender, -.01f, "admitted insult"); return true;

@@ -17,6 +17,7 @@ internal static class Boot
     {
         if (GenCommandLine.CommandLineArgPassed("honorSeriesLanguage")) LongEventHandler.ExecuteWhenFinished(Language);
         if (GenCommandLine.CommandLineArgPassed("honorSeriesResume")) LongEventHandler.ExecuteWhenFinished(() => GameDataSaveLoader.LoadGame("HonorSeries"));
+        if (GenCommandLine.CommandLineArgPassed("honorSeriesReviewResume")) LongEventHandler.ExecuteWhenFinished(() => GameDataSaveLoader.LoadGame("HonorReviewResolved"));
     }
     internal static void Check(bool result, string message)
     { if (!result) throw new Exception(message); Log.Message("[Honor.Tests] ASSERT PASS: " + message); }
@@ -29,6 +30,7 @@ internal static class Boot
             Check("HS_Offer".Translate().ToString() == (ko ? "사과 제안" : "Offer apology"), "Society keyed language");
             Check("HO_Oath".Translate().ToString() == (ko ? "맹세하기" : "Swear oath"), "Oaths keyed language");
             Check("HD_Champion".Translate().ToString() == (ko ? "정착지 대표로 결투" : "Represent the colony"), "Diplomacy keyed language");
+            Check("HD_ChampionDesc".Translate().ToString().Contains(ko ? "대여" : "loan"), "loan policy localized");
             if (ModsConfig.RoyaltyActive) Check("HN_Proxy".Translate().ToString() == (ko ? "대리 결투자 지정" : "Appoint champion"), "Nobility keyed language");
             Check(DefDatabase<ThoughtDef>.GetNamed("HonorSociety_Rival").stages[0].label == (ko ? "거듭된 모욕: 숙적" : "repeated insults: rival"), "Society injected memory");
             Check(DefDatabase<ThoughtDef>.GetNamed("HonorOaths_Fulfilled").stages[0].description == (ko ? "목격자들 앞에서 한 약속을 지켰다." : "I kept my word before witnesses."), "Oaths injected memory");
@@ -68,6 +70,7 @@ public sealed class SeriesSmoke : GameComponent
                 duel = site.Map.GetComponent<DuelMapComponent>().Duels.Single();
                 goodwillBefore = site.Faction.GoodwillWith(Faction.OfPlayer);
                 Check(duel.Active, "saved delegation duel");
+                Check(Current.Game.GetComponent<OathLedger>().Records.Where(r => r.Completed || r.Broken).All(r => r.ResolvedTick >= 0), "oath timestamp migration/persistence");
                 started = Find.TickManager.TicksGame; stage = 2; Find.TickManager.CurTimeSpeed = TimeSpeed.Superfast;
             }
             catch (Exception e) { Fail(e); }
@@ -159,6 +162,7 @@ public sealed class SeriesSmoke : GameComponent
                 Check(duel.Winner != null && site.Resolved, "real representative combat resolved quest");
                 Check(duel.Challenger.health.hediffSet.BleedRateTotal < .00001f && duel.Offender.health.hediffSet.BleedRateTotal < .00001f, "both fighters stabilized");
                 Check(site.Quest.State != QuestState.Ongoing, "quest ended");
+                Check(site.Representative.equipment.Primary == null && site.LoanWeapon == null, "delegation loan reclaimed after real combat");
                 bool won = duel.Winner != site.Representative && !duel.DishonorApplied;
                 Check(site.Faction.GoodwillWith(Faction.OfPlayer) == Math.Clamp(goodwillBefore + (won ? 10 : -5), -100, 100), "faction goodwill result");
                 int silver = site.Map.listerThings.ThingsOfDef(ThingDefOf.Silver).Sum(t => t.stackCount);

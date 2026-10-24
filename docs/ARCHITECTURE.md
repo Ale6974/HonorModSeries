@@ -1,4 +1,4 @@
-# 모듈 구조 — 0.2.0
+# 모듈 구조 — 0.2.1
 
 Core는 다른 부속 모드에 의존하지 않습니다. 부속 모드는 Core/Rules/Harmony API만 참조하며 서로 어셈블리를 참조하지 않습니다. Honor.Rules.dll은 Core에만 포함하고 각 부속 모드에는 자신의 DLL만 배포합니다. Nobility는 Royalty DLC가 필요합니다.
 

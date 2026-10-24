@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory)][string]$RimWorldDir,
-    [ValidateSet('Gameplay','Checkpoint','Resume','English','Korean')][string]$Scenario = 'Gameplay',
+    [ValidateSet('Gameplay','Checkpoint','Resume','English','Korean','Review','ReviewResume')][string]$Scenario = 'Gameplay',
     [string]$SaveDataDir,
     [switch]$BaseGameOnly,
     [int]$TimeoutSeconds = 240
@@ -16,9 +16,10 @@ New-Item -ItemType Directory -Path $results -Force | Out-Null
 if (!$SaveDataDir) { $SaveDataDir = Join-Path $results 'SaveData' }
 $SaveDataDir = [IO.Path]::GetFullPath($SaveDataDir)
 New-Item -ItemType Directory -Path $SaveDataDir -Force | Out-Null
-if ($Scenario -eq 'Resume') {
-    $activeSave = Join-Path $SaveDataDir 'Saves/HonorSeries.rws'
-    if (!(Test-Path -LiteralPath $activeSave)) { throw 'Resume requires a Checkpoint run SaveDataDir with HonorSeries.rws.' }
+if ($Scenario -in @('Resume','ReviewResume')) {
+    $saveName = if ($Scenario -eq 'Resume') { 'HonorSeries' } else { 'HonorReviewResolved' }
+    $activeSave = Join-Path $SaveDataDir "Saves/$saveName.rws"
+    if (!(Test-Path -LiteralPath $activeSave)) { throw "$Scenario requires a prior matching run SaveDataDir with $saveName.rws." }
 }
 $temporaryModPaths = @()
 $taskProcess = $null
@@ -60,6 +61,8 @@ try {
         if ($Scenario -eq 'Korean') { $runArgs += '-honorExpectKorean' }
     }
     elseif ($Scenario -eq 'Resume') { $runArgs += '-honorSeriesResume' }
+    elseif ($Scenario -eq 'Review') { $runArgs += @('-quicktest','-honorSeriesReview') }
+    elseif ($Scenario -eq 'ReviewResume') { $runArgs += '-honorSeriesReviewResume' }
     else {
         $runArgs += @('-quicktest','-honorSeries')
         if ($Scenario -eq 'Checkpoint') { $runArgs += '-honorSeriesCheckpoint' }

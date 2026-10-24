@@ -2,7 +2,7 @@
   <name>Honor.Diplomacy</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.diplomacy</packageId>
-  <modVersion>0.2.0</modVersion>
+  <modVersion>0.2.1</modVersion>
   <supportedVersions>
     <li>1.7</li>
   </supportedVersions>
@@ -14,7 +14,7 @@
     </li>
     <li>
       <packageId>honor.series.core</packageId>
-      <displayName>Honor.Core 0.2.0+</displayName>
+      <displayName>Honor.Core 0.2.1+</displayName>
       <steamWorkshopUrl>steam://url/CommunityFilePage/3825494597</steamWorkshopUrl>
     </li>
   </modDependencies>
@@ -23,8 +23,8 @@
     <li>honor.series.core</li>
     <li>Ludeon.RimWorld.Royalty</li>
   </loadAfter>
-  <description>Honor.DiplomacySelect a non-hostile world settlement and choose Answer a settlement insult. This player-triggered quest creates a representative arena nearby for ten days. Send a caravan, bring an allowed weapon, enter the site and select Represent the colony. The opponent matches weapon/material/quality/condition. Lawful victory: 100 silver at arena and +10 goodwill. Defeat, interruption or expiry: -5 goodwill. Ten-day faction cooldown. Keep other pawns outside arena. Requires Core 0.2.0+ and Harmony 3; NO DLC required. General reward negotiation and random settlement insult incidents are not implemented.
-한국어: 비적대 정착지를 선택해 직접 대표 결투 퀘스트를 시작합니다. 10일 안에 무장 상단을 보내 대표로 결투하세요. 상대는 동일 무기를 사용합니다. 승리 시 현장 은 100·우호도 +10, 패배·중단·만료 시 -5입니다. 세력별 10일 대기 기간이 있습니다. 일반 보상 협상과 무작위 정착지 모욕 사건은 미구현입니다. Core 0.2.0 이상·Harmony 필수, DLC 필수 아님.
+  <description>Honor.DiplomacySelect a non-hostile world settlement and choose Answer a settlement insult. This player-triggered quest creates a representative arena nearby for ten days. Send a caravan, bring an allowed weapon, enter the site and select Represent the colony. The opponent matches weapon/material/quality/condition. Lawful victory: 100 silver at arena and +10 goodwill. Defeat, interruption or expiry: -5 goodwill. Ten-day faction cooldown. Keep other pawns outside arena. Requires Core 0.2.1+ and Harmony 3; NO DLC required. General reward negotiation and random settlement insult incidents are not implemented.
+한국어: 비적대 정착지를 선택해 직접 대표 결투 퀘스트를 시작합니다. 10일 안에 무장 상단을 보내 대표로 결투하세요. 상대는 동일 무기를 사용합니다. 승리 시 현장 은 100·우호도 +10, 패배·중단·만료 시 -5입니다. 세력별 10일 대기 기간이 있습니다. 일반 보상 협상과 무작위 정착지 모욕 사건은 미구현입니다. Core 0.2.1 이상·Harmony 필수, DLC 필수 아님.
 Source: https://github.com/Ale6974/HonorModSeries
 Collection: https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644</description>
 </ModMetaData>

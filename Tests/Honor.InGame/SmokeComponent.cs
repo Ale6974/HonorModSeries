@@ -24,6 +24,14 @@ public sealed class SmokeComponent : GameComponent
     private int stage, startTick;
     private Pawn a, b;
     private DuelRecord duel;
+    private static IntVec3 HoldingCell(Map map) => map.AllCells.Where(c => c.Standable(map)).OrderByDescending(c =>
+        (c.x - map.Center.x) * (c.x - map.Center.x) + (c.z - map.Center.z) * (c.z - map.Center.z)).First();
+    private static void HoldOutsideArena(Pawn p, IntVec3 cell)
+    {
+        p.pather.StopDead(); p.Position = cell;
+        var job = JobMaker.MakeJob(JobDefOf.Wait, 20000); job.playerForced = true; job.checkOverrideOnExpire = false;
+        p.jobs.StartJob(job, JobCondition.InterruptForced);
+    }
     public SmokeComponent(Game game) { }
     public override void LoadedGame()
     {
@@ -54,16 +62,20 @@ public sealed class SmokeComponent : GameComponent
                 Check(HonorMod.PatchesReady, "Harmony ready");
                 var map = Find.CurrentMap;
                 var center = map.Center;
+                var holdingCell = HoldingCell(map);
+                Log.Message("[Honor.Tests] INFO: isolated arena map=" + map.Size + " center=" + center + " holding=" + holdingCell);
                 foreach (var cell in GenRadial.RadialCellsAround(center, 18, true))
                 {
                     foreach (var thing in cell.GetThingList(map).ToList())
                     {
-                        if (thing is Pawn p) { p.Position = new IntVec3(20, 0, 20); continue; }
-                        if (thing.def.category is ThingCategory.Building or ThingCategory.Plant or ThingCategory.Filth) thing.DeSpawn();
+                        if (thing is Pawn p) { HoldOutsideArena(p, holdingCell); continue; }
+                        if (thing.def.category is ThingCategory.Building or ThingCategory.Plant or ThingCategory.Filth ||
+                            thing.def.passability != Traversability.Standable || thing is Fire) thing.DeSpawn();
                     }
                     map.terrainGrid.SetTerrain(cell, TerrainDefOf.Soil);
                     map.roofGrid.SetRoof(cell, null);
                 }
+                foreach (var other in map.mapPawns.AllPawnsSpawned.ToList()) HoldOutsideArena(other, holdingCell);
                 a = MakePawn(); b = MakePawn();
                 GenSpawn.Spawn(a, center + IntVec3.West, map); GenSpawn.Spawn(b, center, map);
                 map.GetComponent<DuelMapComponent>().Arena = center;
@@ -105,8 +117,8 @@ public sealed class SmokeComponent : GameComponent
         {
             // Quicktest scenario colonists and wildlife must not contaminate the controlled arena test.
             foreach (var other in a.MapHeld.mapPawns.AllPawnsSpawned.Where(p => p != a && p != b &&
-                p.Position.InHorDistOf(a.MapHeld.GetComponent<DuelMapComponent>().Arena, 20)).ToList())
-                other.Position = new IntVec3(20, 0, 20);
+                p.Position.InHorDistOf(a.MapHeld.GetComponent<DuelMapComponent>().Arena, 40)).ToList())
+                HoldOutsideArena(other, HoldingCell(a.MapHeld));
             if (Find.TickManager.TicksGame - startTick > 16000) throw new Exception("Duel timeout: " + duel.Phase + " " + duel.Reason);
             if (duel.Phase == DuelPhase.Cancelled) throw new Exception("Duel cancelled: " + duel.Reason);
             if (stage == 1 && duel.Phase == DuelPhase.Fighting)
@@ -123,13 +135,13 @@ public sealed class SmokeComponent : GameComponent
                 stage = 2;
             }
             if (duel.Phase != DuelPhase.Completed) return;
-            Check(duel.Winner != null && duel.RewardApplied, "winner and honor applied");
-            Check(duel.Mode == DuelMode.Death ? a.Dead != b.Dead : !a.Dead && !b.Dead, "survival / death rule");
+            Check(duel.Winner != null && (duel.DishonorApplied ? !duel.RewardApplied : duel.RewardApplied), "winner and lawful reward / dishonor exclusion");
+            Check(duel.Mode == DuelMode.Death ? a.Dead != b.Dead : (!a.Dead && !b.Dead || duel.DishonorApplied), "survival / death rule");
             Check((a.Dead || !a.health.HasHediffsNeedingTend()) && (b.Dead || !b.health.HasHediffsNeedingTend()), "immediate tending");
             Check(a.CurJobDef != HonorDefOf.Honor_Duel && b.CurJobDef != HonorDefOf.Honor_Duel, "combat jobs ended");
             Check(duel.Winner.apparel.WornApparel.Any(x => x.def.defName == "Apparel_FlakVest"), "armor restored to survivor");
             var old = HonorApi.Need(duel.Winner).CurLevel;
-            a.Map.GetComponent<DuelMapComponent>().Finish(duel, duel.Winner, "duplicate result test");
+            duel.Winner.Map.GetComponent<DuelMapComponent>().Finish(duel, duel.Winner, "duplicate result test");
             Check(HonorApi.Need(duel.Winner).CurLevel == old, "idempotent result");
             GameDataSaveLoader.SaveGame("HonorSmoke");
             stage = 99;

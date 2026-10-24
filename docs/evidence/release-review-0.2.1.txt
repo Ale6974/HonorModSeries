@@ -1,0 +1,147 @@
+Honor Mod Series 0.2.1 — release review engine evidence, 2026-10-24
+RimWorld 1.7.4985 rev1269 / .NET 10 / installed Harmony 3
+Full logs, personal paths and Steam identifiers excluded.
+
+=== EXPECTED FAILURE: unmodified 0.2.0 baseline ===
+[Honor.Tests] FAIL: review System.Exception: apology revalidates distance: accepted after recipient left speaking range | pending obligation released on map exit: despawned pawn retained pending obligation | late victory cannot fulfill expired oath: victory after deadline fulfilled oath | completed peace deadline precedes later insult: post-deadline insult broke completed peace | dishonor does not grant ordinary victory honor: dishonorable winner received positive victory reward | delegation resolves when challenger has left map: site ignored duel-ended event after challenger despawned | generated matching weapon is reclaimed: matching weapon remained as free loot
+
+=== Review (final, including chunk obstruction) ===
+[Honor.Tests] ASSERT PASS: review apology revalidates distance
+[Honor.Tests] ASSERT PASS: review pending obligation released on map exit
+[Honor.Tests] ASSERT PASS: review all pending entries cleaned with automatic staging disabled
+[Honor.Tests] ASSERT PASS: review queued duel suppresses parallel vanilla social fighting
+[Honor.Tests] ASSERT PASS: review late victory cannot fulfill expired oath
+[Honor.Tests] ASSERT PASS: review completed peace deadline precedes later insult
+[Honor.Tests] ASSERT PASS: review title penalty counts from actual oath breach
+[Honor.Tests] ASSERT PASS: review dishonor does not grant ordinary victory honor
+[Honor.Tests] ASSERT PASS: review delegation arena clears non-building obstructions
+[Honor.Tests] ASSERT PASS: review delegation resolves when challenger has left map
+[Honor.Tests] ASSERT PASS: review generated matching weapon is reclaimed
+[Honor.Tests] ASSERT PASS: review resolved-state save after loan cleanup
+[Honor.Tests] PASS: release review edge cases
+
+=== Review resolved save reload ===
+[Honor.Tests] ASSERT PASS: review saved resolved site and reclaimed loan
+[Honor.Tests] ASSERT PASS: review saved completed quest reference
+[Honor.Tests] ASSERT PASS: review saved oath resolution timestamps
+[Honor.Tests] PASS: reviewed resolved-state save reload
+
+=== Existing 0.2.0 fighting save resumed ===
+[Honor.Tests] ASSERT PASS: saved quest/site/representative references
+[Honor.Tests] ASSERT PASS: saved faction cooldown
+[Honor.Tests] ASSERT PASS: saved Society record
+[Honor.Tests] ASSERT PASS: saved active oath
+[Honor.Tests] ASSERT PASS: saved delegation duel
+[Honor.Tests] ASSERT PASS: oath timestamp migration/persistence
+[Honor.Tests] ASSERT PASS: real representative combat resolved quest
+[Honor.Tests] ASSERT PASS: both fighters stabilized
+[Honor.Tests] ASSERT PASS: quest ended
+[Honor.Tests] ASSERT PASS: delegation loan reclaimed after real combat
+[Honor.Tests] ASSERT PASS: faction goodwill result
+[Honor.Tests] ASSERT PASS: silver reward spawned
+[Honor.Tests] ASSERT PASS: reward idempotence
+[Honor.Tests] PASS: series gameplay and persistence
+
+=== Full series gameplay ===
+[Honor.Tests] ASSERT PASS: Core patches ready
+[Honor.Tests] ASSERT PASS: apology requires offer
+[Honor.Tests] ASSERT PASS: offer and victim acceptance
+[Honor.Tests] ASSERT PASS: apology cancels duel and records vanilla social memory
+[Honor.Tests] ASSERT PASS: repeated insults make rivals
+[Honor.Tests] ASSERT PASS: royal sensitivity
+[Honor.Tests] ASSERT PASS: royal proxy appointment
+[Honor.Tests] ASSERT PASS: proxy keeps principal and original rules
+[Honor.Tests] ASSERT PASS: witnessed peace oath
+[Honor.Tests] ASSERT PASS: insult breaks peace oath
+[Honor.Tests] ASSERT PASS: victory oath
+[Honor.Tests] ASSERT PASS: proxy result fulfills principal oath
+[Honor.Tests] ASSERT PASS: blood relative honor and witnessed social memory
+[Honor.Tests] ASSERT PASS: active oath for persistence
+[Honor.Tests] ASSERT PASS: ceremony job completed
+[Honor.Tests] ASSERT PASS: rumor tick processed
+[Honor.Tests] ASSERT PASS: delayed rumor becomes vanilla social memory
+[Honor.Tests] ASSERT PASS: peace oath completes on deadline
+[Honor.Tests] ASSERT PASS: real world quest generated
+[Honor.Tests] ASSERT PASS: faction duplicate/cooldown blocked
+[Honor.Tests] ASSERT PASS: delegation map and NPC generated
+[Honor.Tests] ASSERT PASS: foreign representative admitted through API
+[Honor.Tests] ASSERT PASS: delegation stages:
+[Honor.Tests] ASSERT PASS: real representative combat resolved quest
+[Honor.Tests] ASSERT PASS: both fighters stabilized
+[Honor.Tests] ASSERT PASS: quest ended
+[Honor.Tests] ASSERT PASS: delegation loan reclaimed after real combat
+[Honor.Tests] ASSERT PASS: faction goodwill result
+[Honor.Tests] ASSERT PASS: silver reward spawned
+[Honor.Tests] ASSERT PASS: reward idempotence
+[Honor.Tests] PASS: series gameplay and persistence
+
+=== Korean loan policy ===
+[Honor.Tests] ASSERT PASS: native game language
+[Honor.Tests] ASSERT PASS: Society keyed language
+[Honor.Tests] ASSERT PASS: Oaths keyed language
+[Honor.Tests] ASSERT PASS: Diplomacy keyed language
+[Honor.Tests] ASSERT PASS: loan policy localized
+[Honor.Tests] ASSERT PASS: Nobility keyed language
+[Honor.Tests] ASSERT PASS: Society injected memory
+[Honor.Tests] ASSERT PASS: Oaths injected memory
+[Honor.Tests] ASSERT PASS: no Honor translation errors
+[Honor.Tests] ASSERT PASS: all Honor injections applied
+[Honor.Tests] PASS: series localization
+
+=== Installed Core revolvers ===
+[Honor.Tests] ASSERT PASS: Harmony ready
+[Honor.Tests] ASSERT PASS: real insult succeeds
+[Honor.Tests] ASSERT PASS: insult direction
+[Honor.Tests] ASSERT PASS: no parallel social fight
+[Honor.Tests] ASSERT PASS: duel stages immediately in prepared arena:
+[Honor.Tests] ASSERT PASS: armor removed A
+[Honor.Tests] ASSERT PASS: armor removed B
+[Honor.Tests] ASSERT PASS: ordinary clothing retained
+[Honor.Tests] ASSERT PASS: winner and honor applied
+[Honor.Tests] ASSERT PASS: survival / death rule
+[Honor.Tests] ASSERT PASS: immediate tending
+[Honor.Tests] ASSERT PASS: combat jobs ended
+[Honor.Tests] ASSERT PASS: armor restored to survivor
+[Honor.Tests] ASSERT PASS: idempotent result
+[Honor.Tests] PASS: real insult -> gathering -> combat -> FirstBlood -> tending -> honor; save requested.
+
+=== Installed Core death duel ===
+[Honor.Tests] ASSERT PASS: Harmony ready
+[Honor.Tests] ASSERT PASS: real insult succeeds
+[Honor.Tests] ASSERT PASS: insult direction
+[Honor.Tests] ASSERT PASS: no parallel social fight
+[Honor.Tests] ASSERT PASS: duel stages immediately in prepared arena:
+[Honor.Tests] ASSERT PASS: armor removed A
+[Honor.Tests] ASSERT PASS: armor removed B
+[Honor.Tests] ASSERT PASS: ordinary clothing retained
+[Honor.Tests] ASSERT PASS: winner and honor applied
+[Honor.Tests] ASSERT PASS: survival / death rule
+[Honor.Tests] ASSERT PASS: immediate tending
+[Honor.Tests] ASSERT PASS: combat jobs ended
+[Honor.Tests] ASSERT PASS: armor restored to survivor
+[Honor.Tests] ASSERT PASS: idempotent result
+[Honor.Tests] PASS: real insult -> gathering -> combat -> Death -> tending -> honor; save requested.
+
+=== Installed Core surrender duel ===
+[Honor.Tests] ASSERT PASS: Harmony ready
+[Honor.Tests] ASSERT PASS: real insult succeeds
+[Honor.Tests] ASSERT PASS: insult direction
+[Honor.Tests] ASSERT PASS: no parallel social fight
+[Honor.Tests] ASSERT PASS: duel stages immediately in prepared arena:
+[Honor.Tests] ASSERT PASS: armor removed A
+[Honor.Tests] ASSERT PASS: armor removed B
+[Honor.Tests] ASSERT PASS: ordinary clothing retained
+[Honor.Tests] ASSERT PASS: winner and honor applied
+[Honor.Tests] ASSERT PASS: survival / death rule
+[Honor.Tests] ASSERT PASS: immediate tending
+[Honor.Tests] ASSERT PASS: combat jobs ended
+[Honor.Tests] ASSERT PASS: armor restored to survivor
+[Honor.Tests] ASSERT PASS: idempotent result
+[Honor.Tests] PASS: real insult -> gathering -> combat -> Surrender -> tending -> honor; save requested.
+
+=== Distribution verification ===
+PASS: five existing Workshop items updated to 0.2.1; anonymous descriptions verified.
+PASS: verify-series matched Public visibility, not banned, required items and DLC dependencies against release/workshop-items.json.
+PASS: installed release files match source distribution hashes; version metadata is 0.2.1.
+PASS: package contains owned mod assemblies only; no engine/Harmony/Steamworks DLLs, PDBs or test mods.
+PENDING: collection final Steam web Publish step remains for the user.

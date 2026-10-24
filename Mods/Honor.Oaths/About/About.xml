@@ -2,7 +2,7 @@
   <name>Honor.Oaths</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.oaths</packageId>
-  <modVersion>0.2.0</modVersion>
+  <modVersion>0.2.1</modVersion>
   <supportedVersions>
     <li>1.7</li>
   </supportedVersions>
@@ -14,7 +14,7 @@
     </li>
     <li>
       <packageId>honor.series.core</packageId>
-      <displayName>Honor.Core 0.2.0+</displayName>
+      <displayName>Honor.Core 0.2.1+</displayName>
       <steamWorkshopUrl>steam://url/CommunityFilePage/3825494597</steamWorkshopUrl>
     </li>
   </modDependencies>
@@ -23,8 +23,8 @@
     <li>honor.series.core</li>
     <li>Ludeon.RimWorld.Royalty</li>
   </loadAfter>
-  <description>Honor.OathsSelect a colonist and swear a five-day victory or peace oath. The 600-tick ceremony needs two awake witnesses within 10 cells and clear sight. Win a lawful duel, or avoid insults/dishonor for five days. Success +.06 honor / +5 mood; failure -.1 honor / -8 mood. Oathkeeper is a ceremonial title, not a Royalty rank or stat bonus. Requires Core 0.2.0+ and Harmony 3; NO DLC required.
-한국어: 10칸 이내의 깨어 있는 목격자 2명과 의식을 진행하고 5일 승리 또는 평화 맹세를 합니다. 성공 +.06 명예·기분 +5, 위반 -.1·기분 -8입니다. 맹세 수호자는 의례 호칭이며 Royalty 작위나 능력치를 주지 않습니다. Core 0.2.0 이상·Harmony 필수, DLC 필수 아님.
+  <description>Honor.OathsSelect a colonist and swear a five-day victory or peace oath. The 600-tick ceremony needs two awake witnesses within 10 cells and clear sight. Win a lawful duel, or avoid insults/dishonor for five days. Success +.06 honor / +5 mood; failure -.1 honor / -8 mood. Oathkeeper is a ceremonial title, not a Royalty rank or stat bonus. Requires Core 0.2.1+ and Harmony 3; NO DLC required.
+한국어: 10칸 이내의 깨어 있는 목격자 2명과 의식을 진행하고 5일 승리 또는 평화 맹세를 합니다. 성공 +.06 명예·기분 +5, 위반 -.1·기분 -8입니다. 맹세 수호자는 의례 호칭이며 Royalty 작위나 능력치를 주지 않습니다. Core 0.2.1 이상·Harmony 필수, DLC 필수 아님.
 Source: https://github.com/Ale6974/HonorModSeries
 Collection: https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644</description>
 </ModMetaData>

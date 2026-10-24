@@ -1,6 +1,6 @@
 # Honor Mod Series — RimWorld 1.7
 
-**0.2.0 공개 실험판.** 실제 RimWorld **1.7.4985 rev1269 unstable / Waylith** 설치 DLL로 빌드하고 별도 저장 폴더에서 엔진 통합 검사를 수행합니다. 초기 명세 전체의 완성판은 아닙니다.
+**0.2.1 공개 실험판.** 실제 RimWorld **1.7.4985 rev1269 unstable / Waylith** 설치 DLL로 빌드하고 별도 저장 폴더에서 엔진 통합 검사를 수행합니다. 초기 명세 전체의 완성판은 아닙니다.
 
 [추천 모음집 — 마지막 공개 단계 대기](https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644) · [공개 GitHub 소스](https://github.com/Ale6974/HonorModSeries) · [창작마당 Core](https://steamcommunity.com/sharedfiles/filedetails/?id=3825494597) · [필수 항목 및 권장 구성](docs/DEPENDENCIES.md)
 
@@ -14,7 +14,7 @@
 | Diplomacy | 비적대 정착지 모욕에 대응하는 월드 퀘스트, 대표 생성·동일 무기·결투, 은과 우호도 결과 | 월드맵 비적대 정착지의 ‘정착지 모욕에 대응’ → 상단 이동 → 도착한 대표 선택 |
 | Oaths | 목격자 2명과 600틱 의식, 5일 승리/평화 맹세, 성공·위반 명예와 기분 기억, 의례적 칭호 | 주민의 ‘맹세하기’ 선택, 10칸 이내 깨어 있는 목격자 2명 확보 |
 
-Core는 Harmony 3만 필요합니다. 각 부속 모드는 Core 0.2.0 이상과 Harmony가 필요하며 서로는 필요하지 않습니다. **Nobility만 Royalty DLC가 필수**입니다. DLC가 없다면 Nobility를 제외한 구성을 사용하세요. [정확한 의존성 표](docs/DEPENDENCIES.md).
+Core는 Harmony 3만 필요합니다. 각 부속 모드는 Core 0.2.1 이상과 Harmony가 필요하며 서로는 필요하지 않습니다. **Nobility만 Royalty DLC가 필수**입니다. DLC가 없다면 Nobility를 제외한 구성을 사용하세요. [정확한 의존성 표](docs/DEPENDENCIES.md).
 
 모든 플레이어 문구는 게임의 영어/한국어 언어 설정을 따릅니다. 다른 언어에서는 기본 영어를 사용합니다. 사용자 언어 설정을 바꾸지 않습니다.
 
@@ -37,18 +37,20 @@ Society: 15일 이내 같은 방향 모욕이 3회면 양쪽 숙적 기억(-20 �
 
 Nobility: 가장 높은 작위의 seniority를 사용해 1.1 + min(rank,10) × .05 배율을 적용합니다. 대리인이 싸워도 최초 신청자의 규칙을 유지하고 결과 명예는 본인에게 적용합니다. 승리 대리인에게는 추가 +.02 명예입니다.
 
-Diplomacy: 무작위 사건 대신 **플레이어가 비적대 정착지에서 시작**합니다. 2~8타일 근처 장소·10일 기한·세력별 10일 대기 기간을 사용합니다. 현장 상대는 허용 무기를 맞춥니다. 승리하면 현장 은 100·우호도 +10, 패배·중단·만료는 우호도 -5입니다. 일반 주민 결투의 자유로운 보상 협상은 구현하지 않았습니다. 상단의 다른 인원은 결투장 밖에 두세요.
+Diplomacy: 무작위 사건 대신 **플레이어가 비적대 정착지에서 시작**합니다. 2~8타일 근처 장소·10일 기한·세력별 10일 대기 기간을 사용합니다. 현장 상대는 허용 무기를 맞추며, 생성된 상대 대여 무기는 종료 시 회수됩니다. 승리하면 현장 은 100·우호도 +10, 패배·중단·만료는 우호도 -5입니다. 일반 주민 결투의 자유로운 보상 협상은 구현하지 않았습니다. 상단의 다른 인원은 결투장 밖에 두세요.
 
 Oaths: 정당한 결투 승리 또는 모욕·불명예 없이 5일 버티기입니다. 성공 +.06 명예·기분 +5, 실패 -.1·기분 -8입니다. 칭호는 능력치나 Royalty 작위를 주지 않는 모드 의례 호칭이며 최근 위반 시 표시를 억제합니다.
 
 선혈전·항복전도 단발 치명상 생존을 보장하지 않습니다. 항복은 통증/다운으로 판정합니다. 고의/사고 살해 구별과 종료 후 보복 판별, 물품·합류 요구 협상, 대규모 모드·CE 호환성, 장기 플레이는 미완료입니다. 자세한 범위는 [STATUS](docs/STATUS.md), 실제 검사 기록은 [TESTING](docs/TESTING.md)를 확인하세요.
 
+출시 전 검토와 수정 내용은 [RELEASE-REVIEW](docs/RELEASE-REVIEW.md)를 확인하세요.
+
 ## 빌드와 개발
 
-.NET 10 SDK와 사용자 소유의 게임·Harmony DLL이 필요합니다. `GamePaths.props.example`을 `GamePaths.props`로 복사해 경로를 설정한 뒤 `./tools/Build.ps1 -DotnetPath 'dotnet.exe 경로'`를 실행합니다. 게임·Harmony·Steamworks DLL과 세이브·개인 설정은 배포하지 않습니다.
+.NET 10 SDK와 사용자 소유의 게임·Harmony DLL이 필요합니다. 개발 스크립트는 PowerShell 7에서 검증했습니다. `GamePaths.props.example`을 `GamePaths.props`로 복사해 경로를 설정한 뒤 `./tools/Build.ps1 -DotnetPath 'dotnet.exe 경로'`를 실행합니다. 게임·Harmony·Steamworks DLL과 세이브·개인 설정은 배포하지 않습니다.
 
 - [API 검증](docs/API-VERIFICATION.md)
 - [모듈 구조](docs/ARCHITECTURE.md)
 - [게시 절차](docs/PUBLISHING.md)
 
-English: Experimental 0.2.0 for verified RimWorld 1.7.4985 unstable. Five playable modules, native English/Korean localization, no separate reputation currency. Core needs Harmony 3 for 1.7. Optional modules each need Core 0.2.0+; only Nobility also needs Royalty. Read DEPENDENCIES before subscribing to the complete collection. Diplomacy provides a player-triggered world quest with fixed rewards; general reward negotiation is not implemented. This is an early experimental release, not completion of every planned feature.
+English: Experimental 0.2.1 for verified RimWorld 1.7.4985 unstable. Five playable modules, native English/Korean localization, no separate reputation currency. Core needs Harmony 3 for 1.7. Optional modules each need Core 0.2.1+; only Nobility also needs Royalty. Read DEPENDENCIES before subscribing to the complete collection. Diplomacy provides a player-triggered world quest with fixed rewards; general reward negotiation is not implemented. This is an early experimental release, not completion of every planned feature.

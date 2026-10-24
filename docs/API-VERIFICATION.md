@@ -53,3 +53,9 @@
 - 설치 Core XML의 StaticWorldObjectBase, PeaceTalks 텍스처 경로, QuestScriptDef의 autoAccept/questNameRules/questDescriptionRules를 사용합니다.
 
 Steam의 필수 항목/모음집 구성은 공식 [ISteamUGC 문서](https://partner.steamgames.com/doc/api/ISteamUGC)의 CreateItem/SetItemVisibility/AddDependency/AddAppDependency와 설치 Steamworks.NET 바인딩 서명을 확인해 사용합니다. 게시 후 QueryUGC children과 GetAppDependencies로 다시 읽습니다. Steamworks DLL은 소스/모드 배포에 포함하지 않습니다.
+
+## 0.2.1 검토에서 확인한 사항
+
+Verse.ModDependency.IsSatisfied는 실제 설치 DLL에서 packageId/alternativePackageIds의 활성 여부를 검사하고 버전 숫자를 비교하지 않습니다. 표시 문자열을 버전 강제 장치라고 안내하지 않습니다. 대여 무기 회수에는 실제 Thing.holdingOwner.Remove / Thing.Destroy를 사용하고 저장된 결투의 해당 무기 참조도 지웁니다. 맹세 이전은 GameComponent.LoadedGame 이후에 처리합니다.
+
+Verse.GenGrid.Standable은 Walkable뿐 아니라 같은 셀 Thing의 def.passability가 모두 Traversability.Standable인지도 검사합니다. 통과 가능한 돌덩이도 기립 장소를 막을 수 있어 생성 결투장 준비에서 제거합니다.

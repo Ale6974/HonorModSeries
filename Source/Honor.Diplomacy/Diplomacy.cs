@@ -15,8 +15,9 @@ public sealed class DiplomacyMod : Mod
         new Harmony("honor.series.diplomacy").PatchAll();
         HonorApi.AdditionalParticipantValidators.Add(p => p.Map?.Parent is HonorDelegation site && !site.Resolved && site.Representative == p);
         HonorApi.DuelEnded += d => {
-            if (d.Challenger?.Map?.Parent is HonorDelegation site && d.Contains(site.Representative))
-                site.Resolve(d.Winner != null && d.Winner != site.Representative && !d.DishonorApplied);
+            // The challenger may already be despawned when Core cancels the match.
+            var site = Find.WorldObjects.AllWorldObjects.OfType<HonorDelegation>().FirstOrDefault(s => d.Contains(s.Representative));
+            site?.Resolve(d.Winner != null && d.Winner != site.Representative && !d.DishonorApplied);
         };
     }
 }
@@ -72,6 +73,7 @@ public sealed class QuestPart_HonorDelegation : QuestPart
 public sealed class HonorDelegation : MapParent
 {
     public Pawn Representative;
+    public ThingWithComps LoanWeapon;
     public Quest Quest;
     public int Deadline;
     public bool Resolved;
@@ -79,18 +81,12 @@ public sealed class HonorDelegation : MapParent
     public override void ExposeData()
     {
         base.ExposeData(); Scribe_References.Look(ref Representative, "honorRepresentative"); Scribe_References.Look(ref Quest, "honorQuest");
+        Scribe_References.Look(ref LoanWeapon, "honorLoanWeapon");
         Scribe_Values.Look(ref Deadline, "honorDeadline"); Scribe_Values.Look(ref Resolved, "honorResolved");
     }
     public override void PostMapGenerate()
     {
-        base.PostMapGenerate(); var center = Map.Center;
-        foreach (var cell in GenRadial.RadialCellsAround(center, 8, true).Where(c => c.InBounds(Map)))
-        {
-            foreach (var thing in cell.GetThingList(Map).ToList())
-                if (thing.def.category is ThingCategory.Building or ThingCategory.Plant) thing.DeSpawn();
-            Map.terrainGrid.SetTerrain(cell, TerrainDefOf.Soil); Map.roofGrid.SetRoof(cell, null);
-        }
-        Map.GetComponent<DuelMapComponent>().Arena = center;
+        base.PostMapGenerate(); PrepareArena(); var center = Map.Center;
         for (int i = 0; i < 30; i++)
         {
             var candidate = PawnGenerator.GeneratePawn(PawnKindDefOf.Colonist, Faction);
@@ -102,23 +98,37 @@ public sealed class HonorDelegation : MapParent
         GenSpawn.Spawn(Representative, center + new IntVec3(2, 0, 0), Map);
         Representative.jobs.StartJob(JobMaker.MakeJob(JobDefOf.Wait, 600000), JobCondition.InterruptForced);
     }
+    public void PrepareArena()
+    {
+        var center = Map.Center;
+        foreach (var cell in GenRadial.RadialCellsAround(center, 8, true).Where(c => c.InBounds(Map)))
+        {
+            foreach (var thing in cell.GetThingList(Map).ToList())
+                if (thing is not Pawn && (thing.def.category is ThingCategory.Building or ThingCategory.Plant ||
+                    thing.def.passability != Traversability.Standable || thing is Fire)) thing.DeSpawn();
+            Map.terrainGrid.SetTerrain(cell, TerrainDefOf.Soil); Map.roofGrid.SetRoof(cell, null);
+        }
+        Map.GetComponent<DuelMapComponent>().Arena = center;
+    }
     public bool Begin(Pawn champion)
     {
-        if (Resolved || champion?.Map != Map || champion.Faction != Faction.OfPlayer || !DuelMapComponent.Eligible(champion) ||
-            Representative == null || Representative.Dead || Representative.Downed || champion.equipment.Primary == null) return false;
+        if (Resolved || Find.TickManager.TicksGame >= Deadline || champion?.Map != Map || champion.Faction != Faction.OfPlayer || !DuelMapComponent.Eligible(champion) ||
+            Representative == null || Representative.Dead || Representative.Downed || !DuelMapComponent.AllowedWeapon(champion.equipment.Primary)) return false;
         var component = Map.GetComponent<DuelMapComponent>();
         if (!component.CanRegister(champion, Representative)) return false;
         var original = champion.equipment.Primary;
         var copy = (ThingWithComps)ThingMaker.MakeThing(original.def, original.Stuff);
         original.TryGetQuality(out var quality); copy.TryGetComp<CompQuality>()?.SetQuality(quality, ArtGenerationContext.Colony);
         copy.HitPoints = original.HitPoints;
-        Representative.equipment.DestroyAllEquipment(); Representative.equipment.AddEquipment(copy);
+        ReclaimWeapon();
+        Representative.equipment.DestroyAllEquipment(); Representative.equipment.AddEquipment(copy); LoanWeapon = copy;
         if (!DuelMapComponent.WeaponsMatch(champion, Representative, out _)) return false;
         component.RegisterInsult(Representative, champion); return true;
     }
     public void Resolve(bool victory)
     {
         if (Resolved) return; Resolved = true; forceRemoveWorldObjectWhenMapRemoved = true;
+        ReclaimWeapon();
         Faction?.TryAffectGoodwillWith(Faction.OfPlayer, victory ? 10 : -5);
         if (victory && Map != null)
         {
@@ -128,6 +138,22 @@ public sealed class HonorDelegation : MapParent
         Quest?.End(victory ? QuestEndOutcome.Success : QuestEndOutcome.Fail);
         Messages.Message((victory ? "HD_Won" : "HD_Lost").Translate(), MessageTypeDefOf.NeutralEvent);
         if (!HasMap) Destroy();
+    }
+    private void ReclaimWeapon()
+    {
+        // The matching NPC weapon is a tournament loan, never an extra material reward.
+        // Old saves lack LoanWeapon. Core's duel reference survives a dead NPC dropping the loan.
+        var previous = Map?.GetComponent<DuelMapComponent>().Duels.LastOrDefault(d => d.Contains(Representative));
+        var recorded = previous == null ? null : previous.Challenger == Representative ? previous.WeaponLeft : previous.WeaponRight;
+        var weapon = LoanWeapon ?? recorded ?? Representative?.equipment?.Primary;
+        if (weapon is { Destroyed: false }) { weapon.holdingOwner?.Remove(weapon); weapon.Destroy(); }
+        if (weapon != null && Map != null)
+            foreach (var duel in Map.GetComponent<DuelMapComponent>().Duels)
+            {
+                if (duel.WeaponLeft == weapon) duel.WeaponLeft = null;
+                if (duel.WeaponRight == weapon) duel.WeaponRight = null;
+            }
+        LoanWeapon = null;
     }
     protected override void TickInterval(int delta)
     {

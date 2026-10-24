@@ -2,7 +2,7 @@
   <name>Honor.Nobility</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.nobility</packageId>
-  <modVersion>0.2.0</modVersion>
+  <modVersion>0.2.1</modVersion>
   <supportedVersions>
     <li>1.7</li>
   </supportedVersions>
@@ -14,7 +14,7 @@
     </li>
     <li>
       <packageId>honor.series.core</packageId>
-      <displayName>Honor.Core 0.2.0+</displayName>
+      <displayName>Honor.Core 0.2.1+</displayName>
       <steamWorkshopUrl>steam://url/CommunityFilePage/3825494597</steamWorkshopUrl>
     </li>
     <li>
@@ -28,8 +28,8 @@
     <li>honor.series.core</li>
     <li>Ludeon.RimWorld.Royalty</li>
   </loadAfter>
-  <description>Honor.NobilityROYALTY DLC REQUIRED. Royal titles increase honor sensitivity by seniority. Titled principals may appoint an eligible colonist before staging; original challenger rules remain. Principal receives the result, victorious proxy gains a small honor reward. Requires Core 0.2.0+ and Harmony 3. Society is optional.
-한국어: Royalty DLC 필수. 작위별 명예 민감도와 대리 결투입니다. 귀족 본인에게 승패 명예를 반영하고 승리 대리인도 소량 명예를 받습니다. 최초 신청자의 규칙을 유지합니다. Core 0.2.0 이상·Harmony 필수, Society 등 다른 부속 모드는 선택.
+  <description>Honor.NobilityROYALTY DLC REQUIRED. Royal titles increase honor sensitivity by seniority. Titled principals may appoint an eligible colonist before staging; original challenger rules remain. Principal receives the result, victorious proxy gains a small honor reward. Requires Core 0.2.1+ and Harmony 3. Society is optional.
+한국어: Royalty DLC 필수. 작위별 명예 민감도와 대리 결투입니다. 귀족 본인에게 승패 명예를 반영하고 승리 대리인도 소량 명예를 받습니다. 최초 신청자의 규칙을 유지합니다. Core 0.2.1 이상·Harmony 필수, Society 등 다른 부속 모드는 선택.
 Source: https://github.com/Ale6974/HonorModSeries
 Collection: https://steamcommunity.com/sharedfiles/filedetails/?id=3825922644</description>
 </ModMetaData>
