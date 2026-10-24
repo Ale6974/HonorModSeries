@@ -129,6 +129,8 @@ public sealed class LiveCharterLedger : GameComponent
     }
     private bool Execute(Action action)
     {
+        if (Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges)
+        { Messages.Message("PS_Pending".Translate(), MessageTypeDefOf.RejectInput); return false; }
         if (RestoreFailed) return false;
         try { action(); return true; }
         catch (ArgumentException) { Messages.Message("HCL_Unavailable".Translate(), MessageTypeDefOf.RejectInput); return false; }

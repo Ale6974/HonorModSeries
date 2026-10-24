@@ -87,7 +87,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
             exists && city.HasMap, !exists || city.trader == null || city.EverVisited || city.previouslyGeneratedInhabitants?.Count > 0,
             exists && city.def.canHaveFaction && Eligible(owner), Eligible(target), target?.IsPlayer == true);
     }
-    private (RecordedCharter Charter, Settlement City, Faction Target, TerritoryTransferObservation Observation, TerritoryTransferPurpose Purpose) Context(string id)
+    private (RecordedCharter Charter, Settlement City, Faction Target, TerritoryTransferObservation Observation, TerritoryTransferPurpose Purpose) Context(string id, Faction proposed = null)
     {
         if (RestoreFailed || Charters.RestoreFailed || Current.Game.GetComponent<TributePaymentLedger>().HasPending(id))
             throw new ArgumentException("Resolve unavailable journals and pending deliveries.");
@@ -96,29 +96,33 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         Charters.Book.ValidateCurrent(id, Charters.Observe());
         bool released = charter.Phase == RecordedCharterPhase.Released;
         var union = Current.Game.GetComponent<UnionPoliticsLedger>();
-        var target = released ? (!union.RestoreFailed ? union.Union : null) : Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
+        var target = released ? (!union.RestoreFailed ? union.Union : null) : proposed ?? Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
         if (target == null || !Find.FactionManager.AllFactionsListForReading.Contains(target))
             throw new ArgumentException("Configure a live union or player shared authority first.");
         var observed = Observe(binding.Settlement, binding.Identity, target);
         return (charter, binding.Settlement, target, observed, released ? TerritoryTransferPurpose.ReleasedToUnion : TerritoryTransferPurpose.ActiveCharter);
     }
-    public TerritoryAdministrationReview Review(string id)
+    public TerritoryAdministrationReview Review(string id) => ReviewForTarget(id, null);
+    private TerritoryAdministrationReview ReviewForTarget(string id, Faction target)
     {
-        var c = Context(id); var clone = TerritoryTransferLedger.Restore(Ledger.Export());
+        var c = Context(id, target); var clone = TerritoryTransferLedger.Restore(Ledger.Export());
         clone.Prepare("review-" + Guid.NewGuid().ToString("N"), Charters.Book, id, c.Observation, c.Target.GetUniqueLoadID(),
             c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
             c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId);
         return new(id, c.City.Label, c.City.Faction.Name, c.Target.Name, c.Purpose,
             string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose), c.Target.GetUniqueLoadID());
     }
-    public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true)
+    public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true) => ApplyForTarget(reviewed, notify, null);
+    private bool ApplyForTarget(TerritoryAdministrationReview reviewed, bool notify, Faction target)
     {
         if (reviewed == null) { Reject(); return false; }
         try
         {
-            var current = Review(reviewed.Charter);
+            var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
+            if (transition.BlocksChanges && !transition.Executing) throw new ArgumentException("Resolve coordinated transition first.");
+            var current = ReviewForTarget(reviewed.Charter, target);
             if (current.Stamp != reviewed.Stamp) throw new ArgumentException("Reviewed state changed.");
-            var c = Context(reviewed.Charter); string id = Guid.NewGuid().ToString("N");
+            var c = Context(reviewed.Charter, target); string id = Guid.NewGuid().ToString("N");
             Ledger.Prepare(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
                 c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
                 c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId);
@@ -131,21 +135,36 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         catch (Exception e) when (e is ArgumentException or InvalidOperationException)
         { Log.Warning("[Honor.Contracts.Preview] Territory execution incomplete; recorded intent retained. " + e.GetType().Name); Reject(); return false; }
     }
-    public FollowerTransferPlan ReviewFollowers()
+    public FollowerTransferPlan ReviewFollowers() => ReviewFollowersFor(Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority());
+    internal FollowerTransferPlan ReviewFollowersFor(Faction target)
     {
         if (RestoreFailed || Charters.RestoreFailed) throw new ArgumentException("Execution or consent journal unavailable.");
-        var target = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
         var entries = Charters.Book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active &&
             Charters.Book.Entity(c.Terms.Liege).Player && !Charters.Book.Entity(c.Terms.Subject).Player).Select(c => {
-                var context = Context(c.Id);
+                var context = Context(c.Id, target);
                 if (context.Target != target) throw new ArgumentException("Authority changed during review.");
                 return new FollowerCandidate(c.Id, context.Observation);
             }).ToArray();
         return FollowerTransfers.Review(Charters.Book, Ledger, entries, target.GetUniqueLoadID(), Find.TickManager.TicksGame, AdministrationId);
     }
+    internal void ApplyTransitionFollowers(FollowerTransferPlan reviewed, Faction target)
+    {
+        var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
+        if (!transition.Executing || !transition.Journal.Pending || transition.Journal.Current == null ||
+            Current.Game.GetComponent<PlayerPoliticsLedger>().State.Authority != target.GetUniqueLoadID())
+            throw new ArgumentException("No authorized coordinated execution.");
+        var current = ReviewFollowersFor(target);
+        if (current.Stamp != reviewed.Stamp) throw new ArgumentException("Transition follower plan changed.");
+        foreach (string id in current.Moves)
+        {
+            var single = ReviewForTarget(id, target);
+            if (single.TargetIdentity != current.Target || !ApplyForTarget(single, false, target)) throw new ArgumentException("Follower execution interrupted.");
+        }
+    }
     public string FollowerLabel(string charterId) => Charters.Label(Charters.Book.Charter(charterId).Terms.Subject);
     public void ApplyFollowers(FollowerTransferPlan reviewed)
     {
+        if (Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) { Reject(); return; }
         if (reviewed == null) { Reject(); return; }
         try
         {

@@ -98,6 +98,7 @@ public sealed class TributePaymentLedger : GameComponent
     }
     private void RequireReady(string charterId)
     {
+        if (Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) throw new ArgumentException("Complete or resolve political transition first.");
         if (RestoreFailed || Charters.RestoreFailed) throw new ArgumentException("Ledger unavailable.");
         Charters.Book.ValidateCurrent(charterId, Charters.Observe());
         if (!Charters.Book.Entity(Charters.Book.Charter(charterId).Terms.Subject).Player) throw new ArgumentException("Only outgoing player tribute is implemented.");

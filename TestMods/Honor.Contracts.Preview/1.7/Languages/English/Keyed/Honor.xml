@@ -142,7 +142,7 @@
   <AD_Resume>Recheck and resume administration diplomacy</AD_Resume>
   <AD_Unavailable>Administration unavailable. A live player colony and valid unique administration are required. Establish it while unaffiliated. A defeated/duplicate faction cannot be replaced; goodwill caps, locked relations or suspended player allegiance may block sharing.</AD_Unavailable>
   <FB_Open>Align vassal towns with current polity</FB_Open>
-  <FB_Warning>Review ALL active NPC city vassals against your current administration/union/liege. This is a separate step after player allegiance changes. Every required move is checked before starting, including cumulative losses from the same source. Real source factions retain another base; your own administration alone may become empty. A visited town already at the destination needs no move; a visited town elsewhere blocks the batch. Transfers execute one city at a time. If interrupted, completed moves remain recorded; recover any pending city, then review the remaining group again. Gameplay validation is deferred.</FB_Warning>
+  <FB_Warning>Review ALL active NPC city vassals against your current administration/union/liege. This standalone screen repairs older alignment; new player allegiance changes include a combined follower review. Every required move is checked before starting, including cumulative losses from the same source. Real source factions retain another base; your own administration alone may become empty. A visited town already at the destination needs no move; a visited town elsewhere blocks the batch. Transfers execute one city at a time. If interrupted, completed moves remain recorded; recover any pending city, then review the remaining group again. Gameplay validation is deferred.</FB_Warning>
   <FB_Review>Review all active vassal towns</FB_Review>
   <FB_Plan>Destination: {0} · Moves required: {1} / Active towns: {2}</FB_Plan>
   <FB_Entry>{0} · Current faction: {1} · {2}</FB_Entry>
@@ -152,4 +152,18 @@
   <FB_Complete>Vassal alignment completed: {0} faction changes verified.</FB_Complete>
   <FB_Incomplete>Vassal alignment is incomplete or the reviewed state changed. Completed changes are retained. Resolve pending ownership, recheck player allegiance/diplomacy and review the whole group again.</FB_Incomplete>
   <FB_Pending>Unconfirmed ownership change: {0}</FB_Pending>
+  <PS_Warning>Membership and ALL active NPC city vassals are now reviewed together. Confirmation applies real player diplomacy, then moves the reviewed cities with per-city ownership proof. A staged intent is saved; partial progress is retained rather than rolled back or called complete. Nothing resumes automatically after loading. If interrupted, check any pending city, review the remaining diplomacy/towns, then resume. Only preparation with unchanged player allegiance and city journal can be cancelled. Other contract changes and new physical deliveries wait until resolution. Existing unpaid debts remain owed.</PS_Warning>
+  <PS_Confirm>Confirm diplomacy and reviewed vassal moves together</PS_Confirm>
+  <PS_ReturnUnion>Review union return after mutual contract release</PS_ReturnUnion>
+  <PS_Complete>Political transition complete: recorded allegiance, shared diplomacy and all reviewed vassal destinations confirmed.</PS_Complete>
+  <PS_Pending>A coordinated political transition needs resolution. Recover pending city ownership and review/resume here, or cancel unchanged preparation before allegiance is applied. Other political/contract changes and new physical deliveries are paused.</PS_Pending>
+  <PS_Prepared>Intent prepared; check actual allegiance before cancellation or recovery.</PS_Prepared>
+  <PS_AllegianceApplied>Allegiance recorded; diplomacy or remaining city execution still needs confirmation.</PS_AllegianceApplied>
+  <PS_Cancel>Cancel verified unchanged preparation</PS_Cancel>
+  <PS_Cancelled>Unchanged transition preparation cancelled; no allegiance or city movement was reversed.</PS_Cancelled>
+  <PS_ReviewResume>Review current destination and remaining towns</PS_ReviewResume>
+  <PS_Resume>Reaffirm reviewed diplomacy and resume remaining moves</PS_Resume>
+  <PS_DebtsRetained>Old contracts, unpaid bills and receipts remain in their ledgers. Union return or a new liege does not forgive debt. Union levies and unilateral independence are not implemented.</PS_DebtsRetained>
+  <PS_Rejected>Political review unavailable. Check actual mutual release/new contract, union notice, live destination consent, quest/goodwill limits, pending goods/city transfers, untouched town eligibility and cumulative source bases. A future hostile relationship with a follower's source blocks this preview's peaceful move. An existing union is required for return.</PS_Rejected>
+  <PS_Incomplete>Political transition is incomplete or the review changed. Verified stages and cities are retained. Check pending ownership, then review/resume here. If allegiance never changed and the city journal is unchanged, cancel preparation instead. No automatic rollback or restart was performed.</PS_Incomplete>
 </LanguageData>

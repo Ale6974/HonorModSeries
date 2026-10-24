@@ -55,7 +55,7 @@ public sealed class RealmAdministrationLedger : GameComponent
     }
     public void CreateOrResume()
     {
-        if (RestoreFailed) { Reject(); return; }
+        if (RestoreFailed || Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) { Reject(); return; }
         try
         {
             var politics = Current.Game.GetComponent<PlayerPoliticsLedger>();

@@ -8,6 +8,20 @@
 
 ## 이번에 연결한 범위
 
+### 1단계: 소속·봉신 이동 통합 전환 (0.3.6)
+
+**플레이어 정치 소속**에서 연합 가입, 합의 해약 후 연합 복귀, 서명된 새 종주 계약을 검토할 때 대외 관계와 모든 활성 직속 NPC 봉신 도시 목록을 함께 표시한다. 기존처럼 플레이어 이적 후 별도 일괄 버튼을 반드시 눌러야 하는 흐름을 바꿨다. 한 번 확정하면 플레이어 소속 명령→공유 외교→도시별 실제 이전→전체 목적지 확인을 이어서 수행한다. 기존 저장의 수동 정렬 화면도 유지한다. NPC끼리의 다단계 생성/후손 전체 집행을 구현한 것은 아니다.
+
+이전 봉신 계약의 실제 양측 해약·기록된 종주 일치, 새 계약의 활성 상태/실제 권위자, 연합 통보기간과 미완료 물품 이전, 살아 있는 목적 세력 대표·퀘스트/우호도 상한, 봉신 전체의 누적 이전 가능성을 먼저 검사한다. 연합 복귀에는 이미 존재하는 유효한 연합이 필요하다. 새 외교에서 봉신 원 세력과 적대하게 되면 이 평화 이전 어댑터로 이동하지 않고 시작 전에 보류한다. 방문/로딩된 도시의 새 소속 이전도 여전히 보류한다. 이미 목적 세력에 도착한 방문 도시는 다시 옮기지 않는다.
+
+`AllegianceTransitionLedger`/`PoliticalTransitionLedger`는 하나의 준비/소속 적용/완료/취소 의도를 버전 1 JSON으로 저장한다. 이전·예상 소속 명령 이력과 대상 계약 집합, 이전 영지 장부의 SHA256 및 확인 시각을 보관한다. 해시는 취소 시 장부 일치 확인용이며 저장 파일의 보안 인증이 아니다. 소속 기록만으로 도시 이전 완료를 주장하지 않는다. 과거 전환 이력은 PlayerAllegiance 명령과 도시별 장부에 남고 조정 장부에는 현재 또는 마지막 의도만 둔다.
+
+중단된 경우 이 창에서 미확정 도시를 확인하고 **현재 목적지와 남은 도시 재검토** 후 재개한다. 원래 명령 이력의 동일한 앞부분과 현재 소속·계약, 실제 해약/활성 계약 및 정확한 봉신 집합을 다시 확인한다. 같은 권위자의 중단/재확인 명령은 허용하지만 다른 정치 소속으로 바뀐 이력으로 완료 처리하지 않는다. 소속 적용 전이고 플레이어 명령 이력과 영지 장부가 그대로인 준비 건만 취소할 수 있다. 부분 적용된 소속·도시는 자동 롤백하지 않는다. 로드 후 자동 재실행도 하지 않는다.
+
+진행 중에는 다른 계약/소속 변경·초기 세계 재편·관리청 설립/재개·새 실물 납부를 보류한다. 실제 소유권 확인/미이동 취소는 허용한다. 기존 미납·영수증·해약 기록은 보존하며 복귀나 이적이 채무를 면제하지 않는다. 연합 회비·정당한 일방 독립·사라진 권위자에 대한 비상 전환은 미구현이다. 외부 모드가 대상 계약/세력을 변경해 검증할 수 없으면 보류 상태를 유지한다.
+
+추가 54개 순수 검사, 설치 DLL 빌드와 영한 키를 검증했다. 실제 전환 창·외교 알림/재진입·세력/도시 변경·엔진 Scribe 왕복·중단 복구는 실행하지 않았다. 코드 단계 구현을 실제 플레이 성공으로 취급하지 않으며 1단계 완료/Contracts Workshop 게시도 보류한다.
+
 ### 1단계: 영지 관리청과 봉신 일괄 소속 정렬 (0.3.5)
 
 플레이어 정착지의 **플레이어 정치 소속** 창에서 미소속 상태에 **NPC 영지 관리청 설립**을 선택한다. 실제 비플레이어 세력을 하나 만들고 플레이어와 +100 내부 동맹으로 시작한다. 숨김 생성 override로 무작위 정착지 생성을 억제한 뒤 공개 세력으로 등록한다. 관리청은 플레이어의 종주가 아니며, 독립 플레이어의 봉신 도시를 플레이어 기지로 바꾸지 않고 수용하는 NPC 소속 표현이다. 생성/저장 ID·플레이어 ID를 검증하며 중복/멸망 관리청을 임의로 교체하거나 부활시키지 않는다.
@@ -18,7 +32,7 @@
 
 같은 정치 소속 창의 **현재 정치 소속으로 봉신 도시 정렬**에서 활성 NPC 도시 봉신 전체를 현재 관리청/연합/종주 세력과 대조한다. 누락/중복 대상을 거절하고 각 도시의 실제 소유권·미방문 조건·미완료 이전과 같은 원 세력의 누적 도시 감소를 장부 복사본으로 먼저 검사한다. 실제 원 세력에는 다른 기지를 남긴다. 검증된 플레이어 전용 관리청만 모든 도시가 빠져나가 빈 상태가 될 수 있다. 이미 목적 소속인 도시는 방문/맵이 있어도 이동할 필요가 없지만, 다른 소속의 방문 도시는 여전히 이동을 막는다.
 
-일괄 확정 후에도 실제 이전은 도시별 준비→SetFaction→소유권 확인으로 순차 처리한다. 중단 시 완료 건은 유지하고 미완료 도시를 복구 버튼으로 확인한 뒤 전체를 다시 검토한다. 일부 완료를 전체 성공으로 기록하지 않으며 집행 중 목적지·활성 대상이 달라졌는지도 끝에 검사한다. 저장 후 새로운 세계 상태에서 목록을 다시 만들며 과거 계획을 자동 재실행하지 않는다. 이는 이적과 동시에 자동으로 후손을 옮기는 기능이 아니며, 현재 실제 장부가 지원하는 플레이어 직속 NPC 도시만 취급한다. NPC끼리의 다단계 생성은 남아 있다.
+일괄 확정 후에도 실제 이전은 도시별 준비→SetFaction→소유권 확인으로 순차 처리한다. 중단 시 완료 건은 유지하고 미완료 도시를 복구 버튼으로 확인한 뒤 전체를 다시 검토한다. 일부 완료를 전체 성공으로 기록하지 않으며 집행 중 목적지·활성 대상이 달라졌는지도 끝에 검사한다. 저장 후 새로운 세계 상태에서 목록을 다시 만들며 과거 계획을 자동 재실행하지 않는다. 이 0.3.5 독립 정렬 화면에 더해 위 0.3.6에서 소속과 직속 봉신의 통합 확정을 추가했다. 현재 실제 장부가 지원하는 플레이어 직속 NPC 도시만 취급한다. NPC끼리의 다단계 생성은 남아 있다.
 
 추가 37개 순수 검사, 설치 DLL 빌드와 영한 번역을 검증했다. 실제 관리청 생성·외교 재진입·이름 표시·NPC 도시/주민·세력 멸망 판정·퀘스트·Scribe 저장 재로딩은 실행하지 않았다. Contracts Workshop 게시와 1단계 완료 판정은 보류한다.
 
@@ -32,7 +46,7 @@
 
 계약의 최초 native owner는 불변의 기준 ID다. 실제 소속이 실행 장부의 마지막 완료 목적지와 일치할 때만 계약 관측에서 최초 정체성에 대응시킨다. 진행 중 이동·현재 외부 점령·소실은 정상 관측으로 변환하지 않는다. 같은 도시와 후속 계약을 다시 맺을 때도 원본 ID를 새 세력 ID로 덮어쓰지 않는다.
 
-독립 플레이어의 봉신 도시를 native `Faction.OfPlayer`로 편입하면 바닐라 플레이어 기지가 되므로 이번에는 이를 거절한다. 영지 관리청과 이적 후 별도 확인형 일괄 정렬은 위 0.3.5 절에서 추가했다. 방문한 도시의 맵/주민/재고 보존, 이적과 동시인 후손 자동 이동, NPC끼리 계층 생성, 주군 중대 위반에 따른 일방 독립 및 플레이어의 해약 후 자동 연합 편입도 남아 있다. **해약 자체가 자동 이동이나 전쟁/보호 임무 완료를 뜻하지 않는다.** 이동 후 방문한 도시는 이 코드로 다시 이전할 수 없으며, 맵/재고 보존 구현이 필요하다.
+독립 플레이어의 봉신 도시를 native `Faction.OfPlayer`로 편입하면 바닐라 플레이어 기지가 되므로 이번에는 이를 거절한다. 영지 관리청과 이적 후 별도 확인형 일괄 정렬은 위 0.3.5 절에서 추가했다. 직속 봉신의 통합 이적과 플레이어의 합의 해약 후 연합 복귀는 위 0.3.6에서 추가했다. 방문한 도시의 맵/주민/재고 보존, NPC끼리의 계층 생성/다단계 후손 집행, 주군 중대 위반에 따른 일방 독립은 남아 있다. **해약 자체가 자동 이동이나 전쟁/보호 임무 완료를 뜻하지 않는다.** 이동 후 방문한 도시는 이 코드로 다시 이전할 수 없으며, 맵/재고 보존 구현이 필요하다.
 
 추가 69개 순수 검사와 기존 전체 빌드가 통과했다. 실제 엔진의 소유권 변경·캐시·세력 멸망 판정·생성 주민·거래·저장 복원은 실행하지 않았다. 1단계는 여전히 진행 중이며 Contracts Workshop 배포는 보류한다.
 
@@ -118,6 +132,6 @@ GameComponent가 실제 Settlement/Faction을 Scribe 참조로, 정치 장부를
 
 ## 다음 연결 작업
 
-방문 도시/일방 독립/후손 자동 이동/NPC 계층 생성, 방문 징수·NPC 상납·수송 상단 사건, 실제 퀘스트/전투 결과 증거, 항복·점령의 정착지 보존, 게임 세계 사건 생성과 알림, 이행 면책·반복 미납 제재, 평의회 가중 표결, 세계 생성/기존 저장 선택, 용병단과 개인 서약을 순차적으로 연결한다. 실제 정착지 매핑·동의 기록·직접 실물 공납 코드는 추가했지만 복잡한 NPC 권한·정치 판단·초기 세계 전체 적용은 아직 미완성이다. 기존 규칙의 RescuePledge/FactionHonorLedger와 새 모델 통합도 남아 있다. 현재 명예 수치는 Core Need/바닐라 우호도에 전파하지 않는다.
+방문 도시/전시 이적/일방 독립/NPC 다단계 계층 생성과 집행, 방문 징수·NPC 상납·수송 상단 사건, 실제 퀘스트/전투 결과 증거, 항복·점령의 정착지 보존, 게임 세계 사건 생성과 알림, 이행 면책·반복 미납 제재, 평의회 가중 표결, 세계 생성/기존 저장 선택, 용병단과 개인 서약을 순차적으로 연결한다. 실제 정착지 매핑·동의 기록·직접 실물 공납 코드는 추가했지만 복잡한 NPC 권한·정치 판단·초기 세계 전체 적용은 아직 미완성이다. 기존 규칙의 RescuePledge/FactionHonorLedger와 새 모델 통합도 남아 있다. 현재 명예 수치는 Core Need/바닐라 우호도에 전파하지 않는다.
 
-English: An opt-in, code-validated development preview. Initial configuration can move reviewed eligible NPC towns into a real shared Free City Union, preserving player control and source factions' last bases. Live charters offer separately enabled manual physical tribute with escrow/receipts. The fictional model remains separate. Player membership and signed liege allegiance can apply real shared diplomacy after review, preserving native player control. Quest locks or player goodwill caps suspend sharing. Untouched NPC city subjects can separately join the existing shared authority or, after mutual release, an existing union, with prepared/verified/cancelled ownership records. Independent players can establish an NPC Realm Administration mirroring player diplomacy and separately review/align all active NPC vassal towns with their current polity. Visited-city migration, automatic descendant movement, unilateral independence, council votes, incoming NPC tribute, collection visits, title/favor trading and protection missions remain pending. No gameplay validation or Workshop release is claimed.
+English: An opt-in, code-validated development preview. Initial configuration can move reviewed eligible NPC towns into a real shared Free City Union, preserving player control and source factions' last bases. Live charters offer separately enabled manual physical tribute with escrow/receipts. The fictional model remains separate. Player membership and signed liege allegiance can apply real shared diplomacy after review, preserving native player control. Quest locks or player goodwill caps suspend sharing. Untouched NPC city subjects can separately join the existing shared authority or, after mutual release, an existing union, with prepared/verified/cancelled ownership records. Independent players can establish an NPC Realm Administration mirroring player diplomacy and use combined review of player allegiance, mutual-release union return and all direct NPC subjects, with saved staged intent and explicit recovery. Old debts remain owed. Visited-city migration, multi-level NPC hierarchy migration, unilateral independence, council votes, incoming NPC tribute, collection visits, title/favor trading and protection missions remain pending. No gameplay validation or Workshop release is claimed.

@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 소속·봉신 통합 전환 (0.3.6, 코드/빌드만)
+
+동일 설치 Version.txt의 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 새로운 게임 멤버 시그니처를 추측해 추가하지 않고 기존 검증한 GameComponent/Scribe_Values, Faction 대표/관계/알림, Settlement.SetFaction 참조를 재사용한다. 순수 조정 장부는 System.Text.Json과 .NET SHA256으로 현재 명령 이력/영지 장부 일치를 검증한다. 실제 Waylith 게임 프로세스에서 이 JSON/해시 경로를 실행한 것은 아니다.
+
+플레이어 native faction 변경 없이 먼저 실제 소속 명령을 확인하고, 공유 외교 및 도시별 이전을 확인한다. 준비/소속 적용/완료를 각각 기록하고 동일한 명령 앞부분·원 해약·새 계약·대상 집합을 재검사한다. 새 대외 관계가 봉신 원 세력을 적대로 만드는 경우는 전시 이전 API가 있다고 가정하지 않고 거절한다. 실제 Harmony 재진입·캐시·퀘스트·엔진 저장 복구·권위자 소실 처리는 실행 검증하지 않았다.
+
 ## 독립 플레이어 관리청과 일괄 이전 (0.3.5, 코드/빌드만)
 
 1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev 및 Harmony 3.0.0.0-rc.3을 재확인했다. 설치 FactionManager를 다시 조사했으며 FactionManagerTick은 GoodwillManagerTick·정착지 근접 우호도 검사·FactionTick을 호출한다. 일반 NPC 세력 조회는 비플레이어/숨김/멸망 등의 조건으로 이루어져 새 관리청이 모든 퀘스트에서 자동 제외된다고 가정하지 않는다. canGenerateQuestSites=false가 모든 퀘스트 차단 API라는 주장도 하지 않는다.

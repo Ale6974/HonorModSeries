@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace Honor.Contracts.Rules;
 
 public sealed record FollowerCandidate(string Charter, TerritoryTransferObservation Observation);
-public sealed record FollowerTransferPlan(string Target, IReadOnlyList<FollowerCandidate> Entries, IReadOnlyList<string> Moves, string Stamp);
+public sealed record FollowerTransferPlan(string Target, IReadOnlyList<FollowerCandidate> Entries, IReadOnlyList<string> Moves, string Stamp, long ReviewedTick);
 public static class FollowerTransfers
 {
     /// <summary>Validate the complete active NPC subject set on a copy, including cumulative source losses.</summary>
@@ -42,6 +42,6 @@ public static class FollowerTransfers
         }
         string stamp = JsonSerializer.Serialize(new { Target = target, Now = now, Administration = verifiedAdministration,
             Book = book.Export(), Ledger = ledger.Export(), Entries = entries });
-        return new(target, Array.AsReadOnly(entries), moves.AsReadOnly(), stamp);
+        return new(target, Array.AsReadOnly(entries), moves.AsReadOnly(), stamp, now);
     }
 }

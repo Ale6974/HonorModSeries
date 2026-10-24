@@ -66,7 +66,7 @@ public sealed class UnionPoliticsLedger : GameComponent
     public override void LoadedGame() => OfferSetup();
     private void OfferSetup()
     {
-        if (queued || choice != InitialPoliticsChoice.Unchosen || RestoreFailed) return;
+        if (queued || choice != InitialPoliticsChoice.Unchosen || RestoreFailed || Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) return;
         queued = true;
         LongEventHandler.ExecuteWhenFinished(() => {
             if (Current.Game == game && choice == InitialPoliticsChoice.Unchosen && !RestoreFailed)
@@ -75,7 +75,7 @@ public sealed class UnionPoliticsLedger : GameComponent
     }
     public void KeepExisting()
     {
-        if (!RestoreFailed && ConfigurationAvailable) choice = InitialPoliticsChoice.KeepExisting;
+        if (!RestoreFailed && ConfigurationAvailable && !Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) choice = InitialPoliticsChoice.KeepExisting;
     }
     private Settlement[] Settlements() => Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Where(s => !s.Destroyed).ToArray();
     private UnionCandidate Observe(Settlement city, Settlement[] all)
@@ -114,7 +114,8 @@ public sealed class UnionPoliticsLedger : GameComponent
     }
     public void Configure(IReadOnlyList<UnionCandidate> reviewed)
     {
-        if (RestoreFailed || !ConfigurationAvailable || Current.Game.GetComponent<LiveCharterLedger>().RestoreFailed) { Rejected(); return; }
+        if (RestoreFailed || !ConfigurationAvailable || Current.Game.GetComponent<LiveCharterLedger>().RestoreFailed ||
+            Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) { Rejected(); return; }
         try
         {
             if (reviewed == null || reviewed.Count is < 1 or > 10 || reviewed.Select(c => c.SettlementId).Distinct(StringComparer.Ordinal).Count() != reviewed.Count ||
