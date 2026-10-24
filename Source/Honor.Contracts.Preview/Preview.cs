@@ -71,6 +71,9 @@ internal static class PreviewSettlementCommand
     static IEnumerable<Gizmo> Postfix(IEnumerable<Gizmo> __result, Settlement __instance)
     {
         foreach (var gizmo in __result) yield return gizmo;
+        if (__instance.Faction != null)
+            yield return new Command_Action { defaultLabel = "HCL_Open".Translate(), defaultDesc = "HCL_Warning".Translate(),
+                action = () => Find.WindowStack.Add(new LiveChartersWindow(__instance)) };
         if (__instance.Faction != Faction.OfPlayer) yield break;
         yield return new Command_Action { defaultLabel = "HCP_Open".Translate(), defaultDesc = "HCP_Warning".Translate(),
             action = () => Find.WindowStack.Add(new ContractsPreviewWindow()) };

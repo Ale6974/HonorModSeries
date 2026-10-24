@@ -1,4 +1,32 @@
 <LanguageData>
+  <HCL_Open>Settlement charter records</HCL_Open>
+  <HCL_Warning>DEVELOPMENT CHARTER RECORDS — these records reference real settlements and require separate NPC/player consent. They do not yet transfer goods, enforce protection, change faction ownership or shared diplomacy. Native player control is preserved. The fictional model is a separate screen. Gameplay validation is deferred.</HCL_Warning>
+  <HCL_Player>Player colony (all settlements)</HCL_Player>
+  <HCL_Missing>Missing territory</HCL_Missing>
+  <HCL_Unavailable>Charter action unavailable: check the current owner, representative, diplomacy, pending offers and existing bonds.</HCL_Unavailable>
+  <HCL_NpcAgreed>The NPC representative accepted the proposed record. Review the terms and confirm your own consent separately.</HCL_NpcAgreed>
+  <HCL_NpcDeclined>The NPC representative declined. This initial negotiation policy requires at least {0} goodwill for this role.</HCL_NpcDeclined>
+  <HCL_ReleaseRefused>The NPC representative declined release; the charter remains active. This initial policy requires 20 goodwill.</HCL_ReleaseRefused>
+  <HCL_Target>Settlement: {0} · current faction: {1}</HCL_Target>
+  <HCL_Terms>Recorded terms: fixed tribute value 100 every 5 days, 1-day grace; subject delivery with a 10% transport allowance. Protection requires timely troop support. Economic and protection enforcement are not connected yet. NPC acceptance currently requires 0 goodwill to become your liege, or 50 to become your vassal; honor/performance negotiation is pending.</HCL_Terms>
+  <HCL_SeekLiege>Request this settlement's faction as liege of all player colonies</HCL_SeekLiege>
+  <HCL_OfferProtection>Offer protection as liege of this settlement</HCL_OfferProtection>
+  <HCL_Territory>{0} · recorded political superior: {1} · world binding: {2}</HCL_Territory>
+  <HCL_Empty>No charter records. Select an NPC world settlement to request terms.</HCL_Empty>
+  <HCL_Charter>Liege: {0} · subject: {1} · {2}</HCL_Charter>
+  <HCL_Expiry>Offer remains open for {0} days.</HCL_Expiry>
+  <HCL_Accept>Agree to these recorded terms</HCL_Accept>
+  <HCL_Decline>Decline proposal</HCL_Decline>
+  <HCL_Release>Request mutually agreed release</HCL_Release>
+  <HCL_Current>Current</HCL_Current>
+  <HCL_MissingTerritory>Missing; action suspended</HCL_MissingTerritory>
+  <HCL_OwnershipChanged>Owner changed; review required</HCL_OwnershipChanged>
+  <HCL_Ineligible>Current diplomacy prevents action</HCL_Ineligible>
+  <HCL_Offered>Awaiting consent</HCL_Offered>
+  <HCL_Active>Active record (effects pending)</HCL_Active>
+  <HCL_Declined>Declined</HCL_Declined>
+  <HCL_Released>Mutually released</HCL_Released>
+  <HCL_Expired>Expired proposal</HCL_Expired>
   <HCP_Open>Contracts preview</HCP_Open>
   <HCP_Warning>DEVELOPMENT MODEL — fictional domains and simulated receipts. No real items, native factions or combat are changed. Gameplay validation is deferred. Capture outcomes do not yet transfer territory. This window pauses the game.</HCP_Warning>
   <HCP_Rejected>Model action unavailable: check the bond, deadline, available troops and existing obligations.</HCP_Rejected>

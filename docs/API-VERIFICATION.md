@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 실제 영지 장부 연결 (2026-10-24, 코드 검증만)
+
+Version.txt 1.7.4985 rev1269와 runtimeconfig의 net10.0 / 10.0.13-waylithclr.dev, 설치 Harmony 3 RC를 재확인했다. 설치 DLL 기준으로 Settlement/WorldObject의 GetUniqueLoadID, Destroyed, Faction, Faction의 GetUniqueLoadID/leader/HasGoodwill/defeated/HostileTo/GoodwillWith, FactionManager.AllFactionsListForReading, Scribe_References/Scribe_Collections와 GameComponent.ExposeData에 바인딩하고 Preview를 컴파일했다. WorldObject.GetUniqueLoadID는 WorldObject_ + ID를 반환하므로 번역 이름이나 현재 타일을 저장 키로 사용하지 않는다.
+
+실제 세력 단위 종주와 단일 NPC 정착지 봉신 참조를 구분했다. Native player faction은 SetFaction 호출 없이 보존한다. 관측/소유권 재검사와 별도 동의 장부는 실제 자원 거래·Faction 외교 변경·점령·보호 임무 성공을 뜻하지 않는다. 이번에도 게임 실행과 엔진 Scribe 왕복 검증은 수행하지 않았다.
+
 ## Contracts 개발 미리보기 바인딩 (2026-10-24, 코드 검증만)
 
 설치 Version.txt 1.7.4985 rev1269 및 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. Harmony 제품 버전은 3.0.0.0-rc.3. GameComponent의 GameComponentTick/ExposeData를 설치 DLL에서 재조회하고, 기존 검증한 Settlement.GetGizmos 패턴과 Window/Listing_Standard/Widgets/Scribe_Values API를 사용해 별도 Preview를 컴파일했다. 실제 게임 실행·Scribe 게임 저장 복구·창 표시·Harmony 패치 성공 증거는 아니다.

@@ -1,4 +1,32 @@
 <LanguageData>
+  <HCL_Open>정착지 계약 장부</HCL_Open>
+  <HCL_Warning>개발용 계약 장부 — 실제 정착지를 참조하고 NPC와 플레이어의 동의를 각각 기록합니다. 물품 이전·보호 의무 집행·세력 소속과 외교 변경은 아직 연결되지 않았습니다. 플레이어 통제권은 유지됩니다. 가상 모델은 별도 화면입니다. 실제 플레이 검증은 보류 중입니다.</HCL_Warning>
+  <HCL_Player>플레이어 식민지 전체</HCL_Player>
+  <HCL_Missing>소실된 영지</HCL_Missing>
+  <HCL_Unavailable>계약 동작을 수행할 수 없습니다. 현재 소유자·대표자·외교 관계·협상 중인 제안·기존 종속 관계를 확인하세요.</HCL_Unavailable>
+  <HCL_NpcAgreed>NPC 대표가 제안한 문안에 동의했습니다. 조건을 검토하고 플레이어의 동의를 별도로 확정하세요.</HCL_NpcAgreed>
+  <HCL_NpcDeclined>NPC 대표가 거절했습니다. 초기 협상 규칙상 이 역할에는 우호도 {0} 이상이 필요합니다.</HCL_NpcDeclined>
+  <HCL_ReleaseRefused>NPC 대표가 해약을 거절해 계약을 유지합니다. 초기 협상 규칙상 우호도 20 이상이 필요합니다.</HCL_ReleaseRefused>
+  <HCL_Target>정착지: {0} · 현재 소속 세력: {1}</HCL_Target>
+  <HCL_Terms>기록 조건: 고정 공납 가치 100·주기 5일·유예 1일. 봉신 배송에 운송 몫 10% 공제. 보호 의무는 기한 내 병력 지원입니다. 경제·보호 의무의 실제 집행은 아직 미연결입니다. 초기 NPC 수락 기준은 종주가 될 때 우호도 0, 봉신이 될 때 50 이상이며 명예·실적 협상은 후속 구현입니다.</HCL_Terms>
+  <HCL_SeekLiege>이 정착지 측에 플레이어 식민지 전체의 종주가 되도록 제안</HCL_SeekLiege>
+  <HCL_OfferProtection>이 정착지의 종주로서 보호를 제안</HCL_OfferProtection>
+  <HCL_Territory>{0} · 장부상 최상위 주체: {1} · 실제 세계 참조: {2}</HCL_Territory>
+  <HCL_Empty>아직 계약 기록이 없습니다. 월드맵의 NPC 정착지에서 조건을 제안하세요.</HCL_Empty>
+  <HCL_Charter>종주: {0} · 봉신: {1} · {2}</HCL_Charter>
+  <HCL_Expiry>제안 응답 기한까지 {0}일 남았습니다.</HCL_Expiry>
+  <HCL_Accept>기록된 조건에 동의</HCL_Accept>
+  <HCL_Decline>제안 거절</HCL_Decline>
+  <HCL_Release>합의 해약 요청</HCL_Release>
+  <HCL_Current>유효한 참조</HCL_Current>
+  <HCL_MissingTerritory>영지 소실·동작 보류</HCL_MissingTerritory>
+  <HCL_OwnershipChanged>소유자 변경·재검토 필요</HCL_OwnershipChanged>
+  <HCL_Ineligible>현재 외교 관계로 동작 보류</HCL_Ineligible>
+  <HCL_Offered>동의 대기</HCL_Offered>
+  <HCL_Active>활성 기록·실제 효과 미연결</HCL_Active>
+  <HCL_Declined>거절됨</HCL_Declined>
+  <HCL_Released>합의 해약됨</HCL_Released>
+  <HCL_Expired>제안 기한 만료</HCL_Expired>
   <HCP_Open>계약 개발 미리보기</HCP_Open>
   <HCP_Warning>개발 모델 — 가상 영지와 모의 영수증을 사용합니다. 실제 물품·게임 세력·전투에는 효과가 없으며 플레이 검증은 보류 중입니다. 함락 결과의 영지 이전은 아직 미구현입니다. 이 창은 게임을 일시정지합니다.</HCP_Warning>
   <HCP_Rejected>현재 모델에서 실행할 수 없습니다. 계약·기한·가용 병력·기존 의무를 확인하세요.</HCP_Rejected>

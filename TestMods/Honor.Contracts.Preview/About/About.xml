@@ -9,7 +9,7 @@
     <li><packageId>honor.series.core</packageId><displayName>Honor.Core 0.2.1+</displayName><steamWorkshopUrl>steam://url/CommunityFilePage/3825494597</steamWorkshopUrl></li>
   </modDependencies>
   <loadAfter><li>brrainz.harmony</li><li>honor.series.core</li></loadAfter>
-  <description>CODE-VALIDATED DEVELOPMENT PREVIEW. Not a playable feudal simulation release. Open the political model from a player settlement command. This optional sandbox has fictional domains and value receipts, saves its own model, and never transfers real items, changes native faction ownership or resolves player combat. English/Korean follow the game language. No DLC required. Direct gameplay validation is deferred by user request.
-한국어: 코드 단계 검증용 개발 미리보기입니다. 플레이어 정착지 명령에서 가상 정치 모델을 엽니다. 실제 물품·세력 소속·전투에는 효과가 없습니다. 실제 플레이 검증은 보류 중이며, 완성된 봉건계약 모드가 아닙니다. Core 0.2.1 이상과 Harmony 3 필요, DLC 불필요.
+  <description>CODE-VALIDATED DEVELOPMENT PREVIEW. Not a playable feudal simulation release. World settlement commands open persistent bilateral charter records referencing real settlements/factions, with separate player/NPC consent and ownership rechecks. A separate player-settlement command opens a fictional political model. Neither screen transfers real items, changes native faction ownership or resolves player combat. English/Korean follow the game language. No DLC required. Direct gameplay validation is deferred by user request.
+한국어: 코드 단계 검증용 개발 미리보기입니다. 월드 정착지에서 실제 영지/세력 참조를 저장하는 계약 장부를 열고 NPC·플레이어의 동의를 각각 기록합니다. 플레이어 정착지에는 별도의 가상 정치 모델도 있습니다. 실제 물품·세력 소속·전투에는 효과가 없습니다. 실제 플레이 검증은 보류 중이며, 완성된 봉건계약 모드가 아닙니다. Core 0.2.1 이상과 Harmony 3 필요, DLC 불필요.
 Source: https://github.com/Ale6974/HonorModSeries</description>
 </ModMetaData>
