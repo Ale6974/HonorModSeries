@@ -1,6 +1,7 @@
 namespace Honor.Contracts.Rules;
 
 public enum ContractKind { FactionVassalage, PersonalVassalage, SettlementCharter }
+public enum ContractOrigin { Negotiated, Capitulation, Occupation }
 public enum PartyKind { Faction, Pawn }
 public enum ContractSide { Liege, Subject }
 public enum ObligationKind { Tribute, Protection, Service }
@@ -64,6 +65,7 @@ public sealed record ObligationClause
 public sealed class ContractTerms
 {
     public ContractKind Kind { get; }
+    public ContractOrigin Origin { get; }
     public PartyRef Liege { get; }
     public PartyRef Subject { get; }
     public string SettlementId { get; }
@@ -72,12 +74,16 @@ public sealed class ContractTerms
     public IReadOnlyList<ObligationClause> Clauses { get; }
 
     public ContractTerms(ContractKind kind, PartyRef liege, PartyRef subject, long durationTicks,
-        IEnumerable<ObligationClause> clauses, string settlementId = null, CharterRights rights = null)
+        IEnumerable<ObligationClause> clauses, string settlementId = null, CharterRights rights = null,
+        ContractOrigin origin = ContractOrigin.Negotiated)
     {
         ArgumentNullException.ThrowIfNull(liege);
         ArgumentNullException.ThrowIfNull(subject);
         ArgumentNullException.ThrowIfNull(clauses);
         if (!Enum.IsDefined(kind)) throw new ArgumentOutOfRangeException(nameof(kind));
+        if (!Enum.IsDefined(origin)) throw new ArgumentOutOfRangeException(nameof(origin));
+        if (origin != ContractOrigin.Negotiated && kind != ContractKind.SettlementCharter)
+            throw new ArgumentException("This conquest protocol binds a settlement, not a whole faction or personal oath.");
         if (liege == subject) throw new ArgumentException("A party cannot bind itself.");
         PartyKind required = kind == ContractKind.PersonalVassalage ? PartyKind.Pawn : PartyKind.Faction;
         if (liege.Kind != required || subject.Kind != required) throw new ArgumentException("Wrong party scope.");
@@ -97,7 +103,7 @@ public sealed class ContractTerms
             throw new ArgumentException("A tribute clause needs between one and 120 scheduled deliveries.");
         if (!copy.Any(c => c.Kind == ObligationKind.Protection))
             throw new ArgumentException("Vassalage must include the liege's protection duty.");
-        Kind = kind; Liege = liege; Subject = subject; DurationTicks = durationTicks;
+        Kind = kind; Origin = origin; Liege = liege; Subject = subject; DurationTicks = durationTicks;
         SettlementId = settlementId; Rights = rights; Clauses = Array.AsReadOnly(copy);
     }
 }

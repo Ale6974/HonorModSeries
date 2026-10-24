@@ -65,3 +65,13 @@ Verse.GenGrid.Standable은 Walkable뿐 아니라 같은 셀 Thing의 def.passabi
 설치 Version.txt의 1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 다시 확인했습니다. 기존 설치 DLL에서 확인한 Settlement : MapParent의 Faction/TraderKind/Goods 및 거래 전달 함수, WorldObject.SetFaction/ExposeData/Destroyed, Faction.leader/defeated/RelationWith/TryAffectGoodwillWith를 설계에 참고했습니다. 정착지 거래 재고가 별도 영토 국고나 지속 생산 경제라는 전제는 두지 않습니다. 자치권·봉신 관계는 새 계약 데이터로 구현할 설계이며 기본 엔진에서 이미 보장된다고 주장하지 않습니다.
 
 이번 구현은 엔진 독립 계약 규칙뿐이므로 새로운 게임 메서드 바인딩·Harmony 패치를 추가하지 않았고 새 기능의 엔진 검증도 수행하지 않았습니다. 실제 계약 모듈 구현 시 해당 바인딩을 다시 컴파일·실행 검증해야 합니다.
+
+## Contracts 군사 경로 검토 (2026-10-24)
+
+같은 1.7.4985 rev1269 설치 DLL의 `RimWorld.Planet.SettlementDefeatUtility`를 추가로 확인했습니다. `Settlement.TickInterval(int)`에서 `CheckDefeated(Settlement)`를 호출하며, 후자는 패배 판정 후 DestroyedSettlement 생성·원 소속 복사·map.info.parent 교체·원 Settlement.Destroy를 실행합니다. 다른 거점이 없으면 Faction.defeated를 true로 만들며 기본 우호도 보상과 패배 편지도 보냅니다. 따라서 정착지 보존은 이 부작용이 실행되기 전의 한정된 분기로 설계해야 합니다.
+
+`IsDefeated(Map,Faction)`는 해당 세력의 생성된 humanlike Pawn 중 활성 위협이 남았는지를 검사합니다. 이 결과만으로 공격자의 주둔·행정 통제, 전역 세력 대표의 항복 동의, 자원 보유를 보장하지 않습니다.
+
+`RimWorld.RaidStrategyWorker_Siege.MakeLordJob(IncidentParms,Map,List<Pawn>,int)`는 LordJob_Siege를 생성하고, CanUseWith는 기본 조건과 faction.def.canSiege를 확인합니다. 이는 맵의 습격 전략이며 플레이어 상단의 월드 포위·NPC 정착지에 대한 범용 사건 생성기가 이미 있다는 뜻은 아닙니다. Faction.RelationWith(Faction,bool)는 세력 쌍 관계로서 정착지별 정전 API로 간주하지 않습니다.
+
+이번 변경도 엔진 독립 규칙만 포함합니다. 위 지점을 실제로 패치하거나 구원 사건을 게임에서 생성하지 않았으며 항복/점령과 봉신 방어의 엔진 성공을 주장하지 않습니다. 역컴파일 코드는 작업 폴더에서만 확인하고 Git/배포물에 포함하지 않습니다.

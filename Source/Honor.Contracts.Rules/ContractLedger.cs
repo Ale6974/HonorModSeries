@@ -24,6 +24,7 @@ public sealed class ContractLedger
     public ContractSide? BreachingSide { get; private set; }
     public IReadOnlyList<ObligationRecord> Obligations => obligations.AsReadOnly();
     public bool IsTerminal => Phase is ContractPhase.Expired or ContractPhase.Released or ContractPhase.Breached;
+    public bool HasSigned(ContractSide side) => signatures.Contains(side);
 
     public ContractLedger(string id, ContractTerms terms)
     {
@@ -36,12 +37,29 @@ public sealed class ContractLedger
     {
         ValidateSide(side);
         Advance(now);
-        if (Phase != ContractPhase.Proposed || signatures.Contains(side)) return false;
+        if (Terms.Origin == ContractOrigin.Occupation || Phase != ContractPhase.Proposed || signatures.Contains(side)) return false;
         // Check all time arithmetic before recording either the signature or activation.
         long end = checked(now + Terms.DurationTicks);
         foreach (var clause in Terms.Clauses) _ = checked(end + clause.ResponseTicks + clause.GraceTicks);
         signatures.Add(side);
         if (signatures.Count != 2) return true;
+        Activate(now, end);
+        return true;
+    }
+
+    // Only the verified-conquest protocol can establish an imposed charter. No defender signature is fabricated.
+    internal bool EstablishOccupation(long now)
+    {
+        Advance(now);
+        if (Terms.Origin != ContractOrigin.Occupation || Phase != ContractPhase.Proposed) return false;
+        long end = checked(now + Terms.DurationTicks);
+        foreach (var clause in Terms.Clauses) _ = checked(end + clause.ResponseTicks + clause.GraceTicks);
+        Activate(now, end);
+        return true;
+    }
+
+    void Activate(long now, long end)
+    {
         StartedTick = now; EndTick = end; Phase = ContractPhase.Active;
         foreach (var clause in Terms.Clauses.Where(c => c.Kind == ObligationKind.Tribute))
         {
@@ -53,7 +71,6 @@ public sealed class ContractLedger
                     due, due + clause.GraceTicks, ObligationPhase.Pending));
             }
         }
-        return true;
     }
 
     public void Advance(long now)

@@ -157,4 +157,5 @@ bool overflowRejected = false;
 try { overflow.Sign(ContractSide.Liege, long.MaxValue - 10); } catch (OverflowException) { overflowRejected = true; }
 Check(overflowRejected && overflow.Phase == ContractPhase.Proposed && overflow.Obligations.Count == 0, "overflow cannot partially activate");
 
-Console.WriteLine($"PASS: {assertions} contract assertions (three scopes, mutual consent, deadlines, reciprocal duties, evidence replay guards, quotas, binding cycles, validation).");
+assertions += MilitaryTests.Run();
+Console.WriteLine($"PASS: {assertions} contract assertions (three scopes, consent and conquest origins, deadlines, reciprocal duties, evidence reuse guards, quotas, binding cycles, validation).");
