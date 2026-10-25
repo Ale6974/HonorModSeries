@@ -190,6 +190,7 @@ assertions += TributeNoticeTests.Run();
 assertions += CharterAcceptanceTests.Run();
 assertions += TownSuccessionTests.Run();
 assertions += TownLossCascadeTests.Run();
+assertions += TownLossMergeTests.Run();
 assertions += UnionWarAdmissionTests.Run();
 assertions += FeudalWarAdmissionTests.Run();
 assertions += FollowerTransfersTests.Run();

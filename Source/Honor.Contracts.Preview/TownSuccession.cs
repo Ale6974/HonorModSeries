@@ -13,6 +13,7 @@ public sealed partial class LiveCharterLedger
     private string townLossSnapshot;
     private TownSuccessionArchive townLosses = new();
     internal IReadOnlyCollection<TownLossProof> TownLosses => townLosses.Records;
+    internal bool TownLossReviewRoot(string id) => townLosses.IsReviewRoot(id);
     internal bool UnresolvedTownLosses => townLosses.HasUnresolved;
     private void ExposeTownLosses()
     {
@@ -103,13 +104,14 @@ public sealed class TownSuccessionWindow : Window
         list.Label("LS_Warning".Translate());
         list.Label("HL_Limits".Translate());
         list.Label("LC_Warning".Translate());
+        list.Label("LM_Warning".Translate());
         if (ledger.UnresolvedTownLosses) list.Label("LS_Freeze".Translate());
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
         {
             if (list.ButtonText("LS_Select".Translate(root == null ? "HCL_Missing".Translate() : ledger.TownLosses.Single(r => r.Root == root).Label)))
             {
-                var options = ledger.TownLosses.Where(r => r.Resolution == null && r.ScopeRoot == null).Select(r => new FloatMenuOption(r.Label, () => { root = r.Root; review = null; })).ToList();
+                var options = ledger.TownLosses.Where(r => r.Resolution == null && ledger.TownLossReviewRoot(r.Root)).Select(r => new FloatMenuOption(r.Label, () => { root = r.Root; review = null; })).ToList();
                 if (options.Count > 0) Find.WindowStack.Add(new FloatMenu(options)); else list.Label("LS_Empty".Translate());
             }
             if (root != null && list.ButtonText("LS_Review".Translate()))

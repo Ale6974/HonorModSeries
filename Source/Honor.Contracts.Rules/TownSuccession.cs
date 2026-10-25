@@ -10,7 +10,8 @@ public sealed record TownLossProof(string Root, string Territory, string Baselin
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] TownLossKind Kind = TownLossKind.Destroyed,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string CapturingOwner = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ScopeRoot = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] int? ScopeOrdinal = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] int? ScopeOrdinal = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string[] PriorScopes = null);
 public sealed record TownSuccessionPlan(string Root, string Before, string After, long Tick, string Parent,
     NpcCharterAuthority Authority, Dictionary<string, string> Replacements, string[] Descendants,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ScopePrefix = null,
@@ -36,7 +37,7 @@ public sealed partial class TownSuccessionArchive
             throw new ArgumentException("Invalid observed town loss.");
         var before = CharterBook.Restore(proof.Before); var root = before.Charter(proof.Root);
         if (before.LastTick > proof.LossTick || root.Terms.Subject != proof.Territory || proof.ScopeRoot == null && (!before.PlayerManaged(root) || proof.ScopeOrdinal != null) ||
-            before.Entity(proof.Territory).NativeOwner != proof.BaselineOwner || proof.ScopeRoot == null && Descendants(before, proof.Territory).Length == 0)
+            before.Entity(proof.Territory).NativeOwner != proof.BaselineOwner || proof.ScopeRoot == null && proof.PriorScopes == null && Descendants(before, proof.Territory).Length == 0)
             throw new ArgumentException("No original managed upper-town scope.");
         var expected = CharterBook.Restore(before.Export());
         Close(expected, proof);
@@ -44,6 +45,7 @@ public sealed partial class TownSuccessionArchive
     }
     private void Close(CharterBook book, TownLossProof proof)
     {
+        if (proof.PriorScopes != null) MergeOrigin(proof, book);
         if (proof.ScopeRoot != null)
             book.CloseRecordedDescendantLoss(proof.Root, proof.Territory, proof.BaselineOwner, proof.LossTick, proof.ObservedTick, CascadeOrigin(proof, book));
         else if (proof.Kind == TownLossKind.Destroyed)
@@ -55,13 +57,15 @@ public sealed partial class TownSuccessionArchive
     { var copy = Source(proof); Close(copy, proof); return copy; }
     public TownSuccessionArchive Observe(TownLossProof proof, CharterBook after)
     {
+        if (proof?.PriorScopes != null && proof.PriorScopes.Any(id => Record(id).Resolution != null || !IsReviewRoot(id)))
+            throw new ArgumentException("Only unresolved current scopes may be adopted; old completion receipts are immutable.");
         var before = Source(proof);
         if (records.Count >= Capacity || records.ContainsKey(proof.Root) || proof.Resolution != null) throw new ArgumentException("Duplicate town loss or archive capacity.");
-        if (proof.ScopeRoot != null && (Record(proof.ScopeRoot).Resolution != null || proof.ScopeOrdinal != ScopeRecords(proof.ScopeRoot).Length))
+        if (proof.ScopeRoot != null && (Record(proof.ScopeRoot).Resolution != null || ScopeParent(proof.ScopeRoot) != null || proof.ScopeOrdinal != LocalScopeRecords(proof.ScopeRoot).Length))
             throw new ArgumentException("New loss must append to the unresolved original scope.");
         Close(before, proof);
         if (before.Export() != after.Export()) throw new ArgumentException("Observed loss cannot hide other book changes.");
-        var copy = Restore(Export()); copy.records.Add(proof.Root, proof); copy.ValidateBook(after);
+        var copy = Restore(Export()); copy.records.Add(proof.Root, proof); copy.ValidateScopeTopology(); copy.ValidateBook(after);
         if (copy.Export().Length > 32000000) throw new ArgumentException("Town loss archive byte capacity.");
         return copy;
     }
@@ -72,7 +76,7 @@ public sealed partial class TownSuccessionArchive
         ValidateBook(current);
         if (proof.Resolution != null || !Key(prefix) || prefix.Length > 90 || now < current.LastTick || now < proof.ObservedTick || now > int.MaxValue)
             throw new ArgumentException("Already resolved loss or invalid succession review.");
-        if (proof.ScopeRoot != null) throw new ArgumentException("Review the original upper loss and every nested loss together.");
+        if (!IsReviewRoot(rootId)) throw new ArgumentException("Review the current upper loss and every retained prior scope together.");
         if (ScopeRecords(rootId).Length > 1) return ReviewCascade(proof, current, prefix, authority, now, observations.ToArray());
         var original = Descendants(source, proof.Territory); var actual = Descendants(current, proof.Territory);
         if (!original.SequenceEqual(actual) || original.Any(c => c.PlayerReleaseTick.HasValue || c.NpcReleaseTick.HasValue))
@@ -111,6 +115,7 @@ public sealed partial class TownSuccessionArchive
     }
     public void ValidateBook(CharterBook current)
     {
+        ValidateScopeTopology();
         foreach (var proof in records.Values)
         {
             var source = Source(proof); var expected = source.Charter(proof.Root) with { Phase = RecordedCharterPhase.TerritoryLost, TerritoryLostTick = proof.LossTick };
@@ -150,6 +155,7 @@ public sealed partial class TownSuccessionArchive
             if (result.records.ContainsKey(record.Root)) throw new ArgumentException("Duplicate town loss.");
             result.records.Add(record.Root, record);
         }
+        result.ValidateScopeTopology();
         foreach (var record in result.records.Values) result.Source(record);
         result.ValidateCascadeGroups();
         return result;

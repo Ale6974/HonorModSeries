@@ -3,14 +3,27 @@ namespace Honor.Contracts.Rules;
 public sealed partial class TownSuccessionArchive
 {
     private static bool SameIds(string[] a, string[] b) => a == null ? b == null : b != null && a.SequenceEqual(b);
-    private TownLossProof[] ScopeRecords(string root) => records.Values.Where(r => r.Root == root || r.ScopeRoot == root)
+    private TownLossProof[] LocalScopeRecords(string root) => records.Values.Where(r => r.Root == root || r.ScopeRoot == root)
         .OrderBy(r => r.ScopeOrdinal ?? 0).ToArray();
+    private TownLossProof[] ScopeRecords(string root)
+    {
+        var result = new List<TownLossProof>(); var visited = new HashSet<string>(StringComparer.Ordinal);
+        void Add(string id)
+        {
+            if (!visited.Add(id) || visited.Count > Capacity) throw new ArgumentException("Repeated or cyclic merged scope.");
+            var head = Record(id); result.Add(head);
+            foreach (string prior in head.PriorScopes ?? []) Add(prior);
+            result.AddRange(LocalScopeRecords(id).Skip(1));
+        }
+        Add(root); return result.ToArray();
+    }
     public TownLossProof[] ScopeLosses(string root)
     {
-        if (Record(root).ScopeRoot != null) throw new ArgumentException("Select the original upper-town loss.");
+        if (!IsReviewRoot(root)) throw new ArgumentException("Select the current upper-town scope.");
         return ScopeRecords(root);
     }
-    public int NextScopeOrdinal(string root) => ScopeLosses(root).Length;
+    public int NextScopeOrdinal(string root)
+    { if (!IsReviewRoot(root)) throw new ArgumentException("Not the current scope."); return LocalScopeRecords(root).Length; }
     private static RecordedCharter Lost(RecordedCharter original, TownLossProof proof)
         => original with { Phase = RecordedCharterPhase.TerritoryLost, TerritoryLostTick = proof.LossTick };
     private CharterBook CascadeOrigin(TownLossProof proof, CharterBook before)
@@ -20,13 +33,14 @@ public sealed partial class TownSuccessionArchive
         var head = Record(proof.ScopeRoot);
         if (head.ScopeRoot != null || head.ObservedTick > proof.LossTick || head.OwnerAtLoss != proof.OwnerAtLoss ||
             before.LastTick < head.ObservedTick) throw new ArgumentException("No matching previously observed realm loss.");
-        var origin = Source(head); var original = origin.Charter(proof.Root);
+        var origin = Original(head); var original = origin.Charter(proof.Root);
         if (!origin.IsBelow(proof.Territory, head.Territory) || original.Terms.Subject != proof.Territory ||
             before.Charter(head.Root) != Lost(origin.Charter(head.Root), head))
             throw new ArgumentException("Nested loss is outside the exact original managed scope.");
         foreach (var c in Descendants(origin, head.Territory))
         {
-            var prior = records.Values.SingleOrDefault(r => r.ScopeRoot == head.Root && r.Root == c.Id && r.ScopeOrdinal < proof.ScopeOrdinal);
+            var prior = ScopeRecords(head.Root).SingleOrDefault(r => r.Root == c.Id &&
+                (r.ScopeRoot != head.Root || r.ScopeOrdinal < proof.ScopeOrdinal));
             if (prior != null && prior.ObservedTick > proof.LossTick || before.Charter(c.Id) != (prior == null ? c : Lost(c, prior)) ||
                 before.Entity(c.Terms.Subject) != origin.Entity(c.Terms.Subject))
                 throw new ArgumentException("Nested loss must retain every exact preceding scope record.");
@@ -36,9 +50,9 @@ public sealed partial class TownSuccessionArchive
     public string ObservationScope(CharterBook current, string charter, string actualOwner)
     {
         ValidateBook(current); var c = current.Charter(charter);
-        foreach (var head in records.Values.Where(r => r.ScopeRoot == null && r.Resolution == null))
+        foreach (var head in records.Values.Where(r => IsReviewRoot(r.Root) && r.Resolution == null))
         {
-            var origin = Source(head);
+            var origin = Original(head);
             if (!origin.Entities.Any(e => e.Id == c.Terms.Subject)) continue;
             if (origin.IsBelow(c.Terms.Subject, head.Territory))
             {
@@ -55,12 +69,14 @@ public sealed partial class TownSuccessionArchive
     {
         foreach (var head in records.Values.Where(r => r.ScopeRoot == null))
         {
-            var scope = ScopeRecords(head.Root); long last = head.ObservedTick;
-            for (int i = 1; i < scope.Length; i++)
+            var local = LocalScopeRecords(head.Root); long last = head.ObservedTick;
+            for (int i = 1; i < local.Length; i++)
             {
-                if (scope[i].ScopeOrdinal != i || scope[i].LossTick < last) throw new ArgumentException("Duplicate, missing or unordered nested loss sequence.");
-                last = scope[i].ObservedTick;
+                if (local[i].ScopeOrdinal != i || local[i].LossTick < last) throw new ArgumentException("Duplicate, missing or unordered nested loss sequence.");
+                last = local[i].ObservedTick;
             }
+            if (!IsReviewRoot(head.Root)) continue;
+            var scope = ScopeRecords(head.Root);
             if (scope.Length == 1)
             { if (head.Resolution?.ScopeCompletion != null) throw new ArgumentException("Cascade receipt without nested losses."); continue; }
             if (scope.Any(r => r.Resolution != null) && scope.Any(r => r.Resolution == null || r.Resolution.ScopeCompletion != head.Root ||
@@ -90,7 +106,7 @@ public sealed partial class TownSuccessionArchive
     private TownSuccessionPlan ReviewCascade(TownLossProof head, CharterBook current, string prefix, NpcCharterAuthority authority,
         long now, TerritoryObservation[] observations)
     {
-        var scope = ScopeRecords(head.Root); var origin = Source(head); var original = Descendants(origin, head.Territory);
+        var scope = ScopeRecords(head.Root); var origin = Original(head); var original = Descendants(origin, head.Territory);
         if (scope.Any(r => r.Resolution != null || r.ObservedTick > now)) throw new ArgumentException("Scope already resolved or future-dated.");
         foreach (var c in original)
         {
@@ -134,11 +150,11 @@ public sealed partial class TownSuccessionArchive
     }
     private void ValidateCascadeReceipt(CharterBook current, TownLossProof proof)
     {
-        var head = Record(proof.ScopeRoot ?? proof.Root); var scope = ScopeRecords(head.Root); var r = proof.Resolution;
+        var r = proof.Resolution; var head = Record(r?.ScopeCompletion ?? proof.ScopeRoot ?? proof.Root); var scope = ScopeRecords(head.Root);
         if (r == null || r.ScopeCompletion != head.Root || r.Tick < scope.Max(p => p.ObservedTick) || r.Tick > current.LastTick ||
-            r.Authority == null || !Key(r.Authority.LiegeRepresentative) || !Key(r.Authority.SubjectRepresentative) || r.Replacements == null)
+            scope.All(p => p.Root != proof.Root) || r.Authority == null || !Key(r.Authority.LiegeRepresentative) || !Key(r.Authority.SubjectRepresentative) || r.Replacements == null)
             throw new ArgumentException("Invalid nested scope receipt.");
-        var origin = Source(head); var skipped = Skipped(proof, scope);
+        var origin = Original(head); var skipped = Skipped(proof, scope);
         if (r.Parent != current.ReplacementParent(proof.Root, skipped, r.Tick)) throw new ArgumentException("Altered surviving parent.");
         var children = Descendants(origin, proof.Territory).Where(c => c.Terms.Liege == proof.Territory && scope.All(l => l.Root != c.Id)).ToArray();
         if (r.Replacements.Count != children.Length || r.Replacements.Values.Distinct(StringComparer.Ordinal).Count() != children.Length)
