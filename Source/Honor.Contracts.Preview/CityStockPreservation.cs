@@ -20,7 +20,7 @@ internal static class CityStockPreservation
     {
         format = 0;
         if (city == null || city.GetType() != typeof(Settlement) || city.HasMap || city.previouslyGeneratedInhabitants == null ||
-            city.previouslyGeneratedInhabitants.Count > 0 || city.trader?.GetType() != typeof(Settlement_TraderTracker) ||
+            city.trader?.GetType() != typeof(Settlement_TraderTracker) ||
             city.trader.settlement != city || MaterialCache == null || MaterialCache.IsStatic || MaterialCache.FieldType != typeof(Material)) return null;
         // Goods/StockListForReading can generate stock. This accessor only returns the current container (or null).
         var stock = city.trader.GetDirectlyHeldThings();

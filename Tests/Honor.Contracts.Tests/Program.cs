@@ -173,6 +173,7 @@ assertions += CityStockProofTests.Run();
 assertions += TradeAnimalTests.Run();
 assertions += SubtreeReleaseTests.Run();
 assertions += ResidentBaselineTests.Run();
+assertions += ResidentMoveTests.Run();
 assertions += FollowerTransfersTests.Run();
 assertions += AllegianceTransitionsTests.Run();
 assertions += ReleasedMigrationTests.Run();

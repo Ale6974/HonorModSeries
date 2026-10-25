@@ -1,0 +1,145 @@
+using System.Collections;
+using System.Text;
+using System.Text.Json;
+using HarmonyLib;
+using Honor.Contracts.Rules;
+using RimWorld;
+using RimWorld.Planet;
+using Verse;
+using Verse.AI.Group;
+
+namespace Honor.Contracts.Preview;
+
+/// <summary>Reference-only execution record. Never deep-saves, recreates or replaces a pawn.</summary>
+public sealed class ResidentExecutionRecord : IExposable
+{
+    public string Snapshot;
+    public List<Pawn> Pawns = [];
+    public bool Started;
+    public void ExposeData()
+    {
+        Scribe_Values.Look(ref Snapshot, "preservationV1"); Scribe_Values.Look(ref Started, "started");
+        Scribe_Collections.Look(ref Pawns, "residentReferences", LookMode.Reference);
+        if (Scribe.mode == LoadSaveMode.PostLoadInit) Pawns ??= [];
+    }
+    public ResidentMoveSet Set() => ResidentMoveSet.Restore(Snapshot);
+}
+
+internal static class ResidentExecution
+{
+    private static readonly System.Reflection.FieldInfo Areas = AccessTools.Field(typeof(Pawn_PlayerSettings), "allowedAreas");
+    internal static readonly System.Reflection.MethodInfo GcMethod = AccessTools.Method(typeof(WorldPawnGC), "GetCriticalPawnReason", [typeof(Pawn)]);
+    private static string Digest(object data) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(data))));
+    internal static void CheckTown(Settlement city)
+    {
+        if (city == null || city.GetType() != typeof(Settlement) || city.Destroyed || city.HasMap || city.Faction == null || city.Faction.IsPlayer ||
+            !Find.WorldObjects.AllWorldObjects.Contains(city) || city.previouslyGeneratedInhabitants == null ||
+            city.previouslyGeneratedInhabitants.Count is < 1 or > ResidentMoveSet.Capacity)
+            throw new ArgumentException("Unavailable resident town.");
+    }
+    private static void Eligible(Pawn p)
+    {
+        if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || p.Spawned || !p.IsWorldPawn() ||
+            p.holdingOwner != null || p.Faction == null || p.Faction.IsPlayer || p.HostFaction != null || p.IsPrisoner || p.IsSlave ||
+            PawnUtility.IsFactionLeader(p) || p.InMentalState || p.Downed || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
+            p.GetLord() != null || p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
+            p.HasExtraHomeFaction() || p.HasExtraMiniFaction() || p.GetExtraHostFaction() != null || p.questTags?.Count > 0 ||
+            (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
+            p.health?.surgeryBills == null || p.health.surgeryBills.Count != 0 || p.health.hediffSet?.hediffs == null || p.needs?.AllNeeds == null || p.relations?.DirectRelations == null ||
+            p.relations.DirectRelations.Count > 1000 || p.relations.DirectRelations.Any(r => r == null || r.def == null || r.otherPawn == null) ||
+            (p.needs.mood?.thoughts?.memories?.Memories.Count ?? 0) > 1000 ||
+            p.needs.mood?.thoughts?.memories?.Memories.Any(m => m == null || m.def == null || m.GetType().Assembly != typeof(Pawn).Assembly) == true ||
+            p.AllComps.Any(c => c == null || c.GetType().Assembly != typeof(Pawn).Assembly) ||
+            p.health.hediffSet.hediffs.Any(h => h == null || h.GetType().Assembly != typeof(Pawn).Assembly ||
+                h is HediffWithComps hc && hc.comps != null && hc.comps.Any(c => c == null || c.GetType().Assembly != typeof(Pawn).Assembly)) ||
+            p.needs.AllNeeds.Count > 128 || p.needs.AllNeeds.Select(n => n?.def?.defName).Distinct().Count() != p.needs.AllNeeds.Count ||
+            p.needs.AllNeeds.Any(n => n == null || !RuntimeCompat.IsFinite(n.CurLevel) ||
+                n.GetType().Assembly != typeof(Pawn).Assembly && n.GetType().Assembly.GetName().Name != "Honor.Core"))
+            throw new ArgumentException("Unsupported resident status or pending surgery.");
+        if (p.playerSettings != null && (Areas == null || Areas.IsStatic || Areas.FieldType != typeof(Dictionary<Map, Area>) ||
+            Areas.GetValue(p.playerSettings) is not IDictionary areas || areas.Count != 0 || p.playerSettings.Master != null))
+            throw new ArgumentException("Unsupported persistent resident restrictions.");
+    }
+    internal static ResidentMoveActual Read(Pawn p)
+    {
+        Eligible(p); var baseline = ResidentBaselineStore.Evidence(p);
+        var settings = p.playerSettings;
+        string preserved = Digest(new {
+            baseline.Id, baseline.Health, baseline.Gear,
+            Name = p.Name?.ToStringFull, Kind = p.kindDef.defName, Age = p.ageTracker.AgeBiologicalTicks,
+            Relations = p.relations.DirectRelations.Select(r => new { Def = r.def.defName, Other = r.otherPawn.GetUniqueLoadID() })
+                .OrderBy(r => r.Def, StringComparer.Ordinal).ThenBy(r => r.Other, StringComparer.Ordinal).ToArray(),
+            Memories = p.needs.mood?.thoughts?.memories?.Memories.Select(m => new { Def = m.def.defName, Stage = m.CurStageIndex,
+                Other = m.otherPawn?.GetUniqueLoadID(), m.age, m.moodPowerFactor, m.moodOffset, m.permanent, m.durationTicksOverride }).ToArray(),
+            Needs = p.needs.AllNeeds.Select(n => new { Def = n.def.defName, Level = n.CurLevel }).OrderBy(n => n.Def, StringComparer.Ordinal).ToArray(),
+            Settings = settings == null ? null : new { settings.joinTick, settings.followDrafted, settings.followFieldwork, settings.animalsReleased,
+                settings.hostilityResponse, settings.selfTend, settings.displayOrder, settings.animalForage, settings.animalDig }
+        });
+        return new(baseline.Id, p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
+    }
+    internal static ResidentExecutionRecord Capture(Settlement city)
+    {
+        if (GcMethod == null || GcMethod.ReturnType != typeof(string) || Harmony.GetPatchInfo(GcMethod)?.Owners.Contains("honor.series.contracts.preview") != true)
+            throw new ArgumentException("Pending resident retention hook unavailable.");
+        CheckTown(city); var pawns = city.previouslyGeneratedInhabitants.OrderBy(p => p?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
+        var rows = pawns.Select(Read).ToArray();
+        if (rows.Any(r => r.Faction != city.Faction.GetUniqueLoadID())) throw new ArgumentException("Resident source faction mismatch.");
+        var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
+        return new() { Snapshot = set.Export(), Pawns = pawns };
+    }
+    internal static string Proof(Settlement city)
+    {
+        try { return Capture(city).Set().Proof; }
+        catch (ArgumentException) { return null; }
+    }
+    internal static void ValidateReferences(ResidentExecutionRecord record, Settlement city, string proof)
+    {
+        if (record == null || record.Pawns == null || record.Set().Proof != proof || record.Pawns.Count != record.Set().Residents.Count ||
+            record.Pawns.Any(p => p == null) || !record.Pawns.Select(p => p.GetUniqueLoadID()).SequenceEqual(record.Set().Residents.Select(r => r.Id)))
+            throw new ArgumentException("Resident execution reference registry mismatch.");
+        CheckTown(city);
+        if (city.previouslyGeneratedInhabitants.Count != record.Pawns.Count ||
+            city.previouslyGeneratedInhabitants.Distinct().Count() != record.Pawns.Count || !record.Pawns.All(city.previouslyGeneratedInhabitants.Contains))
+            throw new ArgumentException("Actual saved resident set changed.");
+    }
+    internal static void Apply(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
+    {
+        ValidateReferences(record, city, proof);
+        var set = record.Set(); var rows = record.Pawns.Select(Read).ToArray();
+        set.Review(rows, source.GetUniqueLoadID(), target.GetUniqueLoadID(), record.Started);
+        record.Started = true; // Retain this before any native mutation; recovery proceeds forward, never raw-writes faction.
+        Find.WorldPawns.gc.CancelGCPass();
+        for (int i = 0; i < record.Pawns.Count; i++)
+        {
+            var p = record.Pawns[i];
+            var action = set.ActionFor(Read(p), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
+            if (action == ResidentMoveAction.ChangeFaction) p.SetFaction(target);
+            if (p.Faction != target) throw new ArgumentException("Native resident ownership did not reach the target.");
+            // Restore ONLY the recorded medical setting. Never repair health, gear, social state or unexplained ownership.
+            var actual = Read(p);
+            var before = set.Residents[i];
+            if (actual.Preserved != before.Preserved || actual.MedicalCare.HasValue != before.MedicalCare.HasValue)
+                throw new ArgumentException("Native resident preservation mismatch; original intent retained.");
+            if (before.MedicalCare.HasValue) p.playerSettings.medCare = (MedicalCareCategory)before.MedicalCare.Value;
+        }
+        set.VerifyDestination(record.Pawns.Select(Read), source.GetUniqueLoadID(), target.GetUniqueLoadID());
+    }
+    internal static void Verify(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
+    {
+        ValidateReferences(record, city, proof);
+        record.Set().VerifyDestination(record.Pawns.Select(Read), source.GetUniqueLoadID(), target.GetUniqueLoadID());
+    }
+}
+
+[HarmonyPatch]
+internal static class PendingResidentRetention
+{
+    static bool Prepare() => ResidentExecution.GcMethod != null && ResidentExecution.GcMethod.ReturnType == typeof(string);
+    static System.Reflection.MethodBase TargetMethod() => ResidentExecution.GcMethod;
+    static void Postfix(Pawn pawn, ref string __result)
+    {
+        if (__result == null && pawn != null && !pawn.Destroyed && !pawn.Discarded &&
+            Current.Game?.GetComponent<TerritoryAdministrationLedger>()?.ReservesResident(pawn) == true)
+            __result = "Honor.PendingResidentTransfer";
+    }
+}

@@ -55,7 +55,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         Messages.Message("PA_Suspended".Translate(), MessageTypeDefOf.NeutralEvent);
         Find.TickManager.Pause();
     }
-    private Faction ValidateAuthority(bool allowSuspended = false)
+    private Faction ValidateAuthority(bool allowSuspended = false, IEnumerable<TerritoryObservation> scopedObservations = null)
     {
         if (RestoreFailed || Charters.RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended && !allowSuspended)
             throw new ArgumentException("No active shared authority.");
@@ -65,7 +65,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         if (State.Mode == PlayerAllegianceMode.Vassal)
         {
             var bond = Charters.Book.Charter(State.Contract);
-            Charters.Book.ValidateCurrent(bond.Id, Charters.Observe());
+            Charters.Book.ValidateCurrent(bond.Id, scopedObservations ?? Charters.Observe());
             if (bond.Phase != RecordedCharterPhase.Active || !Charters.Book.Entity(bond.Terms.Subject).Player ||
                 Charters.Book.RecordedPoliticalOwner(bond.Terms.Subject) != root.GetUniqueLoadID()) throw new ArgumentException("Source contract is no longer authoritative.");
         }
@@ -75,6 +75,10 @@ public sealed class PlayerPoliticsLedger : GameComponent
     }
     internal Faction TerritoryAuthority() => State.Mode == PlayerAllegianceMode.Independent
         ? Current.Game.GetComponent<RealmAdministrationLedger>().TerritoryAuthority() : ValidateAuthority();
+    // The caller verifies its single pending city/reference before supplying locally normalized observations.
+    // Fresh diplomacy/caps/quest locks still apply; this does not reaffirm or alter suspended allegiance.
+    internal Faction TerritoryRecoveryAuthority(IEnumerable<TerritoryObservation> scopedObservations) => State.Mode == PlayerAllegianceMode.Independent
+        ? Current.Game.GetComponent<RealmAdministrationLedger>().TerritoryAuthority() : ValidateAuthority(true, scopedObservations);
     private static bool IsAdministration(Faction f) => f != null && f == Current.Game.GetComponent<RealmAdministrationLedger>().OwnedFaction;
     private static void CheckProjection(Faction root)
     {
@@ -327,6 +331,7 @@ public sealed class PlayerAllegianceWindow : Window
                     if (relation != null) list.Label("PA_Relation".Translate(faction.Name, relation.baseGoodwill, ("PA_Kind" + relation.kind).Translate()));
                 }
                 list.Label("FB_Plan".Translate(review.Destination.Name, review.Followers.Moves.Count, review.Followers.Entries.Count));
+                list.Label("RE_Limits".Translate());
                 foreach (var entry in review.Followers.Entries)
                     list.Label("FB_Entry".Translate(territories.FollowerLabel(entry.Charter), territories.OwnerLabel(entry.Observation.Owner),
                         (review.Followers.Moves.Contains(entry.Charter) ? "FB_Move" : "FB_Already").Translate()));

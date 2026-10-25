@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 제한된 주민 집행과 GC 참조 보호 (0.3.13)
+
+설치 Version.txt는 1.7.4985 rev1269, runtimeconfig는 net10.0 / 10.0.13-waylithclr.dev임을 다시 확인했다. 설치 DLL의 Pawn.SetFaction, PawnComponentsUtility.AddAndRemoveDynamicComponents, Pawn_NeedsTracker, Pawn_PlayerSettings.ResetMedicalCare/Notify_FactionChanged, BillStack.Clear, Pawn_GuestTracker, Pawn_AgeTracker.ResetAgeReversalDemand, Faction.Notify_PawnJoined와 WorldPawnGC를 조사했다. 수술 지시/의료·허용 영역/정신·작업/욕구/지도자/이념 등의 변동을 무시하지 않는다. 첫 집행 경로는 수술 목록이 비고 역할/특수/이념/유전자/진행 작업 등이 없는 일반 NPC 주민만 허용하며 의료 등급만 명시적으로 복원한다.
+
+설치 WorldPawnGC의 private string GetCriticalPawnReason(Pawn)와 public CancelGCPass()를 확인했다. 1.6.4871 참조 DLL에도 동일 시그니처가 있음을 확인했으나 extern 참조이므로 실제 구현을 확인한 것은 아니다. 중요 사유 postfix는 준비/진행 중 실제 집행 참조만 보존하고 기존 사유를 덮어쓰지 않는다. 진단 기준 기록과 공유 ForcefullyKeptPawns 집합에는 쓰지 않는다. 신규 주민 집행은 해당 메서드와 모드 패치 소유자 확인이 가능할 때만 허용한다. allowedAreas private 필드는 이름/타입과 빈 목록을 확인하는 읽기 전용 가드다.
+
+관측 요약은 모든 임상/모드 상태의 전수 증거가 아니다. 기존 Pawn·건강/장비/사회 객체를 유지하는 네이티브 경로와 대조를 작성한 것이며, 코드 검사만으로 실제 주민 보존·GC/Harmony·Scribe 복구 성공을 주장하지 않는다. 디컴파일 자료와 엔진 DLL은 로컬에만 보관한다. 양 버전 실제 게임 실행은 계속 보류한다.
+
 ## 하위 전체 합의 해약과 실제 도시 이전 (0.3.12)
 
 설치 Version.txt 1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 다시 읽었다. 설치 DLL의 Pawn.SetFaction, Pawn_RelationsTracker.Notify_ChangedFaction, Pawn_PlayerSettings.Notify_FactionChanged/ResetMedicalCare를 재조사했다. 의료/수술/허용 영역/정신·작업·동적 컴포넌트/욕구·지도자/이념 등의 처리가 있으므로 주민 전체 보존을 일부 필드 복사로 대신하지 않는다. 신규 주민 이전·강제 후임/전체 세력 합병 우회를 추가하지 않았다. 디컴파일 산출물은 로컬에만 둔다.

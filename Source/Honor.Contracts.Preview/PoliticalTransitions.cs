@@ -14,7 +14,8 @@ public sealed class PoliticalTransitionLedger : GameComponent
     public AllegianceTransitionLedger Journal { get; private set; } = new();
     public bool RestoreFailed { get; private set; }
     public bool Executing { get; private set; }
-    public bool BlocksChanges => RestoreFailed || Journal.Pending || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges;
+    public bool BlocksChanges => RestoreFailed || Journal.Pending || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges ||
+        Current.Game.GetComponent<TerritoryAdministrationLedger>().RestoreFailed || Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared);
     private PlayerPoliticsLedger Politics => Current.Game.GetComponent<PlayerPoliticsLedger>();
     private TerritoryAdministrationLedger Territories => Current.Game.GetComponent<TerritoryAdministrationLedger>();
     private LiveCharterLedger Charters => Current.Game.GetComponent<LiveCharterLedger>();

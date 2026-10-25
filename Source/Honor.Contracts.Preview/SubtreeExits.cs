@@ -102,7 +102,7 @@ public sealed class SubtreeExitLedger : GameComponent
                 throw new ArgumentException("Town ownership/eligibility changed.");
             if (source == union) continue;
             if (o.HasMap) throw new SubtreeCityBlocked(city.Label, "SX_MapUnavailable");
-            if (o.HasInhabitants) throw new SubtreeCityBlocked(city.Label, "SX_ResidentsUnavailable");
+            if (o.HasInhabitants && o.ResidentProof == null) throw new SubtreeCityBlocked(city.Label, "SX_ResidentsUnavailable");
             if (o.StockProof == null && o.Visited) throw new SubtreeCityBlocked(city.Label, "SX_StockUnavailable");
             if (!counts.ContainsKey(o.Owner)) counts.Add(o.Owner, o.SourceSettlements);
             if (counts[o.Owner] < 2 && source != administration) throw new SubtreeCityBlocked(city.Label, "SX_MergerUnavailable");
@@ -214,6 +214,7 @@ public sealed class SubtreeExitWindow : Window
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(12000, height + 1000)));
         list.Label("SX_Warning".Translate());
+        list.Label("RE_Limits".Translate());
         if (exits.RestoreFailed || charters.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
         {
