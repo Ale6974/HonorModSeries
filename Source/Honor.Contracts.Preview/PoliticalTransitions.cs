@@ -81,7 +81,8 @@ public sealed class PoliticalTransitionLedger : GameComponent
     {
         Ready(); if (Journal.Pending) throw new ArgumentException("A transition already needs attention.");
         Charters.EnsurePlayerIdentity();
-        var wars = joinUnion && acceptWars ? UnionWarCouncil.Review(Politics.UnionCandidate) : null;
+        var wars = acceptWars ? UnionWarCouncil.Review(joinUnion ? Politics.UnionCandidate : Politics.LiegeCandidate,
+            authorityKind: joinUnion ? AdmissionAuthorityKind.UnionCouncil : AdmissionAuthorityKind.FeudalLeader) : null;
         var command = Politics.PlanCommand(joinUnion, wars);
         var root = Find.FactionManager.AllFactionsListForReading.Single(f => f.GetUniqueLoadID() == command.Authority);
         var followers = Territories.ReviewFollowersFor(root); FutureRelations(root, followers, wars);
@@ -126,7 +127,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
         if (!Journal.Pending || !Journal.IsAfter(Politics.Model)) throw new ArgumentException("No applied transition to resume; unchanged preparation may be cancelled.");
         CheckRetainedSource();
         var root = Politics.TransitionAuthority();
-        var wars = Journal.Current.Wars == null ? null : UnionWarCouncil.Review(root, Journal.Current.Wars.Targets.Select(t => t.Enemy));
+        var wars = Journal.Current.Wars == null ? null : UnionWarCouncil.Review(root, Journal.Current.Wars.Targets.Select(t => t.Enemy), Journal.Current.Wars.AuthorityKind);
         if (wars != null && !UnionWarAdmission.SameWars(Journal.Current.Wars, wars)) throw new ArgumentException("War admission scope changed.");
         Politics.CheckTransitionAdmission(root, wars);
         var followers = Territories.ReviewFollowersFor(root); SameFollowers(followers); FutureRelations(root, followers, wars);

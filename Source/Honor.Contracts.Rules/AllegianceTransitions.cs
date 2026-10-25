@@ -85,7 +85,7 @@ public sealed class AllegianceTransitionLedger
         {
             UnionWarAdmission.Validate(wars);
             Require(wars.Accepted && wars.Union == command.Authority && wars.Player == actual.NativePlayer && wars.Tick == command.Tick &&
-                command.Action == AllegianceAction.JoinUnion, "Only accepted current union admission may assume these wars.");
+                UnionWarAdmission.MatchesAction(wars, command.Action), "Accepted current consent must match the destination's decision authority.");
         }
         Current = new(id, before, after.Export(), Digest(transfers.Export()),
             Array.AsReadOnly(followers.Entries.Select(e => e.Charter).OrderBy(id => id, StringComparer.Ordinal).ToArray()), command.Tick,
@@ -182,7 +182,7 @@ public sealed class AllegianceTransitionLedger
         if (c.Wars != null)
         {
             UnionWarAdmission.Validate(c.Wars);
-            Require(c.Wars.Accepted && command.Action == AllegianceAction.JoinUnion && c.Wars.Union == command.Authority && c.Wars.Player == old.NativePlayer &&
+            Require(c.Wars.Accepted && UnionWarAdmission.MatchesAction(c.Wars, command.Action) && c.Wars.Union == command.Authority && c.Wars.Player == old.NativePlayer &&
                 c.Wars.Tick == c.PreparedTick && c.WarResults != null && c.WarResults.Length == c.Wars.Targets.Length && c.WarResults.All(r => r != null) &&
                 c.WarResults.Select(r => r.Enemy).OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(c.Wars.Targets.Select(t => t.Enemy).OrderBy(id => id, StringComparer.Ordinal)),
                 "Invalid saved war admission binding.");

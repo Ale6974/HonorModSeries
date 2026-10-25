@@ -348,20 +348,23 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <LS_Select>Observed loss: {0}</LS_Select>
   <LS_Warning>Resolve only a town whose actual destruction or hostile native ownership loss Honor recorded. Review reconnects surviving direct vassals to the original surviving higher liege with fresh current-representative agreement. Old conditions and history remain; residents, goods, native ownership and personal oaths are untouched. Pending releases, changed subtrees, overlapping losses and union or noble council decisions remain blocked.</LS_Warning>
   <WU_Council>Current town-member admission decisions are saved. Membership and representatives are rechecked before execution and recovery.</WU_Council>
-  <WU_Decision_MissingWarRoute>The union cannot assume this war under the current native diplomatic restrictions.</WU_Decision_MissingWarRoute>
+  <WU_Decision_MissingWarRoute>The destination cannot assume this war under the current native diplomatic restrictions.</WU_Decision_MissingWarRoute>
   <WU_Decision_NoCurrentWar>The proposed enemy is no longer an actual enemy of either party. Review the changed situation.</WU_Decision_NoCurrentWar>
-  <WU_Decision_ProtectedAlly>The union refused: an admitted enemy is its existing ally.</WU_Decision_ProtectedAlly>
-  <WU_Decision_Relationship>The union refused: its current relationship with you is insufficient for this war burden.</WU_Decision_Relationship>
+  <WU_Decision_ProtectedAlly>The destination refused: an admitted enemy is its existing ally.</WU_Decision_ProtectedAlly>
+  <WU_Decision_Relationship>The destination refused: its current relationship with you is insufficient for this war burden.</WU_Decision_Relationship>
   <WU_Enemy>War to assume: {0}</WU_Enemy>
   <WU_Founding>Founding admission: current representative agrees; there are no existing town members.</WU_Founding>
   <WU_PlannedHostility>{0}: retain or assume hostility after accepted admission.</WU_PlannedHostility>
   <WU_Policy>The union must agree before taking on new enemies. Existing town members receive one base vote each; no unknown contribution or population grants extra weight. A strict majority is required. Founding admission is reviewed by the current union representative. Existing allies and native diplomatic restrictions are protected.</WU_Policy>
   <WU_Progress>War admission: {0}/{1} native outcomes verified. Uncertain or completed declarations are not automatically repeated; recovery requires a fresh review.</WU_Progress>
-  <WU_Propose>Propose union admission with my existing wars</WU_Propose>
+  <WU_Propose>Propose admission with my existing wars</WU_Propose>
   <WU_Provider>War admission is paused while Hegemony or World Domination is active. Their political records need a dedicated optional adapter; Honor will not bypass them with a native-only declaration.</WU_Provider>
-  <WU_Refused>Current union consent is unavailable. Review the current council and enemies again.</WU_Refused>
+  <WU_Refused>Current destination consent is unavailable. Review the current decision authority and enemies again.</WU_Refused>
   <WU_Votes>Existing-war admission approved: {0}/{1} voting weight.</WU_Votes>
   <LS_Freeze>An upper town's lost authority is awaiting reviewed succession. Reconnect its surviving contracts before changing allegiance, signing/releasing charters, starting a city transfer, configuring the world or making a new physical tribute delivery. Existing records and debts remain. Offered player contracts may still be declined.</LS_Freeze>
   <HL_Observed>{0} changed to a hostile NPC owner. Its prior incoming territory charter has ended; surviving child contracts and existing debts remain. Upper-town succession requires a separate review.</HL_Observed>
   <HL_Limits>Hostile ownership observations record only a completed change between already hostile NPC owners, outside pending political operations. Hegemony and World Domination need a dedicated integration first. These observations do not prove a battle or create conquest contracts. To reconnect children, the recorded new owner and the surviving former realm must still be verifiable. Later recapture, overlapping losses and interrupted changes need separate handling.</HL_Limits>
+  <WF_Policy>Feudal admission needs a mutually signed active charter AND the current ruler's separate acceptance of the existing wars. The ruler requires goodwill of at least 50 and protects existing allies and diplomatic restrictions. The union still uses its council rules. Royal governments needing a noble council are not covered by this ruler decision. No protection or military-aid duty is created by war admission.</WF_Policy>
+  <WF_Authority>This authority needs a separate government or noble-council procedure. A ruler decision cannot substitute for it.</WF_Authority>
+  <WF_Accepted>{0}, current ruler {1}, accepted the reviewed existing wars separately from the signed charter.</WF_Accepted>
 </LanguageData>

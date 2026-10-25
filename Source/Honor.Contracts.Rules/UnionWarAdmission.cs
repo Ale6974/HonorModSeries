@@ -4,8 +4,10 @@ public enum UnionAdmissionVoteReason { Accepted, Relationship, ProtectedAlly, Mi
 public sealed record UnionWarTarget(string Enemy, int Goodwill, SharedRelationKind Kind, int ReciprocalGoodwill,
     SharedRelationKind ReciprocalKind, bool ApplicantHostile, bool NativeRoute);
 public sealed record UnionAdmissionVote(string Seat, int Weight, bool Approve, UnionAdmissionVoteReason Reason);
+public enum AdmissionAuthorityKind { UnionCouncil, FeudalLeader }
 public sealed record UnionWarConsent(string Union, string Player, string Representative, long Tick, bool Founding,
-    UnionWarTarget[] Targets, UnionAdmissionVote[] Votes)
+    UnionWarTarget[] Targets, UnionAdmissionVote[] Votes,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] AdmissionAuthorityKind AuthorityKind = AdmissionAuthorityKind.UnionCouncil)
 {
     public int TotalWeight => Votes.Sum(v => v.Weight);
     public int ApprovedWeight => Votes.Where(v => v.Approve).Sum(v => v.Weight);
@@ -38,6 +40,17 @@ public static class UnionWarAdmission
         if (current != null && ids.Contains(current.Id)) throw new ArgumentException("Duplicate current/historical intent.");
     }
     private static bool Key(string id) => !string.IsNullOrWhiteSpace(id) && id.Length <= 120 && !id.Any(char.IsControl);
+    // Historic Union/union field names denote the destination authority for both kinds; retain old serialized bytes.
+    public static UnionWarConsent ReviewFeudal(string authority, string player, string representative, long now,
+        IEnumerable<UnionWarTarget> targets, int goodwill)
+    {
+        var result = Review(authority, player, representative, now, new[] { "liege/" + authority }, targets, goodwill)
+            with { AuthorityKind = AdmissionAuthorityKind.FeudalLeader };
+        Validate(result); return result;
+    }
+    public static bool MatchesAction(UnionWarConsent consent, AllegianceAction action) => consent != null &&
+        (consent.AuthorityKind == AdmissionAuthorityKind.UnionCouncil && action == AllegianceAction.JoinUnion ||
+         consent.AuthorityKind == AdmissionAuthorityKind.FeudalLeader && action == AllegianceAction.BindLiege);
     public static UnionWarConsent Review(string union, string player, string representative, long now,
         IEnumerable<string> townSeats, IEnumerable<UnionWarTarget> targets, int goodwill)
     {
@@ -57,7 +70,7 @@ public static class UnionWarAdmission
     }
     public static void Validate(UnionWarConsent consent)
     {
-        if (consent == null || !Key(consent.Union) || !Key(consent.Player) || consent.Player == consent.Union || !Key(consent.Representative) ||
+        if (consent == null || !RuntimeCompat.IsDefined(consent.AuthorityKind) || !Key(consent.Union) || !Key(consent.Player) || consent.Player == consent.Union || !Key(consent.Representative) ||
             consent.Tick < 0 || consent.Tick > int.MaxValue || consent.Targets == null || consent.Targets.Length is < 1 or > 128 ||
             consent.Votes == null || consent.Votes.Length is < 1 or > 1000 ||
             consent.Targets.Any(t => t == null || !Key(t.Enemy) || t.Enemy == consent.Union || t.Enemy == consent.Player ||
@@ -65,7 +78,8 @@ public static class UnionWarAdmission
             consent.Targets.Select(t => t.Enemy).Distinct(StringComparer.Ordinal).Count() != consent.Targets.Length ||
             consent.Votes.Any(v => v == null || !Key(v.Seat) || v.Weight != 1 || !RuntimeCompat.IsDefined(v.Reason) || v.Approve != (v.Reason == UnionAdmissionVoteReason.Accepted)) ||
             consent.Votes.Select(v => v.Seat).Distinct(StringComparer.Ordinal).Count() != consent.Votes.Length ||
-            consent.Founding != (consent.Votes.Length == 1 && consent.Votes[0].Seat == "founding/" + consent.Union))
+            (consent.AuthorityKind == AdmissionAuthorityKind.FeudalLeader ? consent.Founding || consent.Votes.Length != 1 || consent.Votes[0].Seat != "liege/" + consent.Union :
+             consent.Founding != (consent.Votes.Length == 1 && consent.Votes[0].Seat == "founding/" + consent.Union)))
             throw new ArgumentException("Invalid actual union admission consent scope.");
         if (consent.Accepted && consent.Targets.Any(t => t.Kind == SharedRelationKind.Ally || t.ReciprocalKind == SharedRelationKind.Ally ||
             !t.NativeRoute || !t.ApplicantHostile && t.Kind != SharedRelationKind.Hostile))
@@ -80,7 +94,7 @@ public static class UnionWarAdmission
     public static bool SameWars(UnionWarConsent original, UnionWarConsent fresh)
     {
         Validate(original); Validate(fresh);
-        return original.Union == fresh.Union && original.Player == fresh.Player &&
+        return original.AuthorityKind == fresh.AuthorityKind && original.Union == fresh.Union && original.Player == fresh.Player &&
             original.Targets.Select(t => t.Enemy).OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(fresh.Targets.Select(t => t.Enemy).OrderBy(id => id, StringComparer.Ordinal));
     }
 }

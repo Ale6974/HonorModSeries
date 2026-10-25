@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 일반 종주 지도자의 별도 전시 수락 — 0.3.26 / 2026-10-26
+
+설치1.7.4985 rev1269와 net10.0 /10.0.13-waylithclr.dev를 다시 확인했다. 새 native 변이 API는 추가하지 않고0.3.25의 CanChangeGoodwillFor/GoodwillToMakeHostile/TryAffectGoodwillWith와 양측 결과 검사를 재사용한다. 현재 등록된 ordinary NPC faction·유효한 살아 있는 지도자·실제 서명된 활성 플레이어 계약은 기존 조회/검증 경로로 확인한다. royalTitleTags가 있는 세력의 귀족 의결을 지도자 결정으로 꾸미지 않는다. 신규 별도 전쟁 수락은 우호도50/기존 동맹·native 권한을 따르는 Honor NPC 규칙이며 바닐라 군주 의결 API가 아니다. 지원·보호 의무를 만들지 않는다.
+
+전쟁 수락에 UnionCouncil/FeudalLeader를 구분하고 원래 JSON의 Union 필드는 kind1에서 목적지 세력으로 해석한다. kind0 기본값은 저장에서 생략해0.3.25 연합 journal/역사 원본을 유지한다. JoinUnion/BindLiege와 일치하지 않는 체제 동의를 거절한다. 마지막 native 콜백 뒤 대표/구성원을 재확인하며, 완료 전 전쟁 intent의 자동 외교 hook은 실행 coordinator 밖에서 동결한다. 뒤늦은 관계 변화·대표 변경은 원 동의를 고쳐 쓰거나 재선포하지 않고 새 명시 검토를 요구한다. 1.6은 동일 서명의 pinned 참조/net472 호스트로 별도 검사한다.
+
 ## 연합의 전쟁 인수와 실제 적대 소유권 상실 — 0.3.25 / 2026-10-26
 
 설치 Version.txt의 1.7.4985 rev1269와 runtimeconfig의 net10.0 / 10.0.13-waylithclr.dev를 다시 확인했다. 실제 DLL에서 Faction.CanChangeGoodwillFor, GoodwillToMakeHostile, TryAffectGoodwillWith 및 양측 RelationKindWith/BaseGoodwillWith 경로를 확인했다. 새 연합 전쟁 인수는 NPC→NPC native goodwill 경로만 호출하며, 기존 동맹·quest lock/권한을 수락으로 우회하지 않는다. 변경 전 applying 의도를 남기고 반환 bool이 아니라 양측 Hostile 결과를 검사한다. 예외/다른 행위자가 이미 적대를 만든 경우 관측만 기록하며 호출 성공의 인과로 돌리지 않는다. 한 번 확인한 적대가 후속 화평으로 바뀌면 재선포하지 않는다. 플레이어 관계 반영은 기존 별도 공유 외교 경로를 그대로 사용한다.
