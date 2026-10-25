@@ -1,5 +1,15 @@
 # 1.7 API·런타임 검증 기록
 
+## 포로 관리 세력 변경과 네이티브 초기화 (0.3.16)
+
+Version.txt의 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 DLL의 Pawn_GuestTracker.SetGuestStatus(Faction, GuestStatus)를 조사했다. Prisoner 분기는 자신의 faction을 바꾸지 않고 host를 변경하지만, resistance/will을 새로 뽑고 의료 등급·수술 목록을 초기화한다. 기존 모드가 Enslave이면 상호작용 모드도 변경한다. Slave 분기는 Pawn.SetFaction을 호출하므로 같은 경로로 안전하다고 가정하지 않는다. 새 지원은 일반 포로만이며 Enslave 모드를 차단하고 native SetGuestStatus를 직접 호출한다. private hostFactionInt나 pawn faction의 원시 쓰기는 없다.
+
+Pawn.DropAndForbidEverything은 destroyGearOnDrop을 먼저 처리하고, 그 밖의 unheld/unspawned world pawn은 장비/재고 드롭 전에 반환함을 확인했다. 장비 파괴/보유/부모 맵 상태는 사전 차단한다. Pawn_WorkSettings.EnableAndInitializeIfNotAlreadyInitialized는 priorities가 있으면 재초기화하지 않는다. 초기화되지 않은 작업 설정은 보류한다. GetPriority는 수동 우선순위 설정에 따라 표시 값을 3으로 정규화하므로 검증된 priorities DefMap과 읽기 전용 인덱서를 이용해 원래 값을 대조한다. GuestTracker의 25개 인스턴스 필드 목록과 Pawn/host 링크를 확인하며, host와 저항도/의지 외의 지원 필드를 별도로 요약한다. 추가/미지원 구조나 비어 있지 않은 복잡 모집 기록·이념 참조는 거절한다. 손님 상태 변경에 의한 침대 해제를 피하기 위해 할당 재산을 차단한다.
+
+SetGuestStatus의 실제 반환 뒤 관찰한 저항도/의지 값 쌍만 저장하고, 다른 보존 증거 및 같은 목적 관리 세력이 일치할 때 원래 값을 복원한 뒤 권한을 지운다. 예외 발생으로 반환을 관측하지 못한 경우 초기화 값을 만들어내지 않는다. 준비/진행/검증/참조 해제는 기존 주민 집행과 같은 도시 저널에서 수행하며 GC 취소·임시 참조 보호를 유지한다.
+
+1.6.4871 참조에서 GuestTracker 멤버와 네이티브 함수 시그니처를 확인하고 net472로 별도 컴파일한다. 이는 설치된 1.6 구현/Mono 또는 1.7의 실제 호출·알림·저장 복구 증거가 아니다. 디컴파일 자료는 로컬 전용이며 배포하지 않는다.
+
 ## 일반 이념 신도 관측과 보존 (0.3.15)
 
 설치 Version.txt 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. Ideo.Notify_MemberChangedFaction는 각 교리 알림을 호출하며, 기본 Precept 알림은 비어 있다. Precept_RoleSingle은 선택된 인물이면서 이전 세력이 플레이어일 때 역할 해제를 수행한다. 새 경로는 이전/목적 모두 NPC이며 역할 보유자는 별도 차단한다. 다른 알림 구현과 Harmony 패치가 있는 알림은 보존을 가정하지 않는다. FactionIdeosTracker.Notify_MemberGainedOrLost의 주 이념 재계산은 플레이어 세력 조건임을 확인했다.

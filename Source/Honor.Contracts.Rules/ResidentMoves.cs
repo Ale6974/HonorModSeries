@@ -4,16 +4,19 @@ using System.Text.Json;
 namespace Honor.Contracts.Rules;
 
 public sealed record ResidentMoveEvidence(string Id, string Preserved, int? MedicalCare);
+/// <summary>Faction is the changing authority. Custody profiles independently bind the prisoner's original affiliation.</summary>
 public sealed record ResidentMoveActual(string Id, string Faction, string Preserved, int? MedicalCare);
 public enum ResidentMoveAction { ChangeFaction, RestoreMedicalCare, Verify }
 
 public static class ResidentMoveProfiles
 {
-    public static string Compose(string legacy, string surgery, int profile, string ideology = null)
+    public static string Compose(string legacy, string surgery, int profile, string ideology = null, string custody = null)
     {
-        if (!CityStockProof.Valid(legacy) || profile is not (1 or 2 or 3) || (profile == 1 ? surgery != null : !CityStockProof.Valid(surgery)) ||
-            (profile == 3 ? !CityStockProof.Valid(ideology) : ideology != null))
+        if (!CityStockProof.Valid(legacy) || profile is not (1 or 2 or 3 or 4) || (profile == 1 ? surgery != null : !CityStockProof.Valid(surgery)) ||
+            (profile >= 3 ? !CityStockProof.Valid(ideology) : ideology != null) || (profile == 4 ? !CityStockProof.Valid(custody) : custody != null))
             throw new ArgumentException("Invalid resident preservation profile.");
+        if (profile == 4) return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(new { Profile = 4, Previous = Compose(legacy, surgery, 3, ideology), Custody = custody }))));
         if (profile == 3) return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(
             JsonSerializer.Serialize(new { Profile = 3, Previous = Compose(legacy, surgery, 2), Ideology = ideology }))));
         return profile == 1 ? legacy : RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(

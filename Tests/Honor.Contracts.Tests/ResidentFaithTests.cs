@@ -32,7 +32,7 @@ internal static class ResidentFaithTests
         Check(ResidentMoveProfiles.Compose(legacy, null, 1) == legacy && ResidentMoveProfiles.Compose(legacy, surgery, 2) == old, "old pending profiles remain byte-identical");
         Reject(() => ResidentMoveProfiles.Compose(legacy, surgery, 2, proof), "profile 2 cannot be upgraded in place");
         Reject(() => ResidentMoveProfiles.Compose(legacy, surgery, 3), "new profile requires explicit faith evidence");
-        Reject(() => ResidentMoveProfiles.Compose(legacy, surgery, 4, proof), "unknown profile rejected");
+        Reject(() => ResidentMoveProfiles.Compose(legacy, surgery, 4, proof), "custody profile requires explicit custody evidence");
         return count;
     }
 }

@@ -93,12 +93,12 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
         !faction.defeated && faction.HasGoodwill && faction.def.humanlikeFaction && !faction.def.permanentEnemy &&
         !(faction.def.royalTitleTags?.Count > 0) && (!faction.HostileTo(Faction.OfPlayer) || faction.GetUniqueLoadID() == releasedSource);
-    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null, int residentProfile = 3)
+    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null, int residentProfile = 4)
     {
         var all = Cities(); bool exists = city != null && all.Contains(city); var owner = exists ? city.Faction : null;
         int format = 0;
         string proof = exists ? CityStockPreservation.Capture(city, out format) : null;
-        string residentProof = exists && city.previouslyGeneratedInhabitants?.Count > 0 ? ResidentExecution.Proof(city, residentProfile) : null;
+        string residentProof = exists && city.previouslyGeneratedInhabitants?.Count > 0 ? ResidentExecution.Proof(city, residentProfile, target) : null;
         return new(territory, owner?.GetUniqueLoadID(), all.Count(s => s.Faction == owner), exists, owner?.IsPlayer == true,
             exists && city.HasMap, !exists || proof == null || city.EverVisited,
             exists && city.def.canHaveFaction && Eligible(owner, releasedSource), Eligible(target), target?.IsPlayer == true,

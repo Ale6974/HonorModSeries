@@ -18,15 +18,17 @@ public sealed class ResidentExecutionRecord : IExposable
     public bool Started;
     public int Profile = 1;
     public List<ResidentSurgeryRecord> Surgery = [];
+    public List<ResidentPrisonerRecord> Prisoners = [];
     public void ExposeData()
     {
         Scribe_Values.Look(ref Snapshot, "preservationV1"); Scribe_Values.Look(ref Started, "started");
         Scribe_Collections.Look(ref Pawns, "residentReferences", LookMode.Reference);
         Scribe_Values.Look(ref Profile, "profile", 1);
         Scribe_Collections.Look(ref Surgery, "surgicalCustody", LookMode.Deep);
-        if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; }
+        Scribe_Collections.Look(ref Prisoners, "prisonerCustody", LookMode.Deep);
+        if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; Prisoners ??= []; }
     }
-    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
+    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
 }
 
 internal static class ResidentExecution
@@ -44,7 +46,8 @@ internal static class ResidentExecution
     private static void Eligible(Pawn p, int profile)
     {
         if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || p.RaceProps.body == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || p.Spawned || !p.IsWorldPawn() ||
-            p.holdingOwner != null || p.Faction == null || p.Faction.IsPlayer || p.HostFaction != null || p.IsPrisoner || p.IsSlave ||
+            p.holdingOwner != null || p.Faction == null || p.Faction.IsPlayer ||
+            (profile < 4 || !p.IsPrisoner) && (p.HostFaction != null || p.IsPrisoner) || p.IsSlave ||
             PawnUtility.IsFactionLeader(p) || p.InMentalState || p.Downed || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
             p.GetLord() != null || profile < 3 && p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
             p.HasExtraHomeFaction() || p.HasExtraMiniFaction() || p.GetExtraHostFaction() != null || p.questTags?.Count > 0 ||
@@ -60,13 +63,14 @@ internal static class ResidentExecution
             p.needs.AllNeeds.Any(n => n == null || !RuntimeCompat.IsFinite(n.CurLevel) ||
                 n.GetType().Assembly != typeof(Pawn).Assembly && n.GetType().Assembly.GetName().Name != "Honor.Core"))
             throw new ArgumentException("Unsupported resident status or pending surgery.");
+        if (p.IsPrisoner) ResidentPrisoners.Eligible(p);
         if (p.playerSettings != null && (Areas == null || Areas.IsStatic || Areas.FieldType != typeof(Dictionary<Map, Area>) ||
             Areas.GetValue(p.playerSettings) is not IDictionary areas || areas.Count != 0 || p.playerSettings.Master != null))
             throw new ArgumentException("Unsupported persistent resident restrictions.");
     }
-    internal static ResidentMoveActual Read(Pawn p, int profile = 1, ResidentSurgeryRecord surgery = null)
+    internal static ResidentMoveActual Read(Pawn p, int profile = 1, ResidentSurgeryRecord surgery = null, ResidentPrisonerRecord prisoner = null)
     {
-        if (profile is not (1 or 2 or 3)) throw new ArgumentException("Unknown resident profile.");
+        if (profile is not (1 or 2 or 3 or 4)) throw new ArgumentException("Unknown resident profile.");
         Eligible(p, profile); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
@@ -81,24 +85,32 @@ internal static class ResidentExecution
                 settings.hostilityResponse, settings.selfTend, settings.displayOrder, settings.animalForage, settings.animalDig }
         });
         preserved = ResidentMoveProfiles.Compose(preserved, profile >= 2 ? ResidentSurgery.Proof(p, surgery) : null, profile,
-            profile == 3 ? ResidentIdeology.Proof(p) : null);
-        return new(baseline.Id, p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
+            profile >= 3 ? ResidentIdeology.Proof(p) : null, profile == 4 ? ResidentPrisoners.Proof(p, prisoner) : null);
+        // Faction in the shared move planner denotes the changing authority; prisoner affiliation is separately proof-bound.
+        return new(baseline.Id, profile == 4 ? ResidentPrisoners.Authority(p) : p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
     }
-    internal static ResidentExecutionRecord Capture(Settlement city, int profile = 3)
+    internal static ResidentExecutionRecord Capture(Settlement city, int profile = 4)
     {
         EnsureRetention();
         CheckTown(city); var pawns = city.previouslyGeneratedInhabitants.OrderBy(p => p?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         foreach (var pawn in pawns) Eligible(pawn, profile);
         var surgery = profile >= 2 ? pawns.Select(ResidentSurgery.Capture).ToList() : [];
+        var prisoners = profile == 4 ? pawns.Where(ResidentPrisoners.IsPrisoner).Select(ResidentPrisoners.Capture).ToList() : [];
         SurgeryOrderSet.ValidateDistinctOwners(surgery.Select(s => s.Set()));
-        var rows = pawns.Select((p, i) => Read(p, profile, profile >= 2 ? surgery[i] : null)).ToArray();
+        var rows = pawns.Select((p, i) => Read(p, profile, profile >= 2 ? surgery[i] : null, prisoners.SingleOrDefault(r => r.Pawn == p))).ToArray();
         if (rows.Any(r => r.Faction != city.Faction.GetUniqueLoadID())) throw new ArgumentException("Resident source faction mismatch.");
         var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
-        return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery };
+        return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners };
     }
-    internal static string Proof(Settlement city, int profile = 3)
+    internal static string Proof(Settlement city, int profile = 4, Faction target = null)
     {
-        try { return Capture(city, profile).Set().Proof; }
+        try
+        {
+            var record = Capture(city, profile);
+            if (target != null && target != city.Faction)
+                foreach (var prisoner in record.Prisoners) ResidentPrisoners.NeedsRestore(prisoner, city.Faction, target);
+            return record.Set().Proof;
+        }
         catch (ArgumentException) { return null; }
     }
     internal static void ValidateReferences(ResidentExecutionRecord record, Settlement city, string proof)
@@ -111,6 +123,12 @@ internal static class ResidentExecution
             record.Surgery.Where((s, i) => s == null || s.LoadFailed || s.Pawn != record.Pawns[i] || s.Detached == null || !record.Started && s.Detached.Count != 0).Any())
             throw new ArgumentException("Surgical custody registry mismatch.");
         SurgeryOrderSet.ValidateDistinctOwners(record.Surgery.Select(s => s.Set()));
+        if (record.Prisoners == null || record.Profile < 4 && record.Prisoners.Count != 0 ||
+            record.Prisoners.Any(r => r == null || r.Pawn == null || !record.Pawns.Contains(r.Pawn) || !r.Pawn.IsPrisoner ||
+                r.Evidence().Id != r.Pawn.GetUniqueLoadID() || !record.Started && r.ResetSnapshot != null) ||
+            record.Prisoners.Select(r => r.Pawn).Distinct().Count() != record.Prisoners.Count ||
+            record.Profile == 4 && record.Pawns.Count(p => p.IsPrisoner) != record.Prisoners.Count)
+            throw new ArgumentException("Prisoner custody registry mismatch.");
         if (city.previouslyGeneratedInhabitants.Count != record.Pawns.Count ||
             city.previouslyGeneratedInhabitants.Distinct().Count() != record.Pawns.Count || !record.Pawns.All(city.previouslyGeneratedInhabitants.Contains))
             throw new ArgumentException("Actual saved resident set changed.");
@@ -121,22 +139,30 @@ internal static class ResidentExecution
         ValidateReferences(record, city, proof);
         var set = record.Set(); var rows = ReadAll(record);
         set.Review(rows, source.GetUniqueLoadID(), target.GetUniqueLoadID(), record.Started);
+        foreach (var prisoner in record.Prisoners) ResidentPrisoners.NeedsRestore(prisoner, source, target);
         record.Started = true; // Retain this before any native mutation; recovery proceeds forward, never raw-writes faction.
         Find.WorldPawns.gc.CancelGCPass();
         for (int i = 0; i < record.Pawns.Count; i++)
         {
             var p = record.Pawns[i];
             var surgery = record.Profile >= 2 ? record.Surgery[i] : null;
-            var action = set.ActionFor(Read(p, record.Profile, surgery), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
+            var prisoner = record.Prisoners.SingleOrDefault(r => r.Pawn == p);
+            var action = set.ActionFor(Read(p, record.Profile, surgery, prisoner), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
             if (surgery != null && action == ResidentMoveAction.ChangeFaction) ResidentSurgery.Detach(surgery);
-            if (action == ResidentMoveAction.ChangeFaction) p.SetFaction(target);
-            if (p.Faction != target) throw new ArgumentException("Native resident ownership did not reach the target.");
+            if (action == ResidentMoveAction.ChangeFaction)
+            {
+                if (prisoner != null) ResidentPrisoners.ChangeHost(prisoner, source, target);
+                else p.SetFaction(target);
+            }
+            if ((record.Profile == 4 ? ResidentPrisoners.Authority(p) : p.Faction?.GetUniqueLoadID()) != target.GetUniqueLoadID())
+                throw new ArgumentException("Native resident authority did not reach the target.");
             // Restore ONLY the recorded medical setting. Never repair health, gear, social state or unexplained ownership.
-            var actual = Read(p, record.Profile, surgery);
+            var actual = Read(p, record.Profile, surgery, prisoner);
             var before = set.Residents[i];
             if (actual.Preserved != before.Preserved || actual.MedicalCare.HasValue != before.MedicalCare.HasValue)
                 throw new ArgumentException("Native resident preservation mismatch; original intent retained.");
             if (before.MedicalCare.HasValue) p.playerSettings.medCare = (MedicalCareCategory)before.MedicalCare.Value;
+            if (prisoner != null) ResidentPrisoners.Restore(prisoner, source, target);
             if (surgery != null) ResidentSurgery.Restore(surgery);
         }
         set.VerifyDestination(ReadAll(record), source.GetUniqueLoadID(), target.GetUniqueLoadID());
@@ -146,10 +172,11 @@ internal static class ResidentExecution
     {
         ValidateReferences(record, city, proof);
         record.Set().VerifyDestination(ReadAll(record), source.GetUniqueLoadID(), target.GetUniqueLoadID());
+        if (record.Prisoners.Any(r => ResidentPrisoners.NeedsRestore(r, source, target))) throw new ArgumentException("Prisoner progress not yet restored.");
         if (record.Surgery.Any(s => s.Detached.Count != 0)) throw new ArgumentException("Cannot complete with detached orders.");
     }
     private static ResidentMoveActual[] ReadAll(ResidentExecutionRecord record) => record.Pawns.Select((p, i) =>
-        Read(p, record.Profile, record.Profile >= 2 ? record.Surgery[i] : null)).ToArray();
+        Read(p, record.Profile, record.Profile >= 2 ? record.Surgery[i] : null, record.Prisoners.SingleOrDefault(r => r.Pawn == p))).ToArray();
     private static void EnsureRetention()
     {
         if (GcMethod == null || GcMethod.ReturnType != typeof(string) || Harmony.GetPatchInfo(GcMethod)?.Owners.Contains("honor.series.contracts.preview") != true)
@@ -159,7 +186,9 @@ internal static class ResidentExecution
     {
         if (record.Surgery == null || record.Surgery.Any(s => s == null || s.Detached == null || s.Detached.Count != 0))
             throw new ArgumentException("Never discard detached surgical originals.");
-        record.Pawns.Clear(); record.Surgery.Clear();
+        if (record.Prisoners == null || record.Prisoners.Any(r => r == null || r.ResetSnapshot != null))
+            throw new ArgumentException("Never discard an unfinished native custody reset.");
+        record.Pawns.Clear(); record.Surgery.Clear(); record.Prisoners.Clear();
     }
 }
 
