@@ -8,6 +8,14 @@
 
 기존 System.Text.Json 단정밀도 직렬화는 Windows Framework 호스트에서 0.8f를 0.800000012로, .NET 10에서는 0.8로 출력한다. 고정 지문 검사에서 이 차이를 확인했으며 기존 저장 증거를 정규화하거나 다시 작성하지 않는다. 동일 타깃의 기존 지문을 각각 고정값으로 검사한다. 진행 중인 도시 이전을 다른 게임/런타임 버전으로 옮길 때 증거가 호환된다고 주장하지 않으며 원래 버전에서 먼저 해결하는 것이 필요하다.
 ## 지도자 전출의 저장 참조와 후임 선정 제한 (0.3.18)
+## 포로 상담 기록과 목표 이념의 읽기 전용 대조 (0.3.19)
+
+설치 Version.txt 1.7.4985 rev1269, runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 ResistanceInteractionData는 resistanceReduction, initiatorNegotiationAbilityFactor, recruiteeMoodFactor, initiatorName, recruiterOpinionFactor 다섯 필드를 Scribe_Values로 저장한다. Pawn_GuestTracker는 last/finalResistanceInteractionData를 기존 자체 Deep 저장하고 ideoForConversion은 Reference로 저장한다. SetGuestStatus의 Prisoner 경로와 그 뒤 처리에는 이 세 필드를 쓰는 코드가 없음을 확인했다. 현재 Pawn의 이념에만 손님 상태 알림을 보내며 그 콜백의 기존 제한도 유지한다. 클래스/필드가 같다는 이유만으로 네이티브 초기화된 저항도·의지와 상담 이력을 같은 수리 대상으로 보지 않는다.
+
+기본 상담 타입과 다섯 인스턴스 필드 이름/타입을 확인하고 유한 수치·텍스트 범위를 검증한 뒤 DTO 증거로만 요약한다. native 상담 객체를 새로 생성하거나 교체하지 않는다. 목표 이념은 정확한 기본 Ideo, 실제 관리자 목록의 동일 원본 참조 및 유일 ID를 확인한다. 미확인/누락/중복·커스텀 관리자 항목은 보존을 가정하지 않는다. 어떠한 Ideo 설정/개종/확신도 변경도 호출하지 않는다. 이후 변경은 기록으로 수리하지 않고 도시 집행을 보류한다.
+
+1.6.4871 참조에서 상담 클래스의 같은 다섯 필드와 IdeoManager.IdeosListForReading 시그니처를 확인해 net472로 별도 빌드한다. 해당 게임의 메서드 몸체/Mono나 어느 버전의 실제 알림·Scribe 복구를 실행한 것은 아니다. profile 6만 확장된 적격 상태를 허용하며 기존 profile 1~5와 기본 guest 요약의 지문을 바꾸지 않는다. 기존 런타임별 소수점 표기 차이를 정규화하지 않는다. 디컴파일·참조/게임 DLL은 배포하지 않는다.
+
 
 설치 Version.txt 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 확인했다. Faction.Notify_LeaderLost는 기존 지도자를 보관한 뒤 TryGenerateNewLeader를 호출하고 알림을 보낸다. TryGenerateNewLeader는 leader를 먼저 null로 만들고 설정에 따라 맵 주민을 고르거나 PawnGenerator로 후임을 생성한다. 결과 false나 예외가 원래 지도권을 안전하게 보존한다는 가정을 하지 않는다. 새 경로는 해당 메서드나 SetFaction을 호출하지 않고 원 소속·직위를 유지하는 전출 협의로 제한한다.
 

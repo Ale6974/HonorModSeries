@@ -58,7 +58,7 @@ internal static class PrisonerPreservationTests
         Check(captive != ordinary && CityStockProof.Valid(captive), "profile 4 distinguishes custody from ordinary affiliation");
         Reject(() => ResidentMoveProfiles.Compose(hash, other, 3, hash, proof), "old profile cannot silently gain custody support");
         Reject(() => ResidentMoveProfiles.Compose(hash, other, 4, hash), "custody evidence mandatory in new profile");
-        Reject(() => ResidentMoveProfiles.Compose(hash, other, 6, hash, proof), "unknown preservation version rejected");
+        Reject(() => ResidentMoveProfiles.Compose(hash, other, 7, hash, proof), "unknown preservation version rejected");
         // Mixed town recovery: the captive changes host while an ordinary resident changes faction.
         var town = ResidentMoveSet.Capture([new("ordinary", hash, 2), new("captive", captive, 1)]);
         ResidentMoveActual[] partial = [new("ordinary", "old-host", hash, 2), new("captive", "new-host", captive, 0)];

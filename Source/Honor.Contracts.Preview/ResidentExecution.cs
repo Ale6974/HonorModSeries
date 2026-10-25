@@ -28,7 +28,7 @@ public sealed class ResidentExecutionRecord : IExposable
         Scribe_Collections.Look(ref Prisoners, "prisonerCustody", LookMode.Deep);
         if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; Prisoners ??= []; }
     }
-    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
+    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
 }
 
 internal static class ResidentExecution
@@ -81,7 +81,7 @@ internal static class ResidentExecution
     }
     private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader)
     {
-        if (profile is not (1 or 2 or 3 or 4 or 5)) throw new ArgumentException("Unknown resident profile.");
+        if (profile is not (1 or 2 or 3 or 4 or 5 or 6)) throw new ArgumentException("Unknown resident profile.");
         Eligible(p, profile, retainedLeader); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
@@ -100,7 +100,7 @@ internal static class ResidentExecution
         // Faction in the shared move planner denotes the changing authority; prisoner affiliation is separately proof-bound.
         return new(baseline.Id, profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
     }
-    internal static ResidentExecutionRecord Capture(Settlement city, int profile = 5)
+    internal static ResidentExecutionRecord Capture(Settlement city, int profile = 6)
     {
         EnsureRetention();
         CheckTown(city); var pawns = city.previouslyGeneratedInhabitants.OrderBy(p => p?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
@@ -113,7 +113,7 @@ internal static class ResidentExecution
         var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
         return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners };
     }
-    internal static string Proof(Settlement city, int profile = 5, Faction target = null)
+    internal static string Proof(Settlement city, int profile = 6, Faction target = null)
     {
         try
         {

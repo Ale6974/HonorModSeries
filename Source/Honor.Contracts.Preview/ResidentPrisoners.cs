@@ -53,7 +53,7 @@ internal static class ResidentPrisoners
     internal static string Authority(Pawn p) => (IsPrisoner(p) ? p.HostFaction : p.Faction)?.GetUniqueLoadID();
     internal static void Eligible(Pawn p, int profile = 4)
     {
-        if (p.guest?.ideoForConversion != null) throw new ResidentMoveBlocked("RE_ConversionUnavailable");
+        if (profile < 6 && p.guest?.ideoForConversion != null) throw new ResidentMoveBlocked("RE_ConversionUnavailable");
         if (p.workSettings?.Initialized != true) throw new ResidentMoveBlocked("RE_WorkUnavailable");
         if (p.ownership?.OwnedBed != null || p.ownership?.AssignedDeathrestCasket != null || p.ownership?.AssignedThrone != null)
             throw new ResidentMoveBlocked("RE_PropertyUnavailable");
@@ -70,12 +70,12 @@ internal static class ResidentPrisoners
         if (!RuntimeCompat.IsFinite(resistance.min) || !RuntimeCompat.IsFinite(resistance.max) || resistance.min < 0 || resistance.max < resistance.min ||
             !RuntimeCompat.IsFinite(will.min) || !RuntimeCompat.IsFinite(will.max) || will.min < 0 || will.max < will.min)
             throw new ArgumentException("Invalid native prisoner initialization ranges.");
-        if (profile is not (4 or 5)) throw new ArgumentException("Unsupported prisoner preservation profile.");
+        if (profile is not (4 or 5 or 6)) throw new ArgumentException("Unsupported prisoner preservation profile.");
         if (profile >= 5) ResidentIdeology.Proof(p);
         // NPC-to-NPC host change keeps the prisoner role. The native drop path returns before touching unheld world-pawn gear.
         if (p.SpawnedOrAnyParentSpawned || p.InContainerEnclosed) throw new ArgumentException("Prisoner gear cannot be preserved here.");
     }
-    private static object Value(FieldInfo field, object value)
+    private static object Value(FieldInfo field, object value, int profile)
     {
         if (value == null) return null;
         var type = field.FieldType;
@@ -89,7 +89,33 @@ internal static class ResidentPrisoners
         if (value is Def def && def.GetType().Assembly == typeof(Pawn).Assembly && def.defName != null) return def.defName;
         if (value is List<PrisonerInteractionModeDef> modes && modes.Count <= 128 && modes.All(d => d != null && d.GetType() == typeof(PrisonerInteractionModeDef)))
             return modes.Select(d => d.defName).ToArray();
-        // Conversion/complex recruiter records and future unknown fields require explicit preservation support.
+        if (profile >= 6 && field.Name == "ideoForConversion" && type == typeof(Ideo))
+        {
+            if (value.GetType() != typeof(Ideo)) throw new ResidentMoveBlocked("RE_ConversionUnavailable");
+            var target = (Ideo)value;
+            try
+            {
+                var ideos = Find.IdeoManager?.IdeosListForReading;
+                string id = target.GetUniqueLoadID();
+                bool registered = ModsConfig.IdeologyActive && ideos != null && ideos.Count <= 1024 &&
+                    ideos.All(i => i != null && i.GetType() == typeof(Ideo)) && ideos.Any(i => ReferenceEquals(i, target)) &&
+                    ideos.Count(i => i.GetUniqueLoadID() == id) == 1;
+                return PrisonerHistory.ConversionTarget(id, registered, true);
+            }
+            catch (ArgumentException) { throw new ResidentMoveBlocked("RE_ConversionUnavailable"); }
+        }
+        if (profile >= 6 && (field.Name is "lastResistanceInteractionData" or "finalResistanceInteractionData") && type == typeof(ResistanceInteractionData))
+        {
+            if (value.GetType() != typeof(ResistanceInteractionData)) throw new ResidentMoveBlocked("RE_HistoryUnavailable");
+            var members = typeof(ResistanceInteractionData).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            string[] expected = ["resistanceReduction", "initiatorNegotiationAbilityFactor", "recruiteeMoodFactor", "initiatorName", "recruiterOpinionFactor"];
+            if (members.Length != expected.Length || members.Any(f => !expected.Contains(f.Name) || f.FieldType != (f.Name == "initiatorName" ? typeof(string) : typeof(float))))
+                throw new ResidentMoveBlocked("RE_HistoryUnavailable");
+            var row = (ResistanceInteractionData)value;
+            try { return PrisonerHistory.Interaction(new(row.initiatorName, row.resistanceReduction, row.initiatorNegotiationAbilityFactor, row.recruiteeMoodFactor, row.recruiterOpinionFactor)); }
+            catch (ArgumentException) { throw new ResidentMoveBlocked("RE_HistoryUnavailable"); }
+        }
+        // Legacy profiles retain their exclusions; other unreviewed tracker fields never gain preservation authority.
         throw new ArgumentException("Unsupported guest tracker field: " + field.Name);
     }
     internal static PrisonerEvidence Describe(Pawn p, int profile = 4)
@@ -100,7 +126,7 @@ internal static class ResidentPrisoners
             !GuestFields.Any(f => f.Name == "hostFactionInt" && f.FieldType == typeof(Faction) && f.GetValue(p.guest) == p.HostFaction))
             throw new ArgumentException("Unavailable guest field layout.");
         var fields = GuestFields.Where(f => f.Name is not ("pawn" or "hostFactionInt" or "resistance" or "will"))
-            .OrderBy(f => f.Name, StringComparer.Ordinal).Select(f => new { f.Name, Type = f.FieldType.FullName, Value = Value(f, f.GetValue(p.guest)) }).ToArray();
+            .OrderBy(f => f.Name, StringComparer.Ordinal).Select(f => new { f.Name, Type = f.FieldType.FullName, Value = Value(f, f.GetValue(p.guest), profile) }).ToArray();
         // GetPriority returns display-normalized values when manual priorities are disabled. Bind the original raw priorities instead.
         if (Priorities == null || Priorities.IsStatic || Priorities.FieldType != typeof(DefMap<WorkTypeDef, int>) ||
             Priorities.GetValue(p.workSettings) is not DefMap<WorkTypeDef, int> map || map.Count != DefDatabase<WorkTypeDef>.DefCount ||
