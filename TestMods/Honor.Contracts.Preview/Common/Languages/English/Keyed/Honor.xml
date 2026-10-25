@@ -374,11 +374,14 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <LM_Warning>If a higher town is lost after one or more unresolved lower scopes, its own verified native loss can adopt those exact earlier scopes. Old IDs, event order, original graphs and proofs stay unchanged. Review the current highest loss and every adopted record together. Completed receipts are never adopted or overwritten. Foreign realms, changed contracts, missing proof and pending operations remain blocked. This merges loss reviews, not factions.</LM_Warning>
   <LM_Observed>{0} was lost above existing unresolved loss records. Their original proofs remain; select this current higher scope to review all survivors together.</LM_Observed>
   <CT_Destroyed>Destroyed during pending transfer</CT_Destroyed>
-  <PL_Limits>A normally completed destruction of an unloaded, empty leaf town during an idle standalone transfer can be reviewed separately. People, animals, goods, custody and coordinated political operations remain excluded. The recorded loss ends the territory charter and records destruction; it is neither a successful transfer nor an unchanged cancellation.</PL_Limits>
+  <PL_Limits>A normally completed destruction of an unloaded, empty leaf town can be reviewed during an idle standalone transfer or a paused applied political transition. Native execution, people, animals, goods, custody, upper towns and subtree exits remain excluded. A loss is recorded separately from a successful transfer.</PL_Limits>
   <PL_Observed>{0} was destroyed while its standalone transfer was pending. Original journals remain; review the recorded destruction explicitly.</PL_Observed>
   <PL_Pending>A positive destruction record awaits review. Ordinary transfer recovery cannot replace this loss review.</PL_Pending>
   <PL_Review>Review recorded destruction: {0}</PL_Review>
   <PL_Confirm>{0}: acknowledge the recorded destruction, close its incoming territory charter, and retain all terms, old signatures, debts and transfer history? No ownership or goods are changed. No successful transfer, mutual release or dishonor is invented.</PL_Confirm>
   <PL_Completed>{0}: the territory charter is closed and the transfer is recorded as destroyed. Old history and debts remain.</PL_Completed>
   <PL_Blocked>The original loss, journal or current object state cannot be verified. Records remain unchanged; review is required.</PL_Blocked>
+  <PL_Coordinated>This loss belongs to the exact paused political intent. Confirmation preserves its original follower list and records one separate loss; resuming still requires every surviving follower, source rights and fresh diplomacy.</PL_Coordinated>
+  <PS_CompleteWithLoss>Political transition complete: shared diplomacy and every surviving follower destination confirmed; {0} original town(s) were separately recorded as destroyed, not successfully transferred.</PS_CompleteWithLoss>
+  <PS_LossProgress>Original followers: {1}; separately acknowledged destroyed towns: {0}. All other original followers still require current verification.</PS_LossProgress>
 </LanguageData>

@@ -15,6 +15,8 @@ public sealed partial class TerritoryAdministrationLedger
     private string pendingLossSnapshot;
     private PendingTownLossArchive pendingTownLosses = new();
     private int nativeExecutionDepth;
+    internal bool HasPendingTownLosses => pendingTownLosses.Records.Any(r => r.ResolvedTick == null);
+    internal void ValidatePoliticalLosses(AllegianceTransitionLedger journal) => pendingTownLosses.ValidatePolitical(journal);
     private void ExposePendingTownLosses()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) pendingLossSnapshot = pendingTownLosses.Export();
@@ -28,10 +30,12 @@ public sealed partial class TerritoryAdministrationLedger
     {
         var political = Current.Game.GetComponent<PoliticalTransitionLedger>(); var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (RestoreFailed || Charters.RestoreFailed || Charters.UnresolvedTownLosses || nativeExecutionDepth != 0 || UnionWarCouncil.HasExternalProvider ||
-            political.RestoreFailed || political.Journal.Pending || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges ||
+            political.RestoreFailed || political.Executing || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges ||
             Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges || payments.RestoreFailed || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) ||
             Current.Game.GetComponent<PlayerPoliticsLedger>().RestoreFailed || Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed || Current.Game.GetComponent<UnionPoliticsLedger>().RestoreFailed)
-            throw new ArgumentException("Only an idle standalone city journal may reconcile an observed empty leaf loss.");
+            throw new ArgumentException("Only a standalone city journal outside native execution may reconcile an observed empty leaf loss.");
+        pendingTownLosses.ValidatePolitical(political.Journal);
+        if (political.Journal.Pending) political.ReviewTownLossContext();
     }
     private static EmptyTownStock Empty(Settlement city)
     {
@@ -61,7 +65,11 @@ public sealed partial class TerritoryAdministrationLedger
         long now = Find.TickManager.TicksGame;
         string label = string.IsNullOrWhiteSpace(city.Label) ? t.Territory : city.Label;
         if (label.Length > 200) label = label.Substring(0, 200);
-        return new(Current.Game, city, new(t.Id, city.GetUniqueLoadID(), city.Faction.GetUniqueLoadID(), label, now, now, Charters.Book.Export(), Ledger.Export(), stock));
+        var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
+        string context = political.Journal.Pending ? political.ReviewTownLossContext() : null;
+        if (context != null && (!political.Journal.Current.Followers.Contains(t.Charter) ||
+            PlayerAllegiance.Restore(political.Journal.Current.After).State.Authority != t.TargetOwner)) return null;
+        return new(Current.Game, city, new(t.Id, city.GetUniqueLoadID(), city.Faction.GetUniqueLoadID(), label, now, now, Charters.Book.Export(), Ledger.Export(), stock, PoliticalBefore: context));
     }
     internal void RecordPendingDestruction(Settlement city, PendingTownLossCandidate candidate)
     {
@@ -71,7 +79,10 @@ public sealed partial class TerritoryAdministrationLedger
             city.Faction?.GetUniqueLoadID() != candidate.Proof.Owner || Empty(city) != candidate.Proof.Stock)
             throw new ArgumentException("Normal native destruction outcome is not verified.");
         var proof = candidate.Proof with { ObservedTick = Find.TickManager.TicksGame };
-        pendingTownLosses = pendingTownLosses.Observe(proof, Charters.Book, Ledger);
+        var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
+        if (proof.PoliticalBefore != (political.Journal.Pending ? political.ReviewTownLossContext() : null)) throw new ArgumentException("Political intent changed during native destruction.");
+        var observed = pendingTownLosses.Observe(proof, Charters.Book, Ledger); observed.ValidatePolitical(political.Journal);
+        pendingTownLosses = observed;
         Messages.Message("PL_Observed".Translate(proof.Label), MessageTypeDefOf.NeutralEvent);
     }
     private void VerifyDestructionNow(PendingTownLoss proof)
@@ -98,8 +109,12 @@ public sealed partial class TerritoryAdministrationLedger
             var fresh = ReviewPendingTownLoss(reviewed.Plan.Transfer);
             if (fresh.Plan != reviewed.Plan) throw new ArgumentException("Loss review changed.");
             var result = pendingTownLosses.Commit(fresh.Plan, Charters.Book, Ledger, Find.TickManager.TicksGame);
+            var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
+            bool coordinated = pendingTownLosses.Records.Single(r => r.Transfer == fresh.Plan.Transfer).PoliticalBefore != null;
+            var nextPolitical = coordinated ? political.StageTownLoss(result.Archive, result.Book, result.Ledger, fresh.Plan.Transfer, Find.TickManager.TicksGame) : null;
             Charters.ReplaceAfterPendingTownLoss(fresh.Plan.BookBefore, result.Book);
             Ledger = result.Ledger; pendingTownLosses = result.Archive;
+            if (nextPolitical != null) political.CommitTownLoss(nextPolitical);
             Messages.Message("PL_Completed".Translate(fresh.Label), MessageTypeDefOf.NeutralEvent);
         }
         catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Pending destruction not reconciled; original journals retained. " + e.GetType().Name); Messages.Message("PL_Blocked".Translate(), MessageTypeDefOf.RejectInput); }
@@ -111,6 +126,7 @@ public sealed partial class TerritoryAdministrationLedger
         foreach (var proof in pendingTownLosses.Records.Where(r => r.ResolvedTick == null && (charter == null || Ledger.Transfer(r.Transfer).Charter == charter)).ToArray())
         {
             list.Label("PL_Pending".Translate());
+            if (proof.PoliticalBefore != null) list.Label("PL_Coordinated".Translate());
             if (list.ButtonText("PL_Review".Translate(proof.Label)))
             {
                 try { var review = ReviewPendingTownLoss(proof.Transfer); Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("PL_Confirm".Translate(review.Label), () => ApplyPendingTownLoss(review))); }

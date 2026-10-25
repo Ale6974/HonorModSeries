@@ -39,12 +39,15 @@ public sealed class PoliticalTransitionLedger : GameComponent
         var c = Journal.Current;
         if (c.PreparedTick > Find.TickManager.TicksGame || c.AllegianceTick > Find.TickManager.TicksGame || c.FinishedTick > Find.TickManager.TicksGame ||
             c.WarResults?.Any(r => r.ObservedTick > Find.TickManager.TicksGame) == true || c.WarReaffirmations?.Any(w => w.Tick > Find.TickManager.TicksGame) == true ||
+            c.LostFollowers?.Any(l => l.ResolvedTick > Find.TickManager.TicksGame) == true ||
             PlayerAllegiance.Restore(c.Before).NativePlayer != Faction.OfPlayer.GetUniqueLoadID() ||
             Journal.Pending && !Journal.IsBefore(Politics.Model) && !Journal.IsAfter(Politics.Model))
         { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Political transition identity/clock/history mismatch; changes blocked."); }
     }
     private void Ready()
     {
+        Territories.ValidatePoliticalLosses(Journal);
+        if (Territories.HasPendingTownLosses) throw new ArgumentException("Explicitly reconcile observed town losses before resuming politics.");
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges || RestoreFailed || Politics.RestoreFailed || Charters.RestoreFailed || Charters.UnresolvedTownLosses || Territories.RestoreFailed ||
             Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed || payments.RestoreFailed ||
@@ -118,9 +121,26 @@ public sealed class PoliticalTransitionLedger : GameComponent
     }
     private void SameFollowers(FollowerTransferPlan plan)
     {
-        if (!plan.Entries.Select(e => e.Charter).OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(Journal.Current.Followers))
+        Territories.ValidatePoliticalLosses(Journal);
+        if (!Journal.MatchesSurvivingFollowers(plan.Entries.Select(e => e.Charter)))
             throw new ArgumentException("Active subjects changed during the transition; do not move an unreviewed group.");
     }
+    internal string ReviewTownLossContext()
+    {
+        if (RestoreFailed || Executing || Journal.Current?.Phase != AllegianceTransitionPhase.AllegianceApplied || !Journal.IsAfter(Politics.Model))
+            throw new ArgumentException("Only a paused applied political intent can retain a follower loss.");
+        CheckRetainedSource();
+        if (Politics.TransitionAuthority().GetUniqueLoadID() != PlayerAllegiance.Restore(Journal.Current.After).State.Authority)
+            throw new ArgumentException("Political destination changed.");
+        return Journal.Export();
+    }
+    internal AllegianceTransitionLedger StageTownLoss(PendingTownLossArchive archive, CharterBook book, TerritoryTransferLedger transfers, string id, long now)
+    {
+        ReviewTownLossContext();
+        var next = AllegianceTransitionLedger.Restore(Journal.Export()); next.AcknowledgeFollowerLoss(archive, book, transfers, id, now); return next;
+    }
+    // All validation occurs on copies before the common book/transfer/archive/political swap; no native callbacks between assignments.
+    internal void CommitTownLoss(AllegianceTransitionLedger prepared) => Journal = prepared;
     public PoliticalChangeReview ReviewRemaining()
     {
         Ready();
@@ -160,7 +180,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
         UnionWarCouncil.Verify(root, Journal);
         var final = Territories.ReviewFollowersFor(root);
         Journal.Complete(Politics.Model, final, Find.TickManager.TicksGame);
-        Messages.Message("PS_Complete".Translate(), MessageTypeDefOf.NeutralEvent);
+        Messages.Message(Journal.Current.LostFollowers?.Length > 0 ? "PS_CompleteWithLoss".Translate(Journal.Current.LostFollowers.Length) : "PS_Complete".Translate(), MessageTypeDefOf.NeutralEvent);
     }
     public void CancelUnchanged()
     {

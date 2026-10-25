@@ -343,6 +343,8 @@ public sealed class PlayerAllegianceWindow : Window
                     list.Label("WU_Progress".Translate(transition.Journal.Current.WarResults.Count(r => r.Step == UnionWarStep.Verified), transition.Journal.Current.WarResults.Length));
                 list.Label("PS_Pending".Translate());
                 list.Label(("PS_" + transition.Journal.Current.Phase).Translate());
+                if (transition.Journal.Current.LostFollowers?.Length > 0) list.Label("PS_LossProgress".Translate(transition.Journal.Current.LostFollowers.Length, transition.Journal.Current.Followers.Count));
+                territories.DrawPendingTownLosses(list);
                 foreach (var pending in territories.Ledger.Transfers.Where(t => t.Phase == TerritoryTransferPhase.Prepared).ToArray())
                 {
                     list.Label("FB_Pending".Translate(territories.FollowerLabel(pending.Charter)));

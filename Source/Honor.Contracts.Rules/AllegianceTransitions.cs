@@ -5,12 +5,14 @@ using System.Text.Json;
 namespace Honor.Contracts.Rules;
 
 public enum AllegianceTransitionPhase { Prepared, AllegianceApplied, Completed, Cancelled }
+public sealed record AllegianceFollowerLoss(string Transfer, string Charter, string Proof, long ObservedTick, long ResolvedTick);
 public sealed record AllegianceTransition(string Id, string Before, string After, string TransferBaseline,
     IReadOnlyList<string> Followers, long PreparedTick, AllegianceTransitionPhase Phase = AllegianceTransitionPhase.Prepared,
     long? AllegianceTick = null, long? FinishedTick = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] UnionWarConsent Wars = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] UnionWarResult[] WarResults = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] UnionWarConsent[] WarReaffirmations = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] UnionWarConsent[] WarReaffirmations = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] AllegianceFollowerLoss[] LostFollowers = null);
 public sealed record AllegianceTransitionSave(int Version, AllegianceTransition Current);
 
 public static class AllegianceChangeSource
@@ -66,7 +68,8 @@ public sealed class AllegianceTransitionLedger
     private static string Digest(string value) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(value)));
     private void Time(long now) => Require(Current != null && now >= (Current.FinishedTick ?? Current.AllegianceTick ?? Current.PreparedTick) && now <= int.MaxValue &&
         (Current.WarResults == null || Current.WarResults.All(r => !r.ObservedTick.HasValue || r.ObservedTick <= now)) &&
-        (Current.WarReaffirmations == null || Current.WarReaffirmations.All(r => r.Tick <= now)),
+        (Current.WarReaffirmations == null || Current.WarReaffirmations.All(r => r.Tick <= now)) &&
+        (Current.LostFollowers == null || Current.LostFollowers.All(r => r.ResolvedTick <= now)),
         "Invalid transition clock.");
     public void Prepare(string id, PlayerAllegiance actual, AllegianceCommand command, FollowerTransferPlan followers, TerritoryTransferLedger transfers, UnionWarConsent wars = null)
     {
@@ -141,9 +144,24 @@ public sealed class AllegianceTransitionLedger
         Require(Current.Phase == AllegianceTransitionPhase.AllegianceApplied && IsAfter(actual) && WarsReady && !actual.State.Suspended && actual.LastTick <= now &&
             current.Target == actual.State.Authority && current.ReviewedTick == now && current.Moves != null && current.Entries != null &&
             current.Entries.All(e => e != null && Key(e.Charter)) && current.Moves.Count == 0 &&
-            current.Entries.Select(e => e.Charter).OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(Current.Followers),
+            MatchesSurvivingFollowers(current.Entries.Select(e => e.Charter)),
             "A complete current follower set at the intended authority is required.");
         Current = Current with { Phase = AllegianceTransitionPhase.Completed, FinishedTick = now };
+    }
+    public bool MatchesSurvivingFollowers(IEnumerable<string> ids) => Current != null && ids != null &&
+        ids.OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(Current.Followers.Where(id => !(Current.LostFollowers ?? []).Any(l => l.Charter == id)));
+    public void AcknowledgeFollowerLoss(PendingTownLossArchive archive, CharterBook book, TerritoryTransferLedger transfers, string transfer, long now)
+    {
+        Time(now); RuntimeCompat.NotNull(archive); archive.ValidatePair(book, transfers);
+        var loss = archive.Records.SingleOrDefault(r => r.Transfer == transfer);
+        Require(Current.Phase == AllegianceTransitionPhase.AllegianceApplied && loss != null && loss.ResolvedTick == now && loss.PoliticalBefore == Export(),
+            "A resolved actual loss must bind this unchanged applied political intent.");
+        var row = transfers.Transfer(transfer);
+        Require(Current.Followers.Contains(row.Charter) && !(Current.LostFollowers ?? []).Any(l => l.Charter == row.Charter || l.Transfer == transfer),
+            "Only an original, not previously lost follower may be acknowledged.");
+        var next = new AllegianceTransitionLedger { Current = Current with { LostFollowers = (Current.LostFollowers ?? []).Append(new AllegianceFollowerLoss(transfer, row.Charter,
+            row.Destruction.Proof, loss.ObservedTick, now)).ToArray() } };
+        archive.ValidatePolitical(next); Current = next.Current;
     }
     public void CancelUnchanged(PlayerAllegiance actual, TerritoryTransferLedger transfers, long now)
     {
@@ -198,6 +216,14 @@ public sealed class AllegianceTransitionLedger
             { Require(UnionWarAdmission.SameWars(c.Wars, fresh) && fresh.Accepted && fresh.Tick >= last && fresh.Tick <= (c.FinishedTick ?? int.MaxValue), "Invalid council reaffirmation."); last = fresh.Tick; }
         }
         else Require(c.WarResults == null && c.WarReaffirmations == null, "War results require their original consent.");
+        Require(c.LostFollowers == null || applied && c.LostFollowers.Length is > 0 and <= PendingTownLossArchive.Capacity &&
+            c.LostFollowers.All(l => l != null && Key(l.Transfer) && c.Followers.Contains(l.Charter) && l.Proof?.Length == 64 &&
+                l.Proof.All(x => x is >= '0' and <= '9' or >= 'A' and <= 'F') && l.ObservedTick >= c.AllegianceTick &&
+                l.ResolvedTick >= l.ObservedTick && l.ResolvedTick <= (c.FinishedTick ?? int.MaxValue)) &&
+            c.LostFollowers.Select(l => l.Charter).Distinct(StringComparer.Ordinal).Count() == c.LostFollowers.Length &&
+            c.LostFollowers.Select(l => l.Transfer).Distinct(StringComparer.Ordinal).Count() == c.LostFollowers.Length &&
+            c.LostFollowers.Select(l => l.ResolvedTick).SequenceEqual(c.LostFollowers.Select(l => l.ResolvedTick).OrderBy(t => t)),
+            "Invalid separately acknowledged follower losses.");
         result.Current = c with { Followers = Array.AsReadOnly(c.Followers.OrderBy(id => id, StringComparer.Ordinal).ToArray()) }; return result;
     }
 }

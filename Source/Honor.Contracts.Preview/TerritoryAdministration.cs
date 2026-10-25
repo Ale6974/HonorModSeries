@@ -85,6 +85,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 }
             }
             pendingTownLosses.ValidatePair(Charters.Book, Ledger);
+            pendingTownLosses.ValidatePolitical(Current.Game.GetComponent<PoliticalTransitionLedger>().Journal);
             if (pendingTownLosses.Records.Any(r => r.ObservedTick > Find.TickManager.TicksGame || r.ResolvedTick > Find.TickManager.TicksGame))
                 throw new ArgumentException("Future native destruction record.");
         }

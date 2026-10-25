@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 적용 후 보류 정치 의도와 실제 말단 파괴 연결 — 0.3.30 / 2026-10-26
+
+설치 Version.txt의1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 /10.0.13-waylithclr.dev를 재확인했다. 새 engine 진입점이나 원시 native 쓰기는 없다.0.3.29에서 확인한 WorldObject.Destroy 정상 반환 전후와 exact Settlement/빈 tracker/등록 주민/월드 제거 증거를 재사용한다. 정치 Executing과 도시 nativeExecutionDepth가 모두0인 적용 후 보류 상태만 확장한다. 미확인 NPC 권한이나 전쟁/거부를 생성하지 않는다.
+
+정확한 정치 snapshot의 command 계보·목적지·원래 전체 follower·앞선 손실 영수증을 관측 전후에 묶고, 실제 source 권리/현재 authority와 불변 book/transfer를 확인한 명시 정리에서 네 journal 사본을 함께 교체한다. 완료는 원래 follower를 지우지 않고 정확한 별도 Destroyed 결과와 현재 생존 follower 전체를 대조한다. 이미 검증한 war outcome과 원 consent/재수락 prefix를 뒤집지 않는다. pending 정치 창에 검토를 직접 연결하여 기존 follower 창 접근 가드가 정리를 숨기지 않도록 했다. 미정리 소실은 war/diplomacy/이전 재개 전 Ready에서 보류한다.1.6은 기존 pinned 참조/net472 별도 호스트로 검사하며 실제 설치1.6 본문을 확인했다고 하지 않는다.
+
 ## 개별 이전 보류 중 빈 말단 도시 파괴 — 0.3.29 / 2026-10-26
 
 설치1.7.4985 rev1269와 net10.0 /10.0.13-waylithclr.dev를 재확인했다. Settlement의 Destroy override가 없음을 설치 DLL에서 확인하고 기존 WorldObject.Destroy 무인자 Prefix/Postfix를 재사용한다. 기존 exact Settlement_TraderTracker.GetDirectlyHeldThings와 NextRestockTick을 읽어 stock을 생성하지 않고 빈 holder/visited/restock 상태의 원래 proof 일치를 확인한다. 등록 주민 목록은 비어 있어야 하고 map/주민 원본/보존 중 수술/동물·물품은 제외한다. 자신의 native 집행/복구 동안의 실행 깊이와 정치·하위 해약·지도자·납부 journal을 확인해 재진입/다른 intent로 권한을 넓히지 않는다.

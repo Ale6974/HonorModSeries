@@ -9,7 +9,8 @@ public sealed record EmptyTownStock(bool Visited, bool ContainerExists, int Next
     public string Proof => CityStockProof.Capture(Visited, ContainerExists, NextRestockTick, []);
 }
 public sealed record PendingTownLoss(string Transfer, string City, string Owner, string Label, long LossTick, long ObservedTick,
-    string BookBefore, string TransfersBefore, EmptyTownStock Stock, long? ResolvedTick = null);
+    string BookBefore, string TransfersBefore, EmptyTownStock Stock, long? ResolvedTick = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string PoliticalBefore = null);
 public sealed record PendingTownLossPlan(string Transfer, long Tick, string Proof, string BookBefore, string TransfersBefore, string BookAfter, string TransfersAfter);
 public sealed record PendingTownLossSave(int Version, PendingTownLoss[] Records);
 
@@ -36,6 +37,16 @@ public sealed class PendingTownLossArchive
             (t.StockProof == null ? r.Stock.Visited || r.Stock.ContainerExists || r.Stock.NextRestockTick != -1 : t.StockProof != r.Stock.Proof))
             throw new ArgumentException("Witness must match one prepared empty NPC leaf transfer and its original stock state.");
         var copy = CharterBook.Restore(book.Export()); copy.CloseDestroyedLeaf(t.Charter, t.Territory, t.BaselineOwner, r.LossTick, r.ObservedTick, true);
+        if (r.PoliticalBefore != null)
+        {
+            var intent = AllegianceTransitionLedger.Restore(r.PoliticalBefore); var current = intent.Current;
+            if (current?.Phase != AllegianceTransitionPhase.AllegianceApplied || current.AllegianceTick > r.LossTick || t.PreparedTick < current.AllegianceTick ||
+                !current.Followers.Contains(t.Charter) || (current.LostFollowers ?? []).Any(l => l.Charter == t.Charter) ||
+                PlayerAllegiance.Restore(current.After).State.Authority != t.TargetOwner ||
+                (current.LostFollowers ?? []).Any(l => l.ResolvedTick > r.LossTick) ||
+                current.WarResults?.Any(w => w.ObservedTick > r.LossTick) == true || current.WarReaffirmations?.Any(w => w.Tick > r.LossTick) == true)
+                throw new ArgumentException("Loss must bind an applied original follower and its actual intended destination.");
+        }
         return (book, ledger, t);
     }
     private static string Digest(PendingTownLoss r) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(r with { ResolvedTick = null }))));
@@ -80,6 +91,38 @@ public sealed class PendingTownLossArchive
         }
         if (ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Destroyed && (!records.TryGetValue(t.Id, out var r) || r.ResolvedTick == null)))
             throw new ArgumentException("Destroyed transfer requires its recorded native witness.");
+    }
+    public void ValidatePolitical(AllegianceTransitionLedger journal)
+    {
+        RuntimeCompat.NotNull(journal);
+        var current = journal.Current; var matching = records.Values.Where(r => r.PoliticalBefore != null &&
+            AllegianceTransitionLedger.Restore(r.PoliticalBefore).Current.Id == current?.Id).ToArray();
+        var acknowledged = current?.LostFollowers ?? [];
+        if (matching.Count(r => r.ResolvedTick != null) != acknowledged.Length) throw new ArgumentException("Political loss receipts and original witnesses differ.");
+        foreach (var r in matching)
+        {
+            var original = AllegianceTransitionLedger.Restore(r.PoliticalBefore).Current;
+            if (original.Before != current.Before || original.After != current.After || original.TransferBaseline != current.TransferBaseline ||
+                original.PreparedTick != current.PreparedTick || original.AllegianceTick != current.AllegianceTick ||
+                !original.Followers.SequenceEqual(current.Followers) || JsonSerializer.Serialize(original.Wars) != JsonSerializer.Serialize(current.Wars) ||
+                !(original.WarReaffirmations ?? []).Select(w => JsonSerializer.Serialize(w)).SequenceEqual((current.WarReaffirmations ?? []).Take(original.WarReaffirmations?.Length ?? 0).Select(w => JsonSerializer.Serialize(w))) ||
+                (original.WarResults ?? []).Any(old => !(current.WarResults ?? []).Any(live => live.Enemy == old.Enemy &&
+                    (old.Step == UnionWarStep.Verified ? live == old : old.Step != UnionWarStep.Applying || live.Step != UnionWarStep.Prepared))))
+                throw new ArgumentException("Original political scope changed.");
+            if (r.ResolvedTick == null)
+            { if (r.PoliticalBefore != journal.Export()) throw new ArgumentException("Unresolved destruction must retain its exact political command and intent head."); }
+            else
+            {
+                var receipt = acknowledged.SingleOrDefault(l => l.Transfer == r.Transfer);
+                var t = TerritoryTransferLedger.Restore(r.TransfersBefore).Transfer(r.Transfer);
+                if (receipt != new AllegianceFollowerLoss(r.Transfer, t.Charter, Digest(r), r.ObservedTick, r.ResolvedTick.Value) ||
+                    !(original.LostFollowers ?? []).SequenceEqual(acknowledged.TakeWhile(l => l.Transfer != r.Transfer)))
+                    throw new ArgumentException("Political receipt does not preserve the exact ordered prior losses and native proof.");
+            }
+        }
+        if (records.Values.Any(r => r.PoliticalBefore != null && r.ResolvedTick == null &&
+            AllegianceTransitionLedger.Restore(r.PoliticalBefore).Current.Id != current?.Id))
+            throw new ArgumentException("A pending political loss cannot be abandoned for another intent.");
     }
     public string Export() => JsonSerializer.Serialize(new PendingTownLossSave(1, records.Values.ToArray()));
     public static PendingTownLossArchive Restore(string json)
