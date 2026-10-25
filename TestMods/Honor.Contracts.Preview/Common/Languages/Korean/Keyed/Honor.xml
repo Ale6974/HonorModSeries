@@ -43,9 +43,9 @@
   <HCL_NpcDeclined>NPC 대표가 거절했습니다. 초기 협상 규칙상 이 역할에는 우호도 {0} 이상이 필요합니다.</HCL_NpcDeclined>
   <HCL_ReleaseRefused>NPC 대표가 해약을 거절해 계약을 유지합니다. 초기 협상 규칙상 우호도 20 이상이 필요합니다.</HCL_ReleaseRefused>
   <HCL_Target>정착지: {0} · 현재 소속 세력: {1}</HCL_Target>
-  <HCL_Terms>기록 조건: 고정 공납 가치 100·주기 5일·유예 1일. 봉신 배송에 운송 몫 10% 공제. 선택형 실물 공납은 별도로 켠 뒤 시작합니다. 보호 의무는 기한 내 병력 지원이나 실제 집행은 미연결입니다. 초기 NPC 수락 기준은 종주가 될 때 우호도 0, 봉신이 될 때 50 이상이며 명예·실적 협상은 후속 구현입니다.</HCL_Terms>
+  <HCL_Terms>새 제안은 조건 작성 후 NPC에게 제출합니다. 아래 각 기록에는 해당 계약의 고정 조건을 표시합니다. 제안이나 NPC 서명만으로 소속·실물 납부가 발효하지 않으며, 군사/보호 요청 집행은 별도입니다.</HCL_Terms>
   <HCL_SeekLiege>이 정착지 측에 플레이어 식민지 전체의 종주가 되도록 제안</HCL_SeekLiege>
-  <HCL_OfferProtection>이 정착지의 종주로서 보호를 제안</HCL_OfferProtection>
+  <HCL_OfferProtection>이 도시의 봉신 계약 조건 작성</HCL_OfferProtection>
   <HCL_Territory>{0} · 장부상 최상위 주체: {1} · 실제 세계 참조: {2}</HCL_Territory>
   <HCL_Empty>아직 계약 기록이 없습니다. 월드맵의 NPC 정착지에서 조건을 제안하세요.</HCL_Empty>
   <HCL_Charter>종주: {0} · 봉신: {1} · {2}</HCL_Charter>
@@ -283,4 +283,30 @@
   <LR_Unavailable>지도자 전출이 불가하거나 중단됐습니다. 활성 플레이어 관리 도시 계약, 출발지에만 등록된 적격 일반 저장 지도자, 활성 도시 계약/제안 밖의 같은 세력 미로딩 목적지와 일치하는 주민/재고/보존 상태가 필요합니다. 개인 합류·미지원 지도자·가짜 승계는 차단합니다. 기록된 의도는 명시적으로 복구하며 추측으로 상태를 수리하지 않습니다.</LR_Unavailable>
   <LR_LeaderBlocked>저장 주민이 세력 지도자입니다. 개인의 타 세력 합류·안전한 후임 선정은 미구현입니다. 적격 목적지가 있으면 별도의 원 소속 유지 전출 협의를 검토할 수 있으며, 그렇지 않으면 이 도시 이전을 보류합니다.</LR_LeaderBlocked>
   <RE_HistoryUnavailable>포로의 모집 상담 기록이 미지원·손상 상태입니다. 원래 모집자/진행 기록을 재생성·초기화·완료 처리하지 않고 이 도시 이전을 보류합니다.</RE_HistoryUnavailable>
+  <CO_Title>새 계약 조건 작성</CO_Title>
+  <CO_PlayerSubject>플레이어의 전체 식민지를 위한 종주 계약을 제안합니다. NPC 응답과 플레이어의 최종 서명은 별도입니다.</CO_PlayerSubject>
+  <CO_PlayerLiege>이 도시의 종주가 되는 계약을 제안합니다. NPC가 수락해도 도시 이전이나 공납 수령이 자동으로 실행되지 않습니다.</CO_PlayerLiege>
+  <CO_Draft>초안을 편집하거나 닫아도 계약은 바뀌지 않습니다. 조건은 새 제안에만 적용합니다. 가치는 실제 거래가격을 기준으로 하며 지원되는 물품으로 납부할 수 있습니다. 실물 납부는 별도로 활성화할 때 시작합니다. 기존 계약·채무의 조건은 유지하며 여기서는 봉신 직접 배송 조건만 제안합니다.</CO_Draft>
+  <CO_Value>고정 공납 가치: {0} (1~10,000)</CO_Value>
+  <CO_Interval>주기: {0}일 (1~60)</CO_Interval>
+  <CO_Grace>유예: {0}일 (0~30)</CO_Grace>
+  <CO_Allowance>봉신 직접 배송 공제율: {0}% (0~50)</CO_Allowance>
+  <CO_Reset>표준 제안값으로 복원</CO_Reset>
+  <CO_InvalidInput>표시 범위 안의 유효한 정수를 입력한 뒤 제출하세요.</CO_InvalidInput>
+  <CO_Net>회차별 납부 평가액: {0}, 하루 환산 가치: {1}.</CO_Net>
+  <CO_Changed>도시 소유자나 대표자가 바뀌었습니다. 초안을 닫고 현재 당사자를 다시 검토하세요.</CO_Changed>
+  <CO_Policy>현재 NPC 제안 정책: 우호도 {0} 이상, 기준 하루 평가 가치는 {1}입니다. NPC 종주는 이 가치 이상이며 유예가 주기 이하인 조건, NPC 봉신은 이 부담 이하인 조건을 수락합니다. 제출할 때 최종 자격을 다시 확인합니다.</CO_Policy>
+  <CO_Response>{0} — 이 조건에 대한 예상 응답: {1}</CO_Response>
+  <CO_Submit>이 조건 그대로 제출해 NPC 응답 받기</CO_Submit>
+  <CO_Acceptable>현재 제안 정책상 수락 가능한 조건</CO_Acceptable>
+  <CO_Goodwill>우호도 {0} 이상 필요</CO_Goodwill>
+  <CO_ValueLow>NPC 종주는 하루 평가 가치 {0} 이상을 요구함</CO_ValueLow>
+  <CO_ValueHigh>NPC 봉신은 하루 평가 가치 {0} 이하의 부담을 수락함</CO_ValueHigh>
+  <CO_GraceLong>NPC 종주는 유예가 납부 주기보다 긴 조건을 거절함</CO_GraceLong>
+  <CO_Declined>NPC 대표자가 조건을 거절했습니다: {0}.</CO_Declined>
+  <CO_Recorded>서명/제안 조건: {1}일마다 명목 가치 {0}, 유예 {2}일, 운송 비율 {3}%, 회차별 평가액 {4}.</CO_Recorded>
+  <CO_SubjectDelivery>운송 조건: 봉신 직접 배송.</CO_SubjectDelivery>
+  <CO_LiegeCollection>운송 조건: 종주 방문 징수.</CO_LiegeCollection>
+  <CO_Conditional>아직 소속을 바꾸지 않는 종주 후보 제안입니다. 서로 다른 후보를 최대 8개까지 비교할 수 있으며 NPC 수락만으로 기존 계약·외교를 바꾸지 않습니다.</CO_Conditional>
+  <CO_ReleaseFirst>이 당사자에게 기존 계약이 있습니다. 지원되는 적법한 종료 절차를 마친 뒤 최종 서명하세요. 한쪽의 해약 요청만으로는 부족하며 기존 채무는 유지됩니다.</CO_ReleaseFirst>
 </LanguageData>

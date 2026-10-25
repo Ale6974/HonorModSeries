@@ -43,9 +43,9 @@
   <HCL_NpcDeclined>The NPC representative declined. This initial negotiation policy requires at least {0} goodwill for this role.</HCL_NpcDeclined>
   <HCL_ReleaseRefused>The NPC representative declined release; the charter remains active. This initial policy requires 20 goodwill.</HCL_ReleaseRefused>
   <HCL_Target>Settlement: {0} · current faction: {1}</HCL_Target>
-  <HCL_Terms>Recorded terms: fixed tribute value 100 every 5 days, 1-day grace; subject delivery with a 10% transport allowance. Optional manual physical tribute starts only after enabling it. Protection requires timely troop support, but its enforcement is pending. NPC acceptance currently requires 0 goodwill to become your liege, or 50 to become your vassal; honor/performance negotiation is pending.</HCL_Terms>
+  <HCL_Terms>New offers can be drafted before NPC response. Each record below shows its own immutable terms. A proposal or NPC signature alone does not activate allegiance or physical payment. Military/protection request enforcement remains separate.</HCL_Terms>
   <HCL_SeekLiege>Request this settlement's faction as liege of all player colonies</HCL_SeekLiege>
-  <HCL_OfferProtection>Offer protection as liege of this settlement</HCL_OfferProtection>
+  <HCL_OfferProtection>Draft a vassal charter for this settlement</HCL_OfferProtection>
   <HCL_Territory>{0} · recorded political superior: {1} · world binding: {2}</HCL_Territory>
   <HCL_Empty>No charter records. Select an NPC world settlement to request terms.</HCL_Empty>
   <HCL_Charter>Liege: {0} · subject: {1} · {2}</HCL_Charter>
@@ -283,4 +283,30 @@
   <LR_Unavailable>Leader relocation is unavailable or interrupted. Requires an active player-managed town charter, an eligible ordinary saved faction leader residing only at its source, and an unloaded same-faction destination outside active town contracts/proposals, with matching rosters, stock and observed preservation. Personal joining, unsafe leaders and fabricated succession remain blocked. Retained intent requires explicit recovery; no changes are repaired by guessing.</LR_Unavailable>
   <LR_LeaderBlocked>A saved resident is a faction leader. Personal foreign joining and safe succession are not implemented. Review the separate own-faction retention/relocation agreement if an eligible destination exists; otherwise this town remains deferred.</LR_LeaderBlocked>
   <RE_HistoryUnavailable>A prisoner has unsupported or damaged recruitment interaction data. Original recruiter/progress history is not recreated, reset or completed; this town is deferred.</RE_HistoryUnavailable>
+  <CO_Title>Draft new charter terms</CO_Title>
+  <CO_PlayerSubject>You are proposing a liege for all player colonies. Your own final consent is separate from the NPC response.</CO_PlayerSubject>
+  <CO_PlayerLiege>You are proposing to become this town’s liege. NPC acceptance does not transfer the town or collect goods automatically.</CO_PlayerLiege>
+  <CO_Draft>Editing or closing this draft changes no contract. These terms apply only to a new proposal. Values use actual trade-price units; payment can use supported goods. Physical payment starts separately when enabled. Existing contracts and debts retain their terms. Only subject delivery is offered here.</CO_Draft>
+  <CO_Value>Fixed tribute value: {0} (1–10,000)</CO_Value>
+  <CO_Interval>Interval: {0} days (1–60)</CO_Interval>
+  <CO_Grace>Grace period: {0} days (0–30)</CO_Grace>
+  <CO_Allowance>Subject-delivery allowance: {0}% (0–50)</CO_Allowance>
+  <CO_Reset>Restore standard proposal values</CO_Reset>
+  <CO_InvalidInput>Enter valid whole numbers within the displayed limits before submitting.</CO_InvalidInput>
+  <CO_Net>Assessed delivery value per period: {0}; daily equivalent: {1}.</CO_Net>
+  <CO_Changed>The town owner or representative changed. Close this draft and review the current party again.</CO_Changed>
+  <CO_Policy>Initial NPC policy: at least {0} goodwill. The standard daily assessed value is {1}; an NPC liege requires at least this value and grace no longer than the interval, while an NPC subject accepts at most this burden. Final eligibility is checked again when submitted.</CO_Policy>
+  <CO_Response>{0} — expected response on these conditions: {1}</CO_Response>
+  <CO_Submit>Submit these exact terms for NPC response</CO_Submit>
+  <CO_Acceptable>Acceptable under the current proposal policy</CO_Acceptable>
+  <CO_Goodwill>Requires at least {0} goodwill</CO_Goodwill>
+  <CO_ValueLow>NPC liege requires daily assessed value of at least {0}</CO_ValueLow>
+  <CO_ValueHigh>NPC subject accepts daily assessed value of at most {0}</CO_ValueHigh>
+  <CO_GraceLong>NPC liege rejects a grace period longer than the billing interval</CO_GraceLong>
+  <CO_Declined>The NPC representative declined these terms: {0}.</CO_Declined>
+  <CO_Recorded>Signed/proposed terms: nominal value {0} every {1} days; {2}-day grace; transport rate {3}%; assessed value {4} per period.</CO_Recorded>
+  <CO_SubjectDelivery>Delivery term: subject delivers.</CO_SubjectDelivery>
+  <CO_LiegeCollection>Delivery term: liege collects.</CO_LiegeCollection>
+  <CO_Conditional>This is a nonbinding liege candidate. You may compare up to eight distinct live candidates; NPC acceptance does not replace your current contract or diplomacy.</CO_Conditional>
+  <CO_ReleaseFirst>An existing contract still binds this subject. Complete a supported lawful release before final signing; a unilateral release request is insufficient and old debts remain owed.</CO_ReleaseFirst>
 </LanguageData>

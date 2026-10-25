@@ -60,10 +60,12 @@ public sealed partial class LiveCharterLedger : GameComponent
     }
     public TerritoryObservation[] Observe() => ObserveForMigration(null);
     internal TerritoryObservation[] ObserveForMigration(string releasedSource)
+        => ObserveForMigration(releasedSource, Book, bindings);
+    private TerritoryObservation[] ObserveForMigration(string releasedSource, CharterBook book, List<TerritoryBinding> registry)
     {
         var settlements = Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Where(s => !s.Destroyed).ToArray();
-        var followers = new HashSet<string>(releasedSource == null ? [] : Book.PlayerFollowers().Select(c => c.Terms.Subject), StringComparer.Ordinal);
-        return bindings.Select(b => {
+        var followers = new HashSet<string>(releasedSource == null ? [] : book.PlayerFollowers().Select(c => c.Terms.Subject), StringComparer.Ordinal);
+        return registry.Select(b => {
             if (b.PlayerGroup)
             {
                 bool exists = b.Identity == PlayerIdentity && settlements.Any(s => s.Faction == Faction.OfPlayer);
@@ -85,7 +87,7 @@ public sealed partial class LiveCharterLedger : GameComponent
             bool eligible = owner != null && owner != Faction.OfPlayer && owner.HasGoodwill && !owner.defeated &&
                 !owner.def.permanentEnemy && (!owner.HostileTo(Faction.OfPlayer) || owner.GetUniqueLoadID() == releasedSource && followers.Contains(b.Identity));
             var administration = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-            string baseline = Book.Entity(b.Identity).NativeOwner;
+            string baseline = book.Entity(b.Identity).NativeOwner;
             // Only this journal's completed, still-current transfer can account for an owner change.
             // Pending transfers and foreign conquests never become fresh consent observations.
             var observation = new TerritoryObservation(b.Identity, owner?.GetUniqueLoadID(), alive, owner == Faction.OfPlayer, eligible);
@@ -94,17 +96,19 @@ public sealed partial class LiveCharterLedger : GameComponent
         }).ToArray();
     }
     private string Register(Settlement settlement, bool player, bool factionGroup = false)
+        => Register(Book, bindings, settlement, player, factionGroup);
+    private string Register(CharterBook book, List<TerritoryBinding> registry, Settlement settlement, bool player, bool factionGroup)
     {
         var owner = player ? Faction.OfPlayer : settlement.Faction;
         string identity = player ? PlayerIdentity : factionGroup ? "faction/" + owner.GetUniqueLoadID() : "territory/" + settlement.GetUniqueLoadID();
-        if (Book.Entities.Any(e => e.Id == identity))
+        if (book.Entities.Any(e => e.Id == identity))
         {
-            if (Book.Availability(identity, Observe()) != CharterAvailability.Current || Book.Entity(identity).Player != player)
+            if (book.Availability(identity, ObserveForMigration(null, book, registry)) != CharterAvailability.Current || book.Entity(identity).Player != player)
                 throw new ArgumentException("Existing identity is not current.");
             return identity;
         }
-        Book.Register(new(identity, owner.GetUniqueLoadID(), player), Find.TickManager.TicksGame);
-        if (bindings.All(b => b.Identity != identity)) bindings.Add(new() { Identity = identity,
+        book.Register(new(identity, owner.GetUniqueLoadID(), player), Find.TickManager.TicksGame);
+        if (registry.All(b => b.Identity != identity)) registry.Add(new() { Identity = identity,
             Settlement = player || factionGroup ? null : settlement, OriginalFaction = owner, PlayerGroup = player, FactionGroup = factionGroup });
         return identity;
     }
@@ -145,37 +149,30 @@ public sealed partial class LiveCharterLedger : GameComponent
         try { action(); return true; }
         catch (ArgumentException) { Messages.Message("HCL_Unavailable".Translate(), MessageTypeDefOf.RejectInput); return false; }
     }
-    public void Request(Settlement settlement, bool playerSubject)
+    public void Request(Settlement settlement, bool playerSubject) => Request(settlement, playerSubject, new(), settlement?.Faction, settlement?.Faction?.leader);
+    public bool Request(Settlement settlement, bool playerSubject, CharterOfferDraft draft, Faction reviewedOwner, Pawn reviewedLeader)
     {
-        Execute(() => {
+        return Execute(() => {
             if (playerSubject && settlement?.Faction?.def?.defName == RealmAdministrationLedger.DefName)
                 throw new ArgumentException("The player's administration cannot become their sovereign.");
-            // Recheck current ownership, political eligibility and actual representative before recording NPC consent.
             if (settlement == null || settlement.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(settlement) || settlement.Faction == null ||
                 settlement.Faction == Faction.OfPlayer || !settlement.Faction.HasGoodwill || settlement.Faction.defeated ||
                 settlement.Faction.HostileTo(Faction.OfPlayer) || settlement.Faction.def.permanentEnemy ||
                 !Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Any(s => s.Faction == Faction.OfPlayer && !s.Destroyed))
                 throw new ArgumentException("Ineligible settlement.");
             var leader = settlement.Faction.leader;
-            if (leader == null || leader.Dead || leader.Faction != settlement.Faction) throw new ArgumentException("No living faction representative.");
-            string player = Register(null, true), npc = Register(settlement, false, playerSubject);
+            if (leader == null || leader.Dead || leader.Faction != settlement.Faction || settlement.Faction != reviewedOwner || leader != reviewedLeader)
+                throw new ArgumentException("No matching living faction representative.");
+            // Stage all registrations and the NPC response. Failed validation cannot leak identities or partial offers.
+            var copy = CharterBook.Restore(Book.Export()); var registry = bindings.ToList();
+            string player = Register(copy, registry, null, true, false), npc = Register(copy, registry, settlement, false, playerSubject);
             string id = Guid.NewGuid().ToString("N"); long now = Find.TickManager.TicksGame;
-            var terms = new RecordedCharterTerms(playerSubject ? npc : player, playerSubject ? player : npc,
-                100, PoliticalWorld.Day * 5, PoliticalWorld.Day, TributeTransport.SubjectDelivery, .1m);
             var source = playerSubject ? Current.Game.GetComponent<PoliticalTransitionLedger>().ReleasedMigrationSource(settlement.Faction) : null;
-            Book.Offer(id, terms, now, PoliticalWorld.Day * 3, ObserveForMigration(source));
-            // Initial transparent policy, pending richer honor/obligation negotiations. No hidden random acceptance.
-            int minimum = playerSubject ? 0 : 50;
-            if (settlement.Faction.GoodwillWith(Faction.OfPlayer) >= minimum)
-            {
-                Book.Sign(id, false, now, ObserveForMigration(source));
-                Messages.Message("HCL_NpcAgreed".Translate(), MessageTypeDefOf.NeutralEvent);
-            }
-            else
-            {
-                Book.Decline(id, now);
-                Messages.Message("HCL_NpcDeclined".Translate(minimum), MessageTypeDefOf.RejectInput);
-            }
+            var result = CharterOffers.Propose(copy, id, player, npc, playerSubject, draft, settlement.Faction.GoodwillWith(Faction.OfPlayer), now,
+                ObserveForMigration(source, copy, registry));
+            Book = result.Book; bindings = registry;
+            Messages.Message(result.Assessment.Accepted ? "HCL_NpcAgreed".Translate() :
+                "CO_Declined".Translate(CharterOfferWindow.Reason(result.Assessment)), result.Assessment.Accepted ? MessageTypeDefOf.NeutralEvent : MessageTypeDefOf.RejectInput);
         });
     }
     public void Accept(string id) => Execute(() => {
@@ -231,8 +228,8 @@ public sealed class LiveChartersWindow : Window
             {
                 list.Label("HCL_Target".Translate(target.Label, target.Faction?.Name ?? "HCL_Missing".Translate()));
                 list.Label("HCL_Terms".Translate());
-                if (target.Faction?.def?.defName != RealmAdministrationLedger.DefName && list.ButtonText("HCL_SeekLiege".Translate())) ledger.Request(target, true);
-                if (list.ButtonText("HCL_OfferProtection".Translate())) ledger.Request(target, false);
+                if (target.Faction?.def?.defName != RealmAdministrationLedger.DefName && list.ButtonText("HCL_SeekLiege".Translate())) Find.WindowStack.Add(new CharterOfferWindow(target, true));
+                if (list.ButtonText("HCL_OfferProtection".Translate())) Find.WindowStack.Add(new CharterOfferWindow(target, false));
             }
             var observations = ledger.Observe(); long now = Find.TickManager.TicksGame;
             if (list.ButtonText("NS_Open".Translate())) Find.WindowStack.Add(new NpcSubchartersWindow());
@@ -247,11 +244,14 @@ public sealed class LiveChartersWindow : Window
                 list.Gap();
                 var phase = ledger.Book.Phase(charter, now);
                 list.Label("HCL_Charter".Translate(ledger.Label(charter.Terms.Liege), ledger.Label(charter.Terms.Subject), ("HCL_" + phase).Translate()));
-                list.Label("HCL_Terms".Translate());
+                CharterOfferWindow.DrawTerms(list, charter.Terms);
                 if (phase == RecordedCharterPhase.Offered && charter.NpcAuthority == null)
                 {
                     list.Label("HCL_Expiry".Translate(((charter.ExpiresTick - now) / (double)PoliticalWorld.Day).ToString("F1")));
-                    if (charter.NpcSignedTick.HasValue && !charter.PlayerSignedTick.HasValue && list.ButtonText("HCL_Accept".Translate())) ledger.Accept(charter.Id);
+                    bool bound = ledger.Book.Charters.Any(c => c.Phase == RecordedCharterPhase.Active && c.Terms.Subject == charter.Terms.Subject);
+                    if (charter.ConditionalOffer) list.Label("CO_Conditional".Translate());
+                    if (bound) list.Label("CO_ReleaseFirst".Translate());
+                    if (!bound && charter.NpcSignedTick.HasValue && !charter.PlayerSignedTick.HasValue && list.ButtonText("HCL_Accept".Translate())) ledger.Accept(charter.Id);
                     if (list.ButtonText("HCL_Decline".Translate())) ledger.Decline(charter.Id);
                 }
                 if (phase == RecordedCharterPhase.Active && charter.NpcAuthority == null && list.ButtonText("HCL_Release".Translate())) ledger.RequestRelease(charter.Id);

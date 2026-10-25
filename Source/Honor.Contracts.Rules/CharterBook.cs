@@ -13,7 +13,8 @@ public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long
     RecordedCharterPhase Phase = RecordedCharterPhase.Offered, long? PlayerSignedTick = null,
     long? NpcSignedTick = null, long? PlayerReleaseTick = null, long? NpcReleaseTick = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] NpcCharterAuthority NpcAuthority = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] long? TerritoryLostTick = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] long? TerritoryLostTick = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool ConditionalOffer = false);
 public sealed record CharterBookSave(int Version, long LastTick, TerritoryIdentity[] Entities, RecordedCharter[] Charters);
 
 /// <summary>
@@ -142,6 +143,15 @@ public sealed class CharterBook
     public void ValidateCurrent(string charterId, IEnumerable<TerritoryObservation> observations) => Fresh(Charter(charterId).Terms, observations);
     public RecordedCharter Offer(string id, RecordedCharterTerms terms, long now, long responseTicks, IEnumerable<TerritoryObservation> observations)
         => OfferCore(id, terms, now, responseTicks, observations, null);
+    /// <summary>A nonbinding candidate for the player. Existing allegiance must end lawfully before final player signing.</summary>
+    public RecordedCharter OfferAlternative(string id, RecordedCharterTerms terms, long now, long responseTicks, IEnumerable<TerritoryObservation> observations)
+        => OfferCore(id, terms, now, responseTicks, observations, null, true);
+    private void ProposalTopology(RecordedCharterTerms terms)
+    {
+        Require(Entity(terms.Subject).Player && !Entity(terms.Liege).Player, "Conditional candidates are player-to-NPC liege proposals only.");
+        var existing = Active().SingleOrDefault(c => c.Terms.Subject == terms.Subject);
+        Topology(terms, existing?.Id); // Hypothetical review only: never remove this existing contract.
+    }
     public RecordedCharter OfferNpc(string id, RecordedCharterTerms terms, NpcCharterAuthority authority,
         long now, long responseTicks, IEnumerable<TerritoryObservation> observations)
     {
@@ -149,13 +159,17 @@ public sealed class CharterBook
         return OfferCore(id, terms, now, responseTicks, observations, authority);
     }
     private RecordedCharter OfferCore(string id, RecordedCharterTerms terms, long now, long responseTicks,
-        IEnumerable<TerritoryObservation> observations, NpcCharterAuthority authority)
+        IEnumerable<TerritoryObservation> observations, NpcCharterAuthority authority, bool conditional = false)
     {
-        Key(id); Time(now); Terms(terms, authority); Fresh(terms, observations); Topology(terms);
+        Key(id); Time(now); Terms(terms, authority); Fresh(terms, observations);
+        if (conditional) { Require(authority == null, "No NPC-only conditional signatures."); ProposalTopology(terms); }
+        else Topology(terms);
         Require(!charters.ContainsKey(id) && charters.Count < MaxCharters && responseTicks >= PoliticalWorld.Day &&
             responseTicks <= PoliticalWorld.Day * 30 && now <= int.MaxValue - responseTicks, "Invalid offer capacity, ID or response period.");
-        Require(!charters.Values.Any(c => Phase(c, now) == RecordedCharterPhase.Offered && c.Terms.Subject == terms.Subject), "One pending proposal per subject.");
-        var offer = new RecordedCharter(id, terms, now, now + responseTicks, NpcAuthority: authority);
+        var pending = charters.Values.Where(c => Phase(c, now) == RecordedCharterPhase.Offered && c.Terms.Subject == terms.Subject).ToArray();
+        Require(conditional ? pending.Length < 8 && pending.All(c => c.Terms.Liege != terms.Liege) : pending.Length == 0,
+            "Pending proposals exceed the scope/counterparty limit.");
+        var offer = new RecordedCharter(id, terms, now, now + responseTicks, NpcAuthority: authority, ConditionalOffer: conditional);
         charters.Add(id, offer); LastTick = now; return offer;
     }
     public void Sign(string id, bool player, long now, IEnumerable<TerritoryObservation> observations)
@@ -177,7 +191,13 @@ public sealed class CharterBook
         Time(now); var offer = Charter(id);
         Require(Phase(offer, now) == RecordedCharterPhase.Offered, "Offer is not open.");
         Require(player ? !offer.PlayerSignedTick.HasValue : !offer.NpcSignedTick.HasValue, "Duplicate consent.");
-        Fresh(offer.Terms, observations); Topology(offer.Terms);
+        Fresh(offer.Terms, observations);
+        if (offer.ConditionalOffer && !player) ProposalTopology(offer.Terms);
+        else
+        {
+            if (offer.ConditionalOffer) Require(offer.NpcSignedTick.HasValue, "The actual NPC must respond before final player consent.");
+            Topology(offer.Terms); // Final consent never waives an existing liege or a cycle/depth constraint.
+        }
         var next = player ? offer with { PlayerSignedTick = now } : offer with { NpcSignedTick = now };
         if (next.PlayerSignedTick.HasValue && next.NpcSignedTick.HasValue) next = next with { Phase = RecordedCharterPhase.Active };
         charters[id] = next; LastTick = now;
@@ -244,6 +264,10 @@ public sealed class CharterBook
             foreach (var signature in new[] { charter.PlayerSignedTick, charter.NpcSignedTick })
                 Require(!signature.HasValue || signature >= charter.OfferedTick && signature <= charter.ExpiresTick && signature <= save.LastTick, "Invalid saved consent time.");
             bool both = charter.PlayerSignedTick.HasValue && charter.NpcSignedTick.HasValue;
+            if (charter.ConditionalOffer)
+                Require(charter.NpcAuthority == null && book.Entity(charter.Terms.Subject).Player && !book.Entity(charter.Terms.Liege).Player &&
+                    (!charter.PlayerSignedTick.HasValue || charter.NpcSignedTick.HasValue && charter.PlayerSignedTick >= charter.NpcSignedTick),
+                    "Invalid saved conditional proposal scope or consent order.");
             Require(both == (charter.Phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released or RecordedCharterPhase.TerritoryLost), "Invalid saved bilateral consent.");
             foreach (var release in new[] { charter.PlayerReleaseTick, charter.NpcReleaseTick })
                 Require(!release.HasValue || both && release >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value) && release <= save.LastTick,
@@ -258,7 +282,8 @@ public sealed class CharterBook
         // Validate the final graph independent of save order, including disconnected chains.
         foreach (var charter in book.Active()) book.Topology(charter.Terms, charter.Id);
         Require(book.charters.Values.Where(c => book.Phase(c, save.LastTick) == RecordedCharterPhase.Offered)
-            .GroupBy(c => c.Terms.Subject, StringComparer.Ordinal).All(g => g.Count() == 1), "Duplicate saved pending subject.");
+            .GroupBy(c => c.Terms.Subject, StringComparer.Ordinal).All(g => g.Count() <= 8 && g.Count(c => !c.ConditionalOffer) <= 1 &&
+                g.GroupBy(c => c.Terms.Liege, StringComparer.Ordinal).All(pair => pair.Count() == 1)), "Duplicate or excessive saved pending proposals.");
         book.LastTick = save.LastTick; return book;
     }
 }
