@@ -188,6 +188,7 @@ assertions += AdmissionDiplomacyTests.Run();
 assertions += TributePerformanceTests.Run();
 assertions += TributeNoticeTests.Run();
 assertions += CharterAcceptanceTests.Run();
+assertions += TownSuccessionTests.Run();
 assertions += FollowerTransfersTests.Run();
 assertions += AllegianceTransitionsTests.Run();
 assertions += ReleasedMigrationTests.Run();

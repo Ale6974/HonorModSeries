@@ -335,4 +335,16 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <PH_Untracked>No physical tribute account was enabled for this history. Untracked promises are not counted as successes or failures.</PH_Untracked>
   <PH_Values>Fulfilled agreed value: {0}; outstanding agreed value, including reserved deliveries: {1}.</PH_Values>
   <PH_ConsentRecord>Final consent: {0}, representative {1}, game day {2}.</PH_ConsentRecord>
+  <HCL_Replaced>Replaced after town loss</HCL_Replaced>
+  <LS_Blocked>Succession is unavailable: check the recorded loss, unchanged subtree, pending releases, actual realm/representatives and surviving higher liege. No contract was changed.</LS_Blocked>
+  <LS_Completed>{0} surviving direct contracts were reconnected. Historical contracts remain recorded.</LS_Completed>
+  <LS_Confirm>Confirm reviewed succession</LS_Confirm>
+  <LS_Empty>No unresolved upper-town loss was recorded.</LS_Empty>
+  <LS_History>{0}: {1} direct contracts resolved.</LS_History>
+  <LS_Observed>{0} was destroyed. Its own territorial bond has ended; surviving vassal contracts await a separate succession review.</LS_Observed>
+  <LS_Open>Resolve upper-town loss</LS_Open>
+  <LS_Plan>{0}, representative {1}: reconnect {3} direct contracts to {2}; review {4} surviving contracts in total. Other internal bonds and old obligations remain recorded.</LS_Plan>
+  <LS_Review>Review surviving contracts</LS_Review>
+  <LS_Select>Observed loss: {0}</LS_Select>
+  <LS_Warning>Resolve only a town whose actual destruction Honor recorded. Review reconnects surviving direct vassals to the original surviving higher liege with fresh current-representative agreement. Old conditions and history remain; residents, goods, native ownership and personal oaths are untouched. Pending releases, changed subtrees, overlapping losses and union or noble council decisions remain blocked.</LS_Warning>
 </LanguageData>

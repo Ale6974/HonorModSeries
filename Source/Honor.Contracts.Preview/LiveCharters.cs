@@ -42,6 +42,7 @@ public sealed partial class LiveCharterLedger : GameComponent
         ExposeNpcWorld();
         ExposeInvitations();
         ExposeFinalConsents();
+        ExposeTownLosses();
         if (Scribe.mode != LoadSaveMode.PostLoadInit) return;
         bindings ??= [];
         try
@@ -49,6 +50,7 @@ public sealed partial class LiveCharterLedger : GameComponent
             if (snapshot != null) Book = CharterBook.Restore(snapshot);
             ValidateNpcWorld();
             ValidateFinalConsents();
+            ValidateTownLosses();
             if (bindings.Any(b => b == null || string.IsNullOrWhiteSpace(b.Identity)) ||
                 bindings.GroupBy(b => b.Identity, StringComparer.Ordinal).Any(g => g.Count() != 1) ||
                 Book.Entities.Any(e => bindings.All(b => b.Identity != e.Id)) || bindings.Count != Book.Entities.Count ||
@@ -269,6 +271,7 @@ public sealed class LiveChartersWindow : Window
             }
             var observations = ledger.Observe(); long now = Find.TickManager.TicksGame;
             if (list.ButtonText("NS_Open".Translate())) Find.WindowStack.Add(new NpcSubchartersWindow());
+            if (list.ButtonText("LS_Open".Translate())) Find.WindowStack.Add(new TownSuccessionWindow());
             if (list.ButtonText("SX_Open".Translate())) Find.WindowStack.Add(new SubtreeExitWindow());
             if (list.ButtonText("NW_Open".Translate())) Find.WindowStack.Add(new NpcWorldSetupWindow());
             foreach (var entity in ledger.Book.Entities)

@@ -23,8 +23,10 @@ public sealed partial class LiveCharterLedger
         var binding = bindings.SingleOrDefault(b => !b.PlayerGroup && !b.FactionGroup && b.Settlement == city);
         if (binding == null) return null;
         var c = Book.Charters.SingleOrDefault(c => c.Phase == RecordedCharterPhase.Active && c.Terms.Subject == binding.Identity);
-        if (c == null || Book.Charters.Any(other => other.Phase == RecordedCharterPhase.Active && other.Terms.Liege == binding.Identity ||
-            Book.Phase(other, Find.TickManager.TicksGame) == RecordedCharterPhase.Offered && (other.Terms.Liege == binding.Identity || other.Terms.Subject == binding.Identity))) return null;
+        if (c == null || Book.Charters.Any(other => Book.Phase(other, Find.TickManager.TicksGame) == RecordedCharterPhase.Offered &&
+            (other.Terms.Liege == binding.Identity || other.Terms.Subject == binding.Identity))) return null;
+        bool upper = Book.Charters.Any(other => other.Phase == RecordedCharterPhase.Active && other.Terms.Liege == binding.Identity);
+        if (upper && (!Book.PlayerManaged(c) || townLosses.Records.Count >= TownSuccessionArchive.Capacity)) return null;
         var entity = Book.Entity(binding.Identity); var territories = Current.Game.GetComponent<TerritoryAdministrationLedger>();
         if (entity.Player || territories.RestoreFailed || !territories.Ledger.VerifiedOwner(entity.Id, entity.NativeOwner, city.Faction.GetUniqueLoadID())) return null;
         return new(c.Id, entity.Id, entity.NativeOwner, city.Faction.GetUniqueLoadID(), Book.Export(), Find.TickManager.TicksGame, city.Label);
@@ -35,10 +37,17 @@ public sealed partial class LiveCharterLedger
             city.Faction?.GetUniqueLoadID() != before.Owner || "territory/" + city.GetUniqueLoadID() != before.Territory ||
             Binding(before.Territory).Settlement != city || Book.Export() != before.Book) return;
         var replacement = CharterBook.Restore(Book.Export());
-        replacement.CloseDestroyedLeaf(before.Charter, before.Territory, before.Baseline, before.Tick, Find.TickManager.TicksGame, true);
+        bool upper = Book.Charters.Any(c => c.Phase == RecordedCharterPhase.Active && c.Terms.Liege == before.Territory);
+        replacement.CloseDestroyedTown(before.Charter, before.Territory, before.Baseline, before.Tick, Find.TickManager.TicksGame, true, upper);
+        if (upper)
+        {
+            var proof = new TownLossProof(before.Charter, before.Territory, before.Baseline, before.Owner,
+                ConsentLabel(before.Label, before.Territory), before.Tick, Find.TickManager.TicksGame, before.Book);
+            townLosses = townLosses.Observe(proof, replacement);
+        }
         Book = replacement;
         Binding(before.Territory).LastKnownLabel = before.Label;
-        Messages.Message("CL_Ended".Translate(before.Label), MessageTypeDefOf.NeutralEvent);
+        Messages.Message((upper ? "LS_Observed" : "CL_Ended").Translate(before.Label), MessageTypeDefOf.NeutralEvent);
     }
 }
 

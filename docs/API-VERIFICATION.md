@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 상위 native 도시의 소실 관측과 같은 세력 계약 재연결 — 0.3.24
+
+설치 1.7.4985 rev1269 및 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 기존 WorldObject.Destroy 무인자 Prefix/Postfix 관측을 재사용한다. Prefix의 정확한 Settlement 객체·현재 faction/원래 장부·소유권 이력 확인과 정상 Postfix의 Destroyed/월드 목록 제거/동일 owner를 모두 확인한 때만 새 상위 소실 근거를 저장한다. 훅의 예외/재진입/소유자 변경/진행 중 상태에서는 기존 가드와 근거 보존을 유지한다.
+
+추가 집행은 계약 장부와 소실/정리 스냅샷의 순수 교체다. Settlement/Pawn.SetFaction, guest/의료/재고·지도권 변경, stock 생성이나 새로운 faction/leader 생성 API를 호출하지 않는다. 기존 TerritoryAuthority/SubcharterRepresentative와 실제 등록 faction/살아 있는 대표·소속 이력 조회를 사용한다. 새 경로는 의사결정 불가능한 대표와 union/royal-title-tag 세력을 거절해 미구현 의결을 꾸미지 않는다. 이름은 표시용이고 안정 ID·원래 전체 계약 스냅샷·실제 관측 owner·시각과 새 교체 연결이 근거다. 역사 문자열은 WorldPawn을 pin하지 않는다. 1.6은 pinned 참조/별도 net472 빌드와 동일 규칙 호스트로 검사한다. 외부 Hegemony/WD2 점령·파괴 수명 API를 연동한 것은 아니다.
+
 ## 실제 납부 이력·기한 알림·현재 대표의 최종 동의 — 0.3.23 / 2026-10-26
 
 설치 1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 새로운 native 소유권/지도권/재고 변이 API를 추가하지 않는다. 기존 실제 공납 Ledger.Commit의 완전 전달 검증 영수증과 opt-in 계정, 실제 계약 장부를 읽어 엔진 독립 규칙에 전달한다. 가격은 기존 직접 납부의 실제 거래 평가를 유지하고 전역 TradeSession을 변경하지 않는다. 마지막 유예 틱은 연체가 아니며 Prepared 영수증은 고의/실패 증거가 아니다.

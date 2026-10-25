@@ -335,4 +335,16 @@
   <PH_Untracked>이 이력에는 실물 공납을 활성화한 기록이 없습니다. 확인되지 않은 약속을 성공이나 실패로 계산하지 않습니다.</PH_Untracked>
   <PH_Values>이행한 약정 가치 {0} · 전달 대기를 포함한 미정산 약정 가치 {1}</PH_Values>
   <PH_ConsentRecord>최종 동의: {0}, 대표 {1}, 게임 경과 {2}일</PH_ConsentRecord>
+  <HCL_Replaced>영지 소실 후 대체됨</HCL_Replaced>
+  <LS_Blocked>계약 정리를 진행할 수 없습니다. 소실 기록·하위 구조 변경·해약 진행·실제 소속과 대표·살아 있는 상위 주체를 확인하세요. 계약은 변경되지 않았습니다.</LS_Blocked>
+  <LS_Completed>살아 있는 직속 계약 {0}건을 다시 연결했습니다. 과거 계약은 이력으로 유지합니다.</LS_Completed>
+  <LS_Confirm>검토한 계약 정리 확정</LS_Confirm>
+  <LS_Empty>미해결 상위 영지 소실 기록이 없습니다.</LS_Empty>
+  <LS_History>{0}: 직속 계약 {1}건 정리 완료</LS_History>
+  <LS_Observed>{0}의 파괴를 확인했습니다. 해당 영지 계약은 종료되며 살아 있는 하위 봉신 계약은 별도 정리 검토를 기다립니다.</LS_Observed>
+  <LS_Open>상위 영지 소실 정리</LS_Open>
+  <LS_Plan>{0}, 대표 {1}: 직속 계약 {3}건을 {2}에 다시 연결하며 생존 계약 총 {4}건을 검토합니다. 나머지 내부 계약과 기존 의무 이력은 유지됩니다.</LS_Plan>
+  <LS_Review>생존 영지 계약 정리 검토</LS_Review>
+  <LS_Select>기록된 소실: {0}</LS_Select>
+  <LS_Warning>Honor가 실제 파괴 완료를 기록한 영지만 정리합니다. 검토 후 현재 대표의 새 합의로 살아 있는 직속 봉신을 원래의 상위 주체에 연결합니다. 기존 조건과 이력은 유지하며 주민·물품·실제 소속·개인 서약은 바꾸지 않습니다. 해약 진행·하위 구조 변경·소실 중첩·연합 또는 귀족 의결이 필요한 경우는 보류합니다.</LS_Warning>
 </LanguageData>
