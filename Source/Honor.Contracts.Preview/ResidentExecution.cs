@@ -43,13 +43,14 @@ internal static class ResidentExecution
             city.previouslyGeneratedInhabitants.Count is < 1 or > ResidentMoveSet.Capacity)
             throw new ArgumentException("Unavailable resident town.");
     }
-    private static void Eligible(Pawn p, int profile)
+    private static void Eligible(Pawn p, int profile, bool retainedLeader = false)
     {
         if (p?.IsSlave == true) throw new ResidentMoveBlocked("RE_SlaveUnavailable");
+        if (!retainedLeader && p != null && PawnUtility.IsFactionLeader(p)) throw new ResidentMoveBlocked("LR_LeaderBlocked");
         if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || p.RaceProps.body == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || p.Spawned || !p.IsWorldPawn() ||
             p.holdingOwner != null || p.Faction == null || p.Faction.IsPlayer ||
             (profile < 4 || !p.IsPrisoner) && (p.HostFaction != null || p.IsPrisoner) || p.IsSlave ||
-            PawnUtility.IsFactionLeader(p) || p.InMentalState || p.Downed || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
+            (!retainedLeader && PawnUtility.IsFactionLeader(p)) || p.InMentalState || p.Downed || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
             p.GetLord() != null || profile < 3 && p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
             p.HasExtraHomeFaction() || p.HasExtraMiniFaction() || p.GetExtraHostFaction() != null || p.questTags?.Count > 0 ||
             (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
@@ -70,9 +71,18 @@ internal static class ResidentExecution
             throw new ArgumentException("Unsupported persistent resident restrictions.");
     }
     internal static ResidentMoveActual Read(Pawn p, int profile = 1, ResidentSurgeryRecord surgery = null, ResidentPrisonerRecord prisoner = null)
+        => ReadInternal(p, profile, surgery, prisoner, false);
+    internal static ResidentMoveActual ReadRetainedLeader(Pawn p)
+    {
+        if (p == null || p.Faction == null || p.Faction.leader != p || p.IsPrisoner || p.IsSlave || p.HostFaction != null ||
+            !PawnUtility.IsFactionLeader(p) || Find.FactionManager.AllFactionsListForReading.Any(f => f != p.Faction && f.leader == p))
+            throw new ArgumentException("Not the exact ordinary retained faction leader.");
+        return ReadInternal(p, 5, null, null, true);
+    }
+    private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader)
     {
         if (profile is not (1 or 2 or 3 or 4 or 5)) throw new ArgumentException("Unknown resident profile.");
-        Eligible(p, profile); var baseline = ResidentBaselineStore.Evidence(p);
+        Eligible(p, profile, retainedLeader); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
             baseline.Id, baseline.Health, baseline.Gear,
@@ -190,7 +200,7 @@ internal static class ResidentExecution
     }
     private static ResidentMoveActual[] ReadAll(ResidentExecutionRecord record) => record.Pawns.Select((p, i) =>
         Read(p, record.Profile, record.Profile >= 2 ? record.Surgery[i] : null, record.Prisoners.SingleOrDefault(r => r.Pawn == p))).ToArray();
-    private static void EnsureRetention()
+    internal static void EnsureRetention()
     {
         if (GcMethod == null || GcMethod.ReturnType != typeof(string) || Harmony.GetPatchInfo(GcMethod)?.Owners.Contains("honor.series.contracts.preview") != true)
             throw new ArgumentException("Pending resident retention hook unavailable.");
@@ -213,7 +223,8 @@ internal static class PendingResidentRetention
     static void Postfix(Pawn pawn, ref string __result)
     {
         if (__result == null && pawn != null && !pawn.Destroyed && !pawn.Discarded &&
-            Current.Game?.GetComponent<TerritoryAdministrationLedger>()?.ReservesResident(pawn) == true)
+            (Current.Game?.GetComponent<TerritoryAdministrationLedger>()?.ReservesResident(pawn) == true ||
+             Current.Game?.GetComponent<LeaderRelocationLedger>()?.ReservesResident(pawn) == true))
             __result = "Honor.PendingResidentTransfer";
     }
 }

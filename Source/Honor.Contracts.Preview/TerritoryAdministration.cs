@@ -376,6 +376,7 @@ public sealed class TerritoryAdministrationWindow : Window
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 12000));
         list.Label("CT_Warning".Translate());
         list.Label("RE_Limits".Translate());
+        Current.Game.GetComponent<LeaderRelocationLedger>().Draw(list, charter);
         if (list.ButtonText("CA_Open".Translate())) ledger.OpenPreservationAudit(charter);
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else

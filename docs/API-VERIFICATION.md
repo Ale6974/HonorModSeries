@@ -7,6 +7,14 @@
 네이티브 SetGuestStatus(target, Slave)는 현재 pawn faction을 지역 변수에 저장하고 Pawn.SetFaction(target)을 호출한다. 그 내부 SetGuestStatus(null)는 slaveFactionInt를 비우며, 외부 Slave 분기는 비어 있는 값을 직전 소유 세력으로 다시 기록할 수 있다. 원래 노예 출신 소속 보존을 검증할 수 없어 노예 이전은 차단한다. 반사 필드 쓰기, guest tracker 임시 제거/교체, 네이티브 초기화 패치 우회나 가짜 중간 소속 이동을 추가하지 않는다. 공개/참조 API의 존재를 보존 보장으로 취급하지 않는다.
 
 기존 System.Text.Json 단정밀도 직렬화는 Windows Framework 호스트에서 0.8f를 0.800000012로, .NET 10에서는 0.8로 출력한다. 고정 지문 검사에서 이 차이를 확인했으며 기존 저장 증거를 정규화하거나 다시 작성하지 않는다. 동일 타깃의 기존 지문을 각각 고정값으로 검사한다. 진행 중인 도시 이전을 다른 게임/런타임 버전으로 옮길 때 증거가 호환된다고 주장하지 않으며 원래 버전에서 먼저 해결하는 것이 필요하다.
+## 지도자 전출의 저장 참조와 후임 선정 제한 (0.3.18)
+
+설치 Version.txt 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 확인했다. Faction.Notify_LeaderLost는 기존 지도자를 보관한 뒤 TryGenerateNewLeader를 호출하고 알림을 보낸다. TryGenerateNewLeader는 leader를 먼저 null로 만들고 설정에 따라 맵 주민을 고르거나 PawnGenerator로 후임을 생성한다. 결과 false나 예외가 원래 지도권을 안전하게 보존한다는 가정을 하지 않는다. 새 경로는 해당 메서드나 SetFaction을 호출하지 않고 원 소속·직위를 유지하는 전출 협의로 제한한다.
+
+Settlement.previouslyGeneratedInhabitants는 실제 public List<Pawn>이고 ExposeData에서 LookMode.Reference로 저장된다. 설치 DLL의 필드 사용처를 메타데이터로 추적해 PawnGenerator.GenerateOrRedressPawnInternal가 Inhabitant/Tile 조건에서 이 목록의 적격 world pawn을 재사용 후보로 우선한다는 점을 확인했다. 목록 배정 변경은 네이티브 저장 상태의 변경이지만 실제 지도자 여행이나 맵 등장 보장은 아니다. 이 구현은 목록의 동일 원본 참조만 목적지 추가 → 출발지 제거하며 Pawn 생성/재착장/지도자 선정·소속 쓰기·주민 정리 공유 목록 쓰기는 하지 않는다. 양 목록·양 재고·원래 leader 포인터와 동일 임상/의료/수술 관측을 대조한다.
+
+기존 WorldPawnGC.GetCriticalPawnReason 후처리는 새 전출의 진행 참조도 보호하고, 검증된 훅이 없으면 새 전출을 차단한다. GC 진행 취소 뒤 두 목록을 변경하며 명시적 재개에서만 이중 목록 상태의 출발지 참조를 제거한다. Save/Load는 준비/완료/취소와 원본 Reference를 보존하되 자동 집행하지 않는다. 시계 검사는 FinalizeInit에서 수행한다. 1.6.4871 참조의 Settlement 목록 시그니처와 net472 빌드를 별도로 확인하지만 실제 1.6 메서드 몸체/Mono나 어느 버전의 Scribe/GC/맵 생성도 실행하지 않는다. 디컴파일/도구/게임 DLL은 배포하지 않는다.
+
 
 profile 5의 이념 포로는 기존 native Prisoner 경로만 사용한다. 원래 세력/신분을 유지하고 현재 신앙·확신도·교리/이력을 별도 임상/수술/포로 증거에 결합한다. 필드와 알림의 검사/빌드는 실제 Scribe·NPC 알림·장기 저장 복구나 런타임 보존 증명이 아니다. 디컴파일 자료는 로컬 전용으로 유지한다.
 

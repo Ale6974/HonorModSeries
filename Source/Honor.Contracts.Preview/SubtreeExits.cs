@@ -67,7 +67,7 @@ public sealed class SubtreeExitLedger : GameComponent
     {
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
-        if (RestoreFailed || Charters.RestoreFailed || Territories.RestoreFailed || political.RestoreFailed || political.Journal.Pending ||
+        if (RestoreFailed || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges || Charters.RestoreFailed || Territories.RestoreFailed || political.RestoreFailed || political.Journal.Pending ||
             payments.RestoreFailed || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) ||
             Current.Game.GetComponent<PlayerPoliticsLedger>().RestoreFailed || Current.Game.GetComponent<UnionPoliticsLedger>().RestoreFailed ||
             Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed)

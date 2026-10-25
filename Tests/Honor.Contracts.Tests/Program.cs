@@ -179,6 +179,7 @@ assertions += CharterLossTests.Run();
 assertions += ResidentFaithTests.Run();
 assertions += PrisonerPreservationTests.Run();
 assertions += CustodyFaithTests.Run();
+assertions += LeaderRelocationTests.Run();
 assertions += FollowerTransfersTests.Run();
 assertions += AllegianceTransitionsTests.Run();
 assertions += ReleasedMigrationTests.Run();
