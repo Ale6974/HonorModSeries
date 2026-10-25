@@ -112,6 +112,26 @@ public sealed class UnionPoliticsLedger : GameComponent
         Find.FactionManager.Add(union);
         return union;
     }
+    /// <summary>Explicitly prepare the shared destination without repartitioning any NPC town.</summary>
+    public void PrepareForPlayer()
+    {
+        try
+        {
+            var charters = Current.Game.GetComponent<LiveCharterLedger>();
+            var politics = Current.Game.GetComponent<PlayerPoliticsLedger>();
+            var payments = Current.Game.GetComponent<TributePaymentLedger>();
+            if (RestoreFailed || charters.RestoreFailed || politics.RestoreFailed || payments.RestoreFailed ||
+                Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges || politics.State.Mode == PlayerAllegianceMode.Union ||
+                !Settlements().Any(s => s.Faction == Faction.OfPlayer)) throw new ArgumentException("No available player union setup.");
+            // The same actual-release and payment guards as later admission; no synthetic release or debt clearing.
+            AllegianceChangeSource.Validate(charters.Book, politics.State,
+                new(AllegianceAction.JoinUnion, Find.TickManager.TicksGame), payments.Ledger);
+            EnsureUnion();
+            if (choice == InitialPoliticsChoice.Unchosen) choice = InitialPoliticsChoice.KeepExisting;
+            Messages.Message("UA_Prepared".Translate(), MessageTypeDefOf.NeutralEvent);
+        }
+        catch (ArgumentException) { Rejected(); }
+    }
     public void Configure(IReadOnlyList<UnionCandidate> reviewed)
     {
         if (RestoreFailed || !ConfigurationAvailable || Current.Game.GetComponent<LiveCharterLedger>().RestoreFailed ||

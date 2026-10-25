@@ -44,7 +44,8 @@ public sealed class PlayerPoliticsLedger : GameComponent
     public string ReviewToken(Faction root) => root == null ? null : root.GetUniqueLoadID() + "/" +
         string.Join(";", Find.FactionManager.AllFactionsListForReading.Where(f => f != root && !f.IsPlayer && !IsAdministration(f))
             .OrderBy(f => f.GetUniqueLoadID(), StringComparer.Ordinal).Select(f => {
-                var r = root.RelationWith(f, true); return f.GetUniqueLoadID() + ":" + r?.baseGoodwill + ":" + r?.kind;
+                var r = root.RelationWith(f, true); var p = Faction.OfPlayer.RelationWith(f, true);
+                return f.GetUniqueLoadID() + ":" + r?.baseGoodwill + ":" + r?.kind + ":" + p?.baseGoodwill + ":" + p?.kind;
             }));
     private RecordedCharter PlayerBond() => Charters.Book.Charters.SingleOrDefault(c => c.Phase == RecordedCharterPhase.Active && Charters.Book.Entity(c.Terms.Subject).Player);
     private bool OldReleased() => State.Mode != PlayerAllegianceMode.Vassal || Charters.Book.Charter(State.Contract).Phase == RecordedCharterPhase.Released;
@@ -100,10 +101,28 @@ public sealed class PlayerPoliticsLedger : GameComponent
     private static void CheckAdmission(Faction root)
     {
         CheckProjection(root);
+        var conflicts = AdmissionConflicts(root);
+        if (conflicts.Count > 0)
+            throw new ArgumentException("UA_WarBlocked".Translate(string.Join(", ", conflicts.Select(f => f.Name))));
         if (Find.GoodwillSituationManager.GetMaxGoodwill(root) < 100 ||
             QuestUtility.IsGoodwillLockedByQuest(Faction.OfPlayer, root) &&
                 (Faction.OfPlayer.BaseGoodwillWith(root) != 100 || Faction.OfPlayer.RelationKindWith(root) != FactionRelationKind.Ally))
             throw new ArgumentException("Admission must not override an internal quest lock or player goodwill cap.");
+    }
+    internal static IReadOnlyList<Faction> AdmissionConflicts(Faction root)
+    {
+        if (root == null) throw new ArgumentException("No admission destination.");
+        var others = Find.FactionManager.AllFactionsListForReading.Where(f => f != root && !f.IsPlayer && !IsAdministration(f)).ToArray();
+        SharedRelation Observe(Faction owner, Faction other)
+        {
+            var r = owner.RelationWith(other, true) ?? throw new ArgumentException("Missing admission relation.");
+            return new(other.GetUniqueLoadID(), r.baseGoodwill, r.kind switch {
+                FactionRelationKind.Hostile => SharedRelationKind.Hostile, FactionRelationKind.Ally => SharedRelationKind.Ally,
+                FactionRelationKind.Neutral => SharedRelationKind.Neutral, _ => throw new ArgumentException("Unknown native relation kind.") });
+        }
+        var ids = SharedDiplomacyPlan.AdmissionConflicts(Faction.OfPlayer.GetUniqueLoadID(), root.GetUniqueLoadID(),
+            others.Select(f => Observe(Faction.OfPlayer, f)), others.Select(f => Observe(root, f)));
+        return Array.AsReadOnly(ids.Select(id => others.Single(f => f.GetUniqueLoadID() == id)).ToArray());
     }
     internal static void Pair(Faction player, Faction other, int goodwill, FactionRelationKind kind)
     {
@@ -184,6 +203,8 @@ public sealed class PlayerPoliticsLedger : GameComponent
         try
         {
             var root = ValidateAuthority(); var player = Faction.OfPlayer;
+            bool pendingAdmission = Current.Game.GetComponent<PoliticalTransitionLedger>().Journal.Pending;
+            if (pendingAdmission) CheckAdmission(root);
             var sources = Find.FactionManager.AllFactionsListForReading.Where(f => f != root && !f.IsPlayer && !IsAdministration(f)).ToArray();
             var plan = SharedDiplomacyPlan.Build(player.GetUniqueLoadID(), root.GetUniqueLoadID(), sources.Select(f => {
                 var relation = root.RelationWith(f, true);
@@ -196,6 +217,8 @@ public sealed class PlayerPoliticsLedger : GameComponent
                 if (State.Suspended) break;
                 var other = Resolve(relation.Other); var kind = relation.Kind switch {
                     SharedRelationKind.Ally => FactionRelationKind.Ally, SharedRelationKind.Hostile => FactionRelationKind.Hostile, _ => FactionRelationKind.Neutral };
+                if (pendingAdmission && player.RelationKindWith(other) == FactionRelationKind.Hostile && kind != FactionRelationKind.Hostile)
+                    throw new ArgumentException("An admission observer introduced an unreviewed existing war; preserve it and suspend.");
                 if (player.RelationKindWith(other) != kind) changed.Add(other.Name);
                 Pair(player, other, relation.BaseGoodwill, kind);
             }
@@ -294,6 +317,11 @@ public sealed class PlayerAllegianceWindow : Window
         else
         {
             list.Label("PA_State".Translate(("PA_" + ledger.State.Mode).Translate(), ledger.RecordedAuthority?.Name ?? "PA_None".Translate()));
+            if (!transition.BlocksChanges && ledger.UnionCandidate == null && ledger.State.Mode != PlayerAllegianceMode.Union)
+            {
+                list.Label("UA_PrepareInfo".Translate());
+                if (list.ButtonText("UA_Prepare".Translate())) { Current.Game.GetComponent<UnionPoliticsLedger>().PrepareForPlayer(); review = null; }
+            }
             if (transition.Journal.Pending)
             {
                 list.Label("PS_Pending".Translate());
@@ -317,6 +345,15 @@ public sealed class PlayerAllegianceWindow : Window
                 if (ledger.UnionCandidate != null && ledger.State.Mode != PlayerAllegianceMode.Union &&
                     list.ButtonText((ledger.State.Mode == PlayerAllegianceMode.Vassal ? "PS_ReturnUnion" : "PA_ReviewUnion").Translate()))
                     Review(() => transition.Review(true));
+                if (ledger.UnionCandidate != null && ledger.State.Mode != PlayerAllegianceMode.Union)
+                {
+                    try
+                    {
+                        var conflicts = PlayerPoliticsLedger.AdmissionConflicts(ledger.UnionCandidate);
+                        if (conflicts.Count > 0) list.Label("UA_WarBlocked".Translate(string.Join(", ", conflicts.Select(f => f.Name))));
+                    }
+                    catch (ArgumentException) { list.Label("PA_Rejected".Translate()); }
+                }
                 if (ledger.State.Mode == PlayerAllegianceMode.Union && !ledger.State.UnionNoticeUntil.HasValue && list.ButtonText("PA_Notice".Translate())) ledger.Notice();
                 if (ledger.State.UnionNoticeUntil.HasValue) list.Label("PA_NoticeUntil".Translate(
                     ((ledger.State.UnionNoticeUntil.Value - Find.TickManager.TicksGame) / (double)PoliticalWorld.Day).ToString("F1")));

@@ -75,6 +75,19 @@ public enum SharedRelationKind { Neutral, Ally, Hostile }
 public sealed record SharedRelation(string Other, int BaseGoodwill, SharedRelationKind Kind);
 public static class SharedDiplomacyPlan
 {
+    /// <summary>Joining a shared realm cannot silently make peace with the applicant's existing enemies.</summary>
+    public static IReadOnlyList<string> AdmissionConflicts(string player, string authority,
+        IEnumerable<SharedRelation> applicant, IEnumerable<SharedRelation> destination)
+    {
+        var source = Build(player, authority, applicant);
+        var target = Build(player, authority, destination);
+        if (!source.Select(r => r.Other).OrderBy(id => id, StringComparer.Ordinal)
+            .SequenceEqual(target.Select(r => r.Other).OrderBy(id => id, StringComparer.Ordinal)))
+            throw new ArgumentException("Admission requires the same complete external relation scope.");
+        return Array.AsReadOnly(source.Where(r => r.Kind == SharedRelationKind.Hostile &&
+                target.Single(t => t.Other == r.Other).Kind != SharedRelationKind.Hostile)
+            .Select(r => r.Other).OrderBy(id => id, StringComparer.Ordinal).ToArray());
+    }
     /// <summary>Copy value snapshots, never alias a mutable game FactionRelation or change ownership.</summary>
     public static IReadOnlyList<SharedRelation> Build(string player, string authority, IEnumerable<SharedRelation> relations)
     {

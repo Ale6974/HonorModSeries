@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 독립 플레이어의 연합 목적지 준비와 적대 보존 — 0.3.22 / 2026-10-26
+
+실제 설치 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 확인했다. 기존에 검증한 FactionGenerator.NewGeneratedFaction(FactionGeneratorParms(..., hidden:true)) → reveal → FactionManager.Add 경로를 재사용한다. 새 호출은 Settlement.SetFaction·주민/재고 쓰기·도시 생성을 수행하지 않는다. 기존 단일 연합 검색과 참조/중복/패배 검사, Scribe_References/초기 선택 저장을 재사용한다. 1.7 Faction.defeated는 저장되는 필드이며 검토한 FactionTick에 정착지가 없다는 이유만으로 패배시키는 분기는 없다. 이는 타 모드의 별도 세력 수명 정책을 보장하지 않는다. 1.6은 해당 호출의 pinned 참조 서명/분리 빌드를 검사하며 구현 본문을 동일하다고 추정하지 않는다.
+
+외교 입장 검사는 기존 RelationWith(..., true)의 실제 kind/baseGoodwill을 양쪽에서 읽어 엔진 독립 스냅샷 규칙에 전달한다. 숫자만으로 적대/전쟁을 추정하지 않는다. 기존 우호도 상한/퀘스트 잠금/실제 대표 검사는 유지한다. Hegemony/WD2 형식 전쟁 장부나 API를 새로 읽거나 변경하지 않으므로 상대 모드의 전쟁 인수·호환 구현으로 해석하지 않는다.
+
 ## NPC 제안 시간/알림과 외부 실행 경계 — 0.3.21
 
 1.7 설치 Version.txt 1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 LetterStack.ReceiveLetter(TaggedString, TaggedString, LetterDef, string, int, bool) 기본값 오버로드를 정적으로 확인해 기존 LetterDefOf.NeutralEvent로 수신 편지를 추가한다. 별도 세력·지도자 생성, 외교·소유권·인구·재고 변경 API는 호출하지 않는다. GameComponentTick/Scribe_Values 저장·Listing_Standard 체크박스와 기존 참조/협정 생성 경로를 사용하며 1.6 참조 시그니처로 별도 컴파일한다. 실제 후보 자격과 native 대표 확인은 adapter에, 공통 선택·쿨다운은 규칙 프로젝트에 둔다.

@@ -313,4 +313,8 @@
   <LI_Policy>At most one proposal every 7 days, with 30 days between contacts from the same faction. Proposals expire after 3 days. Review or decline them in this charter list. Signing, allegiance, shared diplomacy and physical payment are separate steps. Receiving a proposal never starts military protection.</LI_Policy>
   <LI_Receive>Receive NPC liege proposals</LI_Receive>
   <LI_Title>Liege contract proposal</LI_Title>
+  <UA_Prepare>Prepare Free City Union</UA_Prepare>
+  <UA_Prepared>The Free City Union is ready. Review admission separately; your current allegiance, contracts and debts remain unchanged.</UA_Prepared>
+  <UA_PrepareInfo>Prepare the common Free City Union without moving any NPC town. Preparation does not join the union: review admission and confirm separately. An existing feudal contract must first end by the supported lawful procedure.</UA_PrepareInfo>
+  <UA_WarBlocked>Admission is paused: the destination does not share your existing hostility toward {0}. Accepting those wars requires a separate authorized agreement. Joining cannot silently end them.</UA_WarBlocked>
 </LanguageData>
