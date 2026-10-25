@@ -28,15 +28,18 @@ public sealed partial class LiveCharterLedger
     {
         if (!LossChangesAvailable()) throw new ArgumentException("Resolve unavailable or pending political/payment records.");
         var proof = townLosses.Record(root);
-        var lostCity = Binding(proof.Territory).Settlement;
-        if (proof.Kind == TownLossKind.Destroyed)
+        foreach (var loss in townLosses.ScopeLosses(root))
         {
-            if (lostCity != null && !lostCity.Destroyed && Find.WorldObjects.AllWorldObjects.Contains(lostCity))
-                throw new ArgumentException("The previously destroyed object returned; review its new rights separately.");
+            var lostCity = Binding(loss.Territory).Settlement;
+            if (loss.Kind == TownLossKind.Destroyed)
+            {
+                if (lostCity != null && !lostCity.Destroyed && Find.WorldObjects.AllWorldObjects.Contains(lostCity))
+                    throw new ArgumentException("The previously destroyed object returned; review its new rights separately.");
+            }
+            else if (lostCity == null || lostCity.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(lostCity) ||
+                lostCity.Faction?.GetUniqueLoadID() != loss.CapturingOwner)
+                throw new ArgumentException("The observed hostile owner changed again; another review adapter is required.");
         }
-        else if (lostCity == null || lostCity.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(lostCity) ||
-            lostCity.Faction?.GetUniqueLoadID() != proof.CapturingOwner)
-            throw new ArgumentException("The observed hostile owner changed again; another review adapter is required.");
         var authority = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
         if (authority == null || authority.def == null || authority.IsPlayer || authority.def.defName == UnionPoliticsLedger.UnionDefName ||
             authority.def.royalTitleTags?.Count > 0 ||
@@ -47,7 +50,10 @@ public sealed partial class LiveCharterLedger
         var source = CharterBook.Restore(proof.Before); var original = source.Charter(root);
         if (!Book.Entity(original.Terms.Liege).Player && SubcharterRepresentative(original.Terms.Liege) != authority)
             throw new ArgumentException("The surviving higher liege is not represented by this realm.");
-        var current = Book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active && Book.IsBelow(c.Terms.Subject, proof.Territory)).ToArray();
+        long now = Find.TickManager.TicksGame;
+        var plan = townLosses.Review(root, Book, prefix ?? Guid.NewGuid().ToString("N"),
+            new(authority.leader.GetUniqueLoadID(), authority.leader.GetUniqueLoadID()), now, Observe());
+        var current = plan.Descendants.Select(Book.Charter).ToArray();
         var actual = new List<object>();
         foreach (var c in current)
         {
@@ -58,9 +64,6 @@ public sealed partial class LiveCharterLedger
                 throw new ArgumentException("Unverified native survivor ownership.");
             actual.Add(new { c.Id, Town = binding.Settlement.GetUniqueLoadID(), Owner = binding.Settlement.Faction.GetUniqueLoadID() });
         }
-        long now = Find.TickManager.TicksGame;
-        var plan = townLosses.Review(root, Book, prefix ?? Guid.NewGuid().ToString("N"),
-            new(authority.leader.GetUniqueLoadID(), authority.leader.GetUniqueLoadID()), now, Observe());
         string stamp = JsonSerializer.Serialize(new { Plan = plan, Archive = townLosses.Export(), Actual = actual,
             Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer),
             Transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), Observations = Observe() });
@@ -69,11 +72,12 @@ public sealed partial class LiveCharterLedger
     public void ApplyTownSuccession(LiveTownSuccessionReview reviewed)
     {
         Execute(() => {
-            if (reviewed == null || reviewed.Context != Current.Game || reviewed.Plan?.Replacements == null || reviewed.Plan.Replacements.Count == 0 ||
+            if (reviewed == null || reviewed.Context != Current.Game || reviewed.Plan?.Replacements == null || reviewed.Plan.Replacements.Count == 0 && reviewed.Plan.ScopePrefix == null ||
                 reviewed.Plan.Replacements.Values.Any(v => string.IsNullOrWhiteSpace(v))) throw new ArgumentException("Review first.");
-            string sample = reviewed.Plan.Replacements.Values.First(); int separator = sample.LastIndexOf('/');
-            if (separator < 1) throw new ArgumentException("Invalid succession identity.");
-            var fresh = ReviewTownSuccession(reviewed.Plan.Root, sample.Substring(0, separator));
+            string prefix = reviewed.Plan.ScopePrefix;
+            if (prefix == null) { string sample = reviewed.Plan.Replacements.Values.First(); int separator = sample.LastIndexOf('/');
+                if (separator < 1) throw new ArgumentException("Invalid succession identity."); prefix = sample.Substring(0, separator); }
+            var fresh = ReviewTownSuccession(reviewed.Plan.Root, prefix);
             if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("Succession authority or source changed.");
             var result = townLosses.Commit(Book, fresh.Plan, Find.TickManager.TicksGame, Observe());
             Book = result.Book; townLosses = result.Archive;
@@ -98,13 +102,14 @@ public sealed class TownSuccessionWindow : Window
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(12000, height + 1000)));
         list.Label("LS_Warning".Translate());
         list.Label("HL_Limits".Translate());
+        list.Label("LC_Warning".Translate());
         if (ledger.UnresolvedTownLosses) list.Label("LS_Freeze".Translate());
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
         {
             if (list.ButtonText("LS_Select".Translate(root == null ? "HCL_Missing".Translate() : ledger.TownLosses.Single(r => r.Root == root).Label)))
             {
-                var options = ledger.TownLosses.Where(r => r.Resolution == null).Select(r => new FloatMenuOption(r.Label, () => { root = r.Root; review = null; })).ToList();
+                var options = ledger.TownLosses.Where(r => r.Resolution == null && r.ScopeRoot == null).Select(r => new FloatMenuOption(r.Label, () => { root = r.Root; review = null; })).ToList();
                 if (options.Count > 0) Find.WindowStack.Add(new FloatMenu(options)); else list.Label("LS_Empty".Translate());
             }
             if (root != null && list.ButtonText("LS_Review".Translate()))
@@ -114,6 +119,11 @@ public sealed class TownSuccessionWindow : Window
             }
             if (review != null)
             {
+                if (review.Plan.ScopeRoots != null)
+                {
+                    list.Label("LC_Scope".Translate(review.Plan.ScopeRoots.Length));
+                    foreach (string id in review.Plan.ScopeRoots) list.Label("LC_Loss".Translate(ledger.TownLosses.Single(r => r.Root == id).Label));
+                }
                 list.Label("LS_Plan".Translate(review.Realm, review.Representative, ledger.Label(review.Plan.Parent), review.Plan.Replacements.Count, review.Plan.Descendants.Length));
                 foreach (var p in review.Plan.Replacements) list.Label(ledger.Label(ledger.Book.Charter(p.Key).Terms.Subject));
                 if (list.ButtonText("LS_Confirm".Translate())) { ledger.ApplyTownSuccession(review); review = null; }

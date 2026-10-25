@@ -7,7 +7,7 @@ using Verse;
 namespace Honor.Contracts.Preview;
 
 internal sealed record CharterLossCandidate(string Charter, string Territory, string Baseline, string Owner, string Book, long Tick, string Label,
-    Game Context, TownLossKind Kind = TownLossKind.Destroyed, string CapturingOwner = null);
+    Game Context, TownLossKind Kind = TownLossKind.Destroyed, string CapturingOwner = null, string ScopeRoot = null, int? ScopeOrdinal = null);
 
 public sealed partial class LiveCharterLedger
 {
@@ -27,10 +27,12 @@ public sealed partial class LiveCharterLedger
         if (c == null || Book.Charters.Any(other => Book.Phase(other, Find.TickManager.TicksGame) == RecordedCharterPhase.Offered &&
             (other.Terms.Liege == binding.Identity || other.Terms.Subject == binding.Identity))) return null;
         bool upper = Book.Charters.Any(other => other.Phase == RecordedCharterPhase.Active && other.Terms.Liege == binding.Identity);
-        if (upper && (!Book.PlayerManaged(c) || townLosses.Records.Count >= TownSuccessionArchive.Capacity)) return null;
+        string scope = townLosses.ObservationScope(Book, c.Id, city.Faction.GetUniqueLoadID());
+        if ((upper || scope != null) && (upper && !Book.PlayerManaged(c) && scope == null || townLosses.Records.Count >= TownSuccessionArchive.Capacity)) return null;
         var entity = Book.Entity(binding.Identity); var territories = Current.Game.GetComponent<TerritoryAdministrationLedger>();
         if (entity.Player || territories.RestoreFailed || !territories.Ledger.VerifiedOwner(entity.Id, entity.NativeOwner, city.Faction.GetUniqueLoadID())) return null;
-        return new(c.Id, entity.Id, entity.NativeOwner, city.Faction.GetUniqueLoadID(), Book.Export(), Find.TickManager.TicksGame, city.Label, Current.Game);
+        return new(c.Id, entity.Id, entity.NativeOwner, city.Faction.GetUniqueLoadID(), Book.Export(), Find.TickManager.TicksGame, city.Label, Current.Game,
+            ScopeRoot: scope, ScopeOrdinal: scope == null ? null : townLosses.NextScopeOrdinal(scope));
     }
     internal void ApplyNativeLoss(Settlement city, CharterLossCandidate before)
     {
@@ -61,20 +63,21 @@ public sealed partial class LiveCharterLedger
     {
         var replacement = CharterBook.Restore(Book.Export());
         bool upper = Book.Charters.Any(c => c.Phase == RecordedCharterPhase.Active && c.Terms.Liege == before.Territory);
-        if (before.Kind == TownLossKind.Destroyed)
-            replacement.CloseDestroyedTown(before.Charter, before.Territory, before.Baseline, before.Tick, Find.TickManager.TicksGame, true, upper);
-        else replacement.CloseHostileTransferredTown(before.Charter, before.Territory, before.Baseline, before.Owner, before.CapturingOwner,
-            before.Tick, Find.TickManager.TicksGame, true, upper);
-        if (upper)
+        if (upper || before.ScopeRoot != null)
         {
             var proof = new TownLossProof(before.Charter, before.Territory, before.Baseline, before.Owner,
                 ConsentLabel(before.Label, before.Territory), before.Tick, Find.TickManager.TicksGame, before.Book,
-                Kind: before.Kind, CapturingOwner: before.CapturingOwner);
+                Kind: before.Kind, CapturingOwner: before.CapturingOwner, ScopeRoot: before.ScopeRoot, ScopeOrdinal: before.ScopeOrdinal);
+            replacement = townLosses.CloseForObservation(proof);
             townLosses = townLosses.Observe(proof, replacement);
         }
+        else if (before.Kind == TownLossKind.Destroyed)
+            replacement.CloseDestroyedTown(before.Charter, before.Territory, before.Baseline, before.Tick, Find.TickManager.TicksGame, true, upper);
+        else replacement.CloseHostileTransferredTown(before.Charter, before.Territory, before.Baseline, before.Owner, before.CapturingOwner,
+            before.Tick, Find.TickManager.TicksGame, true, upper);
         Book = replacement;
         Binding(before.Territory).LastKnownLabel = before.Label;
-        Messages.Message((before.Kind == TownLossKind.HostileNativeOwnershipChange ? "HL_Observed" : upper ? "LS_Observed" : "CL_Ended").Translate(before.Label), MessageTypeDefOf.NeutralEvent);
+        Messages.Message((before.ScopeRoot != null ? "LC_Observed" : before.Kind == TownLossKind.HostileNativeOwnershipChange ? "HL_Observed" : upper ? "LS_Observed" : "CL_Ended").Translate(before.Label), MessageTypeDefOf.NeutralEvent);
     }
 }
 

@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 상위 소실 이후 순차 하위 소실의 범위 집행 — 0.3.27 / 2026-10-26
+
+설치1.7.4985 rev1269, net10.0 /10.0.13-waylithclr.dev를 재확인했다. 새 native 진입점은 추가하지 않는다. 기존 WorldObject.Destroy/SetFaction 전후 관측에서 정확한 현재Game/Settlement/원·현재 faction/원래 장부/소유권 이력을 검증한 정상 완료만 사용한다. 이어진 하위 관측은 원래 상위 손실의 Before에 실제 관리하던 동일 계약·territory·원 소속·앞선 손실 순서가 확인될 때만 범위를 받는다. 진단·누락 참조·거꾸로 된 관측·다른 세력으로 권한을 확장하지 않는다.
+
+새 변이는 장부/소실 archive 사본의 검증된 일괄 교체뿐이다. SetFaction·지도자 생성/교체·Pawn/guest/의료·물품이나 provider 장부를 쓰지 않는다. 끊긴 active chain 때문에 일반 PlayerFollowers/IsBelow 조회에 나오지 않는 생존자도 원래 graph와 실제 별도 손실 기록으로 찾는다. 미손실 상위는 건너뛰지 않으며, 건너뛴 각 종료 계약은 저장된 순서와 실제 소실 archive로 검증한다. 현재 대표·살아 있는 상위·모든 생존 소속·모든 옛 도시/현재 captor는 기존 native 조회로 다시 확인한다. 1.6은 같은 기존 훅의 pinned 참조/net472 호스트로 검사하며 새 API 본문을 가정하지 않는다.
+
 ## 일반 종주 지도자의 별도 전시 수락 — 0.3.26 / 2026-10-26
 
 설치1.7.4985 rev1269와 net10.0 /10.0.13-waylithclr.dev를 다시 확인했다. 새 native 변이 API는 추가하지 않고0.3.25의 CanChangeGoodwillFor/GoodwillToMakeHostile/TryAffectGoodwillWith와 양측 결과 검사를 재사용한다. 현재 등록된 ordinary NPC faction·유효한 살아 있는 지도자·실제 서명된 활성 플레이어 계약은 기존 조회/검증 경로로 확인한다. royalTitleTags가 있는 세력의 귀족 의결을 지도자 결정으로 꾸미지 않는다. 신규 별도 전쟁 수락은 우호도50/기존 동맹·native 권한을 따르는 Honor NPC 규칙이며 바닐라 군주 의결 API가 아니다. 지원·보호 의무를 만들지 않는다.
