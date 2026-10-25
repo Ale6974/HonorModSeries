@@ -1,6 +1,6 @@
 # Honor Mod Series — RimWorld 1.6 / 1.7
 
-Contracts 0.3.20은 새 계약의 공납 가치·주기·유예·배송 공제를 편집하고 NPC 응답·별도 서명·실제 청구에 연결하는 공통 기반을 추가했습니다. 제안 실패가 장부에 부분 등록을 남기지 않도록 처리하며 기존 계약·채무·영수증은 유지합니다. NPC 수락 기준과 각 계약의 실제 조건을 영한으로 표시하며 기존 계약 중에도 종주 후보를 병행 비교할 수 있습니다. 기존 계약이 적법하게 종료되기 전에는 새 계약을 발효하지 않습니다. 기존 도시/주민 이전·복구를 유지하며 노예·지도자 개인 합류/승계·로딩 맵·합병/전시 가입·정당한 독립과 징수/군사·보호 의무 집행은 남아 있습니다. [개발 범위](docs/CONTRACTS-PREVIEW.md), [단계별 남은 작업량](docs/CONTRACTS-ROADMAP.md).
+Contracts 0.3.21은 새 계약의 공납 가치·주기·유예·배송 공제를 편집하고 NPC 응답·별도 서명·실제 청구에 연결하는 공통 기반을 추가했습니다. 제안 실패가 장부에 부분 등록을 남기지 않도록 처리하며 기존 계약·채무·영수증은 유지합니다. NPC 수락 기준과 각 계약의 실제 조건을 영한으로 표시하며 기존 계약 중에도 종주 후보를 병행 비교할 수 있습니다. 기존 계약이 적법하게 종료되기 전에는 새 계약을 발효하지 않습니다. 기존 도시/주민 이전·복구를 유지하며 노예·지도자 개인 합류/승계·로딩 맵·합병/전시 가입·정당한 독립과 징수/군사·보호 의무 집행은 남아 있습니다. [개발 범위](docs/CONTRACTS-PREVIEW.md), [단계별 남은 작업량](docs/CONTRACTS-ROADMAP.md).
 
 기존 NPC 초기 내부 계층, 같은 공동 세력의 하위 봉신 재배치/플레이어 직속 복귀, 간접 후손을 포함한 소속 이전도 유지합니다. 일반 물품과 제한된 거래 동물은 보존 검사를 거치고, 실제 합의 해약한 옛 종주에 한해서 적대 출발지 이전을 허용합니다. 주민 기준 기록은 진단용이며 이전 권한이나 완전 보존 증거가 아닙니다. **1단계 계약·정치 구조는 진행 중**입니다. [6단계 진행표](docs/CONTRACTS-ROADMAP.md).
 
@@ -72,3 +72,5 @@ Oaths: 정당한 결투 승리 또는 모욕·불명예 없이 5일 버티기입
 - [게시 절차](docs/PUBLISHING.md)
 
 English: Experimental compatibility build 0.2.2 with separate RimWorld 1.6.4871 reference/net472 and installed 1.7.4985/net10 builds. Both rule suites pass; no new engine/play test is claimed. Steam remains at 0.2.1; use the current GitHub source/local bundle for these compatibility changes. Five playable modules, native English/Korean localization, no separate reputation currency. Core needs the matching Harmony build (2.x on 1.6, 3.x on 1.7). Optional modules in this bundle each need Core 0.2.2+; only Nobility also needs Royalty. Read DEPENDENCIES before subscribing to the complete collection. Diplomacy provides a player-triggered world quest with fixed rewards; general reward negotiation is not implemented. This is an early experimental release, not completion of every planned feature.
+
+Contracts 0.3.21: NPC 종주계약 제안(7일 간격·세력별 30일 재접촉 제한), 저장별 수신 설정과 영한 편지를 실제 장부/별도 서명에 연결했습니다. 독립 실행을 유지하며 Hegemony는 향후 선택형 연동으로 진행합니다. [상세 범위](docs/CONTRACTS-PREVIEW.md).

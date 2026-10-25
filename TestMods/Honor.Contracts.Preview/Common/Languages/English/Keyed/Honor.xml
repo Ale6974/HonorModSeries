@@ -309,4 +309,8 @@
   <CO_LiegeCollection>Delivery term: liege collects.</CO_LiegeCollection>
   <CO_Conditional>This is a nonbinding liege candidate. You may compare up to eight distinct live candidates; NPC acceptance does not replace your current contract or diplomacy.</CO_Conditional>
   <CO_ReleaseFirst>An existing contract still binds this subject. Complete a supported lawful release before final signing; a unilateral release request is insufficient and old debts remain owed.</CO_ReleaseFirst>
+  <LI_Arrived>{0} has offered a liege contract. Open Honor contracts to review the terms. Your existing contracts remain in effect.</LI_Arrived>
+  <LI_Policy>At most one proposal every 7 days, with 30 days between contacts from the same faction. Proposals expire after 3 days. Review or decline them in this charter list. Signing, allegiance, shared diplomacy and physical payment are separate steps. Receiving a proposal never starts military protection.</LI_Policy>
+  <LI_Receive>Receive NPC liege proposals</LI_Receive>
+  <LI_Title>Liege contract proposal</LI_Title>
 </LanguageData>

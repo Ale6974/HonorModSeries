@@ -183,6 +183,7 @@ assertions += LeaderRelocationTests.Run();
 assertions += PrisonerHistoryTests.Run();
 assertions += CharterOfferTests.Run();
 assertions += AlternativeOfferTests.Run();
+assertions += LiegeInvitationTests.Run();
 assertions += FollowerTransfersTests.Run();
 assertions += AllegianceTransitionsTests.Run();
 assertions += ReleasedMigrationTests.Run();

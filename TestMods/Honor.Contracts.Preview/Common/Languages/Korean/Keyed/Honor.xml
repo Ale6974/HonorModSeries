@@ -309,4 +309,8 @@
   <CO_LiegeCollection>운송 조건: 종주 방문 징수.</CO_LiegeCollection>
   <CO_Conditional>아직 소속을 바꾸지 않는 종주 후보 제안입니다. 서로 다른 후보를 최대 8개까지 비교할 수 있으며 NPC 수락만으로 기존 계약·외교를 바꾸지 않습니다.</CO_Conditional>
   <CO_ReleaseFirst>이 당사자에게 기존 계약이 있습니다. 지원되는 적법한 종료 절차를 마친 뒤 최종 서명하세요. 한쪽의 해약 요청만으로는 부족하며 기존 채무는 유지됩니다.</CO_ReleaseFirst>
+  <LI_Arrived>{0}에서 종주계약을 제안했습니다. 명예 계약 목록에서 조건을 검토하세요. 기존 계약은 그대로 유지됩니다.</LI_Arrived>
+  <LI_Policy>최대 7일마다 제안 1건을 받으며 같은 세력은 30일 동안 재접촉하지 않습니다. 제안은 3일 후 만료됩니다. 이 계약 목록에서 검토하거나 거절하세요. 계약 서명과 소속·외교 적용, 실물 납부는 별도 절차입니다. 제안만으로 출병이나 보호가 시작되지는 않습니다.</LI_Policy>
+  <LI_Receive>NPC 종주계약 제안 받기</LI_Receive>
+  <LI_Title>종주계약 제안</LI_Title>
 </LanguageData>

@@ -40,6 +40,7 @@ public sealed partial class LiveCharterLedger : GameComponent
         Scribe_Values.Look(ref snapshot, "honorLiveChartersV1");
         Scribe_Collections.Look(ref bindings, "honorLiveTerritories", LookMode.Deep);
         ExposeNpcWorld();
+        ExposeInvitations();
         if (Scribe.mode != LoadSaveMode.PostLoadInit) return;
         bindings ??= [];
         try
@@ -224,6 +225,8 @@ public sealed class LiveChartersWindow : Window
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
         {
+            list.CheckboxLabeled("LI_Receive".Translate(), ref ledger.ReceiveLiegeInvitations);
+            list.Label("LI_Policy".Translate());
             if (target != null && target.Faction != Faction.OfPlayer)
             {
                 list.Label("HCL_Target".Translate(target.Label, target.Faction?.Name ?? "HCL_Missing".Translate()));

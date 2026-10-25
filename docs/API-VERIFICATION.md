@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## NPC 제안 시간/알림과 외부 실행 경계 — 0.3.21
+
+1.7 설치 Version.txt 1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 LetterStack.ReceiveLetter(TaggedString, TaggedString, LetterDef, string, int, bool) 기본값 오버로드를 정적으로 확인해 기존 LetterDefOf.NeutralEvent로 수신 편지를 추가한다. 별도 세력·지도자 생성, 외교·소유권·인구·재고 변경 API는 호출하지 않는다. GameComponentTick/Scribe_Values 저장·Listing_Standard 체크박스와 기존 참조/협정 생성 경로를 사용하며 1.6 참조 시그니처로 별도 컴파일한다. 실제 후보 자격과 native 대표 확인은 adapter에, 공통 선택·쿨다운은 규칙 프로젝트에 둔다.
+
+선택형 외부 실행 제공자는 별도 구현 대상이다. 설치 Hegemony API5/가이드의 소유권·전쟁·사건/영수증 경계는 HEGEMONY-OVERLAP-REVIEW.md에 기록했다. 이번 NPC 제안은 상대 모드의 도시 집행을 호출하거나 호환성을 보장하지 않는다.
+
 ## 이념의 손님 상태 알림과 노예 보존 제한 (0.3.17)
 
 설치 Version.txt 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 실제 Ideo.Notify_MemberGuestStatusChanged(Pawn)는 모든 교리의 같은 알림을 호출하고 예외는 로그로 처리한다. Precept의 기본 알림은 비어 있으며 RoleSingle/RoleMulti는 이를 상속한다. 기존 주민 SetFaction도 첫 guest.SetGuestStatus(null)에서 이 알림에 들어간다. 이에 기존 소속 변경 콜백 검사만으로 안전하다고 가정하던 누락을 보완해 두 Ideo 전달 함수와 실제 선택되는 교리의 손님 상태 콜백을 확인한다. 기본 Precept가 선언한 미패치 빈 손님 알림만 허용한다. 역할/커스텀/미지원 소속 알림 등 기존 제한도 유지한다. 1.6.4871 참조에서 Ideo/Precept의 두 알림 시그니처를 확인했다. 이는 1.6 실제 구현이나 게임 실행 증거가 아니다.
