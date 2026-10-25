@@ -6,13 +6,14 @@ using Verse;
 
 namespace Honor.Contracts.Preview;
 
-public sealed record LiveTownSuccessionReview(TownSuccessionPlan Plan, string Stamp, string Realm, string Representative);
+public sealed record LiveTownSuccessionReview(TownSuccessionPlan Plan, string Stamp, string Realm, string Representative, Game Context = null);
 
 public sealed partial class LiveCharterLedger
 {
     private string townLossSnapshot;
     private TownSuccessionArchive townLosses = new();
     internal IReadOnlyCollection<TownLossProof> TownLosses => townLosses.Records;
+    internal bool UnresolvedTownLosses => townLosses.HasUnresolved;
     private void ExposeTownLosses()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) townLossSnapshot = townLosses.Export();
@@ -28,8 +29,14 @@ public sealed partial class LiveCharterLedger
         if (!LossChangesAvailable()) throw new ArgumentException("Resolve unavailable or pending political/payment records.");
         var proof = townLosses.Record(root);
         var lostCity = Binding(proof.Territory).Settlement;
-        if (lostCity != null && !lostCity.Destroyed && Find.WorldObjects.AllWorldObjects.Contains(lostCity))
-            throw new ArgumentException("The previously destroyed object returned; review its new rights separately.");
+        if (proof.Kind == TownLossKind.Destroyed)
+        {
+            if (lostCity != null && !lostCity.Destroyed && Find.WorldObjects.AllWorldObjects.Contains(lostCity))
+                throw new ArgumentException("The previously destroyed object returned; review its new rights separately.");
+        }
+        else if (lostCity == null || lostCity.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(lostCity) ||
+            lostCity.Faction?.GetUniqueLoadID() != proof.CapturingOwner)
+            throw new ArgumentException("The observed hostile owner changed again; another review adapter is required.");
         var authority = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
         if (authority == null || authority.def == null || authority.IsPlayer || authority.def.defName == UnionPoliticsLedger.UnionDefName ||
             authority.def.royalTitleTags?.Count > 0 ||
@@ -57,12 +64,12 @@ public sealed partial class LiveCharterLedger
         string stamp = JsonSerializer.Serialize(new { Plan = plan, Archive = townLosses.Export(), Actual = actual,
             Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer),
             Transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), Observations = Observe() });
-        return new(plan, stamp, authority.Name, authority.leader.LabelShortCap);
+        return new(plan, stamp, authority.Name, authority.leader.LabelShortCap, Current.Game);
     }
     public void ApplyTownSuccession(LiveTownSuccessionReview reviewed)
     {
         Execute(() => {
-            if (reviewed == null || reviewed.Plan?.Replacements == null || reviewed.Plan.Replacements.Count == 0 ||
+            if (reviewed == null || reviewed.Context != Current.Game || reviewed.Plan?.Replacements == null || reviewed.Plan.Replacements.Count == 0 ||
                 reviewed.Plan.Replacements.Values.Any(v => string.IsNullOrWhiteSpace(v))) throw new ArgumentException("Review first.");
             string sample = reviewed.Plan.Replacements.Values.First(); int separator = sample.LastIndexOf('/');
             if (separator < 1) throw new ArgumentException("Invalid succession identity.");
@@ -71,7 +78,7 @@ public sealed partial class LiveCharterLedger
             var result = townLosses.Commit(Book, fresh.Plan, Find.TickManager.TicksGame, Observe());
             Book = result.Book; townLosses = result.Archive;
             Messages.Message("LS_Completed".Translate(fresh.Plan.Replacements.Count), MessageTypeDefOf.NeutralEvent);
-        });
+        }, resolvingLoss: true);
     }
 }
 
@@ -90,6 +97,8 @@ public sealed class TownSuccessionWindow : Window
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(12000, height + 1000)));
         list.Label("LS_Warning".Translate());
+        list.Label("HL_Limits".Translate());
+        if (ledger.UnresolvedTownLosses) list.Label("LS_Freeze".Translate());
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
         {

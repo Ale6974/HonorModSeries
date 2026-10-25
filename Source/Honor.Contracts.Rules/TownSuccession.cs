@@ -3,18 +3,22 @@ using System.Text.Json;
 namespace Honor.Contracts.Rules;
 
 public sealed record TownSuccessionReceipt(string Parent, long Tick, NpcCharterAuthority Authority, Dictionary<string, string> Replacements);
+public enum TownLossKind { Destroyed, HostileNativeOwnershipChange }
 public sealed record TownLossProof(string Root, string Territory, string BaselineOwner, string OwnerAtLoss, string Label,
-    long LossTick, long ObservedTick, string Before, TownSuccessionReceipt Resolution = null);
+    long LossTick, long ObservedTick, string Before, TownSuccessionReceipt Resolution = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] TownLossKind Kind = TownLossKind.Destroyed,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string CapturingOwner = null);
 public sealed record TownSuccessionPlan(string Root, string Before, string After, long Tick, string Parent,
     NpcCharterAuthority Authority, Dictionary<string, string> Replacements, string[] Descendants);
 public sealed record TownLossSave(int Version, TownLossProof[] Records);
 
-/// <summary>Verified town destruction followed by explicit same-realm contractual succession; no native ownership output.</summary>
+/// <summary>Verified native town loss followed by explicit same-realm contractual succession; no native ownership output.</summary>
 public sealed class TownSuccessionArchive
 {
     public const int Capacity = 128;
     private readonly Dictionary<string, TownLossProof> records = new(StringComparer.Ordinal);
     public IReadOnlyCollection<TownLossProof> Records => records.Values.ToArray();
+    public bool HasUnresolved => records.Values.Any(r => r.Resolution == null);
     public TownLossProof Record(string root) => records.TryGetValue(root ?? "", out var value) ? value : throw new ArgumentException("Unknown observed town loss.");
     private static bool Key(string id) => !string.IsNullOrWhiteSpace(id) && id.Length <= 120 && !id.Any(char.IsControl);
     private static RecordedCharter[] Descendants(CharterBook book, string territory) => book.Charters
@@ -22,21 +26,29 @@ public sealed class TownSuccessionArchive
     private static CharterBook Source(TownLossProof proof)
     {
         if (proof == null || !Key(proof.Root) || !Key(proof.Territory) || !Key(proof.BaselineOwner) || !Key(proof.OwnerAtLoss) ||
-            string.IsNullOrWhiteSpace(proof.Label) || proof.Label.Length > 200 || proof.LossTick < 0 || proof.ObservedTick < proof.LossTick || proof.ObservedTick > int.MaxValue)
+            string.IsNullOrWhiteSpace(proof.Label) || proof.Label.Length > 200 || proof.LossTick < 0 || proof.ObservedTick < proof.LossTick || proof.ObservedTick > int.MaxValue ||
+            !RuntimeCompat.IsDefined(proof.Kind) || (proof.Kind == TownLossKind.HostileNativeOwnershipChange ? !Key(proof.CapturingOwner) || proof.CapturingOwner == proof.OwnerAtLoss : proof.CapturingOwner != null))
             throw new ArgumentException("Invalid observed town loss.");
         var before = CharterBook.Restore(proof.Before); var root = before.Charter(proof.Root);
         if (before.LastTick > proof.LossTick || root.Terms.Subject != proof.Territory || !before.PlayerManaged(root) ||
             before.Entity(proof.Territory).NativeOwner != proof.BaselineOwner || Descendants(before, proof.Territory).Length == 0)
             throw new ArgumentException("No original managed upper-town scope.");
         var expected = CharterBook.Restore(before.Export());
-        expected.CloseDestroyedTown(proof.Root, proof.Territory, proof.BaselineOwner, proof.LossTick, proof.ObservedTick, true, true);
+        Close(expected, proof);
         return before;
+    }
+    private static void Close(CharterBook book, TownLossProof proof)
+    {
+        if (proof.Kind == TownLossKind.Destroyed)
+            book.CloseDestroyedTown(proof.Root, proof.Territory, proof.BaselineOwner, proof.LossTick, proof.ObservedTick, true, true);
+        else book.CloseHostileTransferredTown(proof.Root, proof.Territory, proof.BaselineOwner, proof.OwnerAtLoss,
+            proof.CapturingOwner, proof.LossTick, proof.ObservedTick, true, true);
     }
     public TownSuccessionArchive Observe(TownLossProof proof, CharterBook after)
     {
         var before = Source(proof);
         if (records.Count >= Capacity || records.ContainsKey(proof.Root) || proof.Resolution != null) throw new ArgumentException("Duplicate town loss or archive capacity.");
-        before.CloseDestroyedTown(proof.Root, proof.Territory, proof.BaselineOwner, proof.LossTick, proof.ObservedTick, true, true);
+        Close(before, proof);
         if (before.Export() != after.Export()) throw new ArgumentException("Observed loss cannot hide other book changes.");
         var copy = Restore(Export()); copy.records.Add(proof.Root, proof); copy.ValidateBook(after);
         if (copy.Export().Length > 32000000) throw new ArgumentException("Town loss archive byte capacity.");

@@ -235,13 +235,22 @@ public sealed class CharterBook
     public void CloseDestroyedLeaf(string id, string territory, string baselineOwner, long lossTick, long now, bool verifiedDestroyed)
         => CloseDestroyedTown(id, territory, baselineOwner, lossTick, now, verifiedDestroyed, false);
     public void CloseDestroyedTown(string id, string territory, string baselineOwner, long lossTick, long now, bool verifiedDestroyed, bool preserveChildren)
+        => CloseLostTown(id, territory, baselineOwner, lossTick, now, verifiedDestroyed, preserveChildren);
+    public void CloseHostileTransferredTown(string id, string territory, string baselineOwner, string previousOwner,
+        string currentOwner, long lossTick, long now, bool verifiedNativeChange, bool preserveChildren)
+    {
+        Key(previousOwner); Key(currentOwner);
+        Require(previousOwner != currentOwner, "Hostile loss requires distinct actual owners.");
+        CloseLostTown(id, territory, baselineOwner, lossTick, now, verifiedNativeChange, preserveChildren);
+    }
+    private void CloseLostTown(string id, string territory, string baselineOwner, long lossTick, long now, bool verifiedLoss, bool preserveChildren)
     {
         Time(now); var c = Charter(id); var entity = Entity(c.Terms.Subject);
-        Require(verifiedDestroyed && !entity.Player && entity.Id == territory && entity.NativeOwner == baselineOwner &&
+        Require(verifiedLoss && !entity.Player && entity.Id == territory && entity.NativeOwner == baselineOwner &&
             c.Phase == RecordedCharterPhase.Active && c.PlayerSignedTick.HasValue && c.NpcSignedTick.HasValue &&
             lossTick >= Math.Max(c.PlayerSignedTick.Value, c.NpcSignedTick.Value) && lossTick <= now &&
             (!c.PlayerReleaseTick.HasValue || c.PlayerReleaseTick <= lossTick) && (!c.NpcReleaseTick.HasValue || c.NpcReleaseTick <= lossTick),
-            "A verified destroyed NPC city with an active incoming charter is required.");
+            "A verified native NPC town loss with an active incoming charter is required.");
         Require((!Active().Any(other => other.Terms.Liege == territory) || preserveChildren && PlayerManaged(c) &&
                 Active().Where(other => IsBelow(other.Terms.Subject, territory)).All(other => !Entity(other.Terms.Subject).Player)) &&
             !charters.Values.Any(other => Phase(other, now) == RecordedCharterPhase.Offered && (other.Terms.Liege == territory || other.Terms.Subject == territory)),

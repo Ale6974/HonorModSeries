@@ -146,10 +146,11 @@ public sealed partial class LiveCharterLedger : GameComponent
         var binding = bindings.Single(b => b.Identity == npc);
         return binding.FactionGroup ? binding.OriginalFaction : binding.Settlement?.Faction;
     }
-    private bool Execute(Action action)
+    private bool Execute(Action action, bool resolvingLoss = false)
     {
-        if (Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges)
-        { Messages.Message("PS_Pending".Translate(), MessageTypeDefOf.RejectInput); return false; }
+        var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
+        if (resolvingLoss ? transition.BlocksApartFromTownLosses : transition.BlocksChanges)
+        { Messages.Message((UnresolvedTownLosses ? "LS_Freeze" : "PS_Pending").Translate(), MessageTypeDefOf.RejectInput); return false; }
         if (RestoreFailed) return false;
         try { action(); return true; }
         catch (ArgumentException) { Messages.Message("HCL_Unavailable".Translate(), MessageTypeDefOf.RejectInput); return false; }
@@ -208,7 +209,7 @@ public sealed partial class LiveCharterLedger : GameComponent
     public void Decline(string id) => Execute(() => {
         if (Book.Charter(id).NpcAuthority != null) throw new ArgumentException("Player response cannot withdraw NPC-only offers.");
         Book.Decline(id, Find.TickManager.TicksGame);
-    });
+    }, resolvingLoss: true);
     public void RequestRelease(string id)
     {
         Execute(() => {

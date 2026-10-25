@@ -1,5 +1,15 @@
 # 1.7 API·런타임 검증 기록
 
+## 연합의 전쟁 인수와 실제 적대 소유권 상실 — 0.3.25 / 2026-10-26
+
+설치 Version.txt의 1.7.4985 rev1269와 runtimeconfig의 net10.0 / 10.0.13-waylithclr.dev를 다시 확인했다. 실제 DLL에서 Faction.CanChangeGoodwillFor, GoodwillToMakeHostile, TryAffectGoodwillWith 및 양측 RelationKindWith/BaseGoodwillWith 경로를 확인했다. 새 연합 전쟁 인수는 NPC→NPC native goodwill 경로만 호출하며, 기존 동맹·quest lock/권한을 수락으로 우회하지 않는다. 변경 전 applying 의도를 남기고 반환 bool이 아니라 양측 Hostile 결과를 검사한다. 예외/다른 행위자가 이미 적대를 만든 경우 관측만 기록하며 호출 성공의 인과로 돌리지 않는다. 한 번 확인한 적대가 후속 화평으로 바뀌면 재선포하지 않는다. 플레이어 관계 반영은 기존 별도 공유 외교 경로를 그대로 사용한다.
+
+현재 연합과 실제 Settlement 목록·살아 있고 의사결정 가능한 대표를 조회해 가입 한정 NPC 의결을 수행한다. 도시당 기초1표와 명시한 관계/동맹/권한 정책은 Honor의 새 규칙이며 native 도시별 평의회 API라고 주장하지 않는다. 인구·기여 실적이 확인되지 않은 보너스 표는 만들지 않는다. 전체4단계 정치/영향력 의결의 완료도 아니다. 외부 제공자는 ModLister.GetActiveModWithIdentifier(id, true)로 활성/접미 변형까지 확인한다. 설치 DLL의 ModsConfig.IsActive는 단순 소문자 exact-ID 조회이므로 이 보호에 사용하지 않는다. Hegemony/WD2 전용 전쟁·점령 장부 어댑터가 없으면 해당 새 경로를 보류한다.
+
+실제 DLL의 WorldObject.SetFaction(Faction newFaction)는 public virtual void이며 canHaveFaction 조건 뒤 native owner를 바꾼다. pinned1.6.4871 참조에도 동일 시그니처/인자가 있다. 신규 Prefix/Postfix는 정확한 Settlement/등록된 원·목표 faction/기존 장부와 소유권 증거/양측 사전·사후 적대/정상 반환을 관측한다. native setter나 주민/물품을 이 관측자에서 직접 호출/변경하지 않는다. 외부 소속 상실은 실제 전투, 정복의 정당성이나 새 계약 체결의 증거가 아니다. 알려진 제공자·진행 중 journal·바뀐 검토·미등록/임시 소유자·후속 재탈환은 범위를 확장하지 않는다. 이전의 파괴 증거와 구분해 저장하며 생존 하위만 기존 현재 대표에게 새 검토를 받는다.
+
+1.6은 pinned 참조를 사용하는 별도 net472 빌드/규칙 호스트다. 설치1.7의 본문 확인을1.6 본문이나 설치/실행 증거로 대체하지 않는다. 게임 본문/참조 DLL은 Git·패키지에 넣지 않는다.
+
 ## 상위 native 도시의 소실 관측과 같은 세력 계약 재연결 — 0.3.24
 
 설치 1.7.4985 rev1269 및 net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 기존 WorldObject.Destroy 무인자 Prefix/Postfix 관측을 재사용한다. Prefix의 정확한 Settlement 객체·현재 faction/원래 장부·소유권 이력 확인과 정상 Postfix의 Destroyed/월드 목록 제거/동일 owner를 모두 확인한 때만 새 상위 소실 근거를 저장한다. 훅의 예외/재진입/소유자 변경/진행 중 상태에서는 기존 가드와 근거 보존을 유지한다.

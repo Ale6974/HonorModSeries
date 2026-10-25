@@ -98,11 +98,12 @@ public sealed class PlayerPoliticsLedger : GameComponent
                 throw new ArgumentException("Missing relations or a player-specific goodwill cap conflicts with shared diplomacy.");
         }
     }
-    private static void CheckAdmission(Faction root)
+    private static void CheckAdmission(Faction root, UnionWarConsent wars = null)
     {
         CheckProjection(root);
         var conflicts = AdmissionConflicts(root);
-        if (conflicts.Count > 0)
+        if (wars != null) UnionWarCouncil.ValidateAccepted(root, wars);
+        if (conflicts.Any(f => wars == null || !wars.Targets.Any(t => t.Enemy == f.GetUniqueLoadID())))
             throw new ArgumentException("UA_WarBlocked".Translate(string.Join(", ", conflicts.Select(f => f.Name))));
         if (Find.GoodwillSituationManager.GetMaxGoodwill(root) < 100 ||
             QuestUtility.IsGoodwillLockedByQuest(Faction.OfPlayer, root) &&
@@ -139,7 +140,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         try { action(); Synchronize(); }
         catch (ArgumentException) { Rejected(); }
     }
-    internal AllegianceCommand PlanCommand(bool joinUnion)
+    internal AllegianceCommand PlanCommand(bool joinUnion, UnionWarConsent wars = null)
     {
         if (RestoreFailed || Charters.RestoreFailed) throw new ArgumentException("Charter/allegiance ledger unavailable.");
         if (State.Mode == PlayerAllegianceMode.Union) ValidateAuthority();
@@ -164,17 +165,18 @@ public sealed class PlayerPoliticsLedger : GameComponent
             command = new(AllegianceAction.BindLiege, Find.TickManager.TicksGame, root?.GetUniqueLoadID(), bond.Id,
                 Consent: true, OldContractReleased: true, UnionDuesSettled: true);
         }
-        CheckTransitionAdmission(root);
+        if (!joinUnion && wars != null) throw new ArgumentException("War admission belongs to the reviewed union only.");
+        CheckTransitionAdmission(root, wars);
         AllegianceChangeSource.Validate(Charters.Book, State, command, payments.Ledger);
         var clone = PlayerAllegiance.Restore(Model.Export()); clone.Apply(command);
         return command;
     }
-    internal void CheckTransitionAdmission(Faction root)
+    internal void CheckTransitionAdmission(Faction root, UnionWarConsent wars = null)
     {
         if (root == null || root.IsPlayer || root.def.defName == RealmAdministrationLedger.DefName || root.Hidden || root.defeated || !root.HasGoodwill ||
             root.HostileTo(Faction.OfPlayer) || root.leader == null || root.leader.Dead || root.leader.Faction != root)
             throw new ArgumentException("No current authority admission.");
-        CheckAdmission(root);
+        CheckAdmission(root, wars);
     }
     internal Faction TransitionAuthority() => ValidateAuthority(true);
     internal void ApplyTransitionDiplomacy(Faction root)
@@ -200,6 +202,8 @@ public sealed class PlayerPoliticsLedger : GameComponent
     public void Synchronize()
     {
         if (Current.ProgramState != ProgramState.Playing || synchronizing || routing || RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended) return;
+        var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
+        if (transition.Journal.Pending && (!transition.Journal.WarsReady || transition.Journal.Current.Wars != null && UnionWarCouncil.HasExternalProvider)) return;
         try
         {
             var root = ValidateAuthority(); var player = Faction.OfPlayer;
@@ -234,6 +238,8 @@ public sealed class PlayerPoliticsLedger : GameComponent
         result = false;
         if (Current.ProgramState != ProgramState.Playing || routing || RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended ||
             actor != Faction.OfPlayer && other != Faction.OfPlayer) return false;
+        var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
+        if (transition.Journal.Pending && (!transition.Journal.WarsReady || transition.Journal.Current.Wars != null && UnionWarCouncil.HasExternalProvider)) return false;
         if (IsAdministration(actor) || IsAdministration(other)) return false; // Native player/own-administration events are internal, never foreign-root events.
         Faction root;
         try { root = ValidateAuthority(); } catch (ArgumentException) { Suspend(); return false; }
@@ -279,6 +285,7 @@ internal static class SharedPlayerGoodwillSituations
 
 public sealed class PlayerAllegianceWindow : Window
 {
+    private bool proposeWars;
     private PoliticalChangeReview review;
     private Vector2 scroll;
     private float height = 1000;
@@ -287,6 +294,8 @@ public sealed class PlayerAllegianceWindow : Window
     private void Review(Func<PoliticalChangeReview> action)
     {
         try { review = action(); }
+        catch (UnionWarRejected rejected) { review = null; Messages.Message(("WU_Decision_" + rejected.Reason).Translate(), MessageTypeDefOf.RejectInput); }
+        catch (UnionWarProviderUnavailable) { review = null; Messages.Message("WU_Provider".Translate(), MessageTypeDefOf.RejectInput); }
         catch (ArgumentException) { review = null; Messages.Message("PS_Rejected".Translate(), MessageTypeDefOf.RejectInput); }
     }
     public override void DoWindowContents(Rect rect)
@@ -300,6 +309,7 @@ public sealed class PlayerAllegianceWindow : Window
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(12000, height + 1000)));
         list.Label("PA_Warning".Translate()); list.Label("PS_Warning".Translate()); list.Label("WM_Warning".Translate());
         list.Label("AD_Warning".Translate());
+        if (Current.Game.GetComponent<LiveCharterLedger>().UnresolvedTownLosses) list.Label("LS_Freeze".Translate());
         if (list.ButtonText("CA_OpenAll".Translate())) territories.OpenPreservationAudit();
         if (list.ButtonText("NS_Open".Translate())) Find.WindowStack.Add(new NpcSubchartersWindow());
         if (administration.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
@@ -324,6 +334,8 @@ public sealed class PlayerAllegianceWindow : Window
             }
             if (transition.Journal.Pending)
             {
+                if (transition.Journal.Current.Wars != null)
+                    list.Label("WU_Progress".Translate(transition.Journal.Current.WarResults.Count(r => r.Step == UnionWarStep.Verified), transition.Journal.Current.WarResults.Length));
                 list.Label("PS_Pending".Translate());
                 list.Label(("PS_" + transition.Journal.Current.Phase).Translate());
                 foreach (var pending in territories.Ledger.Transfers.Where(t => t.Phase == TerritoryTransferPhase.Prepared).ToArray())
@@ -337,6 +349,13 @@ public sealed class PlayerAllegianceWindow : Window
             }
             else
             {
+                if (ledger.State.Mode != PlayerAllegianceMode.Union)
+                {
+                    bool previousWars = proposeWars;
+                    list.CheckboxLabeled("WU_Propose".Translate(), ref proposeWars);
+                    list.Label("WU_Policy".Translate());
+                    if (previousWars != proposeWars) review = null;
+                }
                 if (ledger.State.Suspended)
                 {
                     list.Label("PA_Suspended".Translate());
@@ -344,13 +363,13 @@ public sealed class PlayerAllegianceWindow : Window
                 }
                 if (ledger.UnionCandidate != null && ledger.State.Mode != PlayerAllegianceMode.Union &&
                     list.ButtonText((ledger.State.Mode == PlayerAllegianceMode.Vassal ? "PS_ReturnUnion" : "PA_ReviewUnion").Translate()))
-                    Review(() => transition.Review(true));
+                    Review(() => transition.Review(true, proposeWars));
                 if (ledger.UnionCandidate != null && ledger.State.Mode != PlayerAllegianceMode.Union)
                 {
                     try
                     {
                         var conflicts = PlayerPoliticsLedger.AdmissionConflicts(ledger.UnionCandidate);
-                        if (conflicts.Count > 0) list.Label("UA_WarBlocked".Translate(string.Join(", ", conflicts.Select(f => f.Name))));
+                        if (conflicts.Count > 0 && review?.Wars == null) list.Label("UA_WarBlocked".Translate(string.Join(", ", conflicts.Select(f => f.Name))));
                     }
                     catch (ArgumentException) { list.Label("PA_Rejected".Translate()); }
                 }
@@ -361,11 +380,18 @@ public sealed class PlayerAllegianceWindow : Window
             }
             if (review != null)
             {
+                if (review.Wars != null)
+                {
+                    list.Label("WU_Votes".Translate(review.Wars.ApprovedWeight, review.Wars.TotalWeight));
+                    foreach (var enemy in review.Wars.Targets) list.Label("WU_Enemy".Translate(UnionWarCouncil.Name(enemy.Enemy)));
+                    list.Label((review.Wars.Founding ? "WU_Founding" : "WU_Council").Translate());
+                }
                 list.Label("PA_Review".Translate(review.Destination.Name));
                 foreach (var faction in Find.FactionManager.AllFactionsListForReading.Where(f => !f.IsPlayer && !f.Hidden && f != review.Destination && f != administration.OwnedFaction))
                 {
                     var relation = review.Destination.RelationWith(faction, true);
-                    if (relation != null) list.Label("PA_Relation".Translate(faction.Name, relation.baseGoodwill, ("PA_Kind" + relation.kind).Translate()));
+                    if (review.Wars?.Targets.Any(t => t.Enemy == faction.GetUniqueLoadID()) == true) list.Label("WU_PlannedHostility".Translate(faction.Name));
+                    else if (relation != null) list.Label("PA_Relation".Translate(faction.Name, relation.baseGoodwill, ("PA_Kind" + relation.kind).Translate()));
                 }
                 list.Label("FB_Plan".Translate(review.Destination.Name, review.Followers.Moves.Count, review.Followers.Entries.Count));
                 list.Label("RE_Limits".Translate());

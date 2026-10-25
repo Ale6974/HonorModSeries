@@ -38,6 +38,8 @@ internal static class TownSuccessionTests
         Reject(seed.Book, () => seed.Book.CloseDestroyedLeaf("root", "upper", "realm", 100, 100, true), "legacy leaf API does not silently gain upper-town authority");
         Reject(seed.Book, () => seed.Book.CloseDestroyedTown("root", "upper", "realm", 100, 100, false, true), "missing native destruction proof");
         var lost = Lose(seed.Book, "root", 100); var source = lost.After;
+        Check(lost.Archive.HasUnresolved && TownSuccessionArchive.Restore(lost.Archive.Export()).HasUnresolved,
+            "recorded unresolved upper loss survives reload and freezes unrelated political scope changes");
         Check(source.Charter("root").Phase == RecordedCharterPhase.TerritoryLost && source.Charter("child-a").Phase == RecordedCharterPhase.Active,
             "only destroyed-town bond ends before explicit review");
         Check(!source.PlayerManaged(source.Charter("child-a")), "orphaned chain is not silently treated as normal player authority");
@@ -47,6 +49,8 @@ internal static class TownSuccessionTests
         Check(source.Charter("child-a") == beforeChild && source.Charter("grandchild") == deep, "review is read-only");
         Check(plan.Replacements.Count == 2 && plan.Descendants.Length == 3 && plan.Parent == "p", "only direct children replaced; full deeper subtree reviewed");
         var completed = lost.Archive.Commit(source, plan, 200, observations);
+        Check(!completed.Archive.HasUnresolved && !TownSuccessionArchive.Restore(completed.Archive.Export()).HasUnresolved && lost.Archive.HasUnresolved,
+            "only committed copied resolution clears its freeze without mutating original history");
         Check(completed.Book.Charter("child-a").Phase == RecordedCharterPhase.Replaced && completed.Book.Charter("child-b").Phase == RecordedCharterPhase.Replaced,
             "old direct contracts remain as explicit replaced history");
         Check(completed.Book.Charter("child-a").Terms == beforeChild.Terms && completed.Book.Charter("child-a").NpcAuthority == beforeChild.NpcAuthority &&
@@ -93,7 +97,9 @@ internal static class TownSuccessionTests
         string promoted = plan.Replacements["child-a"]; var later = Lose(completed.Book, promoted, 300, completed.Archive);
         var laterObs = observations.Select(o => o.Id == "a" ? o with { Exists = false, Eligible = false } : o).ToArray();
         var laterPlan = later.Archive.Review(promoted, later.After, "later", authority, 400, laterObs);
+        Check(later.Archive.HasUnresolved, "earlier completed receipt cannot conceal a later unresolved loss");
         var laterDone = later.Archive.Commit(later.After, laterPlan, 400, laterObs); laterDone.Archive.ValidateBook(laterDone.Book);
+        Check(!laterDone.Archive.HasUnresolved, "all recorded resolutions permit normal politics again");
         Check(laterDone.Book.Root("g") == "p" && laterDone.Archive.Records.Count == 2, "successive real town losses keep both histories and reconnect the surviving grandchild");
         Check(source.Export() == lost.After.Export() && seed.Book.Export() == legacy, "source books remain unchanged throughout staged operations");
         var unmanaged = Seed(true); unmanaged.Book.ConsentToRelease("top", true, 1, unmanaged.Observed); unmanaged.Book.ConsentToRelease("top", false, 1, unmanaged.Observed);
@@ -108,6 +114,37 @@ internal static class TownSuccessionTests
         Check(pendingLoss.Archive.Review("root", pendingLoss.After, "cleared", authority, 200, observations).Replacements.Count == 2,
             "resolved proposal permits a fresh review without changing original loss evidence");
         var archiveSave = JsonSerializer.Deserialize<TownLossSave>(completed.Archive.Export());
+        Check(!lost.Archive.Export().Contains("CapturingOwner") && !lost.Archive.Export().Contains("\"Kind\""),
+            "destruction archive omits new ownership-loss fields and retains legacy bytes");
+        var occupation = Seed(); string occupationBefore = occupation.Book.Export();
+        Reject(occupation.Book, () => occupation.Book.CloseHostileTransferredTown("root", "upper", "realm", "realm", "realm", 100, 100, true, true),
+            "ownership loss cannot name identical native owners");
+        Reject(occupation.Book, () => occupation.Book.CloseHostileTransferredTown("root", "upper", "realm", "realm", "captor", 100, 100, false, true),
+            "uncertain native change cannot terminate a charter");
+        Reject(occupation.Book, () => occupation.Book.CloseHostileTransferredTown("root", "upper", "wrong", "realm", "captor", 100, 100, true, true),
+            "hostile change retains exact original native identity guard");
+        occupation.Book.CloseHostileTransferredTown("root", "upper", "realm", "realm", "captor", 100, 100, true, true);
+        var occupationProof = new TownLossProof("root", "upper", "realm", "realm", "Captured town", 100, 100, occupationBefore,
+            Kind: TownLossKind.HostileNativeOwnershipChange, CapturingOwner: "captor");
+        var occupationArchive = new TownSuccessionArchive().Observe(occupationProof, occupation.Book);
+        Check(occupationArchive.HasUnresolved && occupation.Book.Charter("child-a").Phase == RecordedCharterPhase.Active &&
+            occupation.Book.Charter("root").Phase == RecordedCharterPhase.TerritoryLost, "observed hostile change ends only incoming bond and freezes orphan succession");
+        var occupationObs = occupation.Observed.Select(o => o.Id == "upper" ? o with { NativeOwner = "captor", Eligible = false } : o).ToArray();
+        var occupationPlan = occupationArchive.Review("root", occupation.Book, "occupation", authority, 200, occupationObs);
+        var occupationDone = occupationArchive.Commit(occupation.Book, occupationPlan, 200, occupationObs);
+        Check(occupationDone.Book.Root("g") == "p" && occupationDone.Book.Charter("grandchild") == seed.Book.Charter("grandchild") &&
+            occupationDone.Book.Charter("child-a").Terms == seed.Book.Charter("child-a").Terms, "hostile upper loss reconnects only surviving children without replacing old terms or deeper bonds");
+        Check(occupationDone.Archive.Record("root").Kind == TownLossKind.HostileNativeOwnershipChange && occupationDone.Archive.Record("root").CapturingOwner == "captor",
+            "native ownership loss remains distinct from destruction evidence");
+        var occupationReload = TownSuccessionArchive.Restore(occupationDone.Archive.Export()); occupationReload.ValidateBook(occupationDone.Book);
+        Check(occupationReload.Export() == occupationDone.Archive.Export() && !occupationReload.HasUnresolved, "hostile owner scope and resolution survive reload");
+        Reject(occupation.Book, () => new TownSuccessionArchive().Observe(occupationProof with { CapturingOwner = "realm" }, occupation.Book), "source cannot be its own captor");
+        Reject(occupation.Book, () => new TownSuccessionArchive().Observe(occupationProof with { CapturingOwner = null }, occupation.Book), "missing actual captor blocks occupation evidence");
+        Reject(occupation.Book, () => new TownSuccessionArchive().Observe(occupationProof with { Kind = (TownLossKind)99 }, occupation.Book), "unknown native loss kind");
+        Reject(occupation.Book, () => new TownSuccessionArchive().Observe(occupationProof with { Kind = TownLossKind.Destroyed }, occupation.Book), "destruction cannot retain a foreign-owner payload");
+        var occupiedLeaf = Seed(); occupiedLeaf.Book.CloseHostileTransferredTown("grandchild", "g", "realm", "realm", "captor", 100, 100, true, false);
+        Check(occupiedLeaf.Book.Charter("grandchild").Phase == RecordedCharterPhase.TerritoryLost && occupiedLeaf.Book.Charter("child-a").Phase == RecordedCharterPhase.Active,
+            "hostile leaf loss does not terminate its living parent");
         void BadArchive(TownLossSave value, string name)
         { bool rejected = false; try { var a = TownSuccessionArchive.Restore(JsonSerializer.Serialize(value)); a.ValidateBook(completed.Book); } catch (ArgumentException) { rejected = true; } Check(rejected, name); }
         BadArchive(archiveSave with { Version = 99 }, "unknown archive version");
