@@ -191,6 +191,7 @@ assertions += CharterAcceptanceTests.Run();
 assertions += TownSuccessionTests.Run();
 assertions += TownLossCascadeTests.Run();
 assertions += TownLossMergeTests.Run();
+assertions += PendingTownLossTests.Run();
 assertions += UnionWarAdmissionTests.Run();
 assertions += FeudalWarAdmissionTests.Run();
 assertions += FollowerTransfersTests.Run();

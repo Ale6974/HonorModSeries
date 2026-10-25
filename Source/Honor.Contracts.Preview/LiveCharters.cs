@@ -127,6 +127,11 @@ public sealed partial class LiveCharterLedger : GameComponent
     {
         Book = SubtreeRelease.Commit(Book, plan, Find.TickManager.TicksGame, Observe());
     }
+    internal void ReplaceAfterPendingTownLoss(string before, CharterBook after)
+    {
+        if (RestoreFailed || Book.Export() != before) throw new ArgumentException("Original consent changed.");
+        townLosses.ValidateBook(after); Book = after;
+    }
     public string Label(string identity)
     {
         var binding = bindings.SingleOrDefault(b => b.Identity == identity);

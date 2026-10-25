@@ -1,5 +1,14 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.29 — idle 개별 이전 중 빈 말단 도시 실제 파괴·명시 정리 (2026-10-26)
+
+- 신규34개 assertion: 실제 양의 증거 없는 검토 불가, 관측/검토 시 원 book·Prepared 이전 불변, 별도 Destroyed 결과와 정확한 소실/정리 시각·source 또는 target owner 유지, 원 조건/서명/채무 및 미합의 해약 상태 보존, 동일 identity의 소유권 정규화 금지와 저장 왕복을 확인했다.
+- 중복·미래/과거 시각·잘못된 도시/owner·달라진 빈 stock/완료 상태·book 변화·상위 도시·주민 proof·released purpose·원래 물품·변조된 After/증거 hash·성공으로 가장한 상태·증거 없는 terminal/저장 중복/미지원 schema/원 증거 변경을 거절하고 실패 전후 원본 불변을 확인했다.
+- 1.7/net10과1.6/net472 전체 빌드·동일 규칙 호스트 통과. 최신 native 메시지/가드 뒤1.7 Preview도 재빌드했다. Contracts **3,690** + Honor/runtime **20,093** = 대상별 **23,783**개 assertion, 빌드 경고/오류0. EN/KO **380개** 공용 키·자리표시자와 FactionDef12개 필드를 확인했다.
+- 기존 정상-return native Destroy 관측의 별도 증거 저장 → 이전 UI의 현재 게임/현재 객체/원본 재검토 → 명시적 book/transfer/witness 교체를 연결했다. 자신의 native 집행/복구 중 실행 깊이·정치/하위 해약/지도자/납부 pending을 제외한다. 주민/물품 custody·재진입·정치 조정 중 소실의 완료 증거로 사용하지 않는다.
+- 6모드/두 런타임 패키지 허용 목록, 영한 중복 키 부재와 실제 PL 소스7개 literal 키 및 Destroyed 상태 번역을 별도 검사했다. ZIP SHA256: `C3AE3A7316FF6CB9B307BD917E1749CA1103B3C1611B83E7CF15F487CCF9374A`.
+- 기존0.3.28 로컬 설치본을 .local에 백업하고0.3.29를 설치했다. 원본/설치32개 파일 해시와 About 버전이 일치하고 ModsConfig.xml/Prefs.xml 해시는 불변이다. 다른 모듈/Steam 게시/활성화/언어는 변경하지 않았다. 1단계 미완료로30분 반복 예약을 유지한다.
+
 ## Contracts 0.3.28 — 역순 상위 소실·옛 미정리 범위 불변 참조 (2026-10-26)
 
 - 신규35개 assertion: 기존 일반 관측 API의 상위 가드 유지, 별도 같은 세력 역순 경로, 옛 ID/Before/종류/순서 불변, 현재 최상위/별도 로컬 순서, 깊은 생존 전방과 미손실 내부 상위 유지, 실제 snapshot으로 같은 tick의 두 독립 범위 원본 판별, 파괴/적대 소속 상실 혼합과 전체 재연결·저장 왕복을 검사했다.

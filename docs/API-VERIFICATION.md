@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 개별 이전 보류 중 빈 말단 도시 파괴 — 0.3.29 / 2026-10-26
+
+설치1.7.4985 rev1269와 net10.0 /10.0.13-waylithclr.dev를 재확인했다. Settlement의 Destroy override가 없음을 설치 DLL에서 확인하고 기존 WorldObject.Destroy 무인자 Prefix/Postfix를 재사용한다. 기존 exact Settlement_TraderTracker.GetDirectlyHeldThings와 NextRestockTick을 읽어 stock을 생성하지 않고 빈 holder/visited/restock 상태의 원래 proof 일치를 확인한다. 등록 주민 목록은 비어 있어야 하고 map/주민 원본/보존 중 수술/동물·물품은 제외한다. 자신의 native 집행/복구 동안의 실행 깊이와 정치·하위 해약·지도자·납부 journal을 확인해 재진입/다른 intent로 권한을 넓히지 않는다.
+
+정상 반환 뒤 Destroyed/월드 제거/같은 실제 owner·빈 상태/불변 원본 book·transfer를 모두 확인한 경우에만 별도 양의 증거를 저장한다. 저장 후 city 참조가 해소되어도 이 기록이 있는 경우만 다루며, 같은 native ID가 다시 존재하거나 남은 객체/재고/원본이 바뀌면 보류한다. 사용자 재검토/확정은 순수 book·transfer·witness 사본의 원자적 교체다. 기존 native SetFaction/원본 주민·재고 복구를 이 경로에서 호출하지 않는다. Source/Target 중 실제 소실 owner를 보존하고 성공/취소로 기록하지 않는다. 파괴 terminal과 실제 증거/완료 hash를 로드 때 대조한다. 1.6은 pinned 참조/net472 별도 호스트로 검사하며 설치 본문 증거로 대체하지 않는다.
+
 ## 역순 상위 소실과 이전 범위 참조 — 0.3.28 / 2026-10-26
 
 설치1.7.4985 rev1269와 net10.0 /10.0.13-waylithclr.dev를 재확인했다. 새 native 진입점/소유권·주민·재고 변이는 없다. 기존 정상 반환 Destroy/SetFaction 전후 관측에 현재 정확한 상위 계약·Native owner provenance·같은 원 세력/미정리 하위 범위·공통 원 관리 그래프 확인을 추가했다. 이전 기록을 덮지 않고 새 실제 상위 소실의 PriorScopes에 옛 ID를 참조한다. 기존 일반 ObservationScope의 상위 권한 거절은 유지한다.

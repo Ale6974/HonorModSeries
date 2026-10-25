@@ -23,7 +23,7 @@ public sealed record TerritoryAdministrationReview(string Charter, string City, 
     TerritoryTransferPurpose Purpose, string Stamp, string TargetIdentity, int Residents = 0);
 
 /// <summary>Optional actual NPC city ownership execution. Never assigns a city to the native player faction.</summary>
-public sealed class TerritoryAdministrationLedger : GameComponent
+public sealed partial class TerritoryAdministrationLedger : GameComponent
 {
     private string snapshot;
     private List<TerritoryTransferReference> references = [];
@@ -39,6 +39,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) snapshot = Ledger.Export();
         Scribe_Values.Look(ref snapshot, "honorTerritoryTransfersV1");
         Scribe_Collections.Look(ref references, "honorTerritoryTransferReferences", LookMode.Deep);
+        ExposePendingTownLosses();
         if (Scribe.mode != LoadSaveMode.PostLoadInit) return;
         references ??= [];
         try
@@ -83,6 +84,9 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                     else ResidentExecution.ReleaseReferences(reference.Residents);
                 }
             }
+            pendingTownLosses.ValidatePair(Charters.Book, Ledger);
+            if (pendingTownLosses.Records.Any(r => r.ObservedTick > Find.TickManager.TicksGame || r.ResolvedTick > Find.TickManager.TicksGame))
+                throw new ArgumentException("Future native destruction record.");
         }
         catch (Exception e) when (e is ArgumentException or System.Text.Json.JsonException or InvalidOperationException)
         { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Territory execution/source mismatch; sharing blocked and records retained."); }
@@ -144,6 +148,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         if (reviewed == null) { Reject(); return false; }
         try
         {
+            nativeExecutionDepth++;
             var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
             if (transition.BlocksChanges && !transition.Executing && !Current.Game.GetComponent<SubtreeExitLedger>().Executing) throw new ArgumentException("Resolve coordinated transition first.");
             var current = ReviewForTarget(reviewed.Charter, target);
@@ -168,6 +173,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         }
         catch (Exception e)
         { Log.Warning("[Honor.Contracts.Preview] Territory execution incomplete; recorded intent retained. " + e.GetType().Name); Reject(); Find.TickManager.Pause(); return false; }
+        finally { nativeExecutionDepth--; }
     }
     public FollowerTransferPlan ReviewFollowers() => ReviewFollowersFor(Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority());
     internal FollowerTransferPlan ReviewFollowersFor(Faction target)
@@ -237,8 +243,10 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     public void Recover(string id)
     {
         if (RestoreFailed || Charters.RestoreFailed) { Reject(); return; }
+        if (pendingTownLosses.HasPending(id)) { Messages.Message("PL_Pending".Translate(), MessageTypeDefOf.RejectInput); return; }
         try
         {
+            nativeExecutionDepth++;
             var item = Ledger.Transfer(id); var reference = references.Single(r => r.Id == id);
             if (reference.City == null || reference.City.Faction == null || "territory/" + reference.City.GetUniqueLoadID() != item.Territory ||
                 reference.From == null || reference.From.GetUniqueLoadID() != item.FromOwner || reference.Target == null ||
@@ -277,6 +285,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         }
         catch (Exception e)
         { Log.Warning("[Honor.Contracts.Preview] Territory recovery incomplete; original resident/stock intent retained. " + e.GetType().Name); Reject(); Find.TickManager.Pause(); }
+        finally { nativeExecutionDepth--; }
     }
     private void ValidateResidentRecovery(TerritoryTransfer item, TerritoryTransferReference reference)
     {
@@ -333,6 +342,7 @@ public sealed class FollowerTransfersWindow : Window
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 12000));
         list.Label("FB_Warning".Translate());
         list.Label("RE_Limits".Translate());
+        ledger.DrawPendingTownLosses(list);
         if (list.ButtonText("CA_OpenAll".Translate())) ledger.OpenPreservationAudit();
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
@@ -377,6 +387,7 @@ public sealed class TerritoryAdministrationWindow : Window
         list.Label("CT_Warning".Translate());
         list.Label("RE_Limits".Translate());
         Current.Game.GetComponent<LeaderRelocationLedger>().Draw(list, charter);
+        ledger.DrawPendingTownLosses(list, charter);
         if (list.ButtonText("CA_Open".Translate())) ledger.OpenPreservationAudit(charter);
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
