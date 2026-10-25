@@ -1,6 +1,6 @@
 # 의존성·권장 구성 / Dependencies
 
-현재 소스/로컬 배포는 **0.2.2 호환성 빌드 + Contracts Preview 0.3.13**이다. RimWorld 1.6.4871 참조/net472와 설치된 1.7.4985 rev1269/net10으로 각각 빌드·규칙 검사했다. 실제 1.6 게임/Mono 실행은 검증하지 않았다. 기존 Steam 공개본은 0.2.1로 유지하며 이 변경은 GitHub 소스와 로컬 ZIP으로 제공한다. [정확한 검증 범위](VERSION-SUPPORT.md).
+현재 소스/로컬 배포는 **0.2.2 호환성 빌드 + Contracts Preview 0.3.14**이다. RimWorld 1.6.4871 참조/net472와 설치된 1.7.4985 rev1269/net10으로 각각 빌드·규칙 검사했다. 실제 1.6 게임/Mono 실행은 검증하지 않았다. 기존 Steam 공개본은 0.2.1로 유지하며 이 변경은 GitHub 소스와 로컬 ZIP으로 제공한다. [정확한 검증 범위](VERSION-SUPPORT.md).
 
 | 항목 | 필수 모드 | 필수 DLC | 다른 부속 모드 필요? |
 |---|---|---|---|
@@ -9,7 +9,7 @@
 | Honor.Nobility 0.2.2 | Harmony + Core 0.2.2 이상 | **Royalty** | 없음 |
 | Honor.Diplomacy 0.2.2 | Harmony + Core 0.2.2 이상 | 없음 | 없음 |
 | Honor.Oaths 0.2.2 | Harmony + Core 0.2.2 이상 | 없음 | 없음 |
-| Contracts Preview 0.3.13 (선택형 개발 모드) | Harmony + Core 0.2.2 이상 | 없음 | 없음 |
+| Contracts Preview 0.3.14 (선택형 개발 모드) | Harmony + Core 0.2.2 이상 | 없음 | 없음 |
 
 Harmony의 동일 Workshop 항목(2009463077)을 사용하되 1.6은 1.6/Assemblies의 2.x, 1.7은 1.7/Assemblies의 3.x를 사용한다. DLL을 직접 다른 버전 폴더에 복사하지 않는다. .NET SDK는 소스 빌드에만 필요하다.
 

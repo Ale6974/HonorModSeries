@@ -7,6 +7,17 @@ public sealed record ResidentMoveEvidence(string Id, string Preserved, int? Medi
 public sealed record ResidentMoveActual(string Id, string Faction, string Preserved, int? MedicalCare);
 public enum ResidentMoveAction { ChangeFaction, RestoreMedicalCare, Verify }
 
+public static class ResidentMoveProfiles
+{
+    public static string Compose(string legacy, string surgery, int profile)
+    {
+        if (!CityStockProof.Valid(legacy) || profile is not (1 or 2) || (profile == 1 ? surgery != null : !CityStockProof.Valid(surgery)))
+            throw new ArgumentException("Invalid resident preservation profile.");
+        return profile == 1 ? legacy : RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(new { Profile = 2, Legacy = legacy, Surgery = surgery }))));
+    }
+}
+
 /// <summary>A bounded preservation contract for an executing city transfer, never a diagnostic baseline.</summary>
 public sealed class ResidentMoveSet
 {

@@ -16,13 +16,17 @@ public sealed class ResidentExecutionRecord : IExposable
     public string Snapshot;
     public List<Pawn> Pawns = [];
     public bool Started;
+    public int Profile = 1;
+    public List<ResidentSurgeryRecord> Surgery = [];
     public void ExposeData()
     {
         Scribe_Values.Look(ref Snapshot, "preservationV1"); Scribe_Values.Look(ref Started, "started");
         Scribe_Collections.Look(ref Pawns, "residentReferences", LookMode.Reference);
-        if (Scribe.mode == LoadSaveMode.PostLoadInit) Pawns ??= [];
+        Scribe_Values.Look(ref Profile, "profile", 1);
+        Scribe_Collections.Look(ref Surgery, "surgicalCustody", LookMode.Deep);
+        if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; }
     }
-    public ResidentMoveSet Set() => ResidentMoveSet.Restore(Snapshot);
+    public ResidentMoveSet Set() => Profile is 1 or 2 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
 }
 
 internal static class ResidentExecution
@@ -37,15 +41,15 @@ internal static class ResidentExecution
             city.previouslyGeneratedInhabitants.Count is < 1 or > ResidentMoveSet.Capacity)
             throw new ArgumentException("Unavailable resident town.");
     }
-    private static void Eligible(Pawn p)
+    private static void Eligible(Pawn p, bool surgery)
     {
-        if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || p.Spawned || !p.IsWorldPawn() ||
+        if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || p.RaceProps.body == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || p.Spawned || !p.IsWorldPawn() ||
             p.holdingOwner != null || p.Faction == null || p.Faction.IsPlayer || p.HostFaction != null || p.IsPrisoner || p.IsSlave ||
             PawnUtility.IsFactionLeader(p) || p.InMentalState || p.Downed || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
             p.GetLord() != null || p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
             p.HasExtraHomeFaction() || p.HasExtraMiniFaction() || p.GetExtraHostFaction() != null || p.questTags?.Count > 0 ||
             (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
-            p.health?.surgeryBills == null || p.health.surgeryBills.Count != 0 || p.health.hediffSet?.hediffs == null || p.needs?.AllNeeds == null || p.relations?.DirectRelations == null ||
+            p.health?.surgeryBills == null || !surgery && p.health.surgeryBills.Count != 0 || p.health.hediffSet?.hediffs == null || p.needs?.AllNeeds == null || p.relations?.DirectRelations == null ||
             p.relations.DirectRelations.Count > 1000 || p.relations.DirectRelations.Any(r => r == null || r.def == null || r.otherPawn == null) ||
             (p.needs.mood?.thoughts?.memories?.Memories.Count ?? 0) > 1000 ||
             p.needs.mood?.thoughts?.memories?.Memories.Any(m => m == null || m.def == null || m.GetType().Assembly != typeof(Pawn).Assembly) == true ||
@@ -60,9 +64,10 @@ internal static class ResidentExecution
             Areas.GetValue(p.playerSettings) is not IDictionary areas || areas.Count != 0 || p.playerSettings.Master != null))
             throw new ArgumentException("Unsupported persistent resident restrictions.");
     }
-    internal static ResidentMoveActual Read(Pawn p)
+    internal static ResidentMoveActual Read(Pawn p, int profile = 1, ResidentSurgeryRecord surgery = null)
     {
-        Eligible(p); var baseline = ResidentBaselineStore.Evidence(p);
+        if (profile is not (1 or 2)) throw new ArgumentException("Unknown resident profile.");
+        Eligible(p, profile == 2); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
             baseline.Id, baseline.Health, baseline.Gear,
@@ -75,21 +80,24 @@ internal static class ResidentExecution
             Settings = settings == null ? null : new { settings.joinTick, settings.followDrafted, settings.followFieldwork, settings.animalsReleased,
                 settings.hostilityResponse, settings.selfTend, settings.displayOrder, settings.animalForage, settings.animalDig }
         });
+        preserved = ResidentMoveProfiles.Compose(preserved, profile == 2 ? ResidentSurgery.Proof(p, surgery) : null, profile);
         return new(baseline.Id, p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
     }
-    internal static ResidentExecutionRecord Capture(Settlement city)
+    internal static ResidentExecutionRecord Capture(Settlement city, int profile = 2)
     {
-        if (GcMethod == null || GcMethod.ReturnType != typeof(string) || Harmony.GetPatchInfo(GcMethod)?.Owners.Contains("honor.series.contracts.preview") != true)
-            throw new ArgumentException("Pending resident retention hook unavailable.");
+        EnsureRetention();
         CheckTown(city); var pawns = city.previouslyGeneratedInhabitants.OrderBy(p => p?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
-        var rows = pawns.Select(Read).ToArray();
+        foreach (var pawn in pawns) Eligible(pawn, profile == 2);
+        var surgery = profile == 2 ? pawns.Select(ResidentSurgery.Capture).ToList() : [];
+        SurgeryOrderSet.ValidateDistinctOwners(surgery.Select(s => s.Set()));
+        var rows = pawns.Select((p, i) => Read(p, profile, profile == 2 ? surgery[i] : null)).ToArray();
         if (rows.Any(r => r.Faction != city.Faction.GetUniqueLoadID())) throw new ArgumentException("Resident source faction mismatch.");
         var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
-        return new() { Snapshot = set.Export(), Pawns = pawns };
+        return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery };
     }
-    internal static string Proof(Settlement city)
+    internal static string Proof(Settlement city, int profile = 2)
     {
-        try { return Capture(city).Set().Proof; }
+        try { return Capture(city, profile).Set().Proof; }
         catch (ArgumentException) { return null; }
     }
     internal static void ValidateReferences(ResidentExecutionRecord record, Settlement city, string proof)
@@ -98,36 +106,59 @@ internal static class ResidentExecution
             record.Pawns.Any(p => p == null) || !record.Pawns.Select(p => p.GetUniqueLoadID()).SequenceEqual(record.Set().Residents.Select(r => r.Id)))
             throw new ArgumentException("Resident execution reference registry mismatch.");
         CheckTown(city);
+        if (record.Surgery == null || (record.Profile == 1 ? record.Surgery.Count != 0 : record.Surgery.Count != record.Pawns.Count) ||
+            record.Surgery.Where((s, i) => s == null || s.LoadFailed || s.Pawn != record.Pawns[i] || s.Detached == null || !record.Started && s.Detached.Count != 0).Any())
+            throw new ArgumentException("Surgical custody registry mismatch.");
+        SurgeryOrderSet.ValidateDistinctOwners(record.Surgery.Select(s => s.Set()));
         if (city.previouslyGeneratedInhabitants.Count != record.Pawns.Count ||
             city.previouslyGeneratedInhabitants.Distinct().Count() != record.Pawns.Count || !record.Pawns.All(city.previouslyGeneratedInhabitants.Contains))
             throw new ArgumentException("Actual saved resident set changed.");
     }
     internal static void Apply(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
     {
+        EnsureRetention();
         ValidateReferences(record, city, proof);
-        var set = record.Set(); var rows = record.Pawns.Select(Read).ToArray();
+        var set = record.Set(); var rows = ReadAll(record);
         set.Review(rows, source.GetUniqueLoadID(), target.GetUniqueLoadID(), record.Started);
         record.Started = true; // Retain this before any native mutation; recovery proceeds forward, never raw-writes faction.
         Find.WorldPawns.gc.CancelGCPass();
         for (int i = 0; i < record.Pawns.Count; i++)
         {
             var p = record.Pawns[i];
-            var action = set.ActionFor(Read(p), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
+            var surgery = record.Profile == 2 ? record.Surgery[i] : null;
+            var action = set.ActionFor(Read(p, record.Profile, surgery), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
+            if (surgery != null && action == ResidentMoveAction.ChangeFaction) ResidentSurgery.Detach(surgery);
             if (action == ResidentMoveAction.ChangeFaction) p.SetFaction(target);
             if (p.Faction != target) throw new ArgumentException("Native resident ownership did not reach the target.");
             // Restore ONLY the recorded medical setting. Never repair health, gear, social state or unexplained ownership.
-            var actual = Read(p);
+            var actual = Read(p, record.Profile, surgery);
             var before = set.Residents[i];
             if (actual.Preserved != before.Preserved || actual.MedicalCare.HasValue != before.MedicalCare.HasValue)
                 throw new ArgumentException("Native resident preservation mismatch; original intent retained.");
             if (before.MedicalCare.HasValue) p.playerSettings.medCare = (MedicalCareCategory)before.MedicalCare.Value;
+            if (surgery != null) ResidentSurgery.Restore(surgery);
         }
-        set.VerifyDestination(record.Pawns.Select(Read), source.GetUniqueLoadID(), target.GetUniqueLoadID());
+        set.VerifyDestination(ReadAll(record), source.GetUniqueLoadID(), target.GetUniqueLoadID());
+        if (record.Surgery.Any(s => s.Detached.Count != 0)) throw new ArgumentException("Surgical orders remain detached.");
     }
     internal static void Verify(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
     {
         ValidateReferences(record, city, proof);
-        record.Set().VerifyDestination(record.Pawns.Select(Read), source.GetUniqueLoadID(), target.GetUniqueLoadID());
+        record.Set().VerifyDestination(ReadAll(record), source.GetUniqueLoadID(), target.GetUniqueLoadID());
+        if (record.Surgery.Any(s => s.Detached.Count != 0)) throw new ArgumentException("Cannot complete with detached orders.");
+    }
+    private static ResidentMoveActual[] ReadAll(ResidentExecutionRecord record) => record.Pawns.Select((p, i) =>
+        Read(p, record.Profile, record.Profile == 2 ? record.Surgery[i] : null)).ToArray();
+    private static void EnsureRetention()
+    {
+        if (GcMethod == null || GcMethod.ReturnType != typeof(string) || Harmony.GetPatchInfo(GcMethod)?.Owners.Contains("honor.series.contracts.preview") != true)
+            throw new ArgumentException("Pending resident retention hook unavailable.");
+    }
+    internal static void ReleaseReferences(ResidentExecutionRecord record)
+    {
+        if (record.Surgery == null || record.Surgery.Any(s => s == null || s.Detached == null || s.Detached.Count != 0))
+            throw new ArgumentException("Never discard detached surgical originals.");
+        record.Pawns.Clear(); record.Surgery.Clear();
     }
 }
 

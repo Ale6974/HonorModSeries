@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Honor.Contracts.Rules;
 
-public enum RecordedCharterPhase { Offered, Active, Declined, Released, Expired }
+public enum RecordedCharterPhase { Offered, Active, Declined, Released, Expired, TerritoryLost }
 public enum CharterAvailability { Current, MissingTerritory, OwnershipChanged, Ineligible }
 public sealed record TerritoryIdentity(string Id, string NativeOwner, bool Player);
 public sealed record TerritoryObservation(string Id, string NativeOwner, bool Exists, bool Player, bool Eligible);
@@ -12,7 +12,8 @@ public sealed record NpcCharterAuthority(string LiegeRepresentative, string Subj
 public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long OfferedTick, long ExpiresTick,
     RecordedCharterPhase Phase = RecordedCharterPhase.Offered, long? PlayerSignedTick = null,
     long? NpcSignedTick = null, long? PlayerReleaseTick = null, long? NpcReleaseTick = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] NpcCharterAuthority NpcAuthority = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] NpcCharterAuthority NpcAuthority = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] long? TerritoryLostTick = null);
 public sealed record CharterBookSave(int Version, long LastTick, TerritoryIdentity[] Entities, RecordedCharter[] Charters);
 
 /// <summary>
@@ -208,6 +209,19 @@ public sealed class CharterBook
         if (next.PlayerReleaseTick.HasValue && next.NpcReleaseTick.HasValue) next = next with { Phase = RecordedCharterPhase.Released };
         charters[id] = next; LastTick = now;
     }
+    public void CloseDestroyedLeaf(string id, string territory, string baselineOwner, long lossTick, long now, bool verifiedDestroyed)
+    {
+        Time(now); var c = Charter(id); var entity = Entity(c.Terms.Subject);
+        Require(verifiedDestroyed && !entity.Player && entity.Id == territory && entity.NativeOwner == baselineOwner &&
+            c.Phase == RecordedCharterPhase.Active && c.PlayerSignedTick.HasValue && c.NpcSignedTick.HasValue &&
+            lossTick >= Math.Max(c.PlayerSignedTick.Value, c.NpcSignedTick.Value) && lossTick <= now &&
+            (!c.PlayerReleaseTick.HasValue || c.PlayerReleaseTick <= lossTick) && (!c.NpcReleaseTick.HasValue || c.NpcReleaseTick <= lossTick),
+            "A verified destroyed NPC city with an active incoming charter is required.");
+        Require(!Active().Any(other => other.Terms.Liege == territory) &&
+            !charters.Values.Any(other => Phase(other, now) == RecordedCharterPhase.Offered && (other.Terms.Liege == territory || other.Terms.Subject == territory)),
+            "Descendants or open city proposals need a coordinated loss/succession adapter.");
+        charters[id] = c with { Phase = RecordedCharterPhase.TerritoryLost, TerritoryLostTick = lossTick }; LastTick = now;
+    }
     public string Export() => JsonSerializer.Serialize(new CharterBookSave(Version, LastTick, entities.Values.ToArray(), charters.Values.ToArray()));
     public static CharterBook Restore(string json)
     {
@@ -230,11 +244,15 @@ public sealed class CharterBook
             foreach (var signature in new[] { charter.PlayerSignedTick, charter.NpcSignedTick })
                 Require(!signature.HasValue || signature >= charter.OfferedTick && signature <= charter.ExpiresTick && signature <= save.LastTick, "Invalid saved consent time.");
             bool both = charter.PlayerSignedTick.HasValue && charter.NpcSignedTick.HasValue;
-            Require(both == (charter.Phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released), "Invalid saved bilateral consent.");
+            Require(both == (charter.Phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released or RecordedCharterPhase.TerritoryLost), "Invalid saved bilateral consent.");
             foreach (var release in new[] { charter.PlayerReleaseTick, charter.NpcReleaseTick })
                 Require(!release.HasValue || both && release >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value) && release <= save.LastTick,
                     "Invalid saved release time.");
             Require((charter.PlayerReleaseTick.HasValue && charter.NpcReleaseTick.HasValue) == (charter.Phase == RecordedCharterPhase.Released), "Invalid saved mutual release.");
+            Require((charter.Phase == RecordedCharterPhase.TerritoryLost) == charter.TerritoryLostTick.HasValue &&
+                (!charter.TerritoryLostTick.HasValue || !book.Entity(charter.Terms.Subject).Player && charter.TerritoryLostTick >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value) &&
+                    charter.TerritoryLostTick <= save.LastTick && (!charter.PlayerReleaseTick.HasValue || charter.PlayerReleaseTick <= charter.TerritoryLostTick) &&
+                    (!charter.NpcReleaseTick.HasValue || charter.NpcReleaseTick <= charter.TerritoryLostTick)), "Invalid saved territorial loss.");
             book.charters.Add(charter.Id, charter);
         }
         // Validate the final graph independent of save order, including disconnected chains.

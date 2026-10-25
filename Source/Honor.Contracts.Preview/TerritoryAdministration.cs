@@ -80,7 +80,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                 if (reference.Residents != null)
                 {
                     if (t.Phase == TerritoryTransferPhase.Prepared) ResidentExecution.ValidateReferences(reference.Residents, reference.City, t.ResidentProof);
-                    else reference.Residents.Pawns.Clear(); // Historical execution proof must not keep residents alive or require them to remain in town.
+                    else ResidentExecution.ReleaseReferences(reference.Residents);
                 }
             }
         }
@@ -93,12 +93,12 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
         !faction.defeated && faction.HasGoodwill && faction.def.humanlikeFaction && !faction.def.permanentEnemy &&
         !(faction.def.royalTitleTags?.Count > 0) && (!faction.HostileTo(Faction.OfPlayer) || faction.GetUniqueLoadID() == releasedSource);
-    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null)
+    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null, int residentProfile = 2)
     {
         var all = Cities(); bool exists = city != null && all.Contains(city); var owner = exists ? city.Faction : null;
         int format = 0;
         string proof = exists ? CityStockPreservation.Capture(city, out format) : null;
-        string residentProof = exists && city.previouslyGeneratedInhabitants?.Count > 0 ? ResidentExecution.Proof(city) : null;
+        string residentProof = exists && city.previouslyGeneratedInhabitants?.Count > 0 ? ResidentExecution.Proof(city, residentProfile) : null;
         return new(territory, owner?.GetUniqueLoadID(), all.Count(s => s.Faction == owner), exists, owner?.IsPlayer == true,
             exists && city.HasMap, !exists || proof == null || city.EverVisited,
             exists && city.def.canHaveFaction && Eligible(owner, releasedSource), Eligible(target), target?.IsPlayer == true,
@@ -162,7 +162,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
             CityStockPreservation.InvalidateMaterial(c.City);
             if (residents != null) ResidentExecution.Verify(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
             Ledger.Confirm(id, Observe(c.City, c.Charter.Terms.Subject, c.Target), Find.TickManager.TicksGame);
-            residents?.Pawns.Clear();
+            if (residents != null) ResidentExecution.ReleaseReferences(residents);
             if (notify) Messages.Message("CT_Applied".Translate(), MessageTypeDefOf.NeutralEvent);
             return true;
         }
@@ -244,7 +244,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                 reference.From == null || reference.From.GetUniqueLoadID() != item.FromOwner || reference.Target == null ||
                 reference.Target.GetUniqueLoadID() != item.TargetOwner || reference.Target.IsPlayer)
                 throw new ArgumentException("Cannot establish original transfer references.");
-            var actual = Observe(reference.City, item.Territory, reference.Target);
+            var actual = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents?.Profile ?? 2);
             if (reference.Residents != null)
             {
                 if (item.Phase != TerritoryTransferPhase.Prepared || reference.Residents.Set().Proof != item.ResidentProof ||
@@ -262,9 +262,9 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                     if (reference.City.Faction == reference.From) reference.City.SetFaction(reference.Target);
                     CityStockPreservation.InvalidateMaterial(reference.City);
                     ResidentExecution.Verify(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
-                    Ledger.Confirm(id, Observe(reference.City, item.Territory, reference.Target), Find.TickManager.TicksGame);
+                    Ledger.Confirm(id, Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents.Profile), Find.TickManager.TicksGame);
                 }
-                reference.Residents.Pawns.Clear();
+                ResidentExecution.ReleaseReferences(reference.Residents);
                 return;
             }
             if (reference.City.Faction == reference.From) Ledger.CancelUnmoved(id, actual, Find.TickManager.TicksGame);

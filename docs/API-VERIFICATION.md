@@ -1,5 +1,15 @@
 # 1.7 API·런타임 검증 기록
 
+## 원본 의료 지시의 집행 보관 (0.3.14)
+
+설치 Version.txt 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 DLL의 Bill_Medical/Bill/BillStack/ThingFilter/Scribe_BodyParts를 조사했다. BillStack.Clear는 목록을 비우며, AddBill은 unsaved billStack 링크와 목록을 연결한다. Bill_Medical의 원본 part, consumedMedicine, uniqueRequiredIngredients, iterationCompleted와 Bill의 loadID/recipe/필터/의사 제한 등을 확인했다. 단순 Bill.Clone을 보존으로 가정하지 않는다.
+
+분리 시 원본 목록의 사본을 먼저 할당하고 원래 List를 비우며, 복원은 용량을 먼저 확보한 뒤 동일 원본과 검증된 billStack 링크를 원래 List에 되돌린다. 네이티브 Pawn.SetFaction은 그대로 호출한다. 소유권 이전은 동기 경로이며 중간에 엔진 저장이 실행된다는 가정을 하지 않는다. Detached 원본만 Native Deep 저장하고 attached 지시를 중복 저장하지 않는다. 설치 Scribe_BodyParts는 body Def/part index를 저장한다. 별도 저장 시점 참조 존재 증거와 원래 지시 정보를 대조해 디코딩 누락만 복원한다.
+
+1.6.4871 참조의 동일 멤버를 사용하는 net472 빌드도 확인하지만 해당 게임의 메서드 몸체/실제 직렬화는 확인하지 않았다. 필터 범위는 구조체 전체를 빈 JSON 객체로 요약하지 않고 min/max를 명시하며 허용 Def와 특별 필터 상태도 대조한다. 건강/장비/관계 상태를 의료 지시 기록으로 임의 복원하지 않는다. 소스/규칙/빌드는 실제 엔진의 보존·저장/복구 증거가 아니며 디컴파일 자료는 로컬에만 둔다.
+
+말단 영지 상실은 설치 WorldObject.Destroy()의 세계 목록 제거·destroyed 필드 설정·세력/컴포넌트/퀘스트 알림 경로와 Destroyed getter를 확인했다. Prefix는 실제 바인딩/소유권/장부를 검토하고 Postfix는 정상 반환 뒤 실제 파괴·제거·장부 불변을 재확인한다. 중단된 원본 호출·미완료 집행·소유권 불일치는 처리하지 않는다. 1.6은 동일 시그니처 컴파일만 확인했으며 이벤트 실행은 양 버전 모두 미검증이다.
+
 ## 제한된 주민 집행과 GC 참조 보호 (0.3.13)
 
 설치 Version.txt는 1.7.4985 rev1269, runtimeconfig는 net10.0 / 10.0.13-waylithclr.dev임을 다시 확인했다. 설치 DLL의 Pawn.SetFaction, PawnComponentsUtility.AddAndRemoveDynamicComponents, Pawn_NeedsTracker, Pawn_PlayerSettings.ResetMedicalCare/Notify_FactionChanged, BillStack.Clear, Pawn_GuestTracker, Pawn_AgeTracker.ResetAgeReversalDemand, Faction.Notify_PawnJoined와 WorldPawnGC를 조사했다. 수술 지시/의료·허용 영역/정신·작업/욕구/지도자/이념 등의 변동을 무시하지 않는다. 첫 집행 경로는 수술 목록이 비고 역할/특수/이념/유전자/진행 작업 등이 없는 일반 NPC 주민만 허용하며 의료 등급만 명시적으로 복원한다.

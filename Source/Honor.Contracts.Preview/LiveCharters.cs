@@ -13,11 +13,13 @@ public sealed class TerritoryBinding : IExposable
     public Faction OriginalFaction;
     public bool PlayerGroup;
     public bool FactionGroup;
+    public string LastKnownLabel;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Identity, "identity"); Scribe_Values.Look(ref PlayerGroup, "playerGroup");
         Scribe_Values.Look(ref FactionGroup, "factionGroup");
         Scribe_References.Look(ref Settlement, "settlement"); Scribe_References.Look(ref OriginalFaction, "originalFaction");
+        Scribe_Values.Look(ref LastKnownLabel, "lastKnownLabel");
     }
 }
 
@@ -121,7 +123,7 @@ public sealed partial class LiveCharterLedger : GameComponent
         var binding = bindings.SingleOrDefault(b => b.Identity == identity);
         if (binding?.PlayerGroup == true) return "HCL_Player".Translate();
         if (binding?.FactionGroup == true) return binding.OriginalFaction?.Name ?? "HCL_Missing".Translate();
-        return binding?.Settlement?.Label ?? "HCL_Missing".Translate();
+        return binding?.Settlement?.Label ?? binding?.LastKnownLabel ?? "HCL_Missing".Translate();
     }
     public string PoliticalOwner(string identity)
     {
