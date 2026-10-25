@@ -26,7 +26,7 @@ public sealed class ResidentExecutionRecord : IExposable
         Scribe_Collections.Look(ref Surgery, "surgicalCustody", LookMode.Deep);
         if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; }
     }
-    public ResidentMoveSet Set() => Profile is 1 or 2 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
+    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
 }
 
 internal static class ResidentExecution
@@ -41,15 +41,15 @@ internal static class ResidentExecution
             city.previouslyGeneratedInhabitants.Count is < 1 or > ResidentMoveSet.Capacity)
             throw new ArgumentException("Unavailable resident town.");
     }
-    private static void Eligible(Pawn p, bool surgery)
+    private static void Eligible(Pawn p, int profile)
     {
         if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || p.RaceProps.body == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || p.Spawned || !p.IsWorldPawn() ||
             p.holdingOwner != null || p.Faction == null || p.Faction.IsPlayer || p.HostFaction != null || p.IsPrisoner || p.IsSlave ||
             PawnUtility.IsFactionLeader(p) || p.InMentalState || p.Downed || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
-            p.GetLord() != null || p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
+            p.GetLord() != null || profile < 3 && p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
             p.HasExtraHomeFaction() || p.HasExtraMiniFaction() || p.GetExtraHostFaction() != null || p.questTags?.Count > 0 ||
             (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
-            p.health?.surgeryBills == null || !surgery && p.health.surgeryBills.Count != 0 || p.health.hediffSet?.hediffs == null || p.needs?.AllNeeds == null || p.relations?.DirectRelations == null ||
+            p.health?.surgeryBills == null || profile == 1 && p.health.surgeryBills.Count != 0 || p.health.hediffSet?.hediffs == null || p.needs?.AllNeeds == null || p.relations?.DirectRelations == null ||
             p.relations.DirectRelations.Count > 1000 || p.relations.DirectRelations.Any(r => r == null || r.def == null || r.otherPawn == null) ||
             (p.needs.mood?.thoughts?.memories?.Memories.Count ?? 0) > 1000 ||
             p.needs.mood?.thoughts?.memories?.Memories.Any(m => m == null || m.def == null || m.GetType().Assembly != typeof(Pawn).Assembly) == true ||
@@ -66,8 +66,8 @@ internal static class ResidentExecution
     }
     internal static ResidentMoveActual Read(Pawn p, int profile = 1, ResidentSurgeryRecord surgery = null)
     {
-        if (profile is not (1 or 2)) throw new ArgumentException("Unknown resident profile.");
-        Eligible(p, profile == 2); var baseline = ResidentBaselineStore.Evidence(p);
+        if (profile is not (1 or 2 or 3)) throw new ArgumentException("Unknown resident profile.");
+        Eligible(p, profile); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
             baseline.Id, baseline.Health, baseline.Gear,
@@ -80,22 +80,23 @@ internal static class ResidentExecution
             Settings = settings == null ? null : new { settings.joinTick, settings.followDrafted, settings.followFieldwork, settings.animalsReleased,
                 settings.hostilityResponse, settings.selfTend, settings.displayOrder, settings.animalForage, settings.animalDig }
         });
-        preserved = ResidentMoveProfiles.Compose(preserved, profile == 2 ? ResidentSurgery.Proof(p, surgery) : null, profile);
+        preserved = ResidentMoveProfiles.Compose(preserved, profile >= 2 ? ResidentSurgery.Proof(p, surgery) : null, profile,
+            profile == 3 ? ResidentIdeology.Proof(p) : null);
         return new(baseline.Id, p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
     }
-    internal static ResidentExecutionRecord Capture(Settlement city, int profile = 2)
+    internal static ResidentExecutionRecord Capture(Settlement city, int profile = 3)
     {
         EnsureRetention();
         CheckTown(city); var pawns = city.previouslyGeneratedInhabitants.OrderBy(p => p?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
-        foreach (var pawn in pawns) Eligible(pawn, profile == 2);
-        var surgery = profile == 2 ? pawns.Select(ResidentSurgery.Capture).ToList() : [];
+        foreach (var pawn in pawns) Eligible(pawn, profile);
+        var surgery = profile >= 2 ? pawns.Select(ResidentSurgery.Capture).ToList() : [];
         SurgeryOrderSet.ValidateDistinctOwners(surgery.Select(s => s.Set()));
-        var rows = pawns.Select((p, i) => Read(p, profile, profile == 2 ? surgery[i] : null)).ToArray();
+        var rows = pawns.Select((p, i) => Read(p, profile, profile >= 2 ? surgery[i] : null)).ToArray();
         if (rows.Any(r => r.Faction != city.Faction.GetUniqueLoadID())) throw new ArgumentException("Resident source faction mismatch.");
         var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
         return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery };
     }
-    internal static string Proof(Settlement city, int profile = 2)
+    internal static string Proof(Settlement city, int profile = 3)
     {
         try { return Capture(city, profile).Set().Proof; }
         catch (ArgumentException) { return null; }
@@ -125,7 +126,7 @@ internal static class ResidentExecution
         for (int i = 0; i < record.Pawns.Count; i++)
         {
             var p = record.Pawns[i];
-            var surgery = record.Profile == 2 ? record.Surgery[i] : null;
+            var surgery = record.Profile >= 2 ? record.Surgery[i] : null;
             var action = set.ActionFor(Read(p, record.Profile, surgery), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
             if (surgery != null && action == ResidentMoveAction.ChangeFaction) ResidentSurgery.Detach(surgery);
             if (action == ResidentMoveAction.ChangeFaction) p.SetFaction(target);
@@ -148,7 +149,7 @@ internal static class ResidentExecution
         if (record.Surgery.Any(s => s.Detached.Count != 0)) throw new ArgumentException("Cannot complete with detached orders.");
     }
     private static ResidentMoveActual[] ReadAll(ResidentExecutionRecord record) => record.Pawns.Select((p, i) =>
-        Read(p, record.Profile, record.Profile == 2 ? record.Surgery[i] : null)).ToArray();
+        Read(p, record.Profile, record.Profile >= 2 ? record.Surgery[i] : null)).ToArray();
     private static void EnsureRetention()
     {
         if (GcMethod == null || GcMethod.ReturnType != typeof(string) || Harmony.GetPatchInfo(GcMethod)?.Owners.Contains("honor.series.contracts.preview") != true)

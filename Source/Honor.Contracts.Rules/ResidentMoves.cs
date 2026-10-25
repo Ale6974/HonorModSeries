@@ -9,10 +9,13 @@ public enum ResidentMoveAction { ChangeFaction, RestoreMedicalCare, Verify }
 
 public static class ResidentMoveProfiles
 {
-    public static string Compose(string legacy, string surgery, int profile)
+    public static string Compose(string legacy, string surgery, int profile, string ideology = null)
     {
-        if (!CityStockProof.Valid(legacy) || profile is not (1 or 2) || (profile == 1 ? surgery != null : !CityStockProof.Valid(surgery)))
+        if (!CityStockProof.Valid(legacy) || profile is not (1 or 2 or 3) || (profile == 1 ? surgery != null : !CityStockProof.Valid(surgery)) ||
+            (profile == 3 ? !CityStockProof.Valid(ideology) : ideology != null))
             throw new ArgumentException("Invalid resident preservation profile.");
+        if (profile == 3) return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(new { Profile = 3, Previous = Compose(legacy, surgery, 2), Ideology = ideology }))));
         return profile == 1 ? legacy : RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(
             JsonSerializer.Serialize(new { Profile = 2, Legacy = legacy, Surgery = surgery }))));
     }

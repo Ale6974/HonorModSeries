@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 일반 이념 신도 관측과 보존 (0.3.15)
+
+설치 Version.txt 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. Ideo.Notify_MemberChangedFaction는 각 교리 알림을 호출하며, 기본 Precept 알림은 비어 있다. Precept_RoleSingle은 선택된 인물이면서 이전 세력이 플레이어일 때 역할 해제를 수행한다. 새 경로는 이전/목적 모두 NPC이며 역할 보유자는 별도 차단한다. 다른 알림 구현과 Harmony 패치가 있는 알림은 보존을 가정하지 않는다. FactionIdeosTracker.Notify_MemberGainedOrLost의 주 이념 재계산은 플레이어 세력 조건임을 확인했다.
+
+Pawn_IdeoTracker.Certainty getter는 아기에게 certaintyInt=0을 쓸 수 있다. 관측은 타입을 검증한 private certaintyInt 필드의 읽기만 사용한다. 설치 본체와 1.6.4871 참조에서 필드와 PreviousIdeos 시그니처를 확인했다. 노화역행 요구는 Pawn.SetFaction의 ResetAgeReversalDemand 영향이 남으므로 지원에서 제외한다. 개인 이념/역할/확신도나 세력 주 이념을 쓰는 우회를 추가하지 않는다. 1.6은 참조/Framework 빌드이며 해당 게임 구현이나 실제 실행 증거가 아니다. 1.7도 엔진 실행·변환 이벤트·Scribe·Harmony 동작은 미검증이다.
+
 ## 원본 의료 지시의 집행 보관 (0.3.14)
 
 설치 Version.txt 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 DLL의 Bill_Medical/Bill/BillStack/ThingFilter/Scribe_BodyParts를 조사했다. BillStack.Clear는 목록을 비우며, AddBill은 unsaved billStack 링크와 목록을 연결한다. Bill_Medical의 원본 part, consumedMedicine, uniqueRequiredIngredients, iterationCompleted와 Bill의 loadID/recipe/필터/의사 제한 등을 확인했다. 단순 Bill.Clone을 보존으로 가정하지 않는다.

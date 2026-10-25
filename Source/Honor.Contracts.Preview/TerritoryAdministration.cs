@@ -93,7 +93,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
         !faction.defeated && faction.HasGoodwill && faction.def.humanlikeFaction && !faction.def.permanentEnemy &&
         !(faction.def.royalTitleTags?.Count > 0) && (!faction.HostileTo(Faction.OfPlayer) || faction.GetUniqueLoadID() == releasedSource);
-    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null, int residentProfile = 2)
+    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null, int residentProfile = 3)
     {
         var all = Cities(); bool exists = city != null && all.Contains(city); var owner = exists ? city.Faction : null;
         int format = 0;
@@ -244,7 +244,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                 reference.From == null || reference.From.GetUniqueLoadID() != item.FromOwner || reference.Target == null ||
                 reference.Target.GetUniqueLoadID() != item.TargetOwner || reference.Target.IsPlayer)
                 throw new ArgumentException("Cannot establish original transfer references.");
-            var actual = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents?.Profile ?? 2);
+            var actual = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents?.Profile ?? 3);
             if (reference.Residents != null)
             {
                 if (item.Phase != TerritoryTransferPhase.Prepared || reference.Residents.Set().Proof != item.ResidentProof ||

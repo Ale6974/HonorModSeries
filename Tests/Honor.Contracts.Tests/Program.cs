@@ -176,6 +176,7 @@ assertions += ResidentBaselineTests.Run();
 assertions += ResidentMoveTests.Run();
 assertions += SurgeryCustodyTests.Run();
 assertions += CharterLossTests.Run();
+assertions += ResidentFaithTests.Run();
 assertions += FollowerTransfersTests.Run();
 assertions += AllegianceTransitionsTests.Run();
 assertions += ReleasedMigrationTests.Run();
