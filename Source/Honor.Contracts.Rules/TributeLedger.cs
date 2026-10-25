@@ -22,6 +22,7 @@ public sealed class TributeLedger
     public IReadOnlyCollection<TributeAccount> Accounts => accounts.Values.ToArray();
     public IReadOnlyCollection<TributeReceipt> Receipts => receipts.Values.ToArray();
     public long LastTick { get; private set; }
+    public long Revision { get; private set; } // Process-local read-cache invalidation, never part of saved JSON.
     private static void Require(bool valid, string reason) { if (!valid) throw new ArgumentException(reason); }
     private static void Key(string id) => Require(!string.IsNullOrWhiteSpace(id) && id.Length <= 120 && !id.Any(char.IsControl), "Invalid receipt identity.");
     private void Time(long now) => Require(now >= LastTick && now <= int.MaxValue, "Invalid or reversed payment time.");
@@ -41,7 +42,7 @@ public sealed class TributeLedger
             now >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value), "Only an active player tribute obligation can opt in.");
         Require(!accounts.ContainsKey(charterId) && accounts.Count < CharterBook.MaxCharters && now <= int.MaxValue - charter.Terms.IntervalTicks,
             "An enabled account cannot be reset or enabled twice.");
-        accounts.Add(charterId, new(charterId, charter.Terms, now)); LastTick = now;
+        accounts.Add(charterId, new(charterId, charter.Terms, now)); LastTick = now; Revision++;
     }
     public void SynchronizeClosure(CharterBook book, string id, long now)
     {
@@ -51,7 +52,7 @@ public sealed class TributeLedger
         long closed = Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value);
         Require(closed >= account.StartedTick && closed <= now && receipts.Values.Where(r => r.CharterId == id)
             .All(r => account.StartedTick + account.Terms.IntervalTicks * r.Period <= closed), "Invalid account closing time or post-closure receipt.");
-        accounts[id] = account with { ClosedTick = closed }; LastTick = now;
+        accounts[id] = account with { ClosedTick = closed }; LastTick = now; Revision++;
     }
     public TributeAccount Account(string id) => accounts.TryGetValue(id ?? "", out var account) ? account : throw new ArgumentException("No enabled tribute account.");
     public TributeBill Bill(string charterId, int period)
@@ -97,7 +98,7 @@ public sealed class TributeLedger
             !receipts.Values.Any(r => r.CharterId == charterId && r.Period == period && r.Phase != TributeReceiptPhase.Cancelled),
             "The obligation is already paid or reserved; receipt IDs cannot be reused.");
         var receipt = new TributeReceipt(id, charterId, period, now, Array.AsReadOnly(copy));
-        receipts.Add(id, receipt); LastTick = now; return receipt;
+        receipts.Add(id, receipt); LastTick = now; Revision++; return receipt;
     }
     public void Commit(string id, IEnumerable<TributeLine> verifiedDelivered, long now)
     {
@@ -105,14 +106,14 @@ public sealed class TributeLedger
         Require(receipt.Phase == TributeReceiptPhase.Prepared && now >= receipt.PreparedTick &&
             proof.Length == receipt.Lines.Count && proof.All(line => receipt.Lines.Contains(line)),
             "Every prepared stack and exact count/price must be verified in the receiver's container.");
-        receipts[id] = receipt with { Phase = TributeReceiptPhase.Committed, ResolvedTick = now }; LastTick = now;
+        receipts[id] = receipt with { Phase = TributeReceiptPhase.Committed, ResolvedTick = now }; LastTick = now; Revision++;
     }
     public void CancelAfterVerifiedReturn(string id, bool allGoodsReturned, long now)
     {
         Time(now); var receipt = Receipt(id);
         Require(receipt.Phase == TributeReceiptPhase.Prepared && allGoodsReturned && now >= receipt.PreparedTick,
             "A reserved obligation can only reopen after all goods are verified returned.");
-        receipts[id] = receipt with { Phase = TributeReceiptPhase.Cancelled, ResolvedTick = now }; LastTick = now;
+        receipts[id] = receipt with { Phase = TributeReceiptPhase.Cancelled, ResolvedTick = now }; LastTick = now; Revision++;
     }
     public string Export() => JsonSerializer.Serialize(new TributeLedgerSave(Version, LastTick, accounts.Values.ToArray(), receipts.Values.ToArray()));
     public static TributeLedger Restore(string json)

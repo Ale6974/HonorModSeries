@@ -317,4 +317,22 @@
   <UA_Prepared>자유도시연합이 준비되었습니다. 가입은 별도로 검토하세요. 현재 소속·계약·채무는 유지됩니다.</UA_Prepared>
   <UA_PrepareInfo>NPC 도시를 옮기지 않고 공동 자유도시연합을 준비합니다. 준비만으로 가입하지 않으며, 이후 가입 검토와 별도 확정이 필요합니다. 기존 봉건계약은 지원되는 적법한 절차로 먼저 정리해야 합니다.</UA_PrepareInfo>
   <UA_WarBlocked>가입 보류: 새 소속은 현재 {0}에 대한 기존 적대 관계를 공유하지 않습니다. 이 전쟁들을 인수하려면 별도의 권한 있는 합의가 필요합니다. 가입만으로 기존 전쟁을 끝내지 않습니다.</UA_WarBlocked>
+  <PH_Charter>이 계약의 실적:</PH_Charter>
+  <PH_CurrentResponse>최종 서명 전 현재 NPC 응답: {0}</PH_CurrentResponse>
+  <PH_Incomplete>기록 범위에서 전체 실적을 확인할 수 없어 새 계약 동의를 보류합니다.</PH_Incomplete>
+  <PH_NoticeBody>실제 공납 의무 {0}건이 납부 완료나 전달 대기 기록 없이 유예 기한을 지났습니다. 아래에 최대 10건을 표시합니다.
+{1}
+명예 계약 목록에서 정산 내역을 확인하세요. 이 알림은 고의·불명예·제재·독립권 판정이 아닙니다.</PH_NoticeBody>
+  <PH_NoticeCapacity>알림 보관 한도에 도달했습니다. 미납 내역은 계약 목록에서 확인하세요. 이전 알림과 채무는 유지됩니다.</PH_NoticeCapacity>
+  <PH_NoticeLine>{0}: {1}회차, 약정 가치 {2}</PH_NoticeLine>
+  <PH_NoticeTitle>공납 유예 기한 경과</PH_NoticeTitle>
+  <PH_NoticeUnavailable>저장된 알림 이력을 확인할 수 없습니다. 납부 장부와 계약 권리는 유지됩니다.</PH_NoticeUnavailable>
+  <PH_OldDebt>같은 상대에게 유예가 지난 기존 공납 미납이 있어 새 계약 동의를 보류합니다. 이전 채무는 계속 납부할 수 있습니다.</PH_OldDebt>
+  <PH_Pair>이전 계약을 포함한 같은 당사자 간 전체 실적:</PH_Pair>
+  <PH_ReceiveNotices>공납 기한 알림 받기</PH_ReceiveNotices>
+  <PH_Summary>기한 도래 {0}회 · 유예 내 납부 {1}회 · 지연 납부 {2}회 · 유예 중 {3}회 · 미납 연체 {4}회 · 전달 확인 대기 {5}회</PH_Summary>
+  <PH_Unavailable>납부 이력 또는 현재 대표를 확인할 수 없어 동의를 추정하지 않습니다.</PH_Unavailable>
+  <PH_Untracked>이 이력에는 실물 공납을 활성화한 기록이 없습니다. 확인되지 않은 약속을 성공이나 실패로 계산하지 않습니다.</PH_Untracked>
+  <PH_Values>이행한 약정 가치 {0} · 전달 대기를 포함한 미정산 약정 가치 {1}</PH_Values>
+  <PH_ConsentRecord>최종 동의: {0}, 대표 {1}, 게임 경과 {2}일</PH_ConsentRecord>
 </LanguageData>

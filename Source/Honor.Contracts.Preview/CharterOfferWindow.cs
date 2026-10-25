@@ -29,6 +29,8 @@ public sealed class CharterOfferWindow : Window
         CharterOfferDecision.ValueTooLow => "CO_ValueLow".Translate(assessment.Benchmark.ToString("0.##")),
         CharterOfferDecision.ValueTooHigh => "CO_ValueHigh".Translate(assessment.Benchmark.ToString("0.##")),
         CharterOfferDecision.GraceTooLong => "CO_GraceLong".Translate(),
+        CharterOfferDecision.PriorTributeOverdue => "PH_OldDebt".Translate(),
+        CharterOfferDecision.HistoryIncomplete => "PH_Incomplete".Translate(),
         _ => "HCL_Unavailable".Translate()
     };
     internal static void DrawTerms(Listing_Standard list, RecordedCharterTerms terms)
@@ -69,10 +71,24 @@ public sealed class CharterOfferWindow : Window
         else if (ledger.RestoreFailed || Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) list.Label("PS_Pending".Translate());
         else
         {
+            var payments = Current.Game.GetComponent<TributePaymentLedger>();
+            if (payments.RestoreFailed) list.Label("PH_Unavailable".Translate());
+            string npc = "faction/" + owner.GetUniqueLoadID();
             var assessment = draft.Assess(playerSubject, owner.GoodwillWith(Faction.OfPlayer));
+            if (playerSubject && !payments.RestoreFailed && ledger.Book.Entities.Any(e => e.Id == npc) && ledger.Book.Entities.Any(e => e.Id == ledger.PlayerIdentity))
+            {
+                try
+                {
+                    var previous = ledger.Book.Charters.FirstOrDefault(c => c.Terms.Liege == npc && c.Terms.Subject == ledger.PlayerIdentity);
+                    var history = previous == null ? new TributePerformance(0, 0, 0, 0, 0, 0, 0, 0) : ledger.Performance(previous.Id, true);
+                    list.Label("PH_Pair".Translate()); LiveCharterLedger.DrawPerformance(list, history);
+                    assessment = CharterOffers.AssessHistory(assessment, history);
+                }
+                catch (ArgumentException) { list.Label("PH_Unavailable".Translate()); valid = false; }
+            }
             list.Label("CO_Policy".Translate(assessment.MinimumGoodwill, assessment.Benchmark.ToString("0.##")));
             list.Label("CO_Response".Translate(owner.Name, Reason(assessment)));
-            if (list.ButtonText("CO_Submit".Translate()) && ledger.Request(target, playerSubject, draft, owner, representative) && assessment.Accepted) Close();
+            if (valid && !payments.RestoreFailed && list.ButtonText("CO_Submit".Translate()) && ledger.Request(target, playerSubject, draft, owner, representative) && assessment.Accepted) Close();
         }
         height = list.CurHeight + 20; list.End(); Widgets.EndScrollView();
     }

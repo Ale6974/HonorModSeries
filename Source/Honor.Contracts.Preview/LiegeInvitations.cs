@@ -62,7 +62,7 @@ public sealed partial class LiveCharterLedger
             var faction = representatives[id];
             CharterOfferResult result;
             try { result = CharterOffers.Propose(copy, Guid.NewGuid().ToString("N"), player, id, true, new(),
-                faction.GoodwillWith(Faction.OfPlayer), now, ObserveForMigration(null, copy, registry)); }
+                faction.GoodwillWith(Faction.OfPlayer), now, ObserveForMigration(null, copy, registry), Current.Game.GetComponent<TributePaymentLedger>().Ledger); }
             catch (ArgumentException) { continue; } // A cycle/depth blocker on one candidate need not silence all others.
             if (!result.Assessment.Accepted) continue;
             // Only the selected counterparty and player need registration. Discard unrelated candidate registrations.

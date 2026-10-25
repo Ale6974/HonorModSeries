@@ -317,4 +317,22 @@
   <UA_Prepared>The Free City Union is ready. Review admission separately; your current allegiance, contracts and debts remain unchanged.</UA_Prepared>
   <UA_PrepareInfo>Prepare the common Free City Union without moving any NPC town. Preparation does not join the union: review admission and confirm separately. An existing feudal contract must first end by the supported lawful procedure.</UA_PrepareInfo>
   <UA_WarBlocked>Admission is paused: the destination does not share your existing hostility toward {0}. Accepting those wars requires a separate authorized agreement. Joining cannot silently end them.</UA_WarBlocked>
+  <PH_Charter>This contract:</PH_Charter>
+  <PH_CurrentResponse>Current NPC response before final signing: {0}</PH_CurrentResponse>
+  <PH_Incomplete>The available record range cannot establish the full history. New consent is paused until it can be assessed safely.</PH_Incomplete>
+  <PH_NoticeBody>{0} actual tribute obligations have passed grace without a verified payment or a reserved delivery. Showing up to 10 below:
+{1}
+Review Honor contracts for settlement. This notice does not establish intent, dishonor, a penalty or a right to independence.</PH_NoticeBody>
+  <PH_NoticeCapacity>The reminder archive is full. Check outstanding bills in the contract list. Earlier notices and debts are retained.</PH_NoticeCapacity>
+  <PH_NoticeLine>{0}: period {1}, agreed value {2}</PH_NoticeLine>
+  <PH_NoticeTitle>Tribute deadlines passed</PH_NoticeTitle>
+  <PH_NoticeUnavailable>Saved reminder history is unavailable. Payment records and contract rights remain unchanged.</PH_NoticeUnavailable>
+  <PH_OldDebt>Earlier actual tribute to this same counterparty is overdue. New contract consent is paused; earlier debts remain payable.</PH_OldDebt>
+  <PH_Pair>History with these same parties, including earlier contracts:</PH_Pair>
+  <PH_ReceiveNotices>Receive tribute deadline reminders</PH_ReceiveNotices>
+  <PH_Summary>Due periods: {0}; paid within grace: {1}; paid late: {2}; still within grace: {3}; overdue unpaid: {4}; delivery awaiting resolution: {5}.</PH_Summary>
+  <PH_Unavailable>Payment history or the current representative cannot be verified. No consent is inferred.</PH_Unavailable>
+  <PH_Untracked>No physical tribute account was enabled for this history. Untracked promises are not counted as successes or failures.</PH_Untracked>
+  <PH_Values>Fulfilled agreed value: {0}; outstanding agreed value, including reserved deliveries: {1}.</PH_Values>
+  <PH_ConsentRecord>Final consent: {0}, representative {1}, game day {2}.</PH_ConsentRecord>
 </LanguageData>

@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 실제 납부 이력·기한 알림·현재 대표의 최종 동의 — 0.3.23 / 2026-10-26
+
+설치 1.7.4985 rev1269, net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 새로운 native 소유권/지도권/재고 변이 API를 추가하지 않는다. 기존 실제 공납 Ledger.Commit의 완전 전달 검증 영수증과 opt-in 계정, 실제 계약 장부를 읽어 엔진 독립 규칙에 전달한다. 가격은 기존 직접 납부의 실제 거래 평가를 유지하고 전역 TradeSession을 변경하지 않는다. 마지막 유예 틱은 연체가 아니며 Prepared 영수증은 고의/실패 증거가 아니다.
+
+기존 0.3.21에서 확인한 LetterStack.ReceiveLetter의 NeutralEvent 경로와 GameComponentTick/Scribe_Values, 기존 게임 참조/대표 검사 및 LabelShortCap/GetUniqueLoadID를 재사용한다. 표시용 이름의 제어 문자를 제거하고 길이를 제한하되 실제 안정ID를 대신하지 않는다. 신규 알림·최종 동의 스냅샷은 별도 슬롯이며 기존 장부와 공납 JSON을 재형성하지 않는다. NPC 공개 응답은 모드 규칙으로 구현했으며 native 협상 AI나 평의회 의결이라고 주장하지 않는다. 최종 동의 이력은 native 대표를 새로 생성/보호/이동하지 않으며 WorldPawn 참조를 pin하지 않는다. 1.6은 pinned 참조/별도 net472 빌드와 규칙 호스트로 확인한다.
+
 ## 독립 플레이어의 연합 목적지 준비와 적대 보존 — 0.3.22 / 2026-10-26
 
 실제 설치 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 확인했다. 기존에 검증한 FactionGenerator.NewGeneratedFaction(FactionGeneratorParms(..., hidden:true)) → reveal → FactionManager.Add 경로를 재사용한다. 새 호출은 Settlement.SetFaction·주민/재고 쓰기·도시 생성을 수행하지 않는다. 기존 단일 연합 검색과 참조/중복/패배 검사, Scribe_References/초기 선택 저장을 재사용한다. 1.7 Faction.defeated는 저장되는 필드이며 검토한 FactionTick에 정착지가 없다는 이유만으로 패배시키는 분기는 없다. 이는 타 모드의 별도 세력 수명 정책을 보장하지 않는다. 1.6은 해당 호출의 pinned 참조 서명/분리 빌드를 검사하며 구현 본문을 동일하다고 추정하지 않는다.

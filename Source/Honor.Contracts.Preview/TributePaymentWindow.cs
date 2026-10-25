@@ -36,6 +36,12 @@ public sealed class TributePaymentWindow : Window
         payments.Synchronize(charter.Id);
         if (payments.RestoreFailed) { list.Label("HCP_RestoreFailed".Translate()); return; }
         list.Label("HT_Account".Translate());
+        try
+        {
+            list.Label("PH_Charter".Translate()); LiveCharterLedger.DrawPerformance(list, charters.Performance(charter.Id, false));
+            list.Label("PH_Pair".Translate()); LiveCharterLedger.DrawPerformance(list, charters.Performance(charter.Id, true));
+        }
+        catch (ArgumentException) { list.Label("PH_Unavailable".Translate()); }
         foreach (var bill in payments.Ledger.Bills(charter.Id, Find.TickManager.TicksGame).Where(b => !payments.Ledger.IsPaid(charter.Id, b.Period)).Take(20))
         {
             int now = Find.TickManager.TicksGame;
