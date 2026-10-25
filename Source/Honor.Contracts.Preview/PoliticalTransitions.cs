@@ -14,7 +14,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
     public AllegianceTransitionLedger Journal { get; private set; } = new();
     public bool RestoreFailed { get; private set; }
     public bool Executing { get; private set; }
-    public bool BlocksChanges => RestoreFailed || Journal.Pending;
+    public bool BlocksChanges => RestoreFailed || Journal.Pending || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges;
     private PlayerPoliticsLedger Politics => Current.Game.GetComponent<PlayerPoliticsLedger>();
     private TerritoryAdministrationLedger Territories => Current.Game.GetComponent<TerritoryAdministrationLedger>();
     private LiveCharterLedger Charters => Current.Game.GetComponent<LiveCharterLedger>();
@@ -40,7 +40,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
     private void Ready()
     {
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
-        if (RestoreFailed || Politics.RestoreFailed || Charters.RestoreFailed || Territories.RestoreFailed ||
+        if (Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || RestoreFailed || Politics.RestoreFailed || Charters.RestoreFailed || Territories.RestoreFailed ||
             Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed || payments.RestoreFailed ||
             payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared))
             throw new ArgumentException("Resolve unavailable journals and pending physical deliveries.");

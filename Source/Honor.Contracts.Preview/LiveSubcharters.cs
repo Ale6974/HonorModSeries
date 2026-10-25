@@ -10,7 +10,7 @@ public sealed record LiveSubcharterReview(NpcSubcharterPlan Plan, string Stamp, 
 
 public sealed partial class LiveCharterLedger
 {
-    private Faction SubcharterRepresentative(string party)
+    internal Faction SubcharterRepresentative(string party)
     {
         var binding = Binding(party);
         if (binding.PlayerGroup || binding.FactionGroup || binding.Settlement == null || binding.Settlement.Destroyed ||

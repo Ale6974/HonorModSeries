@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 하위 전체 합의 해약과 실제 도시 이전 (0.3.12)
+
+설치 Version.txt 1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 / 10.0.13-waylithclr.dev를 다시 읽었다. 설치 DLL의 Pawn.SetFaction, Pawn_RelationsTracker.Notify_ChangedFaction, Pawn_PlayerSettings.Notify_FactionChanged/ResetMedicalCare를 재조사했다. 의료/수술/허용 영역/정신·작업·동적 컴포넌트/욕구·지도자/이념 등의 처리가 있으므로 주민 전체 보존을 일부 필드 복사로 대신하지 않는다. 신규 주민 이전·강제 후임/전체 세력 합병 우회를 추가하지 않았다. 디컴파일 산출물은 로컬에만 둔다.
+
+이번 실제 세계 연결은 기존 검증한 Settlement.SetFaction·Scribe·Faction/Settlement 참조·재고 보존 경로를 재사용한다. 상위 계약 해약과 내부 계약 유지, 전체 하위 도시의 개별 실제 소유권 확인을 조정한다. 영지 집행의 ReleasedRoot는 저장한 이탈 의도의 대상·정확한 계약/영지·원 정체성·허용 시각과 일치해야 한다. 전시 연합 수락과 전체 합병을 추정하지 않는다. 1.6은 참조 API/net472 컴파일이며 설치된 1.6 게임 구현 확인이 아니다. 양 버전 엔진 실행·UI·Scribe 복원·자원 보존은 미검증이다.
+
 ## NPC 실계약 계층·거래 동물·제한된 적대 전환 (0.3.11)
 
 예약 재개 시 GitHub main과 로컬 6248b5d 일치를 확인했다. 설치 Version.txt 1.7.4985 rev1269, runtime net10.0 / 10.0.13-waylithclr.dev를 다시 읽었다. 기존 검증한 Faction/Settlement/Pawn/ThingOwner/Scribe 참조를 사용한다. 설치 Pawn 코드의 RaceProps.Animal과 carryTracker.CarriedThing 사용을 확인했다. NPC 초기 내부 계약은 실제 세력 대표와 현재 정착지·원 소속을 읽고 동일 LiveCharterLedger/CharterBook에 저장하며 NativeFaction 변경·주민/재고 쓰기 호출은 하지 않는다. NPC 하위 계약 교체는 복사본에서 양측 동의/한도 검사를 끝낸 뒤 장부·참조를 교체한다.

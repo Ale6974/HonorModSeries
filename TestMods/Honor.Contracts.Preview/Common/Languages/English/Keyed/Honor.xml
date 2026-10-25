@@ -234,7 +234,7 @@
   <NS_Applied>The reviewed vassal contract was replaced. Descendant contracts and original records were retained; no residents or goods were moved.</NS_Applied>
   <NS_Rejected>Hierarchy review unavailable. Choose distinct current vassals in the same aligned realm, a willing living representative and a hierarchy within four levels. Resolve pending political/physical transfers first. Self-contracts, cycles and unchanged immediate lieges are excluded.</NS_Rejected>
   <NS_NpcConsent>This NPC-only contract records the two NPC parties' consent; player signature buttons cannot sign or release it.</NS_NpcConsent>
-  <NS_ReleaseBlocked>This town still has active sub-vassals. Reassign its children through hierarchy management before a single-town release. Automatic whole-subtree release to the union is not implemented.</NS_ReleaseBlocked>
+  <NS_ReleaseBlocked>This town still has active sub-vassals. Use the reviewed subtree release to the union, or reassign its children before a single-town release.</NS_ReleaseBlocked>
   <TA_Animals>Trade animals with supported preservation observations: {0}. Their current faction and pawn identity are retained; this does not authorize resident migration.</TA_Animals>
   <NS_Link>Immediate liege {0} → vassal {1}; realm/root: {2}.</NS_Link>
   <NW_Open>Configure initial NPC vassal relations</NW_Open>
@@ -246,4 +246,19 @@
   <NW_Applied>Created {0} initial NPC town contracts. Native faction ownership, residents and stock are unchanged.</NW_Applied>
   <NW_Rejected>Initial NPC contracts unavailable: configuration already applied, no eligible unregistered realms selected, current representatives changed, journal unavailable, or a political/physical transfer is pending.</NW_Rejected>
   <WM_Warning>If the new realm is hostile to the former sovereign, the former sovereign's ACTUAL recorded mutual release can cover its own player-vassal towns during this reviewed transition. It never covers unrelated source factions or voids new-realm admission, quest locks, goodwill caps, ownership, stock, map/resident or remaining-base checks. The exception ends when the transition completes; it does not create a war or a breach claim.</WM_Warning>
+  <SX_Open>Release an NPC subtree to the union</SX_Open>
+  <SX_Warning>Review a mutual release of the selected NPC's incoming charter and movement of its entire subtree to the existing Free City Union. Internal contracts, terms and old debts remain. Confirmed release cannot be undone here. Pending exits block other political edits; recover any interrupted city first, then review and resume. Unapplied, wholly unchanged preparation alone may be cancelled. No automatic load recovery. Residents, loaded maps and unsupported stock remain blocked for physical moves. Wartime admission without verified acceptance is unavailable.</SX_Warning>
+  <SX_Select>Subtree: {0}</SX_Select>
+  <SX_Review>Review consent and every subtree town</SX_Review>
+  <SX_Plan>Entire subtree: {0} towns; {1} require actual ownership changes. Destination: existing Free City Union. Review all towns before confirming.</SX_Plan>
+  <SX_Confirm>Confirm reviewed mutual release / resume union migration</SX_Confirm>
+  <SX_Pending>Subtree exit intent retained. Do not treat partial migration as completed. Recover the pending city below if needed, then review remaining towns.</SX_Pending>
+  <SX_Completed>Incoming charter released and every subtree town verified in the Free City Union. Internal contracts and old debts retained.</SX_Completed>
+  <SX_Blocked>Subtree exit is unavailable or interrupted. Resolve consent, actual ownership, diplomacy, unavailable journals or physical preservation first. Existing intent and debts were retained.</SX_Blocked>
+  <SX_CityBlocked>{0}: {1}</SX_CityBlocked>
+  <SX_WarUnavailable>Union acceptance of the existing war has not been implemented or verified; migration is deferred.</SX_WarUnavailable>
+  <SX_MapUnavailable>The town map is loaded. Loaded-map preservation and recovery are not implemented; migration is deferred.</SX_MapUnavailable>
+  <SX_ResidentsUnavailable>The town has saved residents. Resident, prisoner/slave and leader preservation/recovery are not implemented; migration is deferred.</SX_ResidentsUnavailable>
+  <SX_StockUnavailable>Existing stock cannot be verified in a supported preservation format; migration is deferred.</SX_StockUnavailable>
+  <SX_MergerUnavailable>This move would remove the source's last town. Separate whole-faction merger consent and recovery are not implemented; migration is deferred.</SX_MergerUnavailable>
 </LanguageData>

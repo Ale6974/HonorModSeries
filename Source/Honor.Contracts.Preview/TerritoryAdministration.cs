@@ -65,7 +65,8 @@ public sealed class TerritoryAdministrationLedger : GameComponent
                     binding.Settlement != reference.City || reference.City != null && "territory/" + reference.City.GetUniqueLoadID() != t.Territory ||
                     reference.From != null && reference.From.GetUniqueLoadID() != t.FromOwner ||
                     reference.Target != null && (reference.Target.GetUniqueLoadID() != t.TargetOwner || reference.Target.IsPlayer) ||
-                    t.Purpose == TerritoryTransferPurpose.ReleasedToUnion && (charter.Phase != RecordedCharterPhase.Released ||
+                    t.ReleasedRoot != null && (!Current.Game.GetComponent<SubtreeExitLedger>().Proves(t) || reference.Target != null && reference.Target.def.defName != UnionPoliticsLedger.UnionDefName) ||
+                    t.Purpose == TerritoryTransferPurpose.ReleasedToUnion && t.ReleasedRoot == null && (charter.Phase != RecordedCharterPhase.Released ||
                         !charter.PlayerReleaseTick.HasValue || !charter.NpcReleaseTick.HasValue ||
                         Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value) > t.PreparedTick ||
                         reference.Target != null && reference.Target.def.defName != UnionPoliticsLedger.UnionDefName))
@@ -80,7 +81,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
         !faction.defeated && faction.HasGoodwill && faction.def.humanlikeFaction && !faction.def.permanentEnemy &&
         !(faction.def.royalTitleTags?.Count > 0) && (!faction.HostileTo(Faction.OfPlayer) || faction.GetUniqueLoadID() == releasedSource);
-    private static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null)
+    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null)
     {
         var all = Cities(); bool exists = city != null && all.Contains(city); var owner = exists ? city.Faction : null;
         int format = 0;
@@ -97,14 +98,15 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         var charter = Charters.Book.Charter(id); var binding = Charters.Binding(charter.Terms.Subject);
         if (binding.PlayerGroup || binding.FactionGroup || binding.Settlement == null) throw new ArgumentException("Only single NPC city subjects.");
         bool released = charter.Phase == RecordedCharterPhase.Released;
+        string subtree = Current.Game.GetComponent<SubtreeExitLedger>().Scope(id);
         var union = Current.Game.GetComponent<UnionPoliticsLedger>();
-        var target = released ? (!union.RestoreFailed ? union.Union : null) : proposed ?? Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
+        var target = released || subtree != null ? (!union.RestoreFailed ? union.Union : null) : proposed ?? Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
         if (target == null || !Find.FactionManager.AllFactionsListForReading.Contains(target))
             throw new ArgumentException("Configure a live union or player shared authority first.");
         string releasedSource = Current.Game.GetComponent<PoliticalTransitionLedger>().ReleasedMigrationSource(target);
         Charters.Book.ValidateCurrent(id, Charters.ObserveForMigration(releasedSource));
         var observed = Observe(binding.Settlement, binding.Identity, target, releasedSource);
-        return (charter, binding.Settlement, target, observed, released ? TerritoryTransferPurpose.ReleasedToUnion : TerritoryTransferPurpose.ActiveCharter);
+        return (charter, binding.Settlement, target, observed, released || subtree != null ? TerritoryTransferPurpose.ReleasedToUnion : TerritoryTransferPurpose.ActiveCharter);
     }
     public TerritoryAdministrationReview Review(string id) => ReviewForTarget(id, null);
     private TerritoryAdministrationReview ReviewForTarget(string id, Faction target)
@@ -112,7 +114,8 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         var c = Context(id, target); var clone = TerritoryTransferLedger.Restore(Ledger.Export());
         clone.Prepare("review-" + Guid.NewGuid().ToString("N"), Charters.Book, id, c.Observation, c.Target.GetUniqueLoadID(),
             c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
-            c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId);
+            c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
+            Current.Game.GetComponent<SubtreeExitLedger>().Scope(id));
         return new(id, c.City.Label, c.City.Faction.Name, c.Target.Name, c.Purpose,
             string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose, c.Observation.StockProof), c.Target.GetUniqueLoadID());
     }
@@ -123,13 +126,14 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         try
         {
             var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
-            if (transition.BlocksChanges && !transition.Executing) throw new ArgumentException("Resolve coordinated transition first.");
+            if (transition.BlocksChanges && !transition.Executing && !Current.Game.GetComponent<SubtreeExitLedger>().Executing) throw new ArgumentException("Resolve coordinated transition first.");
             var current = ReviewForTarget(reviewed.Charter, target);
             if (current.Stamp != reviewed.Stamp) throw new ArgumentException("Reviewed state changed.");
             var c = Context(reviewed.Charter, target); string id = Guid.NewGuid().ToString("N");
             Ledger.Prepare(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
                 c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
-                c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId);
+                c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
+                Current.Game.GetComponent<SubtreeExitLedger>().Scope(c.Charter.Id));
             references.Add(new() { Id = id, City = c.City, From = c.City.Faction, Target = c.Target });
             c.City.SetFaction(c.Target);
             CityStockPreservation.InvalidateMaterial(c.City);

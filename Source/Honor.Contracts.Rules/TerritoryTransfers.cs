@@ -12,7 +12,8 @@ public sealed record TerritoryTransfer(string Id, string Territory, string Basel
     string TargetOwner, string Charter, TerritoryTransferPurpose Purpose, long PreparedTick,
     TerritoryTransferPhase Phase = TerritoryTransferPhase.Prepared, long? ResolvedTick = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string StockProof = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] int StockFormat = 0);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] int StockFormat = 0,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ReleasedRoot = null);
 public sealed record TerritoryTransfersSave(int Version, long LastTick, TerritoryTransfer[] Transfers);
 
 /// <summary>Explicit ownership execution journal, separate from consent and the immutable original identity.</summary>
@@ -41,7 +42,7 @@ public sealed class TerritoryTransferLedger
         return actual with { NativeOwner = verified ? baseline : actual.NativeOwner, Eligible = actual.Eligible && verified };
     }
     public TerritoryTransfer Prepare(string id, CharterBook book, string charterId, TerritoryTransferObservation observed,
-        string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration = null)
+        string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration = null, string releasedRoot = null)
     {
         RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(observed);
         Key(id); Key(target); Key(observed.Territory); Key(observed.Owner); Time(now);
@@ -49,13 +50,15 @@ public sealed class TerritoryTransferLedger
         var charter = book.Charter(charterId); var subject = book.Entity(charter.Terms.Subject);
         Require(!book.Charters.Any(c => c.Terms.Subject == subject.Id && book.Phase(c, now) == RecordedCharterPhase.Offered),
             "Resolve open proposals before changing the NPC authority that granted consent.");
-        Require(RuntimeCompat.IsDefined(purpose) && !subject.Player && book.PlayerManaged(charter) &&
+        bool subtree = releasedRoot != null && SubtreeRelease.Authorizes(book, releasedRoot, charterId);
+        Require(releasedRoot == null || subtree && purpose == TerritoryTransferPurpose.ReleasedToUnion, "Invalid released subtree scope.");
+        Require(RuntimeCompat.IsDefined(purpose) && !subject.Player && (book.PlayerManaged(charter) || subtree) &&
             observed.Territory == subject.Id && charter.PlayerSignedTick.HasValue && charter.NpcSignedTick.HasValue &&
             now >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value), "A mutually signed NPC charter below the player is required.");
         if (purpose == TerritoryTransferPurpose.ActiveCharter)
             Require(charter.Phase == RecordedCharterPhase.Active && target == verifiedAuthority, "Target must be the live player's shared authority.");
         else
-            Require(charter.Phase == RecordedCharterPhase.Released && charter.PlayerReleaseTick.HasValue && charter.NpcReleaseTick.HasValue &&
+            Require(subtree ? target == verifiedUnion : charter.Phase == RecordedCharterPhase.Released && charter.PlayerReleaseTick.HasValue && charter.NpcReleaseTick.HasValue &&
                 now >= Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value) && target == verifiedUnion &&
                 !book.Charters.Any(c => c.Phase == RecordedCharterPhase.Active && c.Terms.Subject == subject.Id), "Release must be complete with no competing active liege.");
         Require(!book.Entities.Any(e => e.Player && e.NativeOwner == target) && observed.Owner != target &&
@@ -66,7 +69,7 @@ public sealed class TerritoryTransferLedger
         Require(VerifiedOwner(subject.Id, subject.NativeOwner, observed.Owner) && transfers.Count < Capacity &&
             !transfers.Any(t => t.Id == id || t.Phase == TerritoryTransferPhase.Prepared), "Resolve prior transfers and verify current ownership first.");
         var result = new TerritoryTransfer(id, subject.Id, subject.NativeOwner, observed.Owner, target, charterId, purpose, now,
-            StockProof: observed.StockProof, StockFormat: observed.StockFormat);
+            StockProof: observed.StockProof, StockFormat: observed.StockFormat, ReleasedRoot: releasedRoot);
         transfers.Add(result); LastTick = now; return result;
     }
     public void Confirm(string id, TerritoryTransferObservation actual, long now)
@@ -100,6 +103,7 @@ public sealed class TerritoryTransferLedger
         {
             RuntimeCompat.NotNull(item);
             foreach (var key in new[] { item.Id, item.Territory, item.BaselineOwner, item.FromOwner, item.TargetOwner, item.Charter }) Key(key);
+            if (item.ReleasedRoot != null) { Key(item.ReleasedRoot); Require(item.Purpose == TerritoryTransferPurpose.ReleasedToUnion, "Subtree scope is union-only."); }
             Require(item.StockFormat is 0 or 1 && (item.StockFormat == 0 || item.StockProof != null) &&
                 (item.StockProof == null || CityStockProof.Valid(item.StockProof)) &&
                 RuntimeCompat.IsDefined(item.Purpose) && RuntimeCompat.IsDefined(item.Phase) && item.FromOwner != item.TargetOwner &&

@@ -171,6 +171,7 @@ assertions += PlayerAllegianceTests.Run();
 assertions += TerritoryTransferTests.Run();
 assertions += CityStockProofTests.Run();
 assertions += TradeAnimalTests.Run();
+assertions += SubtreeReleaseTests.Run();
 assertions += ResidentBaselineTests.Run();
 assertions += FollowerTransfersTests.Run();
 assertions += AllegianceTransitionsTests.Run();

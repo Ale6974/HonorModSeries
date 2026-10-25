@@ -112,6 +112,10 @@ public sealed partial class LiveCharterLedger : GameComponent
             throw new ArgumentException("No current player settlement.");
         Register(null, true);
     }
+    internal void ReplaceForSubtree(SubtreeReleasePlan plan)
+    {
+        Book = SubtreeRelease.Commit(Book, plan, Find.TickManager.TicksGame, Observe());
+    }
     public string Label(string identity)
     {
         var binding = bindings.SingleOrDefault(b => b.Identity == identity);
@@ -230,6 +234,7 @@ public sealed class LiveChartersWindow : Window
             }
             var observations = ledger.Observe(); long now = Find.TickManager.TicksGame;
             if (list.ButtonText("NS_Open".Translate())) Find.WindowStack.Add(new NpcSubchartersWindow());
+            if (list.ButtonText("SX_Open".Translate())) Find.WindowStack.Add(new SubtreeExitWindow());
             if (list.ButtonText("NW_Open".Translate())) Find.WindowStack.Add(new NpcWorldSetupWindow());
             foreach (var entity in ledger.Book.Entities)
                 list.Label("HCL_Territory".Translate(ledger.Label(entity.Id), ledger.PoliticalOwner(entity.Id),
