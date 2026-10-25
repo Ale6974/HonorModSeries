@@ -1,5 +1,15 @@
 # 1.7 API·런타임 검증 기록
 
+## 이념의 손님 상태 알림과 노예 보존 제한 (0.3.17)
+
+설치 Version.txt 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 실제 Ideo.Notify_MemberGuestStatusChanged(Pawn)는 모든 교리의 같은 알림을 호출하고 예외는 로그로 처리한다. Precept의 기본 알림은 비어 있으며 RoleSingle/RoleMulti는 이를 상속한다. 기존 주민 SetFaction도 첫 guest.SetGuestStatus(null)에서 이 알림에 들어간다. 이에 기존 소속 변경 콜백 검사만으로 안전하다고 가정하던 누락을 보완해 두 Ideo 전달 함수와 실제 선택되는 교리의 손님 상태 콜백을 확인한다. 기본 Precept가 선언한 미패치 빈 손님 알림만 허용한다. 역할/커스텀/미지원 소속 알림 등 기존 제한도 유지한다. 1.6.4871 참조에서 Ideo/Precept의 두 알림 시그니처를 확인했다. 이는 1.6 실제 구현이나 게임 실행 증거가 아니다.
+
+네이티브 SetGuestStatus(target, Slave)는 현재 pawn faction을 지역 변수에 저장하고 Pawn.SetFaction(target)을 호출한다. 그 내부 SetGuestStatus(null)는 slaveFactionInt를 비우며, 외부 Slave 분기는 비어 있는 값을 직전 소유 세력으로 다시 기록할 수 있다. 원래 노예 출신 소속 보존을 검증할 수 없어 노예 이전은 차단한다. 반사 필드 쓰기, guest tracker 임시 제거/교체, 네이티브 초기화 패치 우회나 가짜 중간 소속 이동을 추가하지 않는다. 공개/참조 API의 존재를 보존 보장으로 취급하지 않는다.
+
+기존 System.Text.Json 단정밀도 직렬화는 Windows Framework 호스트에서 0.8f를 0.800000012로, .NET 10에서는 0.8로 출력한다. 고정 지문 검사에서 이 차이를 확인했으며 기존 저장 증거를 정규화하거나 다시 작성하지 않는다. 동일 타깃의 기존 지문을 각각 고정값으로 검사한다. 진행 중인 도시 이전을 다른 게임/런타임 버전으로 옮길 때 증거가 호환된다고 주장하지 않으며 원래 버전에서 먼저 해결하는 것이 필요하다.
+
+profile 5의 이념 포로는 기존 native Prisoner 경로만 사용한다. 원래 세력/신분을 유지하고 현재 신앙·확신도·교리/이력을 별도 임상/수술/포로 증거에 결합한다. 필드와 알림의 검사/빌드는 실제 Scribe·NPC 알림·장기 저장 복구나 런타임 보존 증명이 아니다. 디컴파일 자료는 로컬 전용으로 유지한다.
+
 ## 포로 관리 세력 변경과 네이티브 초기화 (0.3.16)
 
 Version.txt의 1.7.4985 rev1269와 runtimeconfig net10.0 / 10.0.13-waylithclr.dev를 재확인했다. 설치 DLL의 Pawn_GuestTracker.SetGuestStatus(Faction, GuestStatus)를 조사했다. Prisoner 분기는 자신의 faction을 바꾸지 않고 host를 변경하지만, resistance/will을 새로 뽑고 의료 등급·수술 목록을 초기화한다. 기존 모드가 Enslave이면 상호작용 모드도 변경한다. Slave 분기는 Pawn.SetFaction을 호출하므로 같은 경로로 안전하다고 가정하지 않는다. 새 지원은 일반 포로만이며 Enslave 모드를 차단하고 native SetGuestStatus를 직접 호출한다. private hostFactionInt나 pawn faction의 원시 쓰기는 없다.

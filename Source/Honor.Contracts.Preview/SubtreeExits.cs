@@ -102,7 +102,7 @@ public sealed class SubtreeExitLedger : GameComponent
                 throw new ArgumentException("Town ownership/eligibility changed.");
             if (source == union) continue;
             if (o.HasMap) throw new SubtreeCityBlocked(city.Label, "SX_MapUnavailable");
-            if (o.HasInhabitants && o.ResidentProof == null) throw new SubtreeCityBlocked(city.Label, "SX_ResidentsUnavailable");
+            if (o.HasInhabitants && o.ResidentProof == null) throw new SubtreeCityBlocked(city.Label, ResidentExecution.BlockReasonKey(city, union));
             if (o.StockProof == null && o.Visited) throw new SubtreeCityBlocked(city.Label, "SX_StockUnavailable");
             if (!counts.ContainsKey(o.Owner)) counts.Add(o.Owner, o.SourceSettlements);
             if (counts[o.Owner] < 2 && source != administration) throw new SubtreeCityBlocked(city.Label, "SX_MergerUnavailable");

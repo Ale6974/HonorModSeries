@@ -12,9 +12,11 @@ public static class ResidentMoveProfiles
 {
     public static string Compose(string legacy, string surgery, int profile, string ideology = null, string custody = null)
     {
-        if (!CityStockProof.Valid(legacy) || profile is not (1 or 2 or 3 or 4) || (profile == 1 ? surgery != null : !CityStockProof.Valid(surgery)) ||
-            (profile >= 3 ? !CityStockProof.Valid(ideology) : ideology != null) || (profile == 4 ? !CityStockProof.Valid(custody) : custody != null))
+        if (!CityStockProof.Valid(legacy) || profile is not (1 or 2 or 3 or 4 or 5) || (profile == 1 ? surgery != null : !CityStockProof.Valid(surgery)) ||
+            (profile >= 3 ? !CityStockProof.Valid(ideology) : ideology != null) || (profile >= 4 ? !CityStockProof.Valid(custody) : custody != null))
             throw new ArgumentException("Invalid resident preservation profile.");
+        if (profile == 5) return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(new { Profile = 5, Previous = Compose(legacy, surgery, 4, ideology, custody) }))));
         if (profile == 4) return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(
             JsonSerializer.Serialize(new { Profile = 4, Previous = Compose(legacy, surgery, 3, ideology), Custody = custody }))));
         if (profile == 3) return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(

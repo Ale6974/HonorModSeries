@@ -51,11 +51,15 @@ internal static class ResidentPrisoners
     private static string Hash(object value) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(value))));
     internal static bool IsPrisoner(Pawn p) => p?.IsPrisoner == true;
     internal static string Authority(Pawn p) => (IsPrisoner(p) ? p.HostFaction : p.Faction)?.GetUniqueLoadID();
-    internal static void Eligible(Pawn p)
+    internal static void Eligible(Pawn p, int profile = 4)
     {
+        if (p.guest?.ideoForConversion != null) throw new ResidentMoveBlocked("RE_ConversionUnavailable");
+        if (p.workSettings?.Initialized != true) throw new ResidentMoveBlocked("RE_WorkUnavailable");
+        if (p.ownership?.OwnedBed != null || p.ownership?.AssignedDeathrestCasket != null || p.ownership?.AssignedThrone != null)
+            throw new ResidentMoveBlocked("RE_PropertyUnavailable");
         if (!p.IsPrisoner || p.IsSlave || p.guest == null || p.guest.GetType() != typeof(Pawn_GuestTracker) ||
             p.HostFaction == null || p.HostFaction.IsPlayer || p.HostFaction == p.Faction || p.guest.SlaveFaction != null || p.guest.Released ||
-            p.Ideo != null || p.mindState == null || p.workSettings == null || p.workSettings.GetType() != typeof(Pawn_WorkSettings) || !p.workSettings.Initialized || p.kindDef.destroyGearOnDrop ||
+            (profile < 5 && p.Ideo != null) || p.mindState == null || p.workSettings == null || p.workSettings.GetType() != typeof(Pawn_WorkSettings) || !p.workSettings.Initialized || p.kindDef.destroyGearOnDrop ||
             p.kindDef.initialResistanceRange == null || p.kindDef.initialWillRange == null || p.IsWildMan() ||
             p.guest.ExclusiveInteractionMode == null || p.guest.ExclusiveInteractionMode == PrisonerInteractionModeDefOf.Enslave || p.guest.joinStatus == JoinStatus.Undefined ||
             p.ownership?.OwnedBed != null || p.ownership?.AssignedDeathrestCasket != null || p.ownership?.AssignedThrone != null ||
@@ -66,6 +70,8 @@ internal static class ResidentPrisoners
         if (!RuntimeCompat.IsFinite(resistance.min) || !RuntimeCompat.IsFinite(resistance.max) || resistance.min < 0 || resistance.max < resistance.min ||
             !RuntimeCompat.IsFinite(will.min) || !RuntimeCompat.IsFinite(will.max) || will.min < 0 || will.max < will.min)
             throw new ArgumentException("Invalid native prisoner initialization ranges.");
+        if (profile is not (4 or 5)) throw new ArgumentException("Unsupported prisoner preservation profile.");
+        if (profile >= 5) ResidentIdeology.Proof(p);
         // NPC-to-NPC host change keeps the prisoner role. The native drop path returns before touching unheld world-pawn gear.
         if (p.SpawnedOrAnyParentSpawned || p.InContainerEnclosed) throw new ArgumentException("Prisoner gear cannot be preserved here.");
     }
@@ -86,9 +92,9 @@ internal static class ResidentPrisoners
         // Conversion/complex recruiter records and future unknown fields require explicit preservation support.
         throw new ArgumentException("Unsupported guest tracker field: " + field.Name);
     }
-    internal static PrisonerEvidence Describe(Pawn p)
+    internal static PrisonerEvidence Describe(Pawn p, int profile = 4)
     {
-        Eligible(p);
+        Eligible(p, profile);
         if (GuestFields.Length != KnownGuestFields.Length || GuestFields.Any(f => !KnownGuestFields.Contains(f.Name)) ||
             !GuestFields.Any(f => f.Name == "pawn" && f.FieldType == typeof(Pawn) && f.GetValue(p.guest) == p) ||
             !GuestFields.Any(f => f.Name == "hostFactionInt" && f.FieldType == typeof(Faction) && f.GetValue(p.guest) == p.HostFaction))
@@ -105,19 +111,19 @@ internal static class ResidentPrisoners
         var row = new PrisonerEvidence(p.GetUniqueLoadID(), p.Faction.GetUniqueLoadID(), Hash(new { Fields = fields, Priorities = priorities }), p.guest.resistance, p.guest.will);
         PrisonerPreservation.Proof(row); return row;
     }
-    internal static ResidentPrisonerRecord Capture(Pawn p)
+    internal static ResidentPrisonerRecord Capture(Pawn p, int profile = 4)
     {
-        var row = Describe(p);
+        var row = Describe(p, profile);
         return new() { Pawn = p, Snapshot = JsonSerializer.Serialize(row), SourceHost = Authority(p) };
     }
-    internal static string Proof(Pawn p, ResidentPrisonerRecord record)
+    internal static string Proof(Pawn p, ResidentPrisonerRecord record, int profile = 4)
     {
         if (!IsPrisoner(p))
         {
             if (record != null) throw new ArgumentException("Prisoner status changed.");
             return PrisonerPreservation.None;
         }
-        var actual = Describe(p);
+        var actual = Describe(p, profile);
         if (record == null) return PrisonerPreservation.Proof(actual);
         var before = record.Evidence();
         if (before.Id != actual.Id || before.OriginalFaction != actual.OriginalFaction || before.State != actual.State ||
@@ -126,34 +132,34 @@ internal static class ResidentPrisoners
             throw new ArgumentException("Prisoner preservation mismatch; never rewrite later progress.");
         return PrisonerPreservation.Proof(before);
     }
-    internal static bool NeedsRestore(ResidentPrisonerRecord record, Faction source, Faction target)
+    internal static bool NeedsRestore(ResidentPrisonerRecord record, Faction source, Faction target, int profile = 4)
     {
         if (source == null || target == null || source.IsPlayer || target.IsPlayer) throw new ArgumentException("Only reviewed NPC custodial authorities are supported.");
-        var p = record.Pawn; var actual = Describe(p);
+        var p = record.Pawn; var actual = Describe(p, profile);
         if (record.SourceHost != source.GetUniqueLoadID()) throw new ArgumentException("Prisoner source changed.");
         return PrisonerPreservation.NeedsRestore(record.Evidence(), new(actual.Id, actual.OriginalFaction, Authority(p), actual.State, actual.Resistance, actual.Will),
             source.GetUniqueLoadID(), target.GetUniqueLoadID(), record.Reset());
     }
-    internal static void ChangeHost(ResidentPrisonerRecord record, Faction source, Faction target)
+    internal static void ChangeHost(ResidentPrisonerRecord record, Faction source, Faction target, int profile = 4)
     {
-        NeedsRestore(record, source, target); var p = record.Pawn;
+        NeedsRestore(record, source, target, profile); var p = record.Pawn;
         if (Authority(p) != source.GetUniqueLoadID()) throw new ArgumentException("Prisoner is not at the reviewed source.");
         p.guest.SetGuestStatus(target, GuestStatus.Prisoner); // Never SetFaction, release, enslave or recapture the prisoner.
         // If the native call throws before this observation, recovery deliberately cannot invent a reset proof.
-        var actual = Describe(p);
+        var actual = Describe(p, profile);
         if (Authority(p) != target.GetUniqueLoadID() || actual.OriginalFaction != record.Evidence().OriginalFaction || actual.State != record.Evidence().State)
             throw new ArgumentException("Native custody change did not preserve prisoner state.");
         if (actual.Resistance < 0 || actual.Will < 0) throw new ArgumentException("Native custody initialization was not observed.");
         record.ResetSnapshot = JsonSerializer.Serialize(new PrisonerNativeReset(target.GetUniqueLoadID(), actual.Resistance, actual.Will));
     }
-    internal static void Restore(ResidentPrisonerRecord record, Faction source, Faction target)
+    internal static void Restore(ResidentPrisonerRecord record, Faction source, Faction target, int profile = 4)
     {
-        if (NeedsRestore(record, source, target))
+        if (NeedsRestore(record, source, target, profile))
         {
             var before = record.Evidence();
             record.Pawn.guest.resistance = before.Resistance; record.Pawn.guest.will = before.Will;
         }
-        if (Authority(record.Pawn) != target.GetUniqueLoadID() || NeedsRestore(record, source, target))
+        if (Authority(record.Pawn) != target.GetUniqueLoadID() || NeedsRestore(record, source, target, profile))
             throw new ArgumentException("Prisoner custody preservation incomplete.");
         // Consume the reset permission. Later natural progress must never match an old random reset and become repairable again.
         record.ResetSnapshot = null;

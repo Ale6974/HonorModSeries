@@ -19,6 +19,12 @@ internal static class ResidentIdeology
             throw new ArgumentException("Unsupported resident ideology or age-reversal obligation.");
         float certainty = (float)Certainty.GetValue(pawn.ideo); // The public getter can write a baby's certainty; observation must not do that.
         if (!RuntimeCompat.IsFinite(certainty) || certainty is < 0 or > 1) throw new ArgumentException("Invalid stored certainty.");
+        // SetFaction also calls SetGuestStatus(null). Validate both dispatch paths, even for ordinary residents.
+        var factionDispatch = AccessTools.Method(typeof(Ideo), nameof(Ideo.Notify_MemberChangedFaction), [typeof(Pawn), typeof(Faction), typeof(Faction)]);
+        var guestDispatch = AccessTools.Method(typeof(Ideo), nameof(Ideo.Notify_MemberGuestStatusChanged), [typeof(Pawn)]);
+        if (factionDispatch == null || guestDispatch == null || factionDispatch.ReturnType != typeof(void) || guestDispatch.ReturnType != typeof(void) || Harmony.GetPatchInfo(factionDispatch)?.Owners.Any() == true ||
+            Harmony.GetPatchInfo(guestDispatch)?.Owners.Any() == true)
+            throw new ResidentMoveBlocked("RE_FaithCallbacksUnavailable");
         var rows = new List<ResidentFaithPrecept>();
         foreach (var precept in faith.PreceptsListForReading)
         {
@@ -26,9 +32,13 @@ internal static class ResidentIdeology
                 throw new ArgumentException("Unsupported custom ideology precept.");
             var callback = AccessTools.Method(precept.GetType(), nameof(Precept.Notify_MemberChangedFaction), [typeof(Pawn), typeof(Faction), typeof(Faction)]);
             if (callback == null || callback.DeclaringType != typeof(Precept) && callback.DeclaringType != typeof(Precept_RoleSingle))
-                throw new ArgumentException("Unverified ideology faction-change callback.");
-            if (Harmony.GetPatchInfo(callback)?.Owners.Any() == true) throw new ArgumentException("Patched ideology callback is not verified for resident migration.");
-            if (precept is Precept_Role role && role.IsAssigned(pawn)) throw new ArgumentException("Ideology role holders require separate role/leadership preservation.");
+                throw new ResidentMoveBlocked("RE_FaithCallbacksUnavailable");
+            if (Harmony.GetPatchInfo(callback)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_FaithCallbacksUnavailable");
+            var guestCallback = AccessTools.Method(precept.GetType(), nameof(Precept.Notify_MemberGuestStatusChanged), [typeof(Pawn)]);
+            if (guestCallback == null || guestCallback.DeclaringType != typeof(Precept) || guestCallback.ReturnType != typeof(void) ||
+                Harmony.GetPatchInfo(guestCallback)?.Owners.Any() == true)
+                throw new ResidentMoveBlocked("RE_FaithCallbacksUnavailable");
+            if (precept is Precept_Role role && role.IsAssigned(pawn)) throw new ResidentMoveBlocked("RE_FaithRoleUnavailable");
             rows.Add(new(precept.GetUniqueLoadID(), precept.def.defName, precept.GetType().FullName));
         }
         return ResidentFaith.Capture(faith.GetUniqueLoadID(), certainty, rows, pawn.ideo.PreviousIdeos?.Select(i => i?.GetUniqueLoadID()) ?? [], false);

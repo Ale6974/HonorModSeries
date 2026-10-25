@@ -93,7 +93,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
     private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
         !faction.defeated && faction.HasGoodwill && faction.def.humanlikeFaction && !faction.def.permanentEnemy &&
         !(faction.def.royalTitleTags?.Count > 0) && (!faction.HostileTo(Faction.OfPlayer) || faction.GetUniqueLoadID() == releasedSource);
-    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null, int residentProfile = 4)
+    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null, int residentProfile = 5)
     {
         var all = Cities(); bool exists = city != null && all.Contains(city); var owner = exists ? city.Faction : null;
         int format = 0;
@@ -121,7 +121,7 @@ public sealed class TerritoryAdministrationLedger : GameComponent
         var observed = Observe(binding.Settlement, binding.Identity, target, releasedSource);
         if (observed.Owner != target.GetUniqueLoadID() && observed.HasInhabitants && observed.ResidentProof == null)
         {
-            Messages.Message("RE_Unsupported".Translate(binding.Settlement.Label), MessageTypeDefOf.RejectInput);
+            Messages.Message("SX_CityBlocked".Translate(binding.Settlement.Label, ResidentExecution.BlockReasonKey(binding.Settlement, target).Translate()), MessageTypeDefOf.RejectInput);
             throw new ArgumentException("Resident preservation unavailable.");
         }
         return (charter, binding.Settlement, target, observed, released || subtree != null ? TerritoryTransferPurpose.ReleasedToUnion : TerritoryTransferPurpose.ActiveCharter);
