@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 영지 소실 승계의 실제 NPC 소유 세력 분리 — 0.3.40 / 2026-10-26
+
+기존 승계 review는 PlayerPolitics.TerritoryAuthority를 소실 NPC 도시의 대표 세력으로 사용했다. 계약은 체결됐지만 실제 도시가 아직 이전되지 않았거나 플레이어의 정치적 소속이 다르면, 올바른 원 NPC 세력/생존 하위가 그대로 있어도 검토가 불가능했다. 이제 positive loss archive의 OwnerAtLoss로 exact registered NPC faction을 찾고 기존 NpcDecisionAuthority의 현재 ordinary 대표 검사를 적용한다. 플레이어의 현재 물리적 authority를 NPC 소유권/동의로 간주하지 않는다. 새 native API/IL patch/owner writes는 없다.
+
+원래 상위가 player party이면 현재 PlayerIdentity·native player faction·PlayerGroup binding/OriginalFaction·book native owner를 따로 확인하고, 새 승계 검토 이력의 상위 actor는 그 player PARTY ID, 하위 actor는 실제 현 NPC chief로 구분한다. 원 상위가 NPC이면 현재 native owner/대표가 같은 기록된 NPC realm이어야 한다. 원래 parent는 archive의 고정 범위에서만 나오며 UI가 다른 parent를 고르지 않는다. 모든 surviving child/deeper town의 현재 실제 owner/완료 transfer provenance·원 book/archive/조건을 commit 직전 재검토한다.
+
+동일 realm에서 원래 상위로 재연결하는 기존 실제 atomic book/archive commit을 사용하며 생존 영지의 native 소속/주민/재고나 플레이어 정치/외교는 바꾸지 않는다. 기존 archive JSON 구조와 옛 receipt/서명·채무를 재작성하지 않는다. 현재 원 세력/상위가 없거나 바뀐 소유권·집단/provider 절차·다른 pending 작업/재탈환은 계속 보류한다.1.6 참조와 설치1.7의 기존 faction/binding/대표 API를 사용하고 양 대상으로 빌드한다.
+
 ## NPC 현재 의사결정 권한과 Game 경계 — 0.3.39 / 2026-10-26
 
 기존 NPC 재편 경로는 같은 세력의 살아 있는 leader/우호도50을 확인했지만 union/royal 소속을 구분하지 않았고, LiveSubcharterReview에 Game 참조가 없었다. 이제 현재 일반 세력 정책의 별도 evidence와 final reauthorization을 실제 book 교체에 연결한다. Royalty tags/known union은 별도 결정 절차 없이는 지원하지 않으며, 이를 그 체제의 지도자에게 권한이 없다는 native 사실로 주장하지 않는다. Hegemony/WD2는 기존 authoritative adapter 없이는 이 native 결정 경로를 승인하지 않는다.

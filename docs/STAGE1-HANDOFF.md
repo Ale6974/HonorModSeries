@@ -1,8 +1,10 @@
-# 1단계 예약 개발 인수인계 — 0.3.39 / 2026-10-26
+# 1단계 예약 개발 인수인계 — 0.3.40 / 2026-10-26
 
 honor-1은30분 반복/ACTIVE다. 중복 예약/동시 집행 없이 main·AGENTS·확정 결정·STATUS를 먼저 읽는다.1단계는 미완료다.
 
-이번은 NPC 재편의 현재 동의/현 Game 경계를 수정했다. 기존 LiveSubcharters는 살아 있는 realm leader/우호도50만 읽어 union/royal을 단일 지도자 동의로 처리할 수 있었고 review에는 Game이 없었다. NpcDecisionAuthority가 native 등록/유일 직위/현재 alive·awake·정신/구금/외부 소속·퀘스트 예약/상호 비적대·기존50 정책과 known provider 부재를 확인한다. 새 ReviewAuthorized/CommitAuthorized는 현재 evidence를 실제 book 원자 교체 직전에 재승인하고 옛 actorIDs-only plan을 자동 upgrade하지 않는다. LiveSubcharterReview는 기존 positional 생성자를 유지한 채 ephemeral JsonIgnore Context를 추가하고 window/context/common LiveCharterLedger.Execute 소유 Game를 확인한다. 다른 Game/old component는 새 signature/release를 만들지 못한다. TownSuccession의 기존 ordinary same-realm 복구도 이 대표 조건을 쓴다. 범용 SubcharterRepresentative 및 subtree exit의 기존 정책은 바꾸지 않았다. 집단/royal/provider 의결은 별도 미구현이지 이 gate를 구현으로 부르지 않는다. 기존 계약/서명/채무를 소급 수정하거나 blame을 만들지 않는다.
+이번은 영지 소실 승계의 실제 NPC 세력과 플레이어 정치적 authority를 분리했다. 기존 native review는 PlayerPolitics.TerritoryAuthority를 NPC 대표로 선택해, 계약은 체결됐지만 도시는 원 NPC realm에 아직 있는 정상 scope도 막혔다. 이제 archive.OwnerAtLoss로 exact registered actual realm을 찾고 기존 ordinary 현재 대표/권한 검사를 적용한다. 원 higher가 player면 현 PlayerIdentity/native player/PlayerGroup binding/OriginalFaction/book owner를 검증해 player PARTY 역할과 NPC 현 chief를 별도로 기록한다. NPC higher면 같은 실제 기록 realm이어야 한다. 원 parent는 archive 고정 범위에서만 가져오며 모든 surviving/deeper owner·완료 transfer provenance/원 book/archive를 fresh re-review한 뒤 기존 atomic commit으로 연결한다. Native 도시/주민/자원·정치/외교는 바꾸지 않는다. 새 역할은 새 receipt에만 있고 옛 서명/조건/채무·하위·loss receipts/save schema는 불변이다. 별도 realm임을 영한 UI에서 알린다.
+
+0.3.39의 NPC reparent/promotion final authorization·현 Game 경계는 유지한다. ordinary 등록/unique current office·alive/awake/정신/구금/extra/quest/우호도50/상호 비적대·provider 절차를 확인하며 union/royal을 단일 chief 승인으로 대체하지 않는다. 범용 realm lookup과 subtree exit 정책은 그대로다. 검토/창/component-owned Game를 확인하며 옛 actor IDs-only plan은 자동 승인하지 않는다.
 
 0.3.38의 pack animals stock format2는 그대로 유지한다. 같은 root/animal/소속/native inventory parent/holder·원 물품과 raw unloadEverything/itemsNotForSale/unpacked refs를 읽고 실제 city confirm/cancel/recovery에서 원 hash/format2를 비교한다. 원 물품 이동/Drop/재생성/refaction/이중 저장은 없고0/1 해시는 유지한다. 손상/중첩/직접 carried/장비·의복 재고는 보류한다.
 
@@ -13,6 +15,8 @@ honor-1은30분 반복/ACTIVE다. 중복 예약/동시 집행 없이 main·AGENT
 0.3.35의 모든 native source/affiliation/legacy combined와 return receipt를 묶는 LeaderNativeCallScope, Ready 재진입 거절, Affiliation의 후임 생성 권한 없음, finally 임시 권한만 해제·exception/pending 원본 보존은 유지한다. 기존 지원 profile5/빈 수술/원 세력2도시 이상·own administration/상호 동맹/비로딩·GC/redress·책임/채무 가드도 그대로다.
 
 ## 다음 착수점: 전체 합병 실제 coordinator
+
+민간 소실 복구의 다음 독립 실행 묶음은 **standalone Prepared upper-town transfer의 정상 실제 파괴**다. 현 PendingTownLossArchive/observer는 leaf만 지원한다. positive native witness에 원 upper scope를 함께 묶고, book·Destroyed transfer·pending loss receipt·TownSuccessionArchive를 사본에서 함께 검증/교체한 뒤 이번 actual-NPC-realm 승계 경로로 이어가는 구현이 필요하다. 이미 있는 leaf API의 가드를 제거하거나 orphan upper를 archive 없이 닫지 않는다. 먼저 정치 조정/재진입 없는·동일 actual surviving realm·빈 비로딩 scope로 제한하더라도 실제 마지막 재연결까지 연결해야 하며, pending 정치/혼합 realm은 별도 adapter 없이는 그대로 보류한다. 이 상위 pending 경로는 아직 미구현이다.
 
 0.3.32의 whole-faction 정치 제안/확인만 있고 합병 실행은 없다. 설치1.7의 PawnUtility.GetFactionLeaderFaction은 defeated faction도 leader pointer를 검사한다. FactionManager.Remove는 temporary만 지원하고 남은 pawn에 SetFaction(null)을 호출한다. SettlementDefeatUtility는 파괴·전투 보상/편지이므로 평화 합병에 사용하지 않는다. TryGenerateNewLeader는 native 내부에서 leader=null 뒤 새 후임을 생성한다. source 마지막 지도자를 평범하게 SetFaction하면 계속 새 source 후임이 생길 수 있다. 분석 원문은 ignored .local/merger-*.cs에만 있으며 Git/배포 금지다. 거대한 merger-Faction.il은 출력하지 않는다.
 
@@ -26,6 +30,6 @@ honor-1은30분 반복/ACTIVE다. 중복 예약/동시 집행 없이 main·AGENT
 
 ## 검사·게시·설치
 
-1.6은 pinned1.6.4871/net472,1.7은 설치1.7.4985/net10.0이다. 코드·규칙·영한·패키지만 검사하고 게임/엔진은 시작하지 않는다. 양 전체 빌드 대상별 Contracts4039 + Honor/runtime20093 =24132개, 공용 EN/KO427키와 FactionDef12필드다. 최종 unknown-class 조기 차단 뒤 양 Preview도 재빌드했다. 패키지/설치·해시는 TESTING 최신 기록을 따른다. 검증 소스는 공개 main, 로컬 설치는 게임 없는 상태에서 백업 후 진행하고 활성화/언어/Steam은 유지한다. 질문은 가능한 독립 작업 뒤 모으고 없는 답변으로 동의를 꾸미지 않는다.
+1.6은 pinned1.6.4871/net472,1.7은 설치1.7.4985/net10.0이다. 코드·규칙·영한·패키지만 검사하고 게임/엔진은 시작하지 않는다. 양 전체 빌드 대상별 Contracts4068 + Honor/runtime20093 =24161개, 공용 EN/KO428키와 FactionDef12필드다. 패키지/설치·해시는 TESTING 최신 기록을 따른다. 검증 소스는 공개 main, 로컬 설치는 게임 없는 상태에서 백업 후 진행하고 활성화/언어/Steam은 유지한다. 질문은 가능한 독립 작업 뒤 모으고 없는 답변으로 동의를 꾸미지 않는다.
 
-잔여 노력 추정:1단계35%(7~9묶음),2단계80%(5~7),3단계95%(6~8),4단계90%(5~7),5단계100%(6~8),6단계70%(4~6). 이번은 부당한 동의/다른 Game 재사용을 차단하는 정확성 수정이며 전체 합병 등 큰 묶음 완료로 세지 않는다. 확정 명세의 실제 실행·저장/복구·영한 안내·양 타깃 기준을 충족할 때만 완료 보고/반복 종료한다.
+잔여 노력 추정:1단계35%(7~9묶음),2단계80%(5~7),3단계95%(6~8),4단계90%(5~7),5단계100%(6~8),6단계70%(4~6). 이번은 실제 소실 재연결의 지원 범위 확장이며 상위/진행 중·재진입/재탈환과 전체 합병 등 큰 묶음 완료로 세지 않는다. 확정 명세의 실제 실행·저장/복구·영한 안내·양 타깃 기준을 충족할 때만 완료 보고/반복 종료한다.

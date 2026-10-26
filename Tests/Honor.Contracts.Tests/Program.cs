@@ -191,6 +191,7 @@ assertions += TributePerformanceTests.Run();
 assertions += TributeNoticeTests.Run();
 assertions += CharterAcceptanceTests.Run();
 assertions += TownSuccessionTests.Run();
+assertions += TownSuccessionAuthorityTests.Run();
 assertions += TownLossCascadeTests.Run();
 assertions += TownLossMergeTests.Run();
 assertions += PendingTownLossTests.Run();

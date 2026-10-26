@@ -1,5 +1,12 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.40 — 원 NPC 소유 세력에 따른 실제 승계 (2026-10-26)
+
+- 신규29개 assertion은 실제 공통 book/loss archive에서 원 player 상위와 원 NPC 상위 두 경우를 검사한다. 현재 NPC 대표/실제 owner를 player party와 분리해 정상 review→원자 book/archive 교체→기존 저장 왕복을 확인했다. player 상위는 실제 player party, NPC 상위는 같은 기록된 NPC realm이어야 한다.
+- 잘못된 기록 owner·바뀐 상위 소유자/다른 player party, union/royal·unavailable/중복 직위/provider consent·생존 하위의 foreign 실제 관측을 거절하고 source book/archive bytes를 유지한다. 정상 경로는 원 조건·old signature/actor·다른/deeper 계약·NPC NativeOwner를 보존하며 새 authority receipt에는 현 역할을 기록한다. 원 NPC source가 current player political authority와 달라도 그 값으로 대체하지 않는 native 선택/원 player binding 검사는 코드 검토와 양 Preview 빌드로 확인했다.
+- 1.6/net472·1.7/net10 전체 빌드/각 규칙 호스트: Contracts **4,068** + Honor/runtime **20,093** = 대상별 **24,161**개 assertion, 경고/오류0. EN/KO **428개** 키/자리표시자·FactionDef12개 필드를 통과했다. 새 engine API/IL patch/저장 구조 변경이나 native 도시/주민/재고/외교 쓰기는 없다. 혼합 소유권·진행 중 다른 작업·집단/재탈환 등 기존 가드는 남으며1단계 완료를 주장하지 않는다.
+- 6모드×두 런타임/DLL 허용 목록을 통과한 ZIP SHA256: `AD8C3CFB8AD503561EE4B5A404618397E7AD3DCA238C2D4A59EBD84D7F59E105`. 실행 중인 게임이 없을 때0.3.39를 `.local/contracts-preview-fa0aedae09df4c6a9268e9eb013cdbce`에 백업하고0.3.40을 설치했다. 원본/설치32개 파일 집합·해시가 일치하며 ModsConfig.xml/Prefs.xml 해시는 불변이다. 활성화/언어/Steam은 유지한다.
+
 ## Contracts 0.3.39 — NPC 실제 동의·현재 Game 경계 수정 (2026-10-26)
 
 - 신규29개 assertion: 실제 공통 book의 NPC 재편 review/commit에 현재 ordinary decision evidence를 연결해 정상 원자 교체·원 source bytes/조건/다른 계약·저장 왕복을 확인했다. union/royal/unknown regime, unavailable/unregistered/ineligible/중복 직위/의사 없음/provider authority·누락 대표를 review와 final commit 양쪽에서 거절하며 부분 해약/서명은 생기지 않는다.
