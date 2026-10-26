@@ -86,6 +86,8 @@ public sealed class RealmAdministrationLedger : GameComponent
     public void Synchronize()
     {
         if (Current.ProgramState != ProgramState.Playing || syncing || routing || faction == null || RestoreFailed || Suspended) return;
+        var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
+        if (towns.RestoreFailed || towns.HasPendingTownLosses) return;
         try
         {
             Validate(); var player = Faction.OfPlayer;
@@ -117,6 +119,8 @@ public sealed class RealmAdministrationLedger : GameComponent
         result = false;
         if (Current.ProgramState != ProgramState.Playing || routing || RestoreFailed || Suspended || !initialized ||
             faction == null || actor != faction && other != faction || actor == Faction.OfPlayer || other == Faction.OfPlayer) return false;
+        var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
+        if (towns.RestoreFailed || towns.HasPendingTownLosses) return false;
         try { Validate(); } catch (ArgumentException) { Suspend(); return false; }
         if (!actor.CanChangeGoodwillFor(other, delta)) return true;
         routing = true;

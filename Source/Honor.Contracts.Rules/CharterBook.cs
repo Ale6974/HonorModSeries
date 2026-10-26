@@ -11,6 +11,7 @@ public sealed record TerritoryObservation(string Id, string NativeOwner, bool Ex
 public sealed record RecordedCharterTerms(string Liege, string Subject, decimal TributeValue,
     long IntervalTicks, long GraceTicks, TributeTransport Transport, decimal TransportRate);
 public sealed record NpcCharterAuthority(string LiegeRepresentative, string SubjectRepresentative);
+public sealed record RecordedPoliticalLoss(string Id, string Proof);
 public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long OfferedTick, long ExpiresTick,
     RecordedCharterPhase Phase = RecordedCharterPhase.Offered, long? PlayerSignedTick = null,
     long? NpcSignedTick = null, long? PlayerReleaseTick = null, long? NpcReleaseTick = null,
@@ -18,7 +19,8 @@ public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] long? TerritoryLostTick = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool ConditionalOffer = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] LostTownReplacement Replacement = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string Replaces = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string Replaces = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] RecordedPoliticalLoss PoliticalLoss = null);
 public sealed record CharterBookSave(int Version, long LastTick, TerritoryIdentity[] Entities, RecordedCharter[] Charters);
 
 /// <summary>
@@ -235,6 +237,12 @@ public sealed class CharterBook
     }
     public void CloseDestroyedLeaf(string id, string territory, string baselineOwner, long lossTick, long now, bool verifiedDestroyed)
         => CloseDestroyedTown(id, territory, baselineOwner, lossTick, now, verifiedDestroyed, false);
+    internal void ClosePoliticalLostLeaf(string id, string territory, string baselineOwner, long lossTick, long now, RecordedPoliticalLoss proof)
+    {
+        RuntimeCompat.NotNull(proof); Key(proof.Id); Require(CityStockProof.Valid(proof.Proof), "Exact independent loss proof required.");
+        CloseDestroyedLeaf(id, territory, baselineOwner, lossTick, now, true);
+        charters[id] = Charter(id) with { PoliticalLoss = proof };
+    }
     public void CloseDestroyedTown(string id, string territory, string baselineOwner, long lossTick, long now, bool verifiedDestroyed, bool preserveChildren)
         => CloseLostTown(id, territory, baselineOwner, lossTick, now, verifiedDestroyed, preserveChildren);
     public void CloseHostileTransferredTown(string id, string territory, string baselineOwner, string previousOwner,
@@ -344,6 +352,11 @@ public sealed class CharterBook
                 (!charter.TerritoryLostTick.HasValue || !book.Entity(charter.Terms.Subject).Player && charter.TerritoryLostTick >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value) &&
                     charter.TerritoryLostTick <= save.LastTick && (!charter.PlayerReleaseTick.HasValue || charter.PlayerReleaseTick <= charter.TerritoryLostTick) &&
                     (!charter.NpcReleaseTick.HasValue || charter.NpcReleaseTick <= charter.TerritoryLostTick)), "Invalid saved territorial loss.");
+            if (charter.PoliticalLoss != null)
+            {
+                Key(charter.PoliticalLoss.Id);
+                Require(charter.Phase == RecordedCharterPhase.TerritoryLost && CityStockProof.Valid(charter.PoliticalLoss.Proof), "Invalid independent political loss binding.");
+            }
             book.charters.Add(charter.Id, charter);
         }
         foreach (var c in book.charters.Values)

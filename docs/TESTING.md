@@ -1,5 +1,15 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.31 — 이전 전/이전 완료 후 별도 정치 소실·기존 결과 보존 (2026-10-26)
+
+- 신규51개 assertion: 아직 이전하지 않은 경우와 실제 Applied 이전을 마친 경우 모두 양의 독립 소실 관측/검토/명시 확정·저장 왕복·생존 전체 이전 뒤 완료를 검사했다. 원 계약 조건/서명/채무 이력·원래 전체 Followers와 모든 이전 row를 보존하며 이전 없음을 유지하거나 과거 Applied를 그대로 남긴다. 새 독립 사건은 가짜 Prepared/Destroyed 이전을 만들지 않는다. NPC 간접 말단 봉신 소실과 부모 계약/권한 보존·생존 부모 실제 이전 후 완료, 상위 영지 가드도 검사했다.
+- 양 형식 손실의 앞뒤 순서를 모두 연결해 각 원 증거·서로의 receipt prefix·전체 봉신을 보존함을 확인했다. missing 증거·적용 전 의도·외국 owner·잘못된 빈 stock descriptor·변조 After/hash·stale 확인·누락 archive·재생·중복·관측 후 원 증거 변경·다른 Prepared 이전을 거절한다. 관측/리뷰/거절은 원 book/ledger/정치 의도를 바꾸지 않는다.
+- 1.6/net472·1.7/net10 전체 빌드와 각 규칙 호스트 통과: Contracts **3,764** + Honor/runtime **20,093** = 대상별 **23,857**개 assertion, 경고/오류0. 마지막 영지-증거 저장 결합 회귀 뒤 양 Contracts 호스트를 다시 확인했다. EN/KO **385개** 공용 키/자리표시자와 FactionDef12개 필드를 검사했다.
+- 기존 정상-return Destroy 진입점에 별도 정치 observer를 연결했다. no-Prepared/execution 밖·정확한 원 정치/계약/ledger·현재 native owner·빈 도시/월드 제거를 묶고 pending 정치 UI에서 current-Game 명시 확인으로 book/독립 archive/political receipt만 함께 교체한다. 기존 ledger는 읽기만 한다. 미정리 손실 동안 player/proxy 자동 공유·우회 routing만 멈추며 native 독립 사건과 후속 fresh 외교 검토를 유지한다. 새 API/native 쓰기를 가정하지 않는다.
+- 종료 영지에 optional PoliticalLoss ID/hash를 묶어 이후 정치 의도가 교체되어도 독립 witness archive 유실을 감지한다. 기존 JSON에는 null 필드를 쓰지 않는다. 영지 증거 결합 삭제/변조·활성 영지에 소실 결합 삽입을 거절하며 양 archive/book/transfer/현재 정치 영수증을 함께 검사한다.
+- 6모드/두 런타임 선택과 DLL 허용 목록·영한 키 중복 부재 및 PI 실제 UI 키2개를 검사했다. ZIP SHA256: `692B339192DB5AEF8D80E12EA2637065F417C0ADDFE3E3F4D2CDC291A5616643`.
+- 실행 중인 게임이 없는 상태에서 기존0.3.30 로컬본을 .local에 백업하고0.3.31을 설치했다. 원본/설치32개 파일 해시·About 버전이 일치하고 ModsConfig.xml/Prefs.xml 해시는 불변이다. 다른 모듈/Steam/활성화/언어는 바꾸지 않았다.1단계 미완료로30분 반복은 유지한다.
+
 ## Contracts 0.3.30 — 적용 후 보류 정치 전환의 빈 말단 실제 파괴·별도 소실 영수증 (2026-10-26)
 
 - 신규23개 assertion: 원래 정치 전체 follower 목록 불변·양의 실제 소실/별도 정치 영수증과 생존 follower의 일치, 단순 계약 종료만으로 완료 불가, 도시/정치 증거 동시 저장 왕복, 같은 손실 재생 불가·실패 후 원 의도 불변, 일부 생존 도시 성공과 별도 Destroyed 결과의 혼합 완료, 두 순차 손실 뒤 전체 원 목록 보존과 올바른 명시 완료를 검사했다.

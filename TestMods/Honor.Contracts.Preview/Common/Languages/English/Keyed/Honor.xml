@@ -384,4 +384,6 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <PL_Coordinated>This loss belongs to the exact paused political intent. Confirmation preserves its original follower list and records one separate loss; resuming still requires every surviving follower, source rights and fresh diplomacy.</PL_Coordinated>
   <PS_CompleteWithLoss>Political transition complete: shared diplomacy and every surviving follower destination confirmed; {0} original town(s) were separately recorded as destroyed, not successfully transferred.</PS_CompleteWithLoss>
   <PS_LossProgress>Original followers: {1}; separately acknowledged destroyed towns: {0}. All other original followers still require current verification.</PS_LossProgress>
+  <PI_Pending>This is a separate actual loss before a city move starts or after a verified completed move. Prior transfers remain unchanged. The original political follower list and all surviving followers still require verification.</PI_Pending>
+  <PI_Confirm>{0}: confirm the recorded actual destruction, close only its incoming territory charter and retain debts, signatures and every previous transfer outcome? No transfer is fabricated or changed; the loss is a separate political event.</PI_Confirm>
 </LanguageData>

@@ -15,10 +15,15 @@ public sealed partial class TerritoryAdministrationLedger
     private string pendingLossSnapshot;
     private PendingTownLossArchive pendingTownLosses = new();
     private int nativeExecutionDepth;
-    internal bool HasPendingTownLosses => pendingTownLosses.Records.Any(r => r.ResolvedTick == null);
-    internal void ValidatePoliticalLosses(AllegianceTransitionLedger journal) => pendingTownLosses.ValidatePolitical(journal);
+    internal bool HasPendingTownLosses => pendingTownLosses.Records.Any(r => r.ResolvedTick == null) || politicalTownLosses.Pending;
+    internal void ValidatePoliticalLosses(AllegianceTransitionLedger journal)
+    {
+        pendingTownLosses.ValidatePair(Charters.Book, Ledger); politicalTownLosses.ValidatePair(Charters.Book, Ledger);
+        pendingTownLosses.ValidatePolitical(journal); politicalTownLosses.ValidatePolitical(journal);
+    }
     private void ExposePendingTownLosses()
     {
+        ExposePoliticalTownLosses();
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) pendingLossSnapshot = pendingTownLosses.Export();
         Scribe_Values.Look(ref pendingLossSnapshot, "honorPendingTownDestructionV1");
         if (Scribe.mode != LoadSaveMode.PostLoadInit) return;
@@ -34,7 +39,7 @@ public sealed partial class TerritoryAdministrationLedger
             Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges || payments.RestoreFailed || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) ||
             Current.Game.GetComponent<PlayerPoliticsLedger>().RestoreFailed || Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed || Current.Game.GetComponent<UnionPoliticsLedger>().RestoreFailed)
             throw new ArgumentException("Only a standalone city journal outside native execution may reconcile an observed empty leaf loss.");
-        pendingTownLosses.ValidatePolitical(political.Journal);
+        ValidatePoliticalLosses(political.Journal);
         if (political.Journal.Pending) political.ReviewTownLossContext();
     }
     private static EmptyTownStock Empty(Settlement city)
@@ -112,6 +117,8 @@ public sealed partial class TerritoryAdministrationLedger
             var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
             bool coordinated = pendingTownLosses.Records.Single(r => r.Transfer == fresh.Plan.Transfer).PoliticalBefore != null;
             var nextPolitical = coordinated ? political.StageTownLoss(result.Archive, result.Book, result.Ledger, fresh.Plan.Transfer, Find.TickManager.TicksGame) : null;
+            politicalTownLosses.ValidatePair(result.Book, result.Ledger);
+            politicalTownLosses.ValidatePolitical(nextPolitical ?? political.Journal);
             Charters.ReplaceAfterPendingTownLoss(fresh.Plan.BookBefore, result.Book);
             Ledger = result.Ledger; pendingTownLosses = result.Archive;
             if (nextPolitical != null) political.CommitTownLoss(nextPolitical);
@@ -121,6 +128,7 @@ public sealed partial class TerritoryAdministrationLedger
     }
     internal void DrawPendingTownLosses(Listing_Standard list, string charter = null)
     {
+        DrawIndependentTownLosses(list, charter);
         list.Label("PL_Limits".Translate());
         if (RestoreFailed) return;
         foreach (var proof in pendingTownLosses.Records.Where(r => r.ResolvedTick == null && (charter == null || Ledger.Transfer(r.Transfer).Charter == charter)).ToArray())

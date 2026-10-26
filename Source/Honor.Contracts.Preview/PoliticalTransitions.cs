@@ -40,6 +40,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
         if (c.PreparedTick > Find.TickManager.TicksGame || c.AllegianceTick > Find.TickManager.TicksGame || c.FinishedTick > Find.TickManager.TicksGame ||
             c.WarResults?.Any(r => r.ObservedTick > Find.TickManager.TicksGame) == true || c.WarReaffirmations?.Any(w => w.Tick > Find.TickManager.TicksGame) == true ||
             c.LostFollowers?.Any(l => l.ResolvedTick > Find.TickManager.TicksGame) == true ||
+            c.TownLosses?.Any(l => l.ResolvedTick > Find.TickManager.TicksGame) == true ||
             PlayerAllegiance.Restore(c.Before).NativePlayer != Faction.OfPlayer.GetUniqueLoadID() ||
             Journal.Pending && !Journal.IsBefore(Politics.Model) && !Journal.IsAfter(Politics.Model))
         { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Political transition identity/clock/history mismatch; changes blocked."); }
@@ -180,7 +181,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
         UnionWarCouncil.Verify(root, Journal);
         var final = Territories.ReviewFollowersFor(root);
         Journal.Complete(Politics.Model, final, Find.TickManager.TicksGame);
-        Messages.Message(Journal.Current.LostFollowers?.Length > 0 ? "PS_CompleteWithLoss".Translate(Journal.Current.LostFollowers.Length) : "PS_Complete".Translate(), MessageTypeDefOf.NeutralEvent);
+        Messages.Message(Journal.LostCharters.Any() ? "PS_CompleteWithLoss".Translate(Journal.LostCharters.Count()) : "PS_Complete".Translate(), MessageTypeDefOf.NeutralEvent);
     }
     public void CancelUnchanged()
     {

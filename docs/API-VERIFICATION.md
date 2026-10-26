@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 개별 이전을 만들지 않는 별도 정치 소실 — 0.3.31 / 2026-10-26
+
+설치1.7.4985 rev1269와 net10.0 /10.0.13-waylithclr.dev를 재확인했다. 새 native 진입점/소유권·주민·재고 쓰기는 추가하지 않는다. 기존 검증한 WorldObject.Destroy 정상 반환 전후·exact Settlement/빈 trader/등록 주민·실제 월드 제거를 재사용하며, 해당 도시는 기존 계약 binding과 원 ledger의 실제 verified owner에 정확히 연결한다. 정치 Executing/도시 nativeExecutionDepth/다른 Prepared 이전이 없을 때만 독립 observer가 준비되고 기존 Prepared observer와 겹치지 않는다. 이전 시작 전에는 새 이전을 생성하지 않고, 이전 완료 후에는 기존 Applied/stock·resident proof/시간 등 모든 이전 결과를 그대로 유지한다.
+
+새 Scribe string slot honorIndependentPoliticalTownLossV1은 별도 bounded JSON witness/receipt다. 원 정치 의도/명령 계보·book/ledger·실제 owner·빈 stock descriptor·소실/관측 시각과 결합한다. 명시 current-Game review 후 book/독립 loss archive/정치 영수증만 사본에서 함께 교체하며 native faction/stock/이전 journal은 쓰지 않는다. 양 손실 형식의 prefix와 원 전쟁 동의/이전 outcome을 교차 검사한다. 미정리 소실 중 native player/proxy의 자동 공유/우회만 중지하고 일반 native 외교 사건은 차단하지 않는다. 새 helper를 기존 자동 Synchronize/Route 진입점에서 사용하며 새로운 미확인 API를 가정하지 않는다.1.6은 기존 pinned1.6.4871/net472 별도 호스트로 검사한다.
+
+종료 영지의 optional PoliticalLoss ID/hash는 독립 원 archive와 영구 대조하는 audit 결합이다. 정치 Current가 다음 의도로 교체되어도 missing archive를 허용하지 않는다. Book Restore는 marker가 TerritoryLost에만 붙을 수 있고 ID/hash가 유효한지 검사하며, 원 archive Pair 검사는 정확한 사건/charter/원 snapshot과 완료 hash를 대조한다. Null metadata는 기존 JSON에서 생략한다. 기존 이전 ledger export는 독립 확정 전후 동일하게 유지하며 fake transfer를 만들지 않는다.
+
 ## 적용 후 보류 정치 의도와 실제 말단 파괴 연결 — 0.3.30 / 2026-10-26
 
 설치 Version.txt의1.7.4985 rev1269와 RimWorld.runtimeconfig.json의 net10.0 /10.0.13-waylithclr.dev를 재확인했다. 새 engine 진입점이나 원시 native 쓰기는 없다.0.3.29에서 확인한 WorldObject.Destroy 정상 반환 전후와 exact Settlement/빈 tracker/등록 주민/월드 제거 증거를 재사용한다. 정치 Executing과 도시 nativeExecutionDepth가 모두0인 적용 후 보류 상태만 확장한다. 미확인 NPC 권한이나 전쟁/거부를 생성하지 않는다.

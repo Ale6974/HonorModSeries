@@ -205,6 +205,8 @@ public sealed class PlayerPoliticsLedger : GameComponent
     {
         if (Current.ProgramState != ProgramState.Playing || synchronizing || routing || RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended) return;
         var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
+        var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
+        if (towns.RestoreFailed || towns.HasPendingTownLosses) return;
         if (transition.Journal.Pending && transition.Journal.Current.Wars != null &&
             (!transition.Executing || !transition.Journal.WarsReady || UnionWarCouncil.HasExternalProvider)) return;
         try
@@ -242,6 +244,8 @@ public sealed class PlayerPoliticsLedger : GameComponent
         if (Current.ProgramState != ProgramState.Playing || routing || RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended ||
             actor != Faction.OfPlayer && other != Faction.OfPlayer) return false;
         var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
+        var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
+        if (towns.RestoreFailed || towns.HasPendingTownLosses) return false;
         if (transition.Journal.Pending && transition.Journal.Current.Wars != null &&
             (!transition.Executing || !transition.Journal.WarsReady || UnionWarCouncil.HasExternalProvider)) return false;
         if (IsAdministration(actor) || IsAdministration(other)) return false; // Native player/own-administration events are internal, never foreign-root events.
@@ -343,7 +347,7 @@ public sealed class PlayerAllegianceWindow : Window
                     list.Label("WU_Progress".Translate(transition.Journal.Current.WarResults.Count(r => r.Step == UnionWarStep.Verified), transition.Journal.Current.WarResults.Length));
                 list.Label("PS_Pending".Translate());
                 list.Label(("PS_" + transition.Journal.Current.Phase).Translate());
-                if (transition.Journal.Current.LostFollowers?.Length > 0) list.Label("PS_LossProgress".Translate(transition.Journal.Current.LostFollowers.Length, transition.Journal.Current.Followers.Count));
+                if (transition.Journal.LostCharters.Any()) list.Label("PS_LossProgress".Translate(transition.Journal.LostCharters.Count(), transition.Journal.Current.Followers.Count));
                 territories.DrawPendingTownLosses(list);
                 foreach (var pending in territories.Ledger.Transfers.Where(t => t.Phase == TerritoryTransferPhase.Prepared).ToArray())
                 {

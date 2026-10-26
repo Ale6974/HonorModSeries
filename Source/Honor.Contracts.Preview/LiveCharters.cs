@@ -96,7 +96,7 @@ public sealed partial class LiveCharterLedger : GameComponent
             // Only this journal's completed, still-current transfer can account for an owner change.
             // Pending transfers and foreign conquests never become fresh consent observations.
             var observation = new TerritoryObservation(b.Identity, owner?.GetUniqueLoadID(), alive, owner == Faction.OfPlayer, eligible);
-            return administration.RestoreFailed ? observation with { Eligible = false }
+            return administration.RestoreFailed || administration.IndependentlyLostTerritory(b.Identity) ? observation with { Eligible = false }
                 : administration.Ledger.ObserveIdentity(observation, baseline);
         }).ToArray();
     }

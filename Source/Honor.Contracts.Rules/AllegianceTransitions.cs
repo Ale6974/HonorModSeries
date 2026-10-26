@@ -6,13 +6,15 @@ namespace Honor.Contracts.Rules;
 
 public enum AllegianceTransitionPhase { Prepared, AllegianceApplied, Completed, Cancelled }
 public sealed record AllegianceFollowerLoss(string Transfer, string Charter, string Proof, long ObservedTick, long ResolvedTick);
+public sealed record AllegianceTownLoss(string Loss, string Charter, string Proof, long ObservedTick, long ResolvedTick);
 public sealed record AllegianceTransition(string Id, string Before, string After, string TransferBaseline,
     IReadOnlyList<string> Followers, long PreparedTick, AllegianceTransitionPhase Phase = AllegianceTransitionPhase.Prepared,
     long? AllegianceTick = null, long? FinishedTick = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] UnionWarConsent Wars = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] UnionWarResult[] WarResults = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] UnionWarConsent[] WarReaffirmations = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] AllegianceFollowerLoss[] LostFollowers = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] AllegianceFollowerLoss[] LostFollowers = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] AllegianceTownLoss[] TownLosses = null);
 public sealed record AllegianceTransitionSave(int Version, AllegianceTransition Current);
 
 public static class AllegianceChangeSource
@@ -63,13 +65,15 @@ public sealed class AllegianceTransitionLedger
     public AllegianceTransition Current { get; private set; }
     public bool Pending => Current?.Phase is AllegianceTransitionPhase.Prepared or AllegianceTransitionPhase.AllegianceApplied;
     public bool WarsReady => Current?.Wars == null || Current.WarResults.All(r => r.Step == UnionWarStep.Verified);
+    public IEnumerable<string> LostCharters => (Current?.LostFollowers ?? []).Select(l => l.Charter).Concat((Current?.TownLosses ?? []).Select(l => l.Charter));
     private static void Require(bool value, string reason) { if (!value) throw new ArgumentException(reason); }
     private static bool Key(string id) => !string.IsNullOrWhiteSpace(id) && id.Length <= 120 && !id.Any(char.IsControl);
     private static string Digest(string value) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(value)));
     private void Time(long now) => Require(Current != null && now >= (Current.FinishedTick ?? Current.AllegianceTick ?? Current.PreparedTick) && now <= int.MaxValue &&
         (Current.WarResults == null || Current.WarResults.All(r => !r.ObservedTick.HasValue || r.ObservedTick <= now)) &&
         (Current.WarReaffirmations == null || Current.WarReaffirmations.All(r => r.Tick <= now)) &&
-        (Current.LostFollowers == null || Current.LostFollowers.All(r => r.ResolvedTick <= now)),
+        (Current.LostFollowers == null || Current.LostFollowers.All(r => r.ResolvedTick <= now)) &&
+        (Current.TownLosses == null || Current.TownLosses.All(r => r.ResolvedTick <= now)),
         "Invalid transition clock.");
     public void Prepare(string id, PlayerAllegiance actual, AllegianceCommand command, FollowerTransferPlan followers, TerritoryTransferLedger transfers, UnionWarConsent wars = null)
     {
@@ -149,7 +153,7 @@ public sealed class AllegianceTransitionLedger
         Current = Current with { Phase = AllegianceTransitionPhase.Completed, FinishedTick = now };
     }
     public bool MatchesSurvivingFollowers(IEnumerable<string> ids) => Current != null && ids != null &&
-        ids.OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(Current.Followers.Where(id => !(Current.LostFollowers ?? []).Any(l => l.Charter == id)));
+        ids.OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(Current.Followers.Where(id => !LostCharters.Contains(id)));
     public void AcknowledgeFollowerLoss(PendingTownLossArchive archive, CharterBook book, TerritoryTransferLedger transfers, string transfer, long now)
     {
         Time(now); RuntimeCompat.NotNull(archive); archive.ValidatePair(book, transfers);
@@ -157,11 +161,31 @@ public sealed class AllegianceTransitionLedger
         Require(Current.Phase == AllegianceTransitionPhase.AllegianceApplied && loss != null && loss.ResolvedTick == now && loss.PoliticalBefore == Export(),
             "A resolved actual loss must bind this unchanged applied political intent.");
         var row = transfers.Transfer(transfer);
-        Require(Current.Followers.Contains(row.Charter) && !(Current.LostFollowers ?? []).Any(l => l.Charter == row.Charter || l.Transfer == transfer),
+        Require(Current.Followers.Contains(row.Charter) && !LostCharters.Contains(row.Charter) && !(Current.LostFollowers ?? []).Any(l => l.Transfer == transfer),
             "Only an original, not previously lost follower may be acknowledged.");
         var next = new AllegianceTransitionLedger { Current = Current with { LostFollowers = (Current.LostFollowers ?? []).Append(new AllegianceFollowerLoss(transfer, row.Charter,
             row.Destruction.Proof, loss.ObservedTick, now)).ToArray() } };
         archive.ValidatePolitical(next); Current = next.Current;
+    }
+    public void AcknowledgeTownLoss(PoliticalTownLossArchive archive, CharterBook book, TerritoryTransferLedger transfers, string id, long now)
+    {
+        Time(now); RuntimeCompat.NotNull(archive); archive.ValidatePair(book, transfers);
+        var loss = archive.Records.SingleOrDefault(r => r.Id == id);
+        Require(Current.Phase == AllegianceTransitionPhase.AllegianceApplied && loss != null && loss.ResolvedTick == now && loss.PoliticalBefore == Export() &&
+            Current.Followers.Contains(loss.Charter) && !LostCharters.Contains(loss.Charter), "An unchanged applied intent and resolved original follower loss are required.");
+        var next = new AllegianceTransitionLedger { Current = Current with { TownLosses = (Current.TownLosses ?? []).Append(archive.Receipt(id)).ToArray() } };
+        archive.ValidatePolitical(next); Current = next.Current;
+    }
+    internal static void ValidateLossLineage(AllegianceTransition original, AllegianceTransition current)
+    {
+        Require(original.Before == current.Before && original.After == current.After && original.TransferBaseline == current.TransferBaseline &&
+            original.PreparedTick == current.PreparedTick && original.AllegianceTick == current.AllegianceTick && original.Followers.SequenceEqual(current.Followers) &&
+            JsonSerializer.Serialize(original.Wars) == JsonSerializer.Serialize(current.Wars) &&
+            (original.LostFollowers ?? []).SequenceEqual((current.LostFollowers ?? []).Take(original.LostFollowers?.Length ?? 0)) &&
+            (original.TownLosses ?? []).SequenceEqual((current.TownLosses ?? []).Take(original.TownLosses?.Length ?? 0)) &&
+            (original.WarReaffirmations ?? []).Select(w => JsonSerializer.Serialize(w)).SequenceEqual((current.WarReaffirmations ?? []).Take(original.WarReaffirmations?.Length ?? 0).Select(w => JsonSerializer.Serialize(w))) &&
+            (original.WarResults ?? []).All(old => (current.WarResults ?? []).Any(live => live.Enemy == old.Enemy &&
+                (old.Step == UnionWarStep.Verified ? live == old : old.Step != UnionWarStep.Applying || live.Step != UnionWarStep.Prepared))), "Original political scope changed.");
     }
     public void CancelUnchanged(PlayerAllegiance actual, TerritoryTransferLedger transfers, long now)
     {
@@ -224,6 +248,14 @@ public sealed class AllegianceTransitionLedger
             c.LostFollowers.Select(l => l.Transfer).Distinct(StringComparer.Ordinal).Count() == c.LostFollowers.Length &&
             c.LostFollowers.Select(l => l.ResolvedTick).SequenceEqual(c.LostFollowers.Select(l => l.ResolvedTick).OrderBy(t => t)),
             "Invalid separately acknowledged follower losses.");
+        Require(c.TownLosses == null || applied && c.TownLosses.Length is > 0 and <= PoliticalTownLossArchive.Capacity &&
+            c.TownLosses.All(l => l != null && Key(l.Loss) && c.Followers.Contains(l.Charter) && l.Proof?.Length == 64 &&
+                l.Proof.All(x => x is >= '0' and <= '9' or >= 'A' and <= 'F') && l.ObservedTick >= c.AllegianceTick &&
+                l.ResolvedTick >= l.ObservedTick && l.ResolvedTick <= (c.FinishedTick ?? int.MaxValue)) &&
+            c.TownLosses.Select(l => l.Charter).Distinct(StringComparer.Ordinal).Count() == c.TownLosses.Length &&
+            c.TownLosses.Select(l => l.Loss).Distinct(StringComparer.Ordinal).Count() == c.TownLosses.Length &&
+            c.TownLosses.Select(l => l.ResolvedTick).SequenceEqual(c.TownLosses.Select(l => l.ResolvedTick).OrderBy(t => t)) &&
+            !(c.LostFollowers ?? []).Any(l => c.TownLosses.Any(t => t.Charter == l.Charter)), "Invalid independent political town loss receipts.");
         result.Current = c with { Followers = Array.AsReadOnly(c.Followers.OrderBy(id => id, StringComparer.Ordinal).ToArray()) }; return result;
     }
 }

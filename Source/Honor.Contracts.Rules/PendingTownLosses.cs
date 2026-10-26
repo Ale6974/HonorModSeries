@@ -41,9 +41,9 @@ public sealed class PendingTownLossArchive
         {
             var intent = AllegianceTransitionLedger.Restore(r.PoliticalBefore); var current = intent.Current;
             if (current?.Phase != AllegianceTransitionPhase.AllegianceApplied || current.AllegianceTick > r.LossTick || t.PreparedTick < current.AllegianceTick ||
-                !current.Followers.Contains(t.Charter) || (current.LostFollowers ?? []).Any(l => l.Charter == t.Charter) ||
+                !current.Followers.Contains(t.Charter) || intent.LostCharters.Contains(t.Charter) ||
                 PlayerAllegiance.Restore(current.After).State.Authority != t.TargetOwner ||
-                (current.LostFollowers ?? []).Any(l => l.ResolvedTick > r.LossTick) ||
+                (current.LostFollowers ?? []).Any(l => l.ResolvedTick > r.LossTick) || (current.TownLosses ?? []).Any(l => l.ResolvedTick > r.LossTick) ||
                 current.WarResults?.Any(w => w.ObservedTick > r.LossTick) == true || current.WarReaffirmations?.Any(w => w.Tick > r.LossTick) == true)
                 throw new ArgumentException("Loss must bind an applied original follower and its actual intended destination.");
         }
@@ -102,13 +102,7 @@ public sealed class PendingTownLossArchive
         foreach (var r in matching)
         {
             var original = AllegianceTransitionLedger.Restore(r.PoliticalBefore).Current;
-            if (original.Before != current.Before || original.After != current.After || original.TransferBaseline != current.TransferBaseline ||
-                original.PreparedTick != current.PreparedTick || original.AllegianceTick != current.AllegianceTick ||
-                !original.Followers.SequenceEqual(current.Followers) || JsonSerializer.Serialize(original.Wars) != JsonSerializer.Serialize(current.Wars) ||
-                !(original.WarReaffirmations ?? []).Select(w => JsonSerializer.Serialize(w)).SequenceEqual((current.WarReaffirmations ?? []).Take(original.WarReaffirmations?.Length ?? 0).Select(w => JsonSerializer.Serialize(w))) ||
-                (original.WarResults ?? []).Any(old => !(current.WarResults ?? []).Any(live => live.Enemy == old.Enemy &&
-                    (old.Step == UnionWarStep.Verified ? live == old : old.Step != UnionWarStep.Applying || live.Step != UnionWarStep.Prepared))))
-                throw new ArgumentException("Original political scope changed.");
+            AllegianceTransitionLedger.ValidateLossLineage(original, current);
             if (r.ResolvedTick == null)
             { if (r.PoliticalBefore != journal.Export()) throw new ArgumentException("Unresolved destruction must retain its exact political command and intent head."); }
             else

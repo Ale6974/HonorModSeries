@@ -85,9 +85,12 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 }
             }
             pendingTownLosses.ValidatePair(Charters.Book, Ledger);
-            pendingTownLosses.ValidatePolitical(Current.Game.GetComponent<PoliticalTransitionLedger>().Journal);
+            politicalTownLosses.ValidatePair(Charters.Book, Ledger);
+            ValidatePoliticalLosses(Current.Game.GetComponent<PoliticalTransitionLedger>().Journal);
             if (pendingTownLosses.Records.Any(r => r.ObservedTick > Find.TickManager.TicksGame || r.ResolvedTick > Find.TickManager.TicksGame))
                 throw new ArgumentException("Future native destruction record.");
+            if (politicalTownLosses.Records.Any(r => r.ObservedTick > Find.TickManager.TicksGame || r.ResolvedTick > Find.TickManager.TicksGame))
+                throw new ArgumentException("Future independent political loss.");
         }
         catch (Exception e) when (e is ArgumentException or System.Text.Json.JsonException or InvalidOperationException)
         { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Territory execution/source mismatch; sharing blocked and records retained."); }
@@ -114,7 +117,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (RestoreFailed || Charters.RestoreFailed || Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed || Current.Game.GetComponent<TributePaymentLedger>().HasPending(id))
             throw new ArgumentException("Resolve unavailable journals and pending deliveries.");
         var charter = Charters.Book.Charter(id); var binding = Charters.Binding(charter.Terms.Subject);
-        if (binding.PlayerGroup || binding.FactionGroup || binding.Settlement == null) throw new ArgumentException("Only single NPC city subjects.");
+        if (binding.PlayerGroup || binding.FactionGroup || binding.Settlement == null || IndependentlyLostTerritory(charter.Terms.Subject)) throw new ArgumentException("Only single surviving NPC city subjects.");
         bool released = charter.Phase == RecordedCharterPhase.Released;
         string subtree = Current.Game.GetComponent<SubtreeExitLedger>().Scope(id);
         var union = Current.Game.GetComponent<UnionPoliticsLedger>();
