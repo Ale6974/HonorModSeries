@@ -201,8 +201,10 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (current.Stamp != reviewed.Stamp) throw new ArgumentException("Transition follower plan changed.");
         foreach (string id in current.Moves)
         {
+            transition.VerifyPeace();
             var single = ReviewForTarget(id, target);
             if (single.TargetIdentity != current.Target || !ApplyForTarget(single, false, target)) throw new ArgumentException("Follower execution interrupted.");
+            transition.VerifyPeace();
         }
     }
     public string FollowerLabel(string charterId) => Charters.Label(Charters.Book.Charter(charterId).Terms.Subject);

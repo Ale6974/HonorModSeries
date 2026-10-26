@@ -209,7 +209,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         if (Current.ProgramState != ProgramState.Playing || synchronizing || routing || RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended) return;
         var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
         var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-        if (CharterProtectionLedger.PreserveOriginalPawns || towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return;
+        if (transition.PeaceSharingBlocked || CharterProtectionLedger.PreserveOriginalPawns || towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return;
         if (transition.Journal.Pending && transition.Journal.Current.Wars != null &&
             (!transition.Executing || !transition.Journal.WarsReady || UnionWarCouncil.HasExternalProvider)) return;
         try
@@ -227,12 +227,14 @@ public sealed class PlayerPoliticsLedger : GameComponent
             foreach (var relation in plan)
             {
                 if (State.Suspended) break;
+                if (transition.Journal.Pending) transition.VerifyPeace();
                 var other = Resolve(relation.Other); var kind = relation.Kind switch {
                     SharedRelationKind.Ally => FactionRelationKind.Ally, SharedRelationKind.Hostile => FactionRelationKind.Hostile, _ => FactionRelationKind.Neutral };
                 if (pendingAdmission && player.RelationKindWith(other) == FactionRelationKind.Hostile && kind != FactionRelationKind.Hostile)
                     throw new ArgumentException("An admission observer introduced an unreviewed existing war; preserve it and suspend.");
                 if (player.RelationKindWith(other) != kind) changed.Add(other.Name);
                 Pair(player, other, relation.BaseGoodwill, kind);
+                if (transition.Journal.Pending) transition.VerifyPeace();
             }
             if (changed.Count > 0)
             { Messages.Message("PA_RelationsChanged".Translate(string.Join(", ", changed)), MessageTypeDefOf.NeutralEvent); Find.TickManager.Pause(); }
@@ -249,6 +251,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
         var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
         if (CharterProtectionLedger.PreserveOriginalPawns || towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return false;
+        if (transition.PeaceSharingBlocked) return false;
         if (transition.Journal.Pending && transition.Journal.Current.Wars != null &&
             (!transition.Executing || !transition.Journal.WarsReady || UnionWarCouncil.HasExternalProvider)) return false;
         if (IsAdministration(actor) || IsAdministration(other)) return false; // Native player/own-administration events are internal, never foreign-root events.
@@ -370,6 +373,7 @@ public sealed class PlayerAllegianceWindow : Window
                     list.CheckboxLabeled("WU_Propose".Translate(), ref proposeWars);
                     list.Label("WU_Policy".Translate());
                     list.Label("WF_Policy".Translate());
+                    list.Label("UP_Policy".Translate());
                     if (previousWars != proposeWars) review = null;
                 }
                 if (ledger.State.Suspended)
@@ -396,6 +400,9 @@ public sealed class PlayerAllegianceWindow : Window
             }
             if (review != null)
             {
+                if (review.Peace != null)
+                    list.Label("UP_Decision".Translate(review.Peace.ApprovedWeight, review.Peace.TotalWeight,
+                        (review.Peace.Founding ? "WU_Founding" : "WU_Council").Translate()));
                 if (review.Wars != null)
                 {
                     if (review.Wars.AuthorityKind == AdmissionAuthorityKind.FeudalLeader)

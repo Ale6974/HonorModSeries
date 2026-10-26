@@ -55,7 +55,7 @@ public sealed class PendingTownLossArchive
                 !current.Followers.Contains(t.Charter) || intent.LostCharters.Contains(t.Charter) ||
                 PlayerAllegiance.Restore(current.After).State.Authority != t.TargetOwner ||
                 (current.LostFollowers ?? []).Any(l => l.ResolvedTick > r.LossTick) || (current.TownLosses ?? []).Any(l => l.ResolvedTick > r.LossTick) ||
-                current.WarResults?.Any(w => w.ObservedTick > r.LossTick) == true || current.WarReaffirmations?.Any(w => w.Tick > r.LossTick) == true)
+                current.WarResults?.Any(w => w.ObservedTick > r.LossTick) == true || current.WarReaffirmations?.Any(w => w.Tick > r.LossTick) == true || current.PeaceReaffirmations?.Any(p => p.Tick > r.LossTick) == true)
                 throw new ArgumentException("Loss must bind an applied original follower and its actual intended destination.");
         }
         return (book, ledger, t);

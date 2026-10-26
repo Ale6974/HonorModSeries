@@ -30,7 +30,7 @@ public static class UnionWarAdmission
         foreach (string row in rows)
         {
             var prior = AllegianceTransitionLedger.Restore(row).Current;
-            if (prior?.Wars == null || prior.Phase is not (AllegianceTransitionPhase.Completed or AllegianceTransitionPhase.Cancelled) || !ids.Add(prior.Id) ||
+            if (prior == null || prior.Wars == null && prior.Peace == null || prior.Phase is not (AllegianceTransitionPhase.Completed or AllegianceTransitionPhase.Cancelled) || !ids.Add(prior.Id) ||
                 prior.PreparedTick < last || prior.FinishedTick > current.PreparedTick) throw new ArgumentException("Invalid historical war admission.");
             var head = System.Text.Json.JsonSerializer.Deserialize<PlayerAllegianceSave>(prior.Phase == AllegianceTransitionPhase.Cancelled ? prior.Before : prior.After);
             if (head.NativePlayer != currentHead.NativePlayer || head.Commands.Length > currentHead.Commands.Length ||

@@ -87,7 +87,7 @@ public sealed class RealmAdministrationLedger : GameComponent
     {
         if (Current.ProgramState != ProgramState.Playing || syncing || routing || faction == null || RestoreFailed || Suspended) return;
         var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-        if (CharterProtectionLedger.PreserveOriginalPawns || towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return;
+        if (Current.Game.GetComponent<PoliticalTransitionLedger>().PeaceSharingBlocked || CharterProtectionLedger.PreserveOriginalPawns || towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return;
         try
         {
             Validate(); var player = Faction.OfPlayer;
@@ -120,7 +120,7 @@ public sealed class RealmAdministrationLedger : GameComponent
         if (Current.ProgramState != ProgramState.Playing || routing || RestoreFailed || Suspended || !initialized ||
             faction == null || actor != faction && other != faction || actor == Faction.OfPlayer || other == Faction.OfPlayer) return false;
         var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-        if (CharterProtectionLedger.PreserveOriginalPawns || towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return false;
+        if (Current.Game.GetComponent<PoliticalTransitionLedger>().PeaceSharingBlocked || CharterProtectionLedger.PreserveOriginalPawns || towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return false;
         try { Validate(); } catch (ArgumentException) { Suspend(); return false; }
         if (!actor.CanChangeGoodwillFor(other, delta)) return true;
         routing = true;
