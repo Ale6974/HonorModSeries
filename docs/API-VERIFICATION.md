@@ -1,5 +1,7 @@
 # 1.7 API·런타임 검증 기록
 
+0.3.46 uses the existing verified NpcDecisionAuthority reader, settlement identity and goodwill observations; its acceptance policy is an Honor rule, not a claimed native negotiation API. No new native write or engine API binding is introduced. The live review/confirmation stages the common book, negotiation archive and final-consent audit together; native factions, leaders, pawns, stock and transfer journals remain unchanged. Both runtime targets compile against their existing verified references.
+
 ## 실제 이전 provenance를 보존한 소유권 복귀 —0.3.45 /2026-10-26
 
 기존 WorldObject.SetFaction void Prefix/Postfix와 정상 반환·exact registered faction/binding/Game/hostility/book/loss/epoch 경계를 그대로 사용한다. 추가 native 실행 API/IL/소속 쓰기는 없다.1.7.4985 rev1269/net10.0 및 pinned1.6.4871/net472 대상 구분을 유지한다.

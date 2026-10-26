@@ -184,6 +184,7 @@ assertions += CustodyFaithTests.Run();
 assertions += LeaderRelocationTests.Run();
 assertions += PrisonerHistoryTests.Run();
 assertions += CharterOfferTests.Run();
+assertions += CharterAmendmentTests.Run();
 assertions += AlternativeOfferTests.Run();
 assertions += LiegeInvitationTests.Run();
 assertions += AdmissionDiplomacyTests.Run();

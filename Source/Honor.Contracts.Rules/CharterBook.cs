@@ -12,6 +12,7 @@ public sealed record RecordedCharterTerms(string Liege, string Subject, decimal 
     long IntervalTicks, long GraceTicks, TributeTransport Transport, decimal TransportRate);
 public sealed record NpcCharterAuthority(string LiegeRepresentative, string SubjectRepresentative);
 public sealed record RecordedPoliticalLoss(string Id, string Proof);
+public sealed record CharterAmendmentLink(string Previous, string Proof);
 public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long OfferedTick, long ExpiresTick,
     RecordedCharterPhase Phase = RecordedCharterPhase.Offered, long? PlayerSignedTick = null,
     long? NpcSignedTick = null, long? PlayerReleaseTick = null, long? NpcReleaseTick = null,
@@ -20,7 +21,10 @@ public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool ConditionalOffer = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] LostTownReplacement Replacement = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string Replaces = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] RecordedPoliticalLoss PoliticalLoss = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] RecordedPoliticalLoss PoliticalLoss = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public CharterAmendmentLink Amendment { get; init; }
+}
 public sealed record CharterBookSave(int Version, long LastTick, TerritoryIdentity[] Entities, RecordedCharter[] Charters);
 
 /// <summary>
@@ -219,6 +223,14 @@ public sealed class CharterBook
         Require(Charter(id).NpcAuthority == null, "Player release slots cannot release NPC-only contracts.");
         ReleaseCore(id, player, now, observations);
     }
+    internal void BindAmendment(string id, string previous, string proof)
+    {
+        var c = Charter(id); var old = Charter(previous);
+        Require(c.Phase == RecordedCharterPhase.Offered && c.Amendment == null && c.NpcAuthority == null && old.NpcAuthority == null &&
+            old.Phase == RecordedCharterPhase.Released && c.Terms.Liege == old.Terms.Liege && c.Terms.Subject == old.Terms.Subject &&
+            Entity(c.Terms.Liege).Player && !Entity(c.Terms.Subject).Player && CityStockProof.Valid(proof), "Invalid same-party amendment link.");
+        charters[id] = c with { Amendment = new(previous, proof) };
+    }
     public void ConsentNpcRelease(string id, string party, long now, IEnumerable<TerritoryObservation> observations)
     {
         var c = Charter(id);
@@ -361,6 +373,21 @@ public sealed class CharterBook
         }
         foreach (var c in book.charters.Values)
         {
+            if (c.Amendment != null)
+            {
+                Key(c.Amendment.Previous); var old = book.Charter(c.Amendment.Previous);
+                Require(old.Id != c.Id && CityStockProof.Valid(c.Amendment.Proof) && c.NpcAuthority == null && old.NpcAuthority == null &&
+                    book.Entity(c.Terms.Liege).Player && !book.Entity(c.Terms.Subject).Player && old.Phase == RecordedCharterPhase.Released &&
+                    c.Terms.Liege == old.Terms.Liege && c.Terms.Subject == old.Terms.Subject &&
+                    Math.Max(old.PlayerReleaseTick.Value, old.NpcReleaseTick.Value) <= c.OfferedTick, "Invalid saved negotiated amendment.");
+                var seen = new HashSet<string>(StringComparer.Ordinal) { c.Id }; var previous = old;
+                while (true)
+                {
+                    Require(seen.Add(previous.Id), "Cyclic negotiated amendment history.");
+                    if (previous.Amendment == null) break;
+                    previous = book.Charter(previous.Amendment.Previous);
+                }
+            }
             Require((c.Phase == RecordedCharterPhase.Replaced) == (c.Replacement != null), "Invalid replacement phase.");
             if (c.Replacement != null)
             {

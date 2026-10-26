@@ -1,5 +1,13 @@
 # 검증과 플레이 점검
 
+- 0.3.46 completion: both full builds completed with zero warnings/errors; all six mods select exactly one target runtime and pass the DLL allowlist/package checks. ZIP SHA256: `0237EA96F5CD7134D3D6720457046A6A31B98F693629D055B32539F4FA048BF9`. With no RimWorld process, backed up0.3.45 to `.local/contracts-preview-41447ac65a1243b39a36615271ef1c88` and installed0.3.46. All32 source/installed files and ModsConfig.xml/Prefs.xml hashes match; activation/language/Steam unchanged.
+
+## 2026-10-26 — Contracts0.3.46 / same-party town renegotiation
+
+- Added23 rule assertions for review without mutation, explicit old mutual release/new NPC and player consent, unchanged four-level descendants/old terms/signatures/physical ledgers, separate final audit, paired restore, second amendment chain, later territorial loss, stale current representative/time, tampered/duplicate/missing history, partial release, pending transfer, foreign descendants, affordability and legacy null-byte compatibility.
+- Verified per-target total: Contracts4196 +Honor/runtime20093 =24289; common English/Korean443 keys and12 FactionDef fields. Both full build logs are retained locally as build-0.3.46-1.6.log and build-0.3.46-1.7.log. Final completion/package/install evidence follows below.
+- Live review is bound to current Game/ordinary representative/actual town and rechecks exact books, receipts and transfer evidence before atomic book+archive+audit swap. Existing native ownership, residents, stock and payment journals are unchanged. The window scrolls for longer Korean text and smaller available areas. No new engine write API is introduced.
+
 ## Contracts0.3.45 — 실제 이전 기록이 있는 소유권 복귀 (2026-10-26)
 
 - 신규15개 assertion은 root/세 후손의 실제 공통 이전 journal Prepare/Confirm→baseline과 다른 realm의 hostile loss→정확한 이전 원본을 포함한 return→별도 successor commit→새 root offer/sign까지 연결한다. baseline/actual realm·옛 root Lost/경제·서명·채무 근거·완료 이전 기록을 분리 보존하고 paired reload를 검사한다.

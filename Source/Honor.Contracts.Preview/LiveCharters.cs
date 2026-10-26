@@ -307,6 +307,9 @@ public sealed class LiveChartersWindow : Window
                     if (list.ButtonText("HCL_Decline".Translate())) ledger.Decline(charter.Id);
                 }
                 if (phase == RecordedCharterPhase.Active && charter.NpcAuthority == null && list.ButtonText("HCL_Release".Translate())) ledger.RequestRelease(charter.Id);
+                if (phase == RecordedCharterPhase.Active && charter.NpcAuthority == null && ledger.Book.Entity(charter.Terms.Liege).Player &&
+                    !ledger.Book.Entity(charter.Terms.Subject).Player && list.ButtonText("CA_Open".Translate()))
+                    Find.WindowStack.Add(new CharterAmendmentWindow(charter.Id));
                 if (charter.NpcAuthority != null) list.Label("NS_NpcConsent".Translate());
                 if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && ledger.Book.PlayerManaged(charter) &&
                     list.ButtonText("CT_Open".Translate())) Find.WindowStack.Add(new TerritoryAdministrationWindow(charter.Id));

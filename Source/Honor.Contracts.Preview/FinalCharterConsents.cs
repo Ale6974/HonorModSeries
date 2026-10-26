@@ -11,11 +11,13 @@ public sealed partial class LiveCharterLedger
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) finalConsentSnapshot = finalConsents.Export();
         Scribe_Values.Look(ref finalConsentSnapshot, "honorFinalCharterConsentsV1");
+        ExposeAmendments();
     }
     private void ValidateFinalConsents()
     {
         if (finalConsentSnapshot != null) finalConsents = CharterAcceptances.Restore(finalConsentSnapshot);
         finalConsents.ValidateBook(Book);
+        ValidateAmendments();
     }
     private static string ConsentLabel(string label, string fallback)
     {
