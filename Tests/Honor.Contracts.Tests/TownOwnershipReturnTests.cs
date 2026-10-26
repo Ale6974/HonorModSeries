@@ -86,8 +86,61 @@ internal static class TownOwnershipReturnTests
         var ordinary = losses.Commit(book, plan, 30, obs);
         Check(!ordinary.Archive.Export().Contains("OwnershipReturnProof") && new TownOwnershipReturns().Export() == returns.Export(),
             "legacy ordinary succession JSON and original constructor remain unchanged");
+        Check(TownOwnershipReturns.ReceiptDigest(new("root", "town", "captor", "realm", new string('A', 64), 20, 21)) ==
+            "8F123A5F6238874C736BB3F9D8CC0E3D93E213212DA3A94CC1FB7F7C70656FD2",
+            "legacy return receipt keeps its exact serialized proof hash when the new transfer field is absent");
         Check(book.Export() == lostBook && losses.Export() == lostArchive && returns.Records.Count == 0,
             "all staged operations and failures leave source book, loss history and return archive unchanged");
+        var migrated = CharterBook.Restore(original); var moves = new TerritoryTransferLedger(); long moveTick = 1;
+        foreach (var entry in new[] { ("root", "upper"), ("child-a", "a"), ("child-b", "b"), ("deep", "g") })
+        {
+            moves.Prepare("move-" + entry.Item1, migrated, entry.Item1, new(entry.Item2, "realm", 10), "admitted-realm", "admitted-realm", null,
+                TerritoryTransferPurpose.ActiveCharter, moveTick++);
+            moves.Confirm("move-" + entry.Item1, new(entry.Item2, "admitted-realm", 10), moveTick++);
+        }
+        string transferSnapshot = moves.Export();
+        var normalizedLoss = loss with { OwnerAtLoss = "admitted-realm" };
+        migrated.CloseHostileTransferredTown("root", "upper", "realm", "admitted-realm", "captor", 10, 12, true, true);
+        var migratedLosses = new TownSuccessionArchive().Observe(normalizedLoss, migrated);
+        var migratedWitness = witness with { ReturnedOwner = "admitted-realm", LossProof = TownOwnershipReturns.LossDigest(normalizedLoss), Transfers = transferSnapshot };
+        Reject(() => returns.Observe(migratedWitness with { Transfers = null }, migratedLosses, migrated), "migrated ownership needs an actual completed pre-loss journal");
+        var migratedReturns = returns.Observe(migratedWitness, migratedLosses, migrated);
+        string migratedProof = migratedReturns.RequireActiveWithTransfers("root", migratedLosses, migrated, "upper", "admitted-realm", 21, moves.Export());
+        Reject(() => migratedReturns.RequireActive("root", migratedLosses, migrated, "upper", "admitted-realm", 21), "legacy API cannot bypass fresh physical-journal verification");
+        Reject(() => migratedReturns.RequireActiveWithTransfers("root", migratedLosses, migrated, "upper", "realm", 21, moves.Export()), "baseline identity cannot masquerade as actual returned ownership");
+        var normalizedObs = obs.Select(o => o.Player ? o : moves.ObserveIdentity(o with { NativeOwner = "admitted-realm" }, o.NativeOwner)).ToArray();
+        var migratedPlan = migratedLosses.Review("root", migrated, "migrated", new("current", "current"), 30, normalizedObs);
+        Reject(() => migratedReturns.CommitSuccession(migratedLosses, migrated, migratedPlan, 30, normalizedObs, migratedProof), "old commit cannot treat normalized observations as current native ownership");
+        var migratedDone = migratedReturns.CommitSuccessionWithTransfers(migratedLosses, migrated, migratedPlan, 30, normalizedObs, migratedProof, "admitted-realm", moves.Export());
+        migratedReturns.ValidatePair(migratedDone.Archive, migratedDone.Book);
+        Check(migratedDone.Book.Root("g") == "p" && migratedDone.Book.Charter("root").Phase == RecordedCharterPhase.TerritoryLost &&
+            migratedDone.Book.Entity("upper").NativeOwner == "realm" && migratedDone.Archive.Record("root").OwnerAtLoss == "admitted-realm" && moves.Export() == transferSnapshot,
+            "actual migrated realm and immutable baseline stay separate through successor execution without rewriting native ownership or transfer history");
+        TownOwnershipReturns.Restore(migratedReturns.Export()).ValidatePair(TownSuccessionArchive.Restore(migratedDone.Archive.Export()), CharterBook.Restore(migratedDone.Book.Export()));
+        Check(migratedDone.Archive.Record("root").Resolution.OwnershipReturnProof == migratedProof && migratedReturns.Records.Single().Transfers == transferSnapshot,
+            "paired restoration retains original return, exact completed transfer snapshot and consumed successor receipt");
+        var migratedFresh = CharterBook.Restore(migratedDone.Book.Export());
+        migratedFresh.Offer("fresh-migrated-root", Terms("p", "upper") with { TributeValue = 211 }, 40, PoliticalWorld.Day, normalizedObs);
+        migratedFresh.Sign("fresh-migrated-root", true, 41, normalizedObs); migratedFresh.Sign("fresh-migrated-root", false, 42, normalizedObs);
+        migratedReturns.ValidatePair(migratedDone.Archive, migratedFresh);
+        Check(migratedFresh.Charter("root").Phase == RecordedCharterPhase.TerritoryLost && migratedFresh.Charter("fresh-migrated-root").NpcSignedTick == 42 &&
+            migratedFresh.Entity("upper").NativeOwner == "realm" && migratedFresh.Charter("root").Terms.TributeValue == 137,
+            "fresh negotiated charter starts after returned migrated ownership while original baseline, ended charter and old debts remain intact");
+        var moveSave = JsonSerializer.Deserialize<TerritoryTransfersSave>(transferSnapshot);
+        var laterClock = TerritoryTransferLedger.Restore(JsonSerializer.Serialize(moveSave with { LastTick = 22 }));
+        Reject(() => returns.Observe(migratedWitness with { Transfers = laterClock.Export() }, migratedLosses, migrated), "a post-loss journal cannot backfill original ownership authority");
+        Reject(() => migratedReturns.RequireActiveWithTransfers("root", migratedLosses, migrated, "upper", "admitted-realm", 30, laterClock.Export()), "changed current journal suspends existing proof without rewriting it");
+        var foreignReceipt = TerritoryTransferLedger.Restore(JsonSerializer.Serialize(moveSave with { Transfers = moveSave.Transfers.Select(t => t.Charter == "root" ? t with { TargetOwner = "foreign" } : t).ToArray() }));
+        Reject(() => returns.Observe(migratedWitness with { Transfers = foreignReceipt.Export() }, migratedLosses, migrated), "a different actual target cannot normalize the return");
+        var wrongCharter = TerritoryTransferLedger.Restore(JsonSerializer.Serialize(moveSave with { Transfers = moveSave.Transfers.Select(t => t.Charter == "root" ? t with { Charter = "another-charter" } : t).ToArray() }));
+        Reject(() => returns.Observe(migratedWitness with { Transfers = wrongCharter.Export() }, migratedLosses, migrated), "another charter's receipt is not this root's transfer authority");
+        var pendingMoves = TerritoryTransferLedger.Restore(transferSnapshot);
+        pendingMoves.Prepare("pending-a", CharterBook.Restore(original), "child-a", new("a", "admitted-realm", 10), "next", "next", null, TerritoryTransferPurpose.ActiveCharter, 9);
+        Reject(() => returns.Observe(migratedWitness with { Transfers = pendingMoves.Export() }, migratedLosses, migrated), "unresolved physical custody remains blocked across the full journal");
+        Reject(() => returns.Observe(witness with { Transfers = transferSnapshot }, losses, book), "legacy equal-baseline observations do not acquire unrelated transfer dependencies");
+        var migratedReload = TownOwnershipReturns.Restore(migratedReturns.Export());
+        Check(migratedReload.Invalidate("root", 31, new string('\uD55C', 120)).Records.Single().InvalidatedTick == 31,
+            "bounded journal reserves enough room for a future escaped Unicode invalidation identity");
         return count;
     }
 }

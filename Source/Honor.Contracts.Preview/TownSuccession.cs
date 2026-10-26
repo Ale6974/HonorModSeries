@@ -57,8 +57,8 @@ public sealed partial class LiveCharterLedger
                 if (lostCity == null || lostCity.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(lostCity))
                     throw new ArgumentException("The observed town is unavailable.");
                 if (lostCity.Faction?.GetUniqueLoadID() != loss.CapturingOwner)
-                    returnProof = ownershipReturns.RequireActive(root, townLosses, Book, "territory/" + lostCity.GetUniqueLoadID(),
-                        lostCity.Faction?.GetUniqueLoadID(), Find.TickManager.TicksGame);
+                    returnProof = ownershipReturns.RequireActiveWithTransfers(root, townLosses, Book, "territory/" + lostCity.GetUniqueLoadID(),
+                        lostCity.Faction?.GetUniqueLoadID(), Find.TickManager.TicksGame, Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export());
             }
         }
         var source = CharterBook.Restore(proof.Before); var original = source.Charter(root);
@@ -117,7 +117,9 @@ public sealed partial class LiveCharterLedger
             var fresh = ReviewTownSuccession(reviewed.Plan.Root, prefix);
             if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("Succession authority or source changed.");
             var result = fresh.OwnershipReturnProof == null ? townLosses.Commit(Book, fresh.Plan, Find.TickManager.TicksGame, Observe()) :
-                ownershipReturns.CommitSuccession(townLosses, Book, fresh.Plan, Find.TickManager.TicksGame, Observe(), fresh.OwnershipReturnProof);
+                ownershipReturns.CommitSuccessionWithTransfers(townLosses, Book, fresh.Plan, Find.TickManager.TicksGame, Observe(), fresh.OwnershipReturnProof,
+                    Binding(townLosses.Record(fresh.Plan.Root).Territory).Settlement?.Faction?.GetUniqueLoadID(),
+                    Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export());
             ownershipReturns.ValidatePair(result.Archive, result.Book);
             Book = result.Book; townLosses = result.Archive;
             Messages.Message("LS_Completed".Translate(fresh.Plan.Replacements.Count), MessageTypeDefOf.NeutralEvent);

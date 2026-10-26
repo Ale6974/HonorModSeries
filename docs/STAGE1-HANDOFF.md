@@ -1,4 +1,12 @@
-# 1단계 예약 개발 인수인계 — 0.3.44 / 2026-10-26
+# 1단계 예약 개발 인수인계 — 0.3.45 / 2026-10-26
+
+## 최신 인수인계 —0.3.45 /2026-10-26
+
+최신0.3.45 로컬 설치 완료:0.3.44 백업은.local/contracts-preview-1abd8878c7ff4759ace0378860e61496,32파일/설정 해시 일치, 활성화·언어/Steam 불변.양 전체 빌드 완료와ZIP SHA256은 TESTING 최신 기록을 따른다.
+
+actual OwnerAtLoss!=baseline인 경우에도 SAME root ActiveCharter의 소실 전 최신 Applied transfer를 저장/검증해 관찰→별도 후손 승계→새 root charter로 연결했다. Transfers optional init field는 full historical ledger, latest root/target/baseline·서명 후 준비·LastTick<=loss·NoPrepared/Destroyed를 확인한다. Native preflight copy/post/final review/commit에서 exact current ledger를 다시 읽는다. actual owner를 별도 전달하며 normalized obs는 baseline용이다; legacy API는 이 mode를 authorize하지 않는다. baselineEqual old mode는 null JSON/hash/ctor unchanged, hardcoded legacy proof fixture도 통과한다. 역사 identity 증거이므로 옛 pawn/stock 복구나 native replay는 없다.128 records/32Mchars+128*1024 invalidation reserve로 퇴출 없이 다음 ownership attempt를 보존한다.
+
+Contracts4173+Honor/runtime20093=24266/대상, EN/KO434키·FactionDef12. 최신 install/package 결과는 TESTING을 따른다. 잔여35/80/95/90/100/70%, 큰 묶음7~9/5~7/6~8/5~7/6~8/4~6,1단계 미완료다. 다음은 whole merger/정당한 독립의 실제 권한·실행/복구, 집단 의결·미지원 주민/노예/로딩 맵·상위/실물 소실 등의 큰 잔여다. 다른 root 계약의 과거 transfer·provider/mixed/cascade/reentry는 임의 면제하지 않는다. 반복honor-1 ACTIVE30분은 유지한다.
 
 ## 최신 인수인계 —0.3.44 /2026-10-26
 

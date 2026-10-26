@@ -7,13 +7,17 @@ namespace Honor.Contracts.Rules;
 public sealed record TownOwnershipReturn(string Root, string Territory, string FromOwner, string ReturnedOwner, string LossProof,
     long OccurredTick, long ObservedTick,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] long? InvalidatedTick = null,
-    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string AttemptedOwner = null);
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string AttemptedOwner = null)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string Transfers { get; init; }
+}
 public sealed record TownOwnershipReturnSave(int Version, TownOwnershipReturn[] Records);
 
 /// <summary>Positive native ownership-return observations, not battle legitimacy, annexation or revived contracts.</summary>
 public sealed class TownOwnershipReturns
 {
     public const int Capacity = 128;
+    private const int MaxCharacters = 32000000, InvalidationReserve = Capacity * 1024;
     private readonly Dictionary<string, TownOwnershipReturn> records = new(StringComparer.Ordinal);
     public IReadOnlyCollection<TownOwnershipReturn> Records => records.Values.ToArray();
     private static bool Key(string s) => !string.IsNullOrWhiteSpace(s) && s.Length <= 120 && !s.Any(char.IsControl);
@@ -32,10 +36,25 @@ public sealed class TownOwnershipReturns
     {
         Validate(r); var p = losses.Record(r.Root);
         if (p.Kind != TownLossKind.HostileNativeOwnershipChange || p.ScopeRoot != null || p.ScopeOrdinal != null || p.PriorScopes != null ||
-            p.OwnerAtLoss != p.BaselineOwner || r.Territory != p.Territory || r.FromOwner != p.CapturingOwner ||
+            r.Territory != p.Territory || r.FromOwner != p.CapturingOwner ||
             r.ReturnedOwner != p.OwnerAtLoss || r.LossProof != LossDigest(p) || r.OccurredTick < p.ObservedTick ||
             book.Charter(p.Root).Phase != RecordedCharterPhase.TerritoryLost)
-            throw new ArgumentException("Return must match one isolated original hostile loss without baseline-owner normalization.");
+            throw new ArgumentException("Return must match one exact original hostile loss.");
+        if (p.OwnerAtLoss == p.BaselineOwner)
+        {
+            if (r.Transfers != null) throw new ArgumentException("An unchanged baseline must retain its original return proof shape.");
+        }
+        else
+        {
+            if (r.Transfers == null) throw new ArgumentException("A migrated owner requires its exact original completed transfer journal.");
+            var transfers = TerritoryTransferLedger.Restore(r.Transfers);
+            var last = transfers.Transfers.LastOrDefault(t => t.Territory == p.Territory && t.Phase == TerritoryTransferPhase.Applied);
+            var original = CharterBook.Restore(p.Before).Charter(p.Root);
+            if (transfers.LastTick > p.LossTick || transfers.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) ||
+                !transfers.VerifiedOwner(p.Territory, p.BaselineOwner, p.OwnerAtLoss) || last == null || last.Charter != p.Root ||
+                last.Purpose != TerritoryTransferPurpose.ActiveCharter || last.PreparedTick < Math.Max(original.PlayerSignedTick.Value, original.NpcSignedTick.Value))
+                throw new ArgumentException("Return requires the matching root's completed pre-loss transfer, never a new normalization authority.");
+        }
         return p;
     }
     public TownOwnershipReturns Observe(TownOwnershipReturn r, TownSuccessionArchive losses, CharterBook book)
@@ -44,7 +63,9 @@ public sealed class TownOwnershipReturns
         if (p.Resolution != null || losses.ScopeLosses(p.Root).Length != 1 || book.LastTick > r.OccurredTick ||
             r.InvalidatedTick.HasValue || records.ContainsKey(r.Root) || records.Count >= Capacity)
             throw new ArgumentException("Duplicate, resolved or unavailable ownership-return scope.");
-        var copy = Restore(Export()); copy.records.Add(r.Root, r); copy.ValidatePair(losses, book); return copy;
+        var copy = Restore(Export()); copy.records.Add(r.Root, r); copy.ValidatePair(losses, book);
+        if (copy.Export().Length > MaxCharacters - InvalidationReserve) throw new ArgumentException("Ownership-return archive capacity; retain room for future invalidations.");
+        return copy;
     }
     public TownOwnershipReturns Invalidate(string root, long tick, string attemptedOwner)
     {
@@ -54,20 +75,27 @@ public sealed class TownOwnershipReturns
         var copy = Restore(Export()); copy.records[root] = next; return copy;
     }
     public string RequireActive(string root, TownSuccessionArchive losses, CharterBook book, string territory, string actualOwner, long now)
+        => RequireActiveWithTransfers(root, losses, book, territory, actualOwner, now, null);
+    public string RequireActiveWithTransfers(string root, TownSuccessionArchive losses, CharterBook book, string territory, string actualOwner, long now, string currentTransfers)
     {
         var r = records.TryGetValue(root ?? "", out var found) ? found : throw new ArgumentException("No positive native ownership-return observation.");
         var p = Source(r, losses, book);
-        if (p.Resolution != null || losses.ScopeLosses(p.Root).Length != 1 || r.InvalidatedTick.HasValue || now < r.ObservedTick || now > int.MaxValue || territory != r.Territory || actualOwner != r.ReturnedOwner)
+        if (p.Resolution != null || losses.ScopeLosses(p.Root).Length != 1 || r.InvalidatedTick.HasValue || now < r.ObservedTick || now > int.MaxValue || territory != r.Territory || actualOwner != r.ReturnedOwner ||
+            r.Transfers != null && r.Transfers != currentTransfers)
             throw new ArgumentException("The observed ownership return is unavailable, interrupted or changed.");
         return ReceiptDigest(r);
     }
     public (CharterBook Book, TownSuccessionArchive Archive) CommitSuccession(TownSuccessionArchive losses, CharterBook book,
         TownSuccessionPlan plan, long now, IEnumerable<TerritoryObservation> observations, string proof)
+        => CommitSuccessionWithTransfers(losses, book, plan, now, observations, proof, null, null);
+    public (CharterBook Book, TownSuccessionArchive Archive) CommitSuccessionWithTransfers(TownSuccessionArchive losses, CharterBook book,
+        TownSuccessionPlan plan, long now, IEnumerable<TerritoryObservation> observations, string proof, string actualOwner, string currentTransfers)
     {
         RuntimeCompat.NotNull(plan); RuntimeCompat.NotNull(observations);
         var actual = observations.ToArray(); var territory = losses.Record(plan.Root).Territory;
         var owner = actual.SingleOrDefault(o => o.Id == territory);
-        if (owner == null || !owner.Exists || RequireActive(plan.Root, losses, book, territory, owner.NativeOwner, now) != proof)
+        if (owner == null || !owner.Exists || owner.NativeOwner != book.Entity(territory).NativeOwner ||
+            RequireActiveWithTransfers(plan.Root, losses, book, territory, actualOwner ?? owner.NativeOwner, now, currentTransfers) != proof)
             throw new ArgumentException("Review the exact active return and current territory first.");
         var completed = losses.Commit(book, plan, now, actual);
         var saved = JsonSerializer.Deserialize<TownLossSave>(completed.Archive.Export());
@@ -91,7 +119,7 @@ public sealed class TownOwnershipReturns
     public string Export() => JsonSerializer.Serialize(new TownOwnershipReturnSave(1, records.Values.ToArray()));
     public static TownOwnershipReturns Restore(string json)
     {
-        if (string.IsNullOrWhiteSpace(json) || json.Length > 1000000) throw new ArgumentException("Invalid ownership-return archive size.");
+        if (string.IsNullOrWhiteSpace(json) || json.Length > MaxCharacters) throw new ArgumentException("Invalid ownership-return archive size.");
         var saved = JsonSerializer.Deserialize<TownOwnershipReturnSave>(json);
         if (saved == null || saved.Version != 1 || saved.Records == null || saved.Records.Length > Capacity) throw new ArgumentException("Invalid ownership-return archive.");
         var copy = new TownOwnershipReturns();

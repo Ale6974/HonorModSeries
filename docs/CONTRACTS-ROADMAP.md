@@ -15,7 +15,9 @@
 
 현재 상세 구현 범위와 제한은 [CONTRACTS-PREVIEW](CONTRACTS-PREVIEW.md), 확정 규칙은 [CONTRACTS-DECISIONS](CONTRACTS-DECISIONS.md)를 참조한다.
 
-## 남은 작업량 추정과 보고 기준 — 2026-10-26 / 0.3.44
+## 남은 작업량 추정과 보고 기준 — 2026-10-26 / 0.3.45
+
+0.3.45는 actual pre-loss owner와 기준이 다를 때 같은 root의 실제 완료 transfer 원본/현재 journal을 재확인해 복귀 후 승계와 새 계약을 연결한다. baseline/old terms·debts·history는 불변이며 다른 charter 계보·provider/상위 중첩 등과 합병/정당한 독립이 남아 추정은 유지한다.
 
 0.3.44는 isolated 상위 도시의 적대 소유권 상실 후 원 소유권 정상 복귀를 별도 사실로 저장하고, 후손의 별도 승계와 root의 새 계약/서명으로 연결했다. 원 계약은 Lost 유지·채무/과거 조건 불변이다. 정규화 baseline·추가/혼합 소실·제공자/집단·나머지 재탈환 등 큰 범위가 남으므로 아래 추정은 유지한다.
 

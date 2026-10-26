@@ -1,5 +1,13 @@
 # 검증과 플레이 점검
 
+## Contracts0.3.45 — 실제 이전 기록이 있는 소유권 복귀 (2026-10-26)
+
+- 신규15개 assertion은 root/세 후손의 실제 공통 이전 journal Prepare/Confirm→baseline과 다른 realm의 hostile loss→정확한 이전 원본을 포함한 return→별도 successor commit→새 root offer/sign까지 연결한다. baseline/actual realm·옛 root Lost/경제·서명·채무 근거·완료 이전 기록을 분리 보존하고 paired reload를 검사한다.
+- 원 journal 누락·legacy API로 우회·baseline을 actual로 사용·다른 target/다른 root 계약의 영수증·소실 후 journal·바뀐 현재 journal·다른 도시의 pending 이전·옛 동일 기준 모드에 불필요한 증거 추가를 거절한다. Unicode 무효화 여유와 고정 legacy serialized proof hash8F123A...도 검사했다. 새 필드는 null 생략이며 기존 API/생성자/해시를 유지한다.
+- 양 규칙 호스트 기준 Contracts4,173+Honor/runtime20,093=대상별24,266개, 공용 EN/KO434키·FactionDef12필드다. Native prefix/post/final consent의 현재 journal 재조회·copy-only preflight·기존 현재 대표/원 상위/전체 descendant 검사와 실제 UI→commit 연결은 코드/양 Preview 빌드로 확인한다. 이전을 재생하거나 옛 주민/재고를 복원하지 않는다. 양 전체 빌드/패키지/설치 결과는 아래 완료 기록을 따른다.
+
+- 완료: 양 전체 빌드 경고/오류0,6모드×두 런타임 선택/DLL 허용 목록 통과. 최종ZIP SHA256: `90A78C9920268B3C1C3ADFCF7CB53A1CC7421C80FAF2D8394306D4504705011D`. 게임 실행이 없는 상태에서0.3.44를 `.local/contracts-preview-1abd8878c7ff4759ace0378860e61496`에 백업하고0.3.45를 설치했다. 원본/설치32파일 집합·해시와 ModsConfig.xml/Prefs.xml 해시가 일치하며 활성화/언어/Steam은 유지했다.
+
 ## Contracts0.3.44 — 원 소유권 복귀 후 별도 승계와 새 계약 (2026-10-26)
 
 - 신규30개 assertion: 기존 실제 공통 book의 hostile upper loss→별도 return witness→저장 왕복→현 대표 별도 successor commit→새 root offer/새 서명까지 연결했다. 옛 root TerritoryLost/조건/서명·채무 근거·실제 소실 시각과 깊은 하위/원 NativeOwner를 보존하며, 새 경제 조건/시작 서명 시각을 별개로 유지한다.

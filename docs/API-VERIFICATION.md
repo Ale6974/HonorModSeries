@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 실제 이전 provenance를 보존한 소유권 복귀 —0.3.45 /2026-10-26
+
+기존 WorldObject.SetFaction void Prefix/Postfix와 정상 반환·exact registered faction/binding/Game/hostility/book/loss/epoch 경계를 그대로 사용한다. 추가 native 실행 API/IL/소속 쓰기는 없다.1.7.4985 rev1269/net10.0 및 pinned1.6.4871/net472 대상 구분을 유지한다.
+
+새 Transfers init 속성은 baseline과 actual OwnerAtLoss가 다를 때만 저장한다. 역사 ledger의 최신 Applied가 같은 root ActiveCharter/target/baseline이어야 하고 양 원 서명보다 늦게 준비됐으며 전체 LastTick은 실제 소실 시각 이하여야 한다. Any Prepared/Destroyed ambiguity를 배제한다. Native prefix에서 copy로 증거/용량을 preflight하고, post에서 동일 journal을 재확인한 뒤 실제 정상 복귀만 저장한다.
+
+새 RequireActiveWithTransfers/CommitSuccessionWithTransfers가 실제 root owner와 current ledger를 별도로 받으며 기존 normalized TerritoryObservation은 consent baseline 검토에만 사용한다. 원복된 실제 owner를 baseline으로 대체하지 않는다. Native live review/commit은 현재 ledger.Export를 전달하고 두 API가 저장된 것과 비교한다. 기존 API는 이 mode에 누락된 actual/journal을 보충해주지 않는다. consume 후에는 저장한 역사 proof만 paired validation해 미래의 적법한 새 장부가 옛 사실을 덮어쓰지 않게 한다. Null생략/기존 positional constructor/legacy digest는 동일하다.
+
 ## 원 소유권 복귀의 normal-return 관찰과 승계 증거 —0.3.44 /2026-10-26
 
 설치 Version.txt=1.7.4985 rev1269, 루트 runtimeconfig=net10.0/10.0.13-waylithclr.dev를 재확인했다. 기존 검증 WorldObject.SetFaction(Faction)에 void Prefix/Postfix observer를 추가했다. 새 native 실행 API/IL patch나 third-party 코드 복사는 없다. 1.6은 pinned1.6.4871/net472+기존 Harmony2.4.3 참조 대상이다.
