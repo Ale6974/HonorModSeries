@@ -1,5 +1,13 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.42 — 동일 정치 범위의 다중 말단 소실 (2026-10-26)
+
+- 신규22개 assertion은4개 원 follower 중3개 실제 소실 witness→B/A를 동일 tick에 명시 정리→부분 저장 왕복→C 정리→생존D의 실제 공통 이전 journal 확인→원 정치 intent 완료를 검사한다. 원 전체 follower 집합·계약 조건/서명·채무 근거·소실 시각·이전 이력을 보존한다.
+- 현재 actual head와 원 관찰 head를 분리 저장하고, stale confirmation/다른 epoch/동일 도시 중복·미확정 ack/누락 native proof/잘못된 순서·변경 witness/command identity·관련 없는 book 변경을 거절한다. 단일 소실의 null JSON 생략 및 원 digest/생성자 호환도 검사했다. 기존 별도 단일 Prepared 이전 가드는 제거하지 않았다.
+- 양 규칙 호스트: Contracts4,117 + Honor/runtime20,093 = 대상별24,210개. EN/KO431키/자리표시자·FactionDef12필드. 새 native API·도시/주민/자원 쓰기는 없다. 양 타깃 전체 빌드/패키지·설치 결과는 아래 완료 기록을 따른다. 전체 합병/정당한 독립·미지원 보존/집단 의결·나머지 소실/복구는 남는다.
+
+- 완료: 양 전체 빌드 경고/오류0,6모드×두 런타임 선택·DLL 허용 목록 통과. ZIP SHA256: `B3AFCFA35F95DC450AB8AD421AA3DAE88F4045194DBF40C08E0AE26B93118C24`. RimWorld 실행 중이어서 로컬 설치를 보류했으며 기존 설치/활성화/언어/Steam을 변경하지 않았다.0.3.41과0.3.42는 로컬 설치 대기다.
+
 ## Contracts 0.3.41 — 보류 이전 중 상위 도시 소실과 별도 승계 (2026-10-26)
 
 - 신규27개 assertion은 공통 실제 book/transfer/pending/upper archives에서 관찰→지연 명시적 정리→세 기록 저장 왕복→전체 후손 별도 승계를 연결한다. 실제 소실10/관찰12/정리20/승계30을 구분하고 원 하위 조건·서명/actors·채무 근거·깊은 계약/native owner를 유지한다.

@@ -171,7 +171,7 @@ public sealed class AllegianceTransitionLedger
     {
         Time(now); RuntimeCompat.NotNull(archive); archive.ValidatePair(book, transfers);
         var loss = archive.Records.SingleOrDefault(r => r.Id == id);
-        Require(Current.Phase == AllegianceTransitionPhase.AllegianceApplied && loss != null && loss.ResolvedTick == now && loss.PoliticalBefore == Export() &&
+        Require(Current.Phase == AllegianceTransitionPhase.AllegianceApplied && loss != null && loss.ResolvedTick == now && (loss.AcknowledgedBefore ?? loss.PoliticalBefore) == Export() &&
             Current.Followers.Contains(loss.Charter) && !LostCharters.Contains(loss.Charter), "An unchanged applied intent and resolved original follower loss are required.");
         var next = new AllegianceTransitionLedger { Current = Current with { TownLosses = (Current.TownLosses ?? []).Append(archive.Receipt(id)).ToArray() } };
         archive.ValidatePolitical(next); Current = next.Current;

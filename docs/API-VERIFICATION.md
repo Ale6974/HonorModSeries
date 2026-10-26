@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 중단 정치 전환의 동일 범위 다중 말단 소실 — 0.3.42 / 2026-10-26
+
+설치 Version.txt1.7.4985 rev1269와 루트 runtimeconfig net10.0/10.0.13-waylithclr.dev를 다시 확인했다. 기존 normal-return WorldObject.Destroy observer와 실제 Settlement 참조·빈 명부/재고 검사만 사용한다. 새 native API/IL patch는 없으며 단일 Prepared 물리 이전 가드도 유지한다. 1.6은 pinned1.6.4871/net472 참조다.
+
+기존 PoliticalTownLoss archive/native 실행 경로에서 동일 원본 book/transfers/intent의 복수 독립 leaf witness를 보존한다. CurrentSource는 해당 범위의 실제 resolved native witness 및 정확한 AcknowledgedBefore/receipt 순서만 순수 복사본에서 재구성하며 native 호출은 재생하지 않는다. 새 확정 head는 별도 init 속성으로 null 생략, 기존 positional 생성자/원 digest는 유지한다. 원 command/war/전체 follower/과거 physical outcome을 바꾸는 head는 거절한다. 기존 per-city explicit UI→atomic book/archive/intent swap→fresh remaining migration에 실제 연결했다.
+
 ## Prepared 상위 도시 소실의 원본/지연 확정 연결 — 0.3.41 / 2026-10-26
 
 설치 Version.txt=1.7.4985 rev1269, 루트 RimWorld.runtimeconfig.json=net10.0 /10.0.13-waylithclr.dev를 재확인했다. 기존 검증된 WorldObject.Destroy normal-return Prefix/Postfix와 Settlement 명부/holder·현재 faction 참조만 사용하며 새 native 호출/IL patch는 없다. 1.6은 pinned1.6.4871/net472 참조 빌드이며 로컬 설치된1.6으로 표현하지 않는다.

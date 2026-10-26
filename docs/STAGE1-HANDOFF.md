@@ -1,4 +1,12 @@
-# 1단계 예약 개발 인수인계 — 0.3.41 / 2026-10-26
+# 1단계 예약 개발 인수인계 — 0.3.42 / 2026-10-26
+
+## 최신 인수인계 — 0.3.42 / 2026-10-26
+
+RimWorld가 실행 중이어서0.3.41/0.3.42 설치는 대기 상태다. 다음 실행에서 게임이 없으면 최신0.3.42를 백업 설치하고 파일/설정 해시를 확인한다. 게임을 종료시키지 않는다.
+
+한 applied 정치 intent의 동일 원본 book/기존 physical ledger/head에 속한 여러 빈 unloaded leaf의 normal-return 파괴를 native observer에서 함께 기록한다. 원 witnesses는 그대로 두고 각 명시적 정리에서 같은 epoch의 실제 resolved sibling closures만 복사본에 반영한다. AcknowledgedBefore는 실제 prior command head를 별도 보존하며 원 witness digest에서 제외하고 null은 생략한다. 동일 tick 정리 순서·부분 reload·최종 생존 도시 journal 이전과 original full intent 완료까지 연결했다. upper/진행 보존/다른 epoch·재진입·재탈환 지원으로 부르지 않는다. 복수 Prepared 물리 이전으로 착각해 기존 global one-Prepared guard를 제거하지 않는다.
+
+양 규칙 Contracts4117+Honor/runtime20093=24210, EN/KO431키·FactionDef12. 패키지/설치 결과는 TESTING 최신 완료 기록을 따른다. 잔여 노력은35/80/95/90/100/70%, 큰 묶음7~9/5~7/6~8/5~7/6~8/4~6이다. 다음 우선순위는 전체 합병/정당한 독립의 실제 권한·실행·복구 경로, 집단 의결/복잡 이적 및 나머지 upper/mixed/reentrant loss·recapture다. 지원되지 않는 native 경계는 원본/가드를 지키며 별도 구현하고 모델만으로 완료 처리하지 않는다. honor-1 ACTIVE30분을 유지한다.
 
 ## 최신 인수인계 — 0.3.41 / 2026-10-26
 

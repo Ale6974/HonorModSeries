@@ -34,8 +34,10 @@ public sealed partial class TerritoryAdministrationLedger
     internal PoliticalTownLossCandidate ReviewIndependentDestruction(Settlement city)
     {
         string context = IndependentLossReady(); var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
-        if (city == null || city.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(city) || politicalTownLosses.Pending ||
+        if (city == null || city.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(city) ||
             politicalTownLosses.Records.Count >= PoliticalTownLossArchive.Capacity) return null;
+        if (politicalTownLosses.Records.Any(r => r.ResolvedTick == null && (r.BookBefore != Charters.Book.Export() ||
+            r.TransfersBefore != Ledger.Export() || r.PoliticalBefore != context))) return null;
         string territory = "territory/" + city.GetUniqueLoadID();
         var charter = Charters.Book.Charters.SingleOrDefault(c => c.Terms.Subject == territory && c.Phase == RecordedCharterPhase.Active);
         if (charter == null || !Charters.Book.PlayerManaged(charter) || !political.Journal.Current.Followers.Contains(charter.Id) ||
@@ -99,6 +101,7 @@ public sealed partial class TerritoryAdministrationLedger
     private void DrawIndependentTownLosses(Listing_Standard list, string charter)
     {
         if (RestoreFailed) return;
+        if (politicalTownLosses.Records.Count(r => r.ResolvedTick == null) > 1) list.Label("PI_Overlap".Translate());
         foreach (var proof in politicalTownLosses.Records.Where(r => r.ResolvedTick == null && (charter == null || r.Charter == charter)).ToArray())
         {
             list.Label("PI_Pending".Translate());

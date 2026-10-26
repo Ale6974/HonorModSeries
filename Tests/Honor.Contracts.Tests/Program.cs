@@ -198,6 +198,7 @@ assertions += PendingTownLossTests.Run();
 assertions += PendingUpperTownLossTests.Run();
 assertions += PoliticalTownLossTests.Run();
 assertions += IndependentTownLossTests.Run();
+assertions += OverlappingPoliticalLossTests.Run();
 assertions += FactionMergerProposalTests.Run();
 assertions += LeaderJoiningTests.Run();
 assertions += LeaderSuccessionSplitTests.Run();
