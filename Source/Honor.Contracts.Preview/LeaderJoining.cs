@@ -122,6 +122,16 @@ public sealed class LeaderJoinLedger : GameComponent
         Territories.ValidatePoliticalLosses(political.Journal); NativeApi();
     }
     private static Settlement[] Cities() => Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Where(s => !s.Destroyed).ToArray();
+    // Include retained registered historical town references: absence from the live world list is not proof of no saved association.
+    private Settlement[] KnownTowns() => Find.WorldObjects.AllWorldObjects.OfType<Settlement>()
+        .Concat(Charters.Book.Entities.Select(e => Charters.Binding(e.Id).Settlement)).Where(s => s != null).Distinct().ToArray();
+    private void OtherResidency(Pawn actor, Settlement source, Settlement destination, bool unassigned)
+    {
+        var towns = KnownTowns();
+        if (unassigned && towns.Any(s => s.previouslyGeneratedInhabitants == null) ||
+            towns.Any(s => s != destination && (unassigned || s != source) && s.previouslyGeneratedInhabitants?.Contains(actor) == true))
+            throw new ArgumentException("Outside or unverified saved leader assignment; never infer unassigned residence from missing town references.");
+    }
     private static void Town(Settlement s, Faction owner)
     {
         if (s == null || s.GetType() != typeof(Settlement) || s.Destroyed || s.HasMap || s.questTags?.Count > 0 || s.Faction != owner || !Cities().Contains(s) ||
@@ -175,14 +185,15 @@ public sealed class LeaderJoinLedger : GameComponent
         var source = sourceCity.Faction; var target = Current.Game.GetComponent<RealmAdministrationLedger>().TerritoryAuthority(); SourceAuthority(source, target);
         Town(sourceCity, source); Town(destination, target); var actor = source.leader;
         var actual = ResidentExecution.ReadRetainedLeader(actor);
+        bool unassigned = !sourceCity.previouslyGeneratedInhabitants.Contains(actor);
         if (actor.health.surgeryBills.Count != 0 || sourceCity == destination || Find.QuestManager.IsReservedByAnyQuest(actor) || target.leader == null || target.leader == actor ||
             target.leader.Dead || target.leader.Faction != target || Find.QuestManager.IsReservedByAnyQuest(target.leader) ||
-            sourceCity.previouslyGeneratedInhabitants.Count(p => p == actor) != 1 || destination.previouslyGeneratedInhabitants.Count >= 128 ||
-            Cities().Any(s => s != sourceCity && s.previouslyGeneratedInhabitants?.Contains(actor) == true)) throw new ArgumentException("Unsupported personal actor/office/surgery/residency.");
+            destination.previouslyGeneratedInhabitants.Count >= 128 || destination.previouslyGeneratedInhabitants.Contains(actor)) throw new ArgumentException("Unsupported personal actor/office/surgery/residency.");
+        OtherResidency(actor, sourceCity, destination, unassigned);
         SuccessionAvailable(source, actor);
         var plan = new LeaderJoinPlan(charter, actor.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID(), sourceCity.GetUniqueLoadID(), destination.GetUniqueLoadID(),
             target.leader.GetUniqueLoadID(), Charters.Book.Export(), Territories.Ledger.Export(), new(actual.Id, actual.Preserved, actual.MedicalCare), Stock(sourceCity), Stock(destination),
-            Roster(sourceCity), Roster(destination), Find.TickManager.TicksGame, true, SeparateSuccession: true);
+            Roster(sourceCity), Roster(destination), Find.TickManager.TicksGame, true, SeparateSuccession: true, UnassignedSource: unassigned);
         LeaderJoinExecution.Prepare(plan); return new(Current.Game, plan, actor, source, target, sourceCity, destination, target.leader);
     }
     private static void References(LeaderJoinRecord r)
@@ -198,9 +209,9 @@ public sealed class LeaderJoinLedger : GameComponent
         Ready(true); References(r); var j = r.Journal(); var p = j.State.Plan;
         if (r.Finished || Current.Game.GetComponent<RealmAdministrationLedger>().TerritoryAuthority() != r.TargetFaction) throw new ArgumentException("Joining authority changed.");
         SourceAuthority(r.SourceFaction, r.TargetFaction); Town(r.Source, r.SourceFaction); Town(r.Destination, r.TargetFaction);
-        if (r.TargetFaction.leader != r.TargetLeader || r.TargetLeader.Dead || Find.QuestManager.IsReservedByAnyQuest(r.Actor) || Find.QuestManager.IsReservedByAnyQuest(r.TargetLeader) || r.Actor.health.surgeryBills.Count != 0 ||
-            Cities().Any(s => s != r.Source && s != r.Destination && s.previouslyGeneratedInhabitants?.Contains(r.Actor) == true))
+        if (r.TargetFaction.leader != r.TargetLeader || r.TargetLeader.Dead || Find.QuestManager.IsReservedByAnyQuest(r.Actor) || Find.QuestManager.IsReservedByAnyQuest(r.TargetLeader) || r.Actor.health.surgeryBills.Count != 0)
             throw new ArgumentException("Unexpected office, medical orders or outside residency.");
+        OtherResidency(r.Actor, r.Source, r.Destination, p.UnassignedSource);
         if (j.State.Phase == LeaderJoinPhase.Prepared) { ResidentExecution.ReadRetainedLeader(r.Actor); SuccessionAvailable(r.SourceFaction, r.Actor); }
         bool officeRequired = r.Actor.Faction == r.TargetFaction || p.SeparateSuccession && j.State.Phase != LeaderJoinPhase.Prepared;
         if (officeRequired && (r.SourceFaction.leader == null || r.SourceFaction.leader == r.Actor || r.SourceFaction.leader.Dead || r.SourceFaction.leader.Downed ||
@@ -230,7 +241,8 @@ public sealed class LeaderJoinLedger : GameComponent
             if (JsonSerializer.Serialize(fresh.Plan) != JsonSerializer.Serialize(reviewed.Plan) || fresh.Actor != reviewed.Actor || fresh.Source != reviewed.Source || fresh.TargetLeader != reviewed.TargetLeader)
                 throw new ArgumentException("Separate personal joining consent changed.");
             var r = new LeaderJoinRecord { Id = Guid.NewGuid().ToString("N"), Snapshot = LeaderJoinExecution.Prepare(fresh.Plan).Export(), Actor = fresh.Actor, Source = fresh.Source, Destination = fresh.Destination,
-                SourceFaction = fresh.SourceFaction, TargetFaction = fresh.TargetFaction, TargetLeader = fresh.TargetLeader, DisplayPhase = LeaderJoinPhase.Prepared, ActorLabel = fresh.Actor.LabelShort, SourceLabel = fresh.Source.Label, DestinationLabel = fresh.Destination.Label };
+                SourceFaction = fresh.SourceFaction, TargetFaction = fresh.TargetFaction, TargetLeader = fresh.TargetLeader, DisplayPhase = LeaderJoinPhase.Prepared, ActorLabel = fresh.Actor.LabelShort,
+                SourceLabel = fresh.Plan.UnassignedSource ? fresh.SourceFaction.Name : fresh.Source.Label, DestinationLabel = fresh.Destination.Label };
             if (records.Sum(old => (long)old.Snapshot.Length) + r.Snapshot.Length > 32000000) throw new ArgumentException("Joining archive capacity.");
             records.Add(r); Finish(r);
         }
@@ -315,7 +327,7 @@ public sealed class LeaderJoinLedger : GameComponent
             foreach (var city in Cities())
             {
                 try { var review = Review(charter, city); options.Add(new("LJ_Proposal".Translate(review.Actor.LabelShort, city.Label), () => Find.WindowStack.Add(
-                    Dialog_MessageBox.CreateConfirmation("LJ_Confirm".Translate(review.Actor.LabelShort, review.Source.Label, city.Label), () => Start(review))))); }
+                    Dialog_MessageBox.CreateConfirmation((review.Plan.UnassignedSource ? "LJ_UnassignedConfirm" : "LJ_Confirm").Translate(review.Actor.LabelShort, review.Source.Label, city.Label), () => Start(review))))); }
                 catch (Exception) { }
             }
             if (options.Count == 0) Messages.Message("LJ_Unavailable".Translate(), MessageTypeDefOf.RejectInput); else Find.WindowStack.Add(new FloatMenu(options));

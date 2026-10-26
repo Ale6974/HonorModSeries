@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 도시 미배정 월드 지도자의 실제 개인 합류 — 0.3.36 / 2026-10-26
+
+이미 검증한 native world-pawn/leader 참조, Settlement.previouslyGeneratedInhabitants, Notify_LeaderLost와 Pawn.SetFaction 경로를 사용한다. 새 engine API/원시 faction·leader 쓰기는 없다. 기존 세계 객체의 모든 Settlement와 공통 장부 binding에 남은 과거 Settlement 참조를 합쳐 확인하며, 명부가 누락되면 미배정으로 추정하지 않는다. 현재 지도자가 어떤 원 도시 명부에도 없을 때 새 UnassignedSource=true/SeparateSuccession=true 의도를 기록한다. 원 계약 도시는 권한/재고/명부 확인 대상이며 거주지로 가정하지 않는다.
+
+native 후임 선정을 먼저 실제 기록한 뒤 동일 원 Pawn의 소속 변경·관측 의료1회 확인과 목적지 명부 추가를 실행한다. 원 도시 명부는 그대로 유지하고 source Remove를 호출하지 않는다. 목적지 추가 뒤 중단은 명시 복구에서 현재 후임/원 actor/명부/의료·재고·장부/밖의 배정을 모두 재검사한다. source/다른 도시의 새 배정을 지우거나 불확실 affiliation call을 반복하지 않는다. 새 flag는 false일 때 JSON에 없으며 구버전/기존 assigned-source plan과 hash 의미는 유지한다. 기존 GC/redress 보호·재진입 scope·미지원 state/callback/provider 가드는 모두 적용한다. 원 세력2도시 이상 존속 조건은 유지하므로 전체 합병/마지막 도시 처리는 아니다. 양 대상은 기존 metadata/별도 빌드로 확인한다.
+
 ## 개인 소속 변경 callback 재진입과 전체 합병 경계 — 0.3.35 / 2026-10-26
 
 0.3.34의 별도 affiliation은 native Pawn.SetFaction을 scoped guard 밖에서 호출했다. callback이 pending record 복구를 재요청하면 원 call의 중간 상태를 관측할 여지가 있었다. 모든 source succession/legacy combined/새 affiliation call을 공통 process-local scope로 묶고 Ready의 재진입 금지를 적용한다. affiliation에는 후임 생성 변경 권한을 부여하지 않는다. 정상 반환 receipt까지 scope 안에서 기록하고 finally로 임시 범위만 해제한다. 예외는 원 intention을 보류 상태로 유지하며 성공 receipt를 만들지 않는다. 저장 JSON/enum/동의·현재 원본 검사·GC 보호는 변경하지 않았다. 새 engine API나 IL patch는 없다.

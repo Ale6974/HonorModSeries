@@ -1,5 +1,12 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.36 — 도시 미배정 월드 지도자 개인 합류 (2026-10-26)
+
+- 신규38개 assertion은 빈 원 명부/다른 주민만 있는 원 명부 각각에서 미배정 actor의 실제 native 후임 기록 경계→소속 관측/의료1회→목적지 추가/완료·저장 왕복을 검사한다. 원 배정의 가짜 생성/삭제, 원 actor가 있는 상태의 미배정 표시, 구버전 combined로의 변환, 중복 목적지·원/목적지 새 배정·원 명부 변화·이미 소진한 의료 재복원·불확실 source-side call 재실행을 거절한다. 원 book/transfer/계약·채무 bytes는 유지한다.
+- Preview는 현재 모든 Settlement와 공통 binding에 남은 과거 Settlement 명부를 읽기만 하며 새 stock/주민을 생성하지 않는다. 미배정이면 unknown roster와 다른 배정을 거절하고, UI 별도 영한 개인 동의→기존 native 사임/승계/소속 scope→원 source 명부 유지→목적지 같은 actor 추가→명시 복구/GC 보호를 연결했다. 기존 assigned-source 동작/JSON/enum·마지막 도시/미지원 상태/provider 가드를 유지한다.
+- 1.6/net472·1.7/net10 전체 빌드와 각 규칙 호스트가 경고/오류0으로 통과했다. Contracts **3,924** + Honor/runtime **20,093** = 대상별 **24,017**개 assertion, EN/KO **422개** 공용 키/자리표시자·FactionDef12개 필드. 추가 engine API/외부 DLL/IL patch는 없다. 전체 합병과1단계는 미완료이며 잔여 비율을 낮추지 않았다.
+- 6모드×두 런타임·DLL 허용 목록을 통과한 ZIP SHA256: `79CDEA5544D54D8124808E0EBBE87520020B44A05DF1846391F407F150964FEA`. 실행 중인 게임이 없을 때0.3.35 로컬본을 `.local/contracts-preview-1e540c4cb85141329eb5ebb154fdf758`에 백업하고0.3.36을 설치했다.32개 파일 집합/해시가 원본과 일치하고 ModsConfig.xml/Prefs.xml 해시는 불변이다. 활성화/언어/Steam은 유지한다.
+
 ## Contracts 0.3.35 — 개인 native callback 재진입 차단 (2026-10-26)
 
 - 신규25개 검사는 succession/affiliation/legacy combined 각각의 정확한 owner, 같은/다른 owner의 중첩 호출 거절과 callback 미실행, 외부 범위 유지, 정상·예외 반환 뒤 임시 권한 해제, null/미정의 목적 입력 거절을 확인한다. affiliation에는 successor generation 권한이 없고 예외가 성공 증거가 되지 않는다.

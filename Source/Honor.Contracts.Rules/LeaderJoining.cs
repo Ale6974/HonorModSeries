@@ -7,7 +7,8 @@ public enum LeaderJoinAction { ChangeFaction, Observe, RestoreCare, AddDestinati
 public sealed record LeaderJoinPlan(string Charter, string Leader, string SourceFaction, string TargetFaction, string SourceCity, string DestinationCity,
     string TargetLeader, string Book, string Transfers, ResidentMoveEvidence Actor, string SourceStock, string DestinationStock,
     IReadOnlyList<string> SourceRoster, IReadOnlyList<string> DestinationRoster, long Tick, bool PersonalConsent,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool SeparateSuccession = false);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool SeparateSuccession = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool UnassignedSource = false);
 public sealed record LeaderJoinReturn(string Successor, int? MedicalCare, long Tick);
 public sealed record LeaderSuccessionReturn(string Successor, long Tick);
 public sealed record LeaderSuccessionReceipt(string Successor, long Tick, bool FromNormalReturn);
@@ -31,8 +32,9 @@ public sealed class LeaderJoinExecution
             p.SourceFaction != p.TargetFaction && p.SourceCity != p.DestinationCity && p.TargetLeader != p.Leader && p.PersonalConsent && p.Tick is >= 0 and <= int.MaxValue &&
             p.Actor != null && p.Actor.Id == p.Leader && CityStockProof.Valid(p.Actor.Preserved) && Care(p.Actor.MedicalCare) &&
             CityStockProof.Valid(p.SourceStock) && CityStockProof.Valid(p.DestinationStock) && p.SourceRoster != null && p.DestinationRoster != null &&
-            p.SourceRoster.Count is >= 1 and <= ResidentMoveSet.Capacity && p.DestinationRoster.Count < ResidentMoveSet.Capacity &&
-            p.SourceRoster.All(Key) && p.DestinationRoster.All(Key) && p.SourceRoster.Count(id => id == p.Leader) == 1 && !p.DestinationRoster.Contains(p.Leader) &&
+            p.SourceRoster.Count <= ResidentMoveSet.Capacity && p.DestinationRoster.Count < ResidentMoveSet.Capacity &&
+            p.SourceRoster.All(Key) && p.DestinationRoster.All(Key) &&
+            (p.UnassignedSource ? p.SeparateSuccession && !p.SourceRoster.Contains(p.Leader) : p.SourceRoster.Count(id => id == p.Leader) == 1) && !p.DestinationRoster.Contains(p.Leader) &&
             p.SourceRoster.Distinct().Count() == p.SourceRoster.Count && p.DestinationRoster.Distinct().Count() == p.DestinationRoster.Count &&
             !p.SourceRoster.Intersect(p.DestinationRoster).Any(), "Invalid leader join plan/rosters/individual consent.");
         var book = CharterBook.Restore(p.Book); var transfers = TerritoryTransferLedger.Restore(p.Transfers); var c = book.Charter(p.Charter);
@@ -82,11 +84,11 @@ public sealed class LeaderJoinExecution
         }
         Require(actor.Faction == p.TargetFaction && sourceLeader == State.Successor &&
             (actor.MedicalCare == p.Actor.MedicalCare || !State.CareCheckTick.HasValue && actor.MedicalCare == State.ObservedCare), "Observed destination, successor or care changed.");
-        bool original = Same(source, p.SourceRoster), removed = Same(source, p.SourceRoster.Where(id => id != p.Leader));
+        bool original = Same(source, p.SourceRoster), removed = !p.UnassignedSource && Same(source, p.SourceRoster.Where(id => id != p.Leader));
         bool destOriginal = Same(destination, p.DestinationRoster), added = Same(destination, p.DestinationRoster.Append(p.Leader));
         Require(original && destOriginal || original && added || removed && added, "Unreviewed/split residency change.");
         if (actor.MedicalCare != p.Actor.MedicalCare) return LeaderJoinAction.RestoreCare;
-        return destOriginal ? LeaderJoinAction.AddDestination : original ? LeaderJoinAction.RemoveSource : LeaderJoinAction.Verify;
+        return destOriginal ? LeaderJoinAction.AddDestination : original && !p.UnassignedSource ? LeaderJoinAction.RemoveSource : LeaderJoinAction.Verify;
     }
     public void Begin(long now)
     { Time(now); Require(State.Plan.SeparateSuccession ? State.Phase == LeaderJoinPhase.SuccessionRecorded : State.Phase == LeaderJoinPhase.Prepared, "Record separate succession before starting affiliation."); State = State with { Phase = LeaderJoinPhase.Applying }; }
