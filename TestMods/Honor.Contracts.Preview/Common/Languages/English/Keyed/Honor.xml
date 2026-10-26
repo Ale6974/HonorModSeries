@@ -407,4 +407,13 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <FM_Expired>Response period expired; original NPC response remains in history.</FM_Expired>
   <FM_Blocked>Merger proposal unavailable or review changed. Resolve pending operations, current authority, complete town charters or diplomacy first. No merger was executed.</FM_Blocked>
   <FM_Recorded>Separate political merger consent recorded. Cities and people remain unchanged; merger execution is not available yet.</FM_Recorded>
+  <LJ_Limits>Separate PERSONAL joining: a supported saved ordinary leader may join the player administration and move their saved inhabitant association to an unloaded destination town. The source keeps at least two towns and selects its actual successor through the native system. Requires goodwill75 and reciprocal alliance, no surgery bills, supported identity/faith/callbacks and preserved stock/rosters. Only during this execution, successor generation cannot redress existing world pawns or create new family relations. No city ownership, whole-faction merger, travel/arrival guarantee, release, dishonor or debt reset is created.</LJ_Limits>
+  <LJ_Review>Review separate personal leader joining</LJ_Review>
+  <LJ_Proposal>{0}: personal joining and saved assignment to {1}</LJ_Proposal>
+  <LJ_Confirm>Request separate personal consent from {0}, join the actual player administration, and move their saved association from {1} to {2}? This is not city/whole-faction merger consent. The source selects a successor; existing people, health, gear, relationships, care, stock, contracts and debts remain protected. Uncertain calls are not replayed; changed/unsupported state can block explicit recovery.</LJ_Confirm>
+  <LJ_Pending>Personal joining pending: {0}, {1} → {2}. Original actor and successor evidence are retained.</LJ_Pending>
+  <LJ_Recover>Explicitly recheck and continue personal joining</LJ_Recover>
+  <LJ_Cancel>Cancel only unchanged preparation</LJ_Cancel>
+  <LJ_Completed>{0} personally joined; native source successor and saved assignment at {1} verified. This does not confirm caravan travel or later map appearance.</LJ_Completed>
+  <LJ_Unavailable>Personal joining unavailable/incomplete. Original intent and actors are retained. Verify supported saved leader, surviving source, own administration, reciprocal diplomacy, stock/rosters, callbacks and exact observed successor/care. No uncertain call was replayed.</LJ_Unavailable>
 </LanguageData>

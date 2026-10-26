@@ -79,6 +79,8 @@ internal static class ResidentExecution
             throw new ArgumentException("Not the exact ordinary retained faction leader.");
         return ReadInternal(p, 5, null, null, true);
     }
+    // Dedicated separately consented join journal verifies office/succession. Ordinary resident leader guards stay unchanged.
+    internal static ResidentMoveActual ReadJoiningLeader(Pawn p) => ReadInternal(p, 5, null, null, true);
     private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader)
     {
         if (profile is not (1 or 2 or 3 or 4 or 5 or 6)) throw new ArgumentException("Unknown resident profile.");
@@ -224,7 +226,8 @@ internal static class PendingResidentRetention
     {
         if (__result == null && pawn != null && !pawn.Destroyed && !pawn.Discarded &&
             (Current.Game?.GetComponent<TerritoryAdministrationLedger>()?.ReservesResident(pawn) == true ||
-             Current.Game?.GetComponent<LeaderRelocationLedger>()?.ReservesResident(pawn) == true))
+             Current.Game?.GetComponent<LeaderRelocationLedger>()?.ReservesResident(pawn) == true ||
+             Current.Game?.GetComponent<LeaderJoinLedger>()?.ReservesResident(pawn) == true))
             __result = "Honor.PendingResidentTransfer";
     }
 }

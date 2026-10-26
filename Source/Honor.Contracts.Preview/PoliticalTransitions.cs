@@ -15,7 +15,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
     public AllegianceTransitionLedger Journal { get; private set; } = new();
     public bool RestoreFailed { get; private set; }
     public bool Executing { get; private set; }
-    internal bool BlocksApartFromTownLosses => RestoreFailed || Journal.Pending || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges ||
+    internal bool BlocksApartFromTownLosses => RestoreFailed || Journal.Pending || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges ||
         Current.Game.GetComponent<TerritoryAdministrationLedger>().RestoreFailed || Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared);
     public bool BlocksChanges => BlocksApartFromTownLosses || Charters.RestoreFailed || Charters.UnresolvedTownLosses;
     private PlayerPoliticsLedger Politics => Current.Game.GetComponent<PlayerPoliticsLedger>();
@@ -50,7 +50,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
         Territories.ValidatePoliticalLosses(Journal);
         if (Territories.HasPendingTownLosses) throw new ArgumentException("Explicitly reconcile observed town losses before resuming politics.");
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
-        if (Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges || RestoreFailed || Politics.RestoreFailed || Charters.RestoreFailed || Charters.UnresolvedTownLosses || Territories.RestoreFailed ||
+        if (Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges || RestoreFailed || Politics.RestoreFailed || Charters.RestoreFailed || Charters.UnresolvedTownLosses || Territories.RestoreFailed ||
             Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed || payments.RestoreFailed ||
             payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared))
             throw new ArgumentException("Resolve unavailable journals and pending physical deliveries.");

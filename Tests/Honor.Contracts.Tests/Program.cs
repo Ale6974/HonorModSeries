@@ -195,6 +195,7 @@ assertions += PendingTownLossTests.Run();
 assertions += PoliticalTownLossTests.Run();
 assertions += IndependentTownLossTests.Run();
 assertions += FactionMergerProposalTests.Run();
+assertions += LeaderJoiningTests.Run();
 assertions += UnionWarAdmissionTests.Run();
 assertions += FeudalWarAdmissionTests.Run();
 assertions += FollowerTransfersTests.Run();

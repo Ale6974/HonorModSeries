@@ -75,7 +75,7 @@ public sealed class LeaderRelocationLedger : GameComponent
     {
         var political = Current.Game.GetComponent<PoliticalTransitionLedger>(); var territory = Current.Game.GetComponent<TerritoryAdministrationLedger>();
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
-        if (RestoreFailed || !recovering && BlocksChanges || Charters.RestoreFailed || Charters.UnresolvedTownLosses || political.RestoreFailed || political.Journal.Pending ||
+        if (RestoreFailed || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges || !recovering && BlocksChanges || Charters.RestoreFailed || Charters.UnresolvedTownLosses || political.RestoreFailed || political.Journal.Pending ||
             Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || territory.RestoreFailed || territory.Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) ||
             payments.RestoreFailed || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) ||
             Current.Game.GetComponent<PlayerPoliticsLedger>().RestoreFailed || Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed ||

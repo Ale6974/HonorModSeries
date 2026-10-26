@@ -1,5 +1,17 @@
 # 1.7 API·런타임 검증 기록
 
+## 실제 개인 합류·native 후임·저장 배정 이전 — 0.3.33 / 2026-10-26
+
+설치1.7.4985 rev1269/net10.0 /10.0.13-waylithclr.dev를 재확인했다. 앞서 확인한 Pawn.SetFaction → Faction.Notify_LeaderLost → TryGenerateNewLeader 경로와 PawnGenerator.GetValidCandidatesToRedress/GeneratePawn/PawnGenerationRequest.CanGeneratePawnRelations, Scenario.AllParts/Notify_PawnGenerated를 읽었다. 후임 생성이 기존 Free/FactionLeader world pawn을 재사용하면서 RedressPawn으로 건강/장비·kind 등을 바꿀 수 있음을 확인했다. 기존 지도자나 다른 주민을 위험에 노출한 뒤 지문 차이만 검사하는 것으로 보존을 주장하지 않는다.
+
+전용 개인 합류의 정확한 source/kind/current-Game native call 동안에만 검증한 후보 getter의 결과를 비워 기존 pawn redress를 막고, GeneratePawn 요청의 CanGeneratePawnRelations를 false로 하여 기존 관계에 새 가족 관계를 생성하지 않게 한다. native 종류/성별/기존 map-member 선택과 실제 Source.leader 선정은 그대로 사용한다. scope는 finally에서 해제하며, scope가 없으면 Game component를 조회하지 않아 초기 world generation에 영향을 주지 않는다. 후보 private getter와 요청 속성의1.6 참조 metadata도 확인했지만 설치1.6 본문으로 주장하지 않는다. unknown Harmony/scenario callbacks·특수 source/kinds/comp와 providers는 거절한다.
+
+Applying 기록 뒤 native Pawn.SetFaction을 호출하고, 정상 반환의 실제 후임/초기화한 의료 값을 별도 저장한다. 현재 target affiliation/정확한 source 후임과 원 clinical proof가 맞아야 다음 단계로 간다. 정상 반환 증거 없이 현재 target/후임이 확인된 경우는 별도 observation으로만 남기며, actor가 아직 source인 불확실 call은 재실행하지 않는다. null/다른 후임을 나중 ruler로 채우지 않는다. 관측한 의료 초기화 복원 권한은 최초 확인/쓰기 전에 소진하며 다른 상태는 복원하지 않는다. 같은 Pawn을 목적지 saved roster에 추가한 뒤 출발지에서 제거하고 각 경계에서 원 장부/재고/명부·native office/권위를 재검사한다. 실제 여행/향후 생성 맵의 출현은 이 참조 배정으로 보장하지 않는다.
+
+Scribe deep record는 순수 journal JSON과 native 참조만 저장하고 Pawn을 deep-save하지 않는다. 검증된 WorldPawnGC hook으로 pending actor/관측 후임을 보호하고 GC pass를 native write 전에 취소한다. 완료/미변경 취소는 actor 참조를 비우며 malformed raw/불확실 상태는 보존한다. 다른 정치/이전/새 납부·지도자 작업과 자동 외교 공유를 동결하고 직접 복구 UI는 남긴다. 원 세력2도시 이상 존속·own administration·별도 개인 수락 정책75·양방향 동맹·unloaded/empty surgery/profile5/지원 stock만 허용한다. city/merger 서명은 개인 수락이 아니며 native leader pointer/원시 faction 쓰기·도시 소유권/채무 변경은 없다.
+
+설치 QuestManager.IsReservedByAnyQuest(Pawn/Faction) overload와 WorldObject.questTags를 확인해 actor/target steward·양 세력의 실제 quest reservation 및 source/destination town quest tags도 집행/복구 전에 거절한다. map-member 후임 후보도 살아 있고 의사 결정 가능한 같은 세력·별도 직위/quest가 없는 경우에만 허용한다. 이 마지막 quest/capacity/current-Game 가드 뒤 양 Preview를 다시 컴파일했다. 완료/취소는 실행 native 참조 모두를 비우며 원 JSON/labels/IDs audit는 유지한다.
+
 ## 세력 전체 합병의 별도 제안/동의 준비 — 0.3.32 / 2026-10-26
 
 설치1.7.4985 rev1269/net10.0 /10.0.13-waylithclr.dev를 확인하고 WorldObject.SetFaction, Pawn.SetFaction, Faction.Notify_LeaderLost/TryGenerateNewLeader, FactionManager.Notify_PawnLeftFaction/FactionCanBeRemoved의 설치 본문을 읽었다. WorldObject의 일반 소속 변경은 그 객체의 owner를 바꾸며 세력 전체 병합·주민/지도자 이전을 수행하지 않는다. Pawn의 native 소속 변경은 원 지도자 상실 알림/새 지도자 선정이 실제 faction 변경보다 앞서 실행될 수 있고, 손님·수술/의료/정신 상태 및 여러 알림도 처리한다. 일반 NPC 지도자 선정은 새 Pawn을 생성할 수 있으므로 승계·원본 보존·중단 상태를 별도로 다뤄야 한다. FactionManager의 해당 자동 제거 판정은 temporary 세력에 한정되어, 마지막 도시 이전을 세력 전체 합병/적법한 해산으로 해석할 수 없다. 읽은 게임 본문은 ignored local에만 두며 소스/패키지에 포함하지 않는다.

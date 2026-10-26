@@ -206,7 +206,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         if (Current.ProgramState != ProgramState.Playing || synchronizing || routing || RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended) return;
         var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
         var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-        if (towns.RestoreFailed || towns.HasPendingTownLosses) return;
+        if (towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return;
         if (transition.Journal.Pending && transition.Journal.Current.Wars != null &&
             (!transition.Executing || !transition.Journal.WarsReady || UnionWarCouncil.HasExternalProvider)) return;
         try
@@ -245,7 +245,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
             actor != Faction.OfPlayer && other != Faction.OfPlayer) return false;
         var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
         var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-        if (towns.RestoreFailed || towns.HasPendingTownLosses) return false;
+        if (towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return false;
         if (transition.Journal.Pending && transition.Journal.Current.Wars != null &&
             (!transition.Executing || !transition.Journal.WarsReady || UnionWarCouncil.HasExternalProvider)) return false;
         if (IsAdministration(actor) || IsAdministration(other)) return false; // Native player/own-administration events are internal, never foreign-root events.
@@ -318,6 +318,7 @@ public sealed class PlayerAllegianceWindow : Window
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(12000, height + 1000)));
         list.Label("PA_Warning".Translate()); list.Label("PS_Warning".Translate()); list.Label("WM_Warning".Translate());
         list.Label("AD_Warning".Translate());
+        if (Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) Current.Game.GetComponent<LeaderJoinLedger>().Draw(list, null);
         if (Current.Game.GetComponent<LiveCharterLedger>().UnresolvedTownLosses) list.Label("LS_Freeze".Translate());
         if (list.ButtonText("CA_OpenAll".Translate())) territories.OpenPreservationAudit();
         if (list.ButtonText("NS_Open".Translate())) Find.WindowStack.Add(new NpcSubchartersWindow());

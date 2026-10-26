@@ -35,7 +35,7 @@ public sealed partial class TerritoryAdministrationLedger
     {
         var political = Current.Game.GetComponent<PoliticalTransitionLedger>(); var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (RestoreFailed || Charters.RestoreFailed || Charters.UnresolvedTownLosses || nativeExecutionDepth != 0 || UnionWarCouncil.HasExternalProvider ||
-            political.RestoreFailed || political.Executing || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges ||
+            political.RestoreFailed || political.Executing || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges ||
             Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges || payments.RestoreFailed || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) ||
             Current.Game.GetComponent<PlayerPoliticsLedger>().RestoreFailed || Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed || Current.Game.GetComponent<UnionPoliticsLedger>().RestoreFailed)
             throw new ArgumentException("Only a standalone city journal outside native execution may reconcile an observed empty leaf loss.");

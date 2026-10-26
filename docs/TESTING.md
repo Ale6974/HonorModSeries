@@ -1,5 +1,15 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.33 — 별도 개인 합류·native 후임·의료1회/저장 명부 복구 (2026-10-26)
+
+- 신규33개 assertion: 별도 개인 동의가 없는 city/merger 서명·native player target·초기 중복 배정 거절, 미변경 준비 취소, native Applying 전후 경계, 실제 target/후임·정상 반환 receipt와 불확실 현재 관측의 구분, 원 임상/stock/장부/target authority 보존, 정확한 목적지 추가→double-reference→출발지 제거/완료·저장 왕복을 확인했다.
+- actor가 source인 불확실 call 재실행·succession만의 가짜 완료·다른/누락 successor·지문 변경·미관측 의료 reset 복원을 거절한다. 의료 권한은 최초 복원/확인 전에 소진하며 나중 값이 옛 reset과 같아도 재복원하지 않는다. missing-from-both·완료 전 시각·normal-return attribution/의료 permission 유실도 거절하고 원 book/transfer/charter·채무를 바꾸지 않음을 검사했다.
+- 1.6/net472·1.7/net10 전체 빌드와 각 규칙 호스트 통과. 마지막 native successor-capacity 가드 뒤 양 Preview를 재빌드하고, 마지막 권위/제삼자/재고 회귀 뒤 양 Contracts 호스트를 확인했다. Contracts **3,834** + Honor/runtime **20,093** = 대상별 **23,927**개 assertion, 최종 빌드 경고/오류0. EN/KO **415개** 공용 키/자리표시자와 FactionDef12개 필드를 확인했다.
+- 설치1.7 DLL 및1.6 참조 metadata의 후보 private getter/GeneratePawn 요청 속성을 확인하고, 정확한 개인 합류 native call에서만 existing-world-pawn redress·새 가족 관계를 차단하는 scoped hooks를 연결했다. scope 밖/초기 world generation에서는 Game component 조회도 하지 않는다. native source kind/gender/office 선택은 사용하며 원 Pawn/leader pointer를 쓰지 않는다. 미확인 Harmony/scenario callback·kind/comp/provider는 시작 전 보류한다.
+- 실제 current-Game 개인 요청 UI → native faction change/실제 successor → 관측 의료/원 proof → 동일 actor saved-roster 집행/복구·미변경 취소·GC retention·교차 작업/자동 공유 동결을 연결했다. source2도시 이상 존속·own administration·지원 saved leader/profile5·빈 수술/비로딩/지원 stock 범위이며 실제 여행·모든 지도자/모든 중단·전체 합병/1단계 완료의 증거로 계산하지 않는다.
+- 6모드/두 런타임 선택과 DLL 허용 목록, 영한415개 키 중복 부재와 새 LJ UI9개 키를 확인했다. ZIP SHA256: `83705B0FFAC4F818EDC5E637FAEC9F35C14DAFC5D4634BA1B97250D32A741174`.
+- 실행 중인 게임이 없는 상태에서 기존0.3.32 로컬본을 .local에 백업하고0.3.33을 설치했다. 원본/설치32개 파일 해시·About 버전이 일치하고 ModsConfig.xml/Prefs.xml 해시는 불변이다. 다른 모듈/Steam/활성화/언어는 바꾸지 않았다.1단계 미완료로30분 반복은 유지한다.
+
 ## Contracts 0.3.32 — 세력 전체 합병 별도 정치 제안/응답/확인 준비 (2026-10-26)
 
 - 신규37개 assertion: 도시 서명과 구분되는 별도 NPC 응답·플레이어 확인, 우호도75/상호 동맹/대외 전쟁 응답 구분, 원 대표/전체 도시·관련 주민/world object·외교 변경 시 확인 거절, 동의/거절/만료·저장 왕복과 immutable 원 범위, 실패 전후 common book/physical ledger 불변을 확인했다. 동의가 실제 이전이나 마지막 도시 예외를 만들지 않음을 확인했다.
