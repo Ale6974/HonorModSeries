@@ -454,10 +454,14 @@
   <CP_Confirm>한 번의 요청을 기록하고 기본 동맹 지원군을 파견할까요? 파견이 실패해도 하루 요청 횟수를 사용합니다. 중단되어 결과가 불명인 호출은 재실행하지 않습니다. 도착과 전투 결과는 별개입니다.</CP_Confirm>
   <CP_Arrived>기본 지원 호출이 정상 반환했고 새로운 동맹군의 도착을 확인했습니다.</CP_Arrived>
   <CP_NoVerifiedAid>검증된 동맹군 도착 결과가 없습니다. 고의 거부나 불명예의 근거가 아닙니다.</CP_NoVerifiedAid>
-  <CP_Uncertain>결과가 불명인 채 중단된 지원 요청이 있습니다. 원래 요청을 보존하고 추가 지원 요청을 막습니다. 자동 재실행하지 않습니다.</CP_Uncertain>
+  <CP_Uncertain>결과가 불명인 채 중단된 지원 요청이 있습니다. 원래 요청을 보존하고 추가 지원을 보류합니다. 당시 저장된 정상 생성 기록이 있을 때만 별도 인원 대조가 가능합니다. 파견은 자동 재실행하지 않습니다.</CP_Uncertain>
   <CP_Record>{0}일: {1}, 새로 관찰한 동맹군 {2}명.</CP_Record>
   <CP_Applying>기본 호출 결과 불명, 재실행 금지</CP_Applying>
   <CP_ArrivalsObserved>정상 반환과 새 동맹군 도착 확인</CP_ArrivalsObserved>
   <CP_ReturnedFalse>기본 파견 불가 또는 false 반환</CP_ReturnedFalse>
   <CP_ReturnedUnverified>기본 호출 true 반환, 새 도착은 미확인</CP_ReturnedUnverified>
+  <CP_GenerationAcknowledged>저장된 생성 결과 확인, 전체 지원 호출 결과는 불명</CP_GenerationAcknowledged>
+  <CP_ReviewGeneration>중단된 요청의 기록된 도착 인원 확인</CP_ReviewGeneration>
+  <CP_ConfirmGeneration>기록된 지원군 {0}명의 정확한 인원이 원래 세력으로 원래 맵에 존재합니다. 저장된 생성 결과를 확인할까요? 전체 지원 호출의 정상 종료, 행동·지휘 배정, 전투 승리 및 보호 의무의 완전 이행은 확인하지 않습니다. 원 파견을 재실행하거나 인원·명령을 바꾸지 않습니다. 새 지원 요청의 보류만 해제하고 기존 요청 시각·쿼터·이력은 유지합니다.</CP_ConfirmGeneration>
+  <CP_GenerationSaved>저장된 지원군 생성 결과를 확인했습니다. 전체 지원 호출 결과는 불명으로 남고 기존 요청 시각·이력은 유지합니다.</CP_GenerationSaved>
 </LanguageData>

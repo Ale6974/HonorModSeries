@@ -454,10 +454,14 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <CP_Confirm>Record this one-shot request and dispatch native allied reinforcements? The daily allowance is consumed even if dispatch fails. An interrupted call cannot be replayed; arrival and battle outcome are separate.</CP_Confirm>
   <CP_Arrived>Native aid returned normally and new allied arrivals were observed.</CP_Arrived>
   <CP_NoVerifiedAid>No verified allied arrival outcome. This does not establish intentional refusal or dishonor.</CP_NoVerifiedAid>
-  <CP_Uncertain>A native request was interrupted with an unknown outcome. Its intent is preserved and further aid requests are blocked; it will not replay automatically.</CP_Uncertain>
+  <CP_Uncertain>A native request was interrupted with an unknown outcome. Its intent is preserved and further aid is blocked. Only an original saved positive generation receipt permits separate identity review; dispatch never replays automatically.</CP_Uncertain>
   <CP_Record>Day {0}: {1}; newly observed allies: {2}.</CP_Record>
   <CP_Applying>Native outcome uncertain; never replay</CP_Applying>
   <CP_ArrivalsObserved>Normal return and new allied arrivals observed</CP_ArrivalsObserved>
   <CP_ReturnedFalse>Native dispatch unavailable or returned false</CP_ReturnedFalse>
   <CP_ReturnedUnverified>Native returned true without verified new arrivals</CP_ReturnedUnverified>
+  <CP_GenerationAcknowledged>Saved generation acknowledged; full dispatch return remains unknown</CP_GenerationAcknowledged>
+  <CP_ReviewGeneration>Review the recorded arrivals from this interrupted request</CP_ReviewGeneration>
+  <CP_ConfirmGeneration>{0} exact recorded reinforcements are currently present with their original faction on the original map. Acknowledge the saved generation outcome? The full dispatch return, orders, victory and complete protection performance remain unverified. This never repeats dispatch or changes people or orders. Only the pending-aid block is cleared; the original request time, quota and history remain.</CP_ConfirmGeneration>
+  <CP_GenerationSaved>Saved reinforcement generation acknowledged. The full dispatch result remains unknown; original request time and history are retained.</CP_GenerationSaved>
 </LanguageData>

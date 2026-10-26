@@ -1,5 +1,12 @@
 # 1.7 API·런타임 검증 기록
 
+## 2026-10-27 /0.3.49 — partial aid generation receipt and acknowledgement
+
+- Rechecked installed1.7.4990 rev1069, Assembly-CSharp SHA256 `4E61D57205944C113631234BC55136A1A7C1679667B26008BEE5425BCFFA1463`. Reused the0.3.48 exact TryGenerateRaidInfo(IncidentParms,out List<Pawn>,bool) normal-return hook; no new native target or write API. Its inspected1.7 body performs arrival/post-processing before returning, then the outer worker handles letters/lords. Save only positively observed current spawned/alive/new same-source output, never assume that ordering for the1.6 extern reference bodies. The old1.6 method signatures remain the binding evidence.
+- Inside the exact Game/worker/parms/debug=false scope, record the original plan digest, first positive generation time/IDs before the outer dispatch returns. A second matching generation return permanently marks that original receipt RepeatedReturn and disqualifies acknowledgement. The original receipt is retained rather than rewritten or erased; no invented timestamp is assigned to that repeat marker.
+- Explicit current-Game review requires every saved ID uniquely present among known pawns, alive/spawned under the exact registered original faction on the exact original loaded map. Historical observation can follow legitimate contract closure without current NPC signing because no native ownership, commands, health, gear, allegiance or contractual rights are changed. Confirm against fresh native identities and exact current book/protection/political-state snapshots, with no native call between validation and the aid-only metadata swap.
+- GenerationAcknowledged retains null ReturnedTick and a separate actual AcknowledgedTick. It proves only the saved inner generation result and current identity presence; it never proves full dispatch return, AI orders, military success, protection fulfillment or refusal. No old unknown without that saved positive receipt can use a later army. Legacy JSON/constructor/enum0-3 remain, with a golden hash produced from the published0.3.48 pure rules assembly. UI history caches immutable model snapshots only; confirmation always rereads current state.
+
 ## 2026-10-27 /0.3.48 — native allied protection aid binding
 
 - Installed Version.txt now reports1.7.4990 rev1069. Root runtimeconfig remains net10.0/Microsoft.NETCore.App10.0.13-waylithclr.dev. Assembly-CSharp SHA256 is `4E61D57205944C113631234BC55136A1A7C1679667B26008BEE5425BCFFA1463`. This supersedes the current installed-version observation, not the historical4985 evidence below.

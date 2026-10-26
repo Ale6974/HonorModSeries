@@ -10,6 +10,7 @@ namespace Honor.Contracts.Preview;
 
 public sealed record ProtectionAgreementReview(Game Context, string Charter, string Stamp);
 public sealed record ProtectionAidReview(Game Context, CharterAidPlan Plan, Map Map, Faction Source, Pawn Representative, string Stamp);
+public sealed record ProtectionGenerationReview(Game Context, string Request, Map Map, Faction Source, string[] Pawns, string Stamp);
 
 /// <summary>Separate explicit allied protection compact, then a journalled real native friendly-aid request. Never adjudicates refusal or independence.</summary>
 public sealed class CharterProtectionLedger : GameComponent
@@ -22,6 +23,7 @@ public sealed class CharterProtectionLedger : GameComponent
     private static CharterProtectionLedger active;
     private IncidentParms nativeParms;
     private IncidentWorker_RaidFriendly nativeWorker;
+    private string nativeRequest;
     private Pawn[] generated;
     private bool generationObserved, generationAmbiguous;
     internal static readonly System.Reflection.MethodInfo GenerateRaid = AccessTools.Method(typeof(IncidentWorker_Raid), nameof(IncidentWorker_Raid.TryGenerateRaidInfo),
@@ -30,9 +32,30 @@ public sealed class CharterProtectionLedger : GameComponent
     internal static void ObserveGenerated(IncidentWorker_Raid worker, IncidentParms parms, List<Pawn> pawns, bool debug, bool returned)
     {
         if (!PreserveOriginalPawns || worker != active.nativeWorker || parms != active.nativeParms || debug) return;
-        if (active.generationObserved) { active.generationAmbiguous = true; return; }
+        if (active.generationObserved)
+        {
+            active.generationAmbiguous = true;
+            if (active.Ledger.Requests.Any(r => r.Plan.Id == active.nativeRequest && r.Generation != null))
+                active.Ledger = active.Ledger.MarkRepeatedGenerationReturn(active.nativeRequest);
+            return;
+        }
         active.generationObserved = true;
         active.generated = returned && pawns != null ? pawns.ToArray() : [];
+        if (!returned || active.generated.Length == 0 || parms.target is not Map map) return;
+        try
+        {
+            var plan = active.Ledger.Requests.Single(r => r.Plan.Id == active.nativeRequest).Plan;
+            var original = new HashSet<string>(plan.BeforePawns, StringComparer.Ordinal);
+            if (map.GetUniqueLoadID() != plan.Map || parms.faction?.GetUniqueLoadID() != plan.Source || active.generated.Any(p =>
+                p == null || !p.Spawned || p.Map != map || p.Dead || p.Faction != parms.faction || original.Contains(p.GetUniqueLoadID()))) return;
+            active.Ledger = active.Ledger.RecordGeneration(plan.Id, plan.Source, plan.Map,
+                active.generated.Select(p => p.GetUniqueLoadID()).OrderBy(p => p, StringComparer.Ordinal).ToArray(), Find.TickManager.TicksGame);
+        }
+        catch (Exception e) when (e is ArgumentException or InvalidOperationException)
+        {
+            active.generationAmbiguous = true;
+            Log.Warning("[Honor.Contracts.Preview] Exact aid generation receipt unavailable; native outcome remains uncertain. " + e.GetType().Name);
+        }
     }
     public CharterProtectionLedger(Game game) { context = game; }
     public override void ExposeData()
@@ -159,8 +182,9 @@ public sealed class CharterProtectionLedger : GameComponent
             pawnGroupKind = PawnGroupKindDefOf.Combat, raidStrategy = RaidStrategyDefOf.ImmediateAttackFriendly, raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn };
         Ledger = Ledger.Begin(Charters.Book, fresh.Plan, NpcDecisionAuthority.Read(fresh.Source), Allied(fresh.Source), Find.TickManager.TicksGame);
         // Persist Applying before ANY native dispatch. An exception retains it; never replay or call inability a refusal.
-        nativeParms = parms; nativeWorker = worker; generated = []; generationObserved = generationAmbiguous = false;
+        nativeParms = parms; nativeWorker = worker; nativeRequest = fresh.Plan.Id; generated = []; generationObserved = generationAmbiguous = false;
         active = this; Executing = true;
+        string resultKey = null;
         try
         {
             // An explicit faction must not bypass the native candidate/availability policy.
@@ -174,9 +198,42 @@ public sealed class CharterProtectionLedger : GameComponent
             string[] arrivals = generated.Where(p => p.Spawned && p.Map == fresh.Map && !p.Dead && p.Faction == fresh.Source)
                 .Select(p => p.GetUniqueLoadID()).OrderBy(p => p, StringComparer.Ordinal).ToArray();
             Ledger = Ledger.Returned(fresh.Plan.Id, returned, arrivals, Find.TickManager.TicksGame);
-            Messages.Message((Ledger.Requests.Last().Outcome == CharterAidOutcome.ArrivalsObserved ? "CP_Arrived" : "CP_NoVerifiedAid").Translate(), MessageTypeDefOf.NeutralEvent);
+            resultKey = Ledger.Requests.Last().Outcome == CharterAidOutcome.ArrivalsObserved ? "CP_Arrived" : "CP_NoVerifiedAid";
         }
-        finally { Executing = false; active = null; nativeParms = null; nativeWorker = null; generated = null; }
+        finally { Executing = false; active = null; nativeParms = null; nativeWorker = null; nativeRequest = null; generated = null; }
+        Messages.Message(resultKey.Translate(), MessageTypeDefOf.NeutralEvent);
+    });
+    public ProtectionGenerationReview ReviewGeneration(string id)
+    {
+        if (context != Current.Game || Current.ProgramState != ProgramState.Playing || RestoreFailed || Charters.RestoreFailed ||
+            Politics.RestoreFailed || Executing || active != null || context.GetComponent<PoliticalTransitionLedger>().Executing)
+            throw new ArgumentException("Review the original saved generation outside native execution.");
+        var row = Ledger.Requests.SingleOrDefault(r => r.Plan.Id == id) ?? throw new ArgumentException("Unknown aid request.");
+        if (row.Generation == null) throw new ArgumentException("No original positive generation receipt; never infer it from a later army.");
+        var maps = Find.Maps.Where(m => m != null && m.GetUniqueLoadID() == row.Plan.Map).Take(2).ToArray();
+        var sources = Find.FactionManager.AllFactionsListForReading.Where(f => f != null && f.GetUniqueLoadID() == row.Plan.Source).Take(2).ToArray();
+        if (maps.Length != 1 || sources.Length != 1 || sources[0].GetType() != typeof(Faction) || sources[0].IsPlayer)
+            throw new ArgumentException("Exact recorded source and original loaded map required.");
+        var map = maps[0]; var source = sources[0];
+        var expected = new HashSet<string>(row.Generation.Pawns, StringComparer.Ordinal);
+        var known = PawnsFinder.AllMapsWorldAndTemporary_AliveOrDead.Concat(map.mapPawns.AllPawns).Distinct()
+            .Where(p => p != null && expected.Contains(p.GetUniqueLoadID())).ToArray();
+        if (known.Length != expected.Count || known.Select(p => p.GetUniqueLoadID()).Distinct(StringComparer.Ordinal).Count() != expected.Count ||
+            known.Any(p => !p.Spawned || p.Map != map || p.Dead || p.Faction != source))
+            throw new ArgumentException("Every originally recorded reinforcement must retain its exact current source and map identity.");
+        var ids = known.Select(p => p.GetUniqueLoadID()).OrderBy(p => p, StringComparer.Ordinal).ToArray();
+        Ledger.ReviewGenerationAcknowledgement(Charters.Book, id, source.GetUniqueLoadID(), map.GetUniqueLoadID(), ids, Find.TickManager.TicksGame);
+        string stamp = JsonSerializer.Serialize(new { History = Ledger.Export(), Book = Charters.Book.Export(), Politics = Politics.State,
+            Map = map.GetUniqueLoadID(), Source = source.GetUniqueLoadID(), Ids = ids, Tick = Find.TickManager.TicksGame });
+        return new(context, id, map, source, ids, stamp);
+    }
+    public void AcknowledgeGeneration(ProtectionGenerationReview reviewed) => Execute(() => {
+        if (reviewed?.Context != context) throw new ArgumentException("Review this game first.");
+        var fresh = ReviewGeneration(reviewed.Request);
+        if (fresh.Stamp != reviewed.Stamp || fresh.Map != reviewed.Map || fresh.Source != reviewed.Source || !Enumerable.SequenceEqual(fresh.Pawns, reviewed.Pawns, StringComparer.Ordinal))
+            throw new ArgumentException("Recorded generation or current identities changed.");
+        Ledger = Ledger.AcknowledgeGeneration(Charters.Book, fresh.Request, fresh.Source.GetUniqueLoadID(), fresh.Map.GetUniqueLoadID(), fresh.Pawns, Find.TickManager.TicksGame);
+        Messages.Message("CP_GenerationSaved".Translate(), MessageTypeDefOf.NeutralEvent);
     });
     private static void Execute(Action action)
     {
@@ -199,12 +256,16 @@ public sealed class CharterProtectionWindow(string charter) : Window
     private readonly Game context = Current.Game;
     private Vector2 scroll;
     private float height = 1000;
+    private CharterProtection displayed;
+    private IReadOnlyList<CharterAidReceipt> displayedRequests = [];
     public override Vector2 InitialSize => new(850, 720);
     public override void PreOpen() { base.PreOpen(); forcePause = true; doCloseX = true; doCloseButton = true; absorbInputAroundWindow = true; }
     public override void DoWindowContents(Rect rect)
     {
         if (context != Current.Game) { Widgets.Label(rect, "CP_Blocked".Translate()); return; }
         var ledger = context.GetComponent<CharterProtectionLedger>();
+        // Models are replaced on commit; never clone every historical world-pawn ID on every GUI frame.
+        if (displayed != ledger.Ledger) { displayedRequests = ledger.Ledger.Requests; displayed = ledger.Ledger; }
         bool current = context.GetComponent<LiveCharterLedger>().Book.Charter(charter).Phase == RecordedCharterPhase.Active;
         var area = new Rect(0, 0, rect.width, rect.height - 45); Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 10000));
@@ -226,8 +287,15 @@ public sealed class CharterProtectionWindow(string charter) : Window
                     catch (ArgumentException) { Messages.Message("CP_Blocked".Translate(), MessageTypeDefOf.RejectInput); }
                 }
         }
-        foreach (var r in ledger.Ledger.Requests.Where(r => r.Plan.Charter == charter).Reverse())
+        foreach (var r in displayedRequests.Where(r => r.Plan.Charter == charter).Reverse())
+        {
             list.Label("CP_Record".Translate((r.Plan.Tick / (double)PoliticalWorld.Day).ToString("0.##"), ("CP_" + r.Outcome).Translate(), r.Arrivals?.Length ?? 0));
+            if (r.Outcome == CharterAidOutcome.Applying && r.Generation != null && list.ButtonText("CP_ReviewGeneration".Translate()))
+            {
+                try { var review = ledger.ReviewGeneration(r.Plan.Id); Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("CP_ConfirmGeneration".Translate(review.Pawns.Length), () => ledger.AcknowledgeGeneration(review))); }
+                catch (ArgumentException) { Messages.Message("CP_Blocked".Translate(), MessageTypeDefOf.RejectInput); }
+            }
+        }
         height = list.CurHeight + 20; list.End(); Widgets.EndScrollView();
     }
 }

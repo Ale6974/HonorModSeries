@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text;
+using System.Text.Json.Serialization;
 
 namespace Honor.Contracts.Rules;
 
@@ -6,8 +8,16 @@ public sealed record CharterProtectionCompact(string Charter, RecordedCharter Or
     NpcRealmDecisionEvidence Decision, int Goodwill, bool ReciprocalAlliance);
 public sealed record CharterAidPlan(string Id, string Charter, string Source, string Representative, string Map,
     string[] Threats, string[] BeforePawns, long Tick, string BookProof, string PoliticsProof, NpcRealmDecisionEvidence Decision);
-public enum CharterAidOutcome { Applying, ArrivalsObserved, ReturnedFalse, ReturnedUnverified }
-public sealed record CharterAidReceipt(CharterAidPlan Plan, CharterAidOutcome Outcome = CharterAidOutcome.Applying, long? ReturnedTick = null, string[] Arrivals = null);
+public enum CharterAidOutcome { Applying, ArrivalsObserved, ReturnedFalse, ReturnedUnverified, GenerationAcknowledged }
+public sealed record CharterAidGeneration(string PlanProof, long Tick, string[] Pawns)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool RepeatedReturn { get; init; }
+}
+public sealed record CharterAidReceipt(CharterAidPlan Plan, CharterAidOutcome Outcome = CharterAidOutcome.Applying, long? ReturnedTick = null, string[] Arrivals = null)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public CharterAidGeneration Generation { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public long? AcknowledgedTick { get; init; }
+}
 public sealed record CharterProtectionSave(int Version, long LastTick, CharterProtectionCompact[] Compacts, CharterAidReceipt[] Requests);
 
 /// <summary>Explicit supplementary protection agreement and one-shot native aid calls. An arrival is not victory or breach adjudication.</summary>
@@ -15,15 +25,19 @@ public sealed class CharterProtection
 {
     public const int Capacity = 128;
     public const long Cooldown = PoliticalWorld.Day;
+    private const int MaxCharacters = 32000000, OutcomeReserve = 16000000;
     private readonly Dictionary<string, CharterProtectionCompact> compacts = new(StringComparer.Ordinal);
     private readonly List<CharterAidReceipt> requests = [];
     public IReadOnlyCollection<CharterProtectionCompact> Compacts => compacts.Values.ToArray();
-    public IReadOnlyList<CharterAidReceipt> Requests => requests.Select(r => r with { Plan = Clone(r.Plan), Arrivals = r.Arrivals?.ToArray() }).ToArray();
+    public IReadOnlyList<CharterAidReceipt> Requests => requests.Select(r => r with { Plan = Clone(r.Plan), Arrivals = r.Arrivals?.ToArray(),
+        Generation = r.Generation == null ? null : r.Generation with { Pawns = r.Generation.Pawns.ToArray() } }).ToArray();
     public long LastTick { get; private set; }
     public bool Pending => requests.Any(r => r.Outcome == CharterAidOutcome.Applying);
     private static bool Key(string s) => !string.IsNullOrWhiteSpace(s) && s.Length <= 120 && !s.Any(char.IsControl);
     private static bool Keys(string[] ids, bool empty) => ids != null && ids.Length <= 10000 && (empty || ids.Length > 0) && ids.All(Key) && ids.Distinct(StringComparer.Ordinal).Count() == ids.Length;
     private static CharterAidPlan Clone(CharterAidPlan p) => p with { Threats = p.Threats.ToArray(), BeforePawns = p.BeforePawns.ToArray() };
+    private static string PlanProof(CharterAidPlan p) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(p))));
+    private static bool SameIds(string[] a, string[] b) => a.OrderBy(s => s, StringComparer.Ordinal).SequenceEqual(b.OrderBy(s => s, StringComparer.Ordinal));
     private static bool SameOriginal(RecordedCharter current, RecordedCharter original) => current with {
         Phase = original.Phase, PlayerReleaseTick = original.PlayerReleaseTick, NpcReleaseTick = original.NpcReleaseTick,
         TerritoryLostTick = original.TerritoryLostTick, Replacement = original.Replacement, PoliticalLoss = original.PoliticalLoss } == original;
@@ -69,24 +83,57 @@ public sealed class CharterProtection
     public CharterProtection Begin(CharterBook book, CharterAidPlan plan, NpcRealmDecisionEvidence decision, bool reciprocalAlliance, long now)
     {
         Review(book, plan, decision, reciprocalAlliance, now); var copy = Restore(Export()); copy.requests.Add(new(Clone(plan))); copy.LastTick = now;
-        if (copy.Export().Length > 8000000) throw new ArgumentException("Retain room for the one native arrival receipt before starting aid.");
+        if (copy.Export().Length > MaxCharacters - OutcomeReserve) throw new ArgumentException("Retain room for both native generation and final arrival receipts before starting aid.");
         return copy;
     }
     public CharterProtection Returned(string id, bool returned, string[] arrivals, long now)
     {
         var row = requests.SingleOrDefault(r => r.Plan.Id == id) ?? throw new ArgumentException("Unknown aid call.");
-        if (row.Outcome != CharterAidOutcome.Applying || !Keys(arrivals, true) || arrivals.Any(row.Plan.BeforePawns.Contains) || now < LastTick || now > int.MaxValue)
+        if (row.Outcome != CharterAidOutcome.Applying || !Keys(arrivals, true) || arrivals.Any(row.Plan.BeforePawns.Contains) || now < LastTick || now > int.MaxValue ||
+            row.Generation != null && (row.Generation.RepeatedReturn || arrivals.Any(p => !row.Generation.Pawns.Contains(p))))
             throw new ArgumentException("Only the original normal return can record fresh observed arrivals once.");
         var copy = Restore(Export()); int i = copy.requests.FindIndex(r => r.Plan.Id == id);
         copy.requests[i] = row with { Outcome = !returned ? CharterAidOutcome.ReturnedFalse : arrivals.Length > 0 ? CharterAidOutcome.ArrivalsObserved : CharterAidOutcome.ReturnedUnverified,
             ReturnedTick = now, Arrivals = arrivals.ToArray() };
         copy.LastTick = now; copy.Bounded(); return copy;
     }
-    private void Bounded() { if (Export().Length > 16000000) throw new ArgumentException("Protection history capacity; never evict uncertain or historical calls."); }
+    public CharterProtection MarkRepeatedGenerationReturn(string id)
+    {
+        var row = requests.SingleOrDefault(r => r.Plan.Id == id) ?? throw new ArgumentException("Unknown aid call.");
+        if (row.Outcome != CharterAidOutcome.Applying || row.Generation == null) throw new ArgumentException("An original pending generation receipt is required.");
+        var copy = Restore(Export()); int i = copy.requests.FindIndex(r => r.Plan.Id == id);
+        copy.requests[i] = row with { Generation = row.Generation with { RepeatedReturn = true } }; copy.Bounded(); return copy;
+    }
+    public CharterProtection RecordGeneration(string id, string source, string map, string[] pawns, long now)
+    {
+        var row = requests.SingleOrDefault(r => r.Plan.Id == id) ?? throw new ArgumentException("Unknown aid call.");
+        if (row.Outcome != CharterAidOutcome.Applying || row.Generation != null || source != row.Plan.Source || map != row.Plan.Map ||
+            !Keys(pawns, false) || pawns.Any(row.Plan.BeforePawns.Contains) || now < LastTick || now > int.MaxValue)
+            throw new ArgumentException("Only the exact first normal generation return may record original new arrivals.");
+        var copy = Restore(Export()); int i = copy.requests.FindIndex(r => r.Plan.Id == id);
+        copy.requests[i] = row with { Generation = new(PlanProof(row.Plan), now, pawns.ToArray()) };
+        copy.LastTick = now; copy.Bounded(); return copy;
+    }
+    public void ReviewGenerationAcknowledgement(CharterBook book, string id, string source, string map, string[] present, long now)
+    {
+        ValidateBook(book);
+        var row = requests.SingleOrDefault(r => r.Plan.Id == id) ?? throw new ArgumentException("Unknown aid call.");
+        if (row.Outcome != CharterAidOutcome.Applying || row.Generation == null || row.Generation.RepeatedReturn || source != row.Plan.Source || map != row.Plan.Map ||
+            !Keys(present, false) || !SameIds(row.Generation.Pawns, present) || now < LastTick || now < book.LastTick || now > int.MaxValue)
+            throw new ArgumentException("A saved positive generation return and every exact current source/map identity are required.");
+    }
+    public CharterProtection AcknowledgeGeneration(CharterBook book, string id, string source, string map, string[] present, long now)
+    {
+        ReviewGenerationAcknowledgement(book, id, source, map, present, now);
+        var copy = Restore(Export()); int i = copy.requests.FindIndex(r => r.Plan.Id == id);
+        copy.requests[i] = copy.requests[i] with { Outcome = CharterAidOutcome.GenerationAcknowledged, AcknowledgedTick = now, Arrivals = present.ToArray() };
+        copy.LastTick = now; copy.Bounded(); return copy;
+    }
+    private void Bounded() { if (Export().Length > MaxCharacters) throw new ArgumentException("Protection history capacity; never evict uncertain or historical calls."); }
     public string Export() => JsonSerializer.Serialize(new CharterProtectionSave(1, LastTick, compacts.Values.ToArray(), requests.ToArray()));
     public static CharterProtection Restore(string json)
     {
-        if (string.IsNullOrWhiteSpace(json) || json.Length > 16000000) throw new ArgumentException("Invalid protection archive size.");
+        if (string.IsNullOrWhiteSpace(json) || json.Length > MaxCharacters) throw new ArgumentException("Invalid protection archive size.");
         var s = JsonSerializer.Deserialize<CharterProtectionSave>(json);
         if (s == null || s.Version != 1 || s.LastTick < 0 || s.LastTick > int.MaxValue || s.Compacts == null || s.Requests == null ||
             s.Compacts.Length > Capacity || s.Requests.Length > Capacity) throw new ArgumentException("Invalid protection archive.");
@@ -109,12 +156,25 @@ public sealed class CharterProtection
                 !result.compacts.TryGetValue(p.Charter, out var agreement) || p.Source != agreement.Source || p.Decision == null || p.Decision.Realm != p.Source ||
                 p.Decision.Representative != p.Representative || p.Tick < agreement.Tick || p.Tick > s.LastTick ||
                 result.requests.Any(x => x.Plan.Id == p.Id || x.Plan.Source == p.Source && p.Tick - x.Plan.Tick < Cooldown) ||
-                result.requests.Count > 0 && p.Tick < (result.requests.Last().ReturnedTick ?? result.requests.Last().Plan.Tick) || !RuntimeCompat.IsDefined(r.Outcome) ||
-                (r.Outcome == CharterAidOutcome.Applying ? r.ReturnedTick.HasValue || r.Arrivals != null :
-                    !r.ReturnedTick.HasValue || r.ReturnedTick < p.Tick || r.ReturnedTick > s.LastTick || !Keys(r.Arrivals, true) || r.Arrivals.Any(p.BeforePawns.Contains) ||
-                    r.Outcome == CharterAidOutcome.ArrivalsObserved && r.Arrivals.Length == 0 || r.Outcome == CharterAidOutcome.ReturnedUnverified && r.Arrivals.Length != 0))
+                result.requests.Count > 0 && p.Tick < (result.requests.Last().AcknowledgedTick ?? result.requests.Last().ReturnedTick ?? result.requests.Last().Plan.Tick) || !RuntimeCompat.IsDefined(r.Outcome))
                 throw new ArgumentException("Invalid aid call history.");
             NpcRealmDecision.Consent(p.Decision);
+            var g = r.Generation;
+            if (g != null && (g.PlanProof != PlanProof(p) || !Keys(g.Pawns, false) || g.Pawns.Any(p.BeforePawns.Contains) || g.Tick < p.Tick || g.Tick > s.LastTick))
+                throw new ArgumentException("Invalid original native generation receipt.");
+            if (r.Outcome == CharterAidOutcome.Applying)
+            {
+                if (r.ReturnedTick.HasValue || r.Arrivals != null || r.AcknowledgedTick.HasValue) throw new ArgumentException("Unknown full call cannot claim a final outcome.");
+            }
+            else if (r.Outcome == CharterAidOutcome.GenerationAcknowledged)
+            {
+                if (g == null || g.RepeatedReturn || r.ReturnedTick.HasValue || !r.AcknowledgedTick.HasValue || r.AcknowledgedTick < g.Tick || r.AcknowledgedTick > s.LastTick ||
+                    !Keys(r.Arrivals, false) || !SameIds(r.Arrivals, g.Pawns)) throw new ArgumentException("Generation acknowledgement must preserve the exact original partial outcome, never a full return.");
+            }
+            else if (g?.RepeatedReturn == true || r.AcknowledgedTick.HasValue || !r.ReturnedTick.HasValue || r.ReturnedTick < (g?.Tick ?? p.Tick) || r.ReturnedTick > s.LastTick ||
+                !Keys(r.Arrivals, true) || r.Arrivals.Any(p.BeforePawns.Contains) || g != null && r.Arrivals.Any(a => !g.Pawns.Contains(a)) ||
+                r.Outcome == CharterAidOutcome.ArrivalsObserved && r.Arrivals.Length == 0 || r.Outcome == CharterAidOutcome.ReturnedUnverified && r.Arrivals.Length != 0)
+                throw new ArgumentException("Invalid normal final native return.");
             result.requests.Add(r);
         }
         if (result.requests.Count(r => r.Outcome == CharterAidOutcome.Applying) > 1 ||
