@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 개인 소속 변경 callback 재진입과 전체 합병 경계 — 0.3.35 / 2026-10-26
+
+0.3.34의 별도 affiliation은 native Pawn.SetFaction을 scoped guard 밖에서 호출했다. callback이 pending record 복구를 재요청하면 원 call의 중간 상태를 관측할 여지가 있었다. 모든 source succession/legacy combined/새 affiliation call을 공통 process-local scope로 묶고 Ready의 재진입 금지를 적용한다. affiliation에는 후임 생성 변경 권한을 부여하지 않는다. 정상 반환 receipt까지 scope 안에서 기록하고 finally로 임시 범위만 해제한다. 예외는 원 intention을 보류 상태로 유지하며 성공 receipt를 만들지 않는다. 저장 JSON/enum/동의·현재 원본 검사·GC 보호는 변경하지 않았다. 새 engine API나 IL patch는 없다.
+
+설치1.7.4985 rev1269/net10.0/10.0.13-waylithclr.dev의 FactionManager 제거 경로는 temporary faction만 지원하며 남은 pawn에 SetFaction(null)을 호출한다. SettlementDefeatUtility는 정착지 파괴/전투 보상·편지를 포함하므로 평화 합병 API가 아니다. PawnUtility.GetFactionLeaderFaction은 defeated 여부와 무관하게 실제 leader 참조를 검사한다. 따라서 defeated 표기만으로 지도자 이동의 자동 후임 생성을 막거나 합병 완료로 판단할 수 없다. TryGenerateNewLeader의 native office 초기화/후임 생성 경계를 확인했으나 임의 leader pointer/defeated 쓰기·transpiler는 추가하지 않았다. 합병은 별도 coordinator와 전체 자산/제삼자 권리·중단 복구 구현이 필요하다. 분석한 게임 원문은 ignored 로컬 파일에만 있고 소스/패키지에 포함하지 않는다.
+
 ## native 사임/승계와 개인 소속 변경의 별도 집행 — 0.3.34 / 2026-10-26
 
 설치1.7.4985 rev1269/net10.0 /10.0.13-waylithclr.dev를 재확인하고 기존 검증한 Faction.Notify_LeaderLost와 Pawn.SetFaction의 호출 순서를 사용했다. 새 개인 요청은 사임/승계 intention → native Notify_LeaderLost → 정확한 정상 반환/현재 successor 관측 → 별도 SuccessionRecorded → 아직 시작하지 않은 Pawn.SetFaction intention/call 순서다. source office를 원시 쓰기하지 않는다. 소속 변경 전 PawnUtility.IsFactionLeader가 false인지 다시 확인해 SetFaction 안에서 승계를 반복하지 않게 한다. 사임 직후 actor가 아직 source인 경계를 snapshot/참조로 저장·재검토할 수 있다. 이 단계는 guest/의료/수술 소속 변경 callbacks를 아직 시작하지 않았으므로 확인한 승계를 다시 실행하지 않고 다음 단계만 시작한다.

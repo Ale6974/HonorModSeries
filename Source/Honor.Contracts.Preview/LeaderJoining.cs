@@ -36,7 +36,7 @@ public sealed class LeaderJoinLedger : GameComponent
     private List<LeaderJoinRecord> records = [];
     private LeaderJoinRecord activeNativeCall;
     private readonly Game context;
-    internal static LeaderJoinLedger ActiveNative { get; private set; }
+    internal static LeaderJoinLedger ActiveNative => LeaderNativeCallScope<LeaderJoinLedger>.Owner;
     public bool RestoreFailed { get; private set; }
     public bool BlocksChanges => RestoreFailed || records == null || records.Any(r => r == null || !r.Finished);
     internal bool ReservesResident(Pawn p) => records?.Any(r => r != null && (RestoreFailed || !r.Finished) && (r.Actor == p || r.Successor == p)) == true;
@@ -213,12 +213,13 @@ public sealed class LeaderJoinLedger : GameComponent
             Stock(r.Source), Stock(r.Destination), Roster(r.Source), Roster(r.Destination), Find.TickManager.TicksGame);
     }
     private static void Change(LeaderJoinRecord r, Action<LeaderJoinExecution> action) { var j = r.Journal(); action(j); r.Snapshot = j.Export(); r.DisplayPhase = j.State.Phase; }
-    private void ScopedNative(LeaderJoinRecord r, Action call)
+    private void ScopedNative(LeaderJoinRecord r, LeaderNativeCall purpose, Action call)
     {
-        if (ActiveNative != null) throw new ArgumentException("Nested personal joining is not supported.");
-        activeNativeCall = r; ActiveNative = this;
-        try { call(); }
-        finally { activeNativeCall = null; ActiveNative = null; }
+        LeaderNativeCallScope<LeaderJoinLedger>.Run(this, purpose, () => {
+            activeNativeCall = r;
+            try { call(); }
+            finally { activeNativeCall = null; }
+        });
     }
     public void Start(LeaderJoinReview reviewed)
     {
@@ -241,7 +242,7 @@ public sealed class LeaderJoinLedger : GameComponent
         if (action == LeaderJoinAction.ChangeOffice)
         {
             Change(r, j => j.BeginSuccession(Find.TickManager.TicksGame));
-            ScopedNative(r, () => {
+            ScopedNative(r, LeaderNativeCall.Succession, () => {
                 r.SourceFaction.Notify_LeaderLost();
                 Change(r, j => j.RecordSuccessionReturn(r.SourceFaction.leader?.GetUniqueLoadID(), Find.TickManager.TicksGame));
             });
@@ -262,7 +263,7 @@ public sealed class LeaderJoinLedger : GameComponent
                 r.Actor.SetFaction(r.TargetFaction);
                 Change(r, j => j.RecordReturn(r.SourceFaction.leader?.GetUniqueLoadID(), r.Actor.playerSettings == null ? null : (int)r.Actor.playerSettings.medCare, Find.TickManager.TicksGame));
             }
-            if (separate) Affiliate(); else ScopedNative(r, Affiliate); // Legacy combined journals retain their original execution semantics.
+            ScopedNative(r, separate ? LeaderNativeCall.Affiliation : LeaderNativeCall.LegacyCombined, Affiliate);
             action = Review(r);
         }
         if (action == LeaderJoinAction.Observe)
@@ -292,7 +293,7 @@ public sealed class LeaderJoinLedger : GameComponent
         }
         catch (Exception e) { Interrupted(e); }
     }
-    internal bool ExcludeSuccessionRedress(PawnGenerationRequest request) => Current.Game == context && activeNativeCall != null && request.Faction == activeNativeCall.SourceFaction && LeaderKinds(activeNativeCall.SourceFaction).Contains(request.KindDef);
+    internal bool ExcludeSuccessionRedress(PawnGenerationRequest request) => Current.Game == context && LeaderNativeCallScope<LeaderJoinLedger>.AllowsSuccession && activeNativeCall != null && request.Faction == activeNativeCall.SourceFaction && LeaderKinds(activeNativeCall.SourceFaction).Contains(request.KindDef);
     private static void Interrupted(Exception e)
     { Log.Warning("[Honor.Contracts.Preview] Personal leader join incomplete/unavailable; intent and actors retained. " + e.GetType().Name); Messages.Message("LJ_Unavailable".Translate(), MessageTypeDefOf.RejectInput); Find.TickManager.Pause(); }
     internal void Draw(Listing_Standard list, string charter)

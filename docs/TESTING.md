@@ -1,5 +1,12 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.35 — 개인 native callback 재진입 차단 (2026-10-26)
+
+- 신규25개 검사는 succession/affiliation/legacy combined 각각의 정확한 owner, 같은/다른 owner의 중첩 호출 거절과 callback 미실행, 외부 범위 유지, 정상·예외 반환 뒤 임시 권한 해제, null/미정의 목적 입력 거절을 확인한다. affiliation에는 successor generation 권한이 없고 예외가 성공 증거가 되지 않는다.
+- 실제 Preview의 새 affiliation도 공통 scope를 사용하며 source office와 legacy combined는 기존 후임 보호를 유지한다. native 호출과 return receipt를 모두 범위에 넣었고 모든 시작/복구는 Ready에서 active scope를 검사한다. 저장 슬롯/JSON/enum/동의·원본/마지막 도시 가드는 그대로다. 전체 합병·1단계 완료를 주장하지 않는다.
+- 1.6/net472·1.7/net10 각각 전체 빌드/규칙 검사: Contracts **3,886** + Honor/runtime **20,093** = 대상별 **23,979**개 assertion. EN/KO **421개** 공용 키/자리표시자와 FactionDef12개 필드를 확인한다. 새 engine API/외부 DLL/IL patch는 없다. 패키지·설치 결과는 아래 후속 기록을 따른다.
+- 양 전체 빌드는 경고/오류0으로 완료했다.6모드×두 런타임 선택·배포 DLL 허용 목록 검사를 통과한 ZIP SHA256은 `AC7BBC133D82FE16F010EB4EC0EFC548358F87EFF509AABF53DC89E2853C4151`이다. 실행 중인 게임이 없는 상태에서 기존0.3.34를 `.local/contracts-preview-4cb1c2296c1d4b7ab488aa481ba856f4`에 백업하고0.3.35를 설치했다.32개 파일 집합/해시가 원본과 일치하며 ModsConfig.xml/Prefs.xml 해시는 불변이다. 활성화/언어/Steam은 유지한다.
+
 ## Contracts 0.3.34 — source 사임/승계·개인 소속 변경 분리 및 보류 원본 재사용 차단 (2026-10-26)
 
 - 신규27개 assertion: 기존0.3.33 prepared 전체 JSON bytes/enum 값/omitted defaults의 정확한 왕복, 별도 source office intention/실제 후임 관측/정상 반환과 current-state observation의 구분, 저장된 후임 뒤 actor가 아직 source인 경계의 not-yet-started affiliation, 두 정상 반환 계보·의료/명부 완료·저장 왕복을 확인했다.
