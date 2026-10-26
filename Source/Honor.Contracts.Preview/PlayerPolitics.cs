@@ -206,7 +206,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
         if (Current.ProgramState != ProgramState.Playing || synchronizing || routing || RestoreFailed || State.Mode == PlayerAllegianceMode.Independent || State.Suspended) return;
         var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
         var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-        if (towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return;
+        if (CharterProtectionLedger.PreserveOriginalPawns || towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return;
         if (transition.Journal.Pending && transition.Journal.Current.Wars != null &&
             (!transition.Executing || !transition.Journal.WarsReady || UnionWarCouncil.HasExternalProvider)) return;
         try
@@ -245,7 +245,7 @@ public sealed class PlayerPoliticsLedger : GameComponent
             actor != Faction.OfPlayer && other != Faction.OfPlayer) return false;
         var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
         var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-        if (towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return false;
+        if (CharterProtectionLedger.PreserveOriginalPawns || towns.RestoreFailed || towns.HasPendingTownLosses || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges) return false;
         if (transition.Journal.Pending && transition.Journal.Current.Wars != null &&
             (!transition.Executing || !transition.Journal.WarsReady || UnionWarCouncil.HasExternalProvider)) return false;
         if (IsAdministration(actor) || IsAdministration(other)) return false; // Native player/own-administration events are internal, never foreign-root events.

@@ -342,6 +342,7 @@ internal static class LeaderSuccessorNoRedress
     static MethodBase TargetMethod() => LeaderJoinLedger.Candidates;
     static void Postfix(PawnGenerationRequest __0, ref IEnumerable<Pawn> __result)
     {
+        if (CharterProtectionLedger.PreserveOriginalPawns) { __result = Enumerable.Empty<Pawn>(); return; }
         if (LeaderJoinLedger.ActiveNative?.ExcludeSuccessionRedress(__0) == true) { __result = Enumerable.Empty<Pawn>(); return; }
         // A GC pin alone does not prevent native redress from changing a pending original pawn's health/gear.
         // Leave entry/world generation alone; only filter exact execution-reserved references in a playing game.
@@ -360,6 +361,6 @@ internal static class LeaderSuccessorNoNewRelations
     static MethodBase TargetMethod() => LeaderJoinLedger.Generate;
     static void Prefix(ref PawnGenerationRequest __0)
     {
-        if (LeaderJoinLedger.ActiveNative?.ExcludeSuccessionRedress(__0) == true) __0.CanGeneratePawnRelations = false;
+        if (CharterProtectionLedger.PreserveOriginalPawns || LeaderJoinLedger.ActiveNative?.ExcludeSuccessionRedress(__0) == true) __0.CanGeneratePawnRelations = false;
     }
 }

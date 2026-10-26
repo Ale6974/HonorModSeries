@@ -444,4 +444,20 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <CA_Warning>Mutually end the old charter and sign the reviewed same-party replacement now? Old signatures, conditions, debts and every child contract remain in history. Current authority, ownership and terms are checked again before anything is committed.</CA_Warning>
   <CA_Completed>The old charter was mutually released and the new same-party charter signed. Original economic history and all child contracts remain intact.</CA_Completed>
   <CA_Unavailable>The NPC does not accept these terms, or the current representative, ownership, charter or pending operations cannot be verified. Original records remain unchanged.</CA_Unavailable>
+  <CP_Open>Protection agreement and allied aid</CP_Open>
+  <CP_Terms>Separate agreement for an active player vassal sharing the liege's diplomacy. The current ordinary liege must be a reciprocal ally with goodwill at least 75. Covers manual native friendly-aid requests to player home settlements under an active shared-enemy attack above the native aid threshold. At most one request per liege per game day, with no additional payment. New agreement waits while actual tribute is overdue or billing history is incomplete.</CP_Terms>
+  <CP_Limits>Aid uses normal game AI. An arrival is not proof of victory or complete protection performance. Unavailable, failed or interrupted aid never establishes intentional refusal, dishonor or independence rights. Nothing is automatically dispatched.</CP_Limits>
+  <CP_Agree>Review and accept this protection agreement</CP_Agree>
+  <CP_Agreed>Protection agreement recorded.</CP_Agreed>
+  <CP_Blocked>Protection request unavailable. Check the current charter, shared allegiance, ordinary allied ruler, active shared-enemy attack, daily cooldown and pending records.</CP_Blocked>
+  <CP_Request>Review a real aid request: {0}</CP_Request>
+  <CP_Confirm>Record this one-shot request and dispatch native allied reinforcements? The daily allowance is consumed even if dispatch fails. An interrupted call cannot be replayed; arrival and battle outcome are separate.</CP_Confirm>
+  <CP_Arrived>Native aid returned normally and new allied arrivals were observed.</CP_Arrived>
+  <CP_NoVerifiedAid>No verified allied arrival outcome. This does not establish intentional refusal or dishonor.</CP_NoVerifiedAid>
+  <CP_Uncertain>A native request was interrupted with an unknown outcome. Its intent is preserved and further aid requests are blocked; it will not replay automatically.</CP_Uncertain>
+  <CP_Record>Day {0}: {1}; newly observed allies: {2}.</CP_Record>
+  <CP_Applying>Native outcome uncertain; never replay</CP_Applying>
+  <CP_ArrivalsObserved>Normal return and new allied arrivals observed</CP_ArrivalsObserved>
+  <CP_ReturnedFalse>Native dispatch unavailable or returned false</CP_ReturnedFalse>
+  <CP_ReturnedUnverified>Native returned true without verified new arrivals</CP_ReturnedUnverified>
 </LanguageData>

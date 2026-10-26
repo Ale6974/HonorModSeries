@@ -311,6 +311,8 @@ public sealed class LiveChartersWindow : Window
                     !ledger.Book.Entity(charter.Terms.Subject).Player && list.ButtonText("CA_Open".Translate()))
                     Find.WindowStack.Add(new CharterAmendmentWindow(charter.Id));
                 if (charter.NpcAuthority != null) list.Label("NS_NpcConsent".Translate());
+                if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && charter.NpcAuthority == null && ledger.Book.Entity(charter.Terms.Subject).Player &&
+                    list.ButtonText("CP_Open".Translate())) Find.WindowStack.Add(new CharterProtectionWindow(charter.Id));
                 if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && ledger.Book.PlayerManaged(charter) &&
                     list.ButtonText("CT_Open".Translate())) Find.WindowStack.Add(new TerritoryAdministrationWindow(charter.Id));
                 if (phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released && ledger.Book.Entity(charter.Terms.Subject).Player)

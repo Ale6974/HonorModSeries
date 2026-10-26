@@ -444,4 +444,20 @@
   <CA_Warning>옛 계약을 합의 종료하고 검토한 같은 당사자 새 계약에 지금 서명할까요? 원 서명·조건·채무와 모든 하위 계약은 보존합니다. 반영 전 현재 권한·소유권·조건을 다시 확인합니다.</CA_Warning>
   <CA_Completed>옛 계약을 합의 종료하고 같은 당사자의 새 계약에 서명했습니다. 원 경제 이력과 모든 하위 계약을 보존했습니다.</CA_Completed>
   <CA_Unavailable>NPC가 새 조건에 동의하지 않거나 현재 대표·소유권·계약·보류 작업을 확인할 수 없습니다. 원본 기록을 유지합니다.</CA_Unavailable>
+  <CP_Open>보호 합의와 동맹 지원</CP_Open>
+  <CP_Terms>종주의 외교를 공유하는 활성 플레이어 봉신계약에 별도로 맺는 합의입니다. 현 일반 종주 대표와 상호 동맹이며 우호도 75 이상이어야 합니다. 공통 적의 실제 공격이 기본 게임의 지원 기준을 넘을 때 플레이어 본거지에 기본 동맹 지원군을 수동 요청할 수 있습니다. 종주별 게임 하루에 한 번이며 추가 지급금은 없습니다. 실제 공납 연체나 불완전한 청구 이력이 있으면 새 합의를 기다립니다.</CP_Terms>
+  <CP_Limits>지원군은 기본 게임 AI에 따라 행동합니다. 도착은 전투 승리나 보호 의무의 완전 이행 증거가 아닙니다. 지원 불가·실패·중단은 고의 거부, 불명예 또는 독립권의 근거로 처리하지 않습니다. 자동 출병하지 않습니다.</CP_Limits>
+  <CP_Agree>이 보호 합의를 검토하고 수락</CP_Agree>
+  <CP_Agreed>보호 합의가 기록되었습니다.</CP_Agreed>
+  <CP_Blocked>보호 요청을 진행할 수 없습니다. 현재 계약과 공유 소속, 일반 동맹 대표, 실제 공통 적의 공격, 하루 요청 간격 및 보류 기록을 확인하세요.</CP_Blocked>
+  <CP_Request>실제 지원 요청 검토: {0}</CP_Request>
+  <CP_Confirm>한 번의 요청을 기록하고 기본 동맹 지원군을 파견할까요? 파견이 실패해도 하루 요청 횟수를 사용합니다. 중단되어 결과가 불명인 호출은 재실행하지 않습니다. 도착과 전투 결과는 별개입니다.</CP_Confirm>
+  <CP_Arrived>기본 지원 호출이 정상 반환했고 새로운 동맹군의 도착을 확인했습니다.</CP_Arrived>
+  <CP_NoVerifiedAid>검증된 동맹군 도착 결과가 없습니다. 고의 거부나 불명예의 근거가 아닙니다.</CP_NoVerifiedAid>
+  <CP_Uncertain>결과가 불명인 채 중단된 지원 요청이 있습니다. 원래 요청을 보존하고 추가 지원 요청을 막습니다. 자동 재실행하지 않습니다.</CP_Uncertain>
+  <CP_Record>{0}일: {1}, 새로 관찰한 동맹군 {2}명.</CP_Record>
+  <CP_Applying>기본 호출 결과 불명, 재실행 금지</CP_Applying>
+  <CP_ArrivalsObserved>정상 반환과 새 동맹군 도착 확인</CP_ArrivalsObserved>
+  <CP_ReturnedFalse>기본 파견 불가 또는 false 반환</CP_ReturnedFalse>
+  <CP_ReturnedUnverified>기본 호출 true 반환, 새 도착은 미확인</CP_ReturnedUnverified>
 </LanguageData>
