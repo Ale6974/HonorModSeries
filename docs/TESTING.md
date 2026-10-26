@@ -1,5 +1,15 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.34 — source 사임/승계·개인 소속 변경 분리 및 보류 원본 재사용 차단 (2026-10-26)
+
+- 신규27개 assertion: 기존0.3.33 prepared 전체 JSON bytes/enum 값/omitted defaults의 정확한 왕복, 별도 source office intention/실제 후임 관측/정상 반환과 current-state observation의 구분, 저장된 후임 뒤 actor가 아직 source인 경계의 not-yet-started affiliation, 두 정상 반환 계보·의료/명부 완료·저장 왕복을 확인했다.
+- 미시작 affiliation의 조기 실행·사임 반복·승계 시작 후 가짜 취소, source phase의 의료 reset 추정·다른 후임/외부 조기 소속 변경, affiliation Applying의 원 call 반복·null 반환 후임 소급 채우기·구버전에 split lineage 주입·attribution/후임/시각 변조를 거절한다. 각 stage는 원 book/transfer/도시/채무를 바꾸지 않는다. 기존33개 개인 합류/의료1회/명부 검사도 함께 통과했다.
+- 1.6/net472·1.7/net10 전체 빌드와 각 규칙 호스트 통과. 마지막 null-safe pending-candidate/재진입 가드 뒤 양 Preview를 재빌드했다. Contracts **3,861** + Honor/runtime **20,093** = 대상별 **23,954**개 assertion, 최종 빌드 경고/오류0. EN/KO **421개** 공용 키/자리표시자와 FactionDef12개 필드를 확인했다.
+- 실제 native Notify_LeaderLost 호출/별도 source receipt → 아직 시작하지 않은 Pawn.SetFaction → 기존 actual target/후임/의료/roster 집행을 연결했다. old combined semantics/JSON을 유지하며 source office 완료를 personal affiliation 완료로 부르지 않는다. 기존 GetValidCandidatesToRedress hook은 playing game의 정확한 resident/retained-office/personal pending refs를 제외하며, entry/world generation·unrelated candidates·순서는 유지한다. 원 succession scope의 full no-redress/no-new-relations와 callback/권한/quest/stock 가드는 그대로다.
+- 새 지원 경계 외의 불확실 affiliation·legacy source-side unknown·기타 원본 변화/미지원 상태와 전체 합병은 남아 있다. 이번 실행/저장/영한/두 타깃 검사를 전체 합병이나1단계 완료로 계산하지 않는다.
+- 최종 null-safe/restore-failed resident refs·UI-only phase cache/Prepared 전용 취소 안내 뒤 양 Preview를 재빌드했다. 실행 판단에는 UI cache를 사용하지 않는다. 6모드/두 런타임·DLL 허용 목록, 영한421개 키 중복 부재와 새 stage6개 키를 확인했다. ZIP SHA256: `6DDE2FA154D6CD5C5A3E8025D01F1B8152D705068F307B60320844B777655C18`.
+- 실행 중인 게임이 없는 상태에서 기존0.3.33 로컬본을 .local에 백업하고0.3.34를 설치했다. 원본/설치32개 파일 해시·About 버전이 일치하고 ModsConfig.xml/Prefs.xml 해시는 불변이다. 다른 모듈/Steam/활성화/언어는 바꾸지 않았다.1단계 미완료로30분 반복은 유지한다.
+
 ## Contracts 0.3.33 — 별도 개인 합류·native 후임·의료1회/저장 명부 복구 (2026-10-26)
 
 - 신규33개 assertion: 별도 개인 동의가 없는 city/merger 서명·native player target·초기 중복 배정 거절, 미변경 준비 취소, native Applying 전후 경계, 실제 target/후임·정상 반환 receipt와 불확실 현재 관측의 구분, 원 임상/stock/장부/target authority 보존, 정확한 목적지 추가→double-reference→출발지 제거/완료·저장 왕복을 확인했다.

@@ -15,6 +15,7 @@ public sealed class LeaderJoinRecord : IExposable
     public Faction SourceFaction, TargetFaction;
     public Settlement Source, Destination;
     public bool Finished;
+    internal LeaderJoinPhase? DisplayPhase; // UI cache only; execution always restores/reviews Snapshot afresh.
     public void ExposeData()
     {
         Scribe_Values.Look(ref Id, "id"); Scribe_Values.Look(ref Snapshot, "joinExecutionV1"); Scribe_Values.Look(ref Finished, "finished");
@@ -55,6 +56,7 @@ public sealed class LeaderJoinLedger : GameComponent
             foreach (var r in records)
             {
                 var state = r.Journal().State;
+                r.DisplayPhase = state.Phase;
                 if (r.Finished != (state.Phase is LeaderJoinPhase.Completed or LeaderJoinPhase.Cancelled)) throw new ArgumentException("Joining phase mismatch.");
                 if (!r.Finished) References(r); else ClearActors(r);
             }
@@ -70,7 +72,7 @@ public sealed class LeaderJoinLedger : GameComponent
             foreach (var r in records)
             {
                 var s = r.Journal().State;
-                if (s.Plan.Tick > Find.TickManager.TicksGame || s.NativeReturn?.Tick > Find.TickManager.TicksGame || s.ObservedTick > Find.TickManager.TicksGame || s.CareCheckTick > Find.TickManager.TicksGame || s.FinishedTick > Find.TickManager.TicksGame)
+                if (s.Plan.Tick > Find.TickManager.TicksGame || s.NativeReturn?.Tick > Find.TickManager.TicksGame || s.SuccessionReturn?.Tick > Find.TickManager.TicksGame || s.Succession?.Tick > Find.TickManager.TicksGame || s.ObservedTick > Find.TickManager.TicksGame || s.CareCheckTick > Find.TickManager.TicksGame || s.FinishedTick > Find.TickManager.TicksGame)
                     throw new ArgumentException("Future joining evidence.");
                 if (!r.Finished) References(r);
             }
@@ -108,7 +110,7 @@ public sealed class LeaderJoinLedger : GameComponent
     }
     private void Ready(bool recovering)
     {
-        if (Current.ProgramState != ProgramState.Playing || Current.Game != context) throw new ArgumentException("Review this current playing game.");
+        if (Current.ProgramState != ProgramState.Playing || Current.Game != context || ActiveNative != null) throw new ArgumentException("Review this current playing game outside a native mutation callback.");
         var game = Current.Game; var political = game.GetComponent<PoliticalTransitionLedger>(); var payments = game.GetComponent<TributePaymentLedger>();
         if (RestoreFailed || !recovering && BlocksChanges || Charters.RestoreFailed || Charters.UnresolvedTownLosses || Territories.RestoreFailed || Territories.HasPendingTownLosses ||
             Territories.Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) || political.RestoreFailed || political.Journal.Pending ||
@@ -180,7 +182,7 @@ public sealed class LeaderJoinLedger : GameComponent
         SuccessionAvailable(source, actor);
         var plan = new LeaderJoinPlan(charter, actor.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID(), sourceCity.GetUniqueLoadID(), destination.GetUniqueLoadID(),
             target.leader.GetUniqueLoadID(), Charters.Book.Export(), Territories.Ledger.Export(), new(actual.Id, actual.Preserved, actual.MedicalCare), Stock(sourceCity), Stock(destination),
-            Roster(sourceCity), Roster(destination), Find.TickManager.TicksGame, true);
+            Roster(sourceCity), Roster(destination), Find.TickManager.TicksGame, true, SeparateSuccession: true);
         LeaderJoinExecution.Prepare(plan); return new(Current.Game, plan, actor, source, target, sourceCity, destination, target.leader);
     }
     private static void References(LeaderJoinRecord r)
@@ -189,7 +191,7 @@ public sealed class LeaderJoinLedger : GameComponent
         if (r.Actor == null || r.Actor.GetUniqueLoadID() != p.Leader || r.Source == null || r.Source.GetUniqueLoadID() != p.SourceCity ||
             r.Destination == null || r.Destination.GetUniqueLoadID() != p.DestinationCity || r.SourceFaction?.GetUniqueLoadID() != p.SourceFaction ||
             r.TargetFaction?.GetUniqueLoadID() != p.TargetFaction || r.TargetLeader?.GetUniqueLoadID() != p.TargetLeader ||
-            s.Successor != null && r.Successor?.GetUniqueLoadID() != s.Successor) throw new ArgumentException("Personal join reference identities changed.");
+            (s.Successor ?? s.Succession?.Successor) != null && r.Successor?.GetUniqueLoadID() != (s.Successor ?? s.Succession?.Successor)) throw new ArgumentException("Personal join reference identities changed.");
     }
     private LeaderJoinAction Review(LeaderJoinRecord r)
     {
@@ -200,16 +202,24 @@ public sealed class LeaderJoinLedger : GameComponent
             Cities().Any(s => s != r.Source && s != r.Destination && s.previouslyGeneratedInhabitants?.Contains(r.Actor) == true))
             throw new ArgumentException("Unexpected office, medical orders or outside residency.");
         if (j.State.Phase == LeaderJoinPhase.Prepared) { ResidentExecution.ReadRetainedLeader(r.Actor); SuccessionAvailable(r.SourceFaction, r.Actor); }
-        else if (r.Actor.Faction == r.TargetFaction && (r.SourceFaction.leader == null || r.SourceFaction.leader == r.Actor || r.SourceFaction.leader.Dead || r.SourceFaction.leader.Downed ||
+        bool officeRequired = r.Actor.Faction == r.TargetFaction || p.SeparateSuccession && j.State.Phase != LeaderJoinPhase.Prepared;
+        if (officeRequired && (r.SourceFaction.leader == null || r.SourceFaction.leader == r.Actor || r.SourceFaction.leader.Dead || r.SourceFaction.leader.Downed ||
             !r.SourceFaction.leader.Awake() || r.SourceFaction.leader.InMentalState || r.SourceFaction.leader.IsPrisoner || r.SourceFaction.leader.IsSlave || r.SourceFaction.leader.HostFaction != null || r.SourceFaction.leader.Faction != r.SourceFaction ||
             !PawnsFinder.AllMapsWorldAndTemporary_AliveOrDead.Contains(r.SourceFaction.leader) || Find.FactionManager.AllFactionsListForReading.Any(f => f != r.SourceFaction && f.leader == r.Actor)))
             throw new ArgumentException("No actual valid surviving source successor or office separation.");
-        if (r.Actor.Faction == r.TargetFaction && Find.FactionManager.AllFactionsListForReading.Any(f => f != r.SourceFaction && f.leader == r.SourceFaction.leader))
+        if (officeRequired && Find.FactionManager.AllFactionsListForReading.Any(f => f != r.SourceFaction && f.leader == r.SourceFaction.leader))
             throw new ArgumentException("Source successor holds an unreviewed other faction office.");
         return j.Review(ResidentExecution.ReadJoiningLeader(r.Actor), r.SourceFaction.leader?.GetUniqueLoadID(), r.TargetFaction.leader?.GetUniqueLoadID(), Charters.Book.Export(), Territories.Ledger.Export(),
             Stock(r.Source), Stock(r.Destination), Roster(r.Source), Roster(r.Destination), Find.TickManager.TicksGame);
     }
-    private static void Change(LeaderJoinRecord r, Action<LeaderJoinExecution> action) { var j = r.Journal(); action(j); r.Snapshot = j.Export(); }
+    private static void Change(LeaderJoinRecord r, Action<LeaderJoinExecution> action) { var j = r.Journal(); action(j); r.Snapshot = j.Export(); r.DisplayPhase = j.State.Phase; }
+    private void ScopedNative(LeaderJoinRecord r, Action call)
+    {
+        if (ActiveNative != null) throw new ArgumentException("Nested personal joining is not supported.");
+        activeNativeCall = r; ActiveNative = this;
+        try { call(); }
+        finally { activeNativeCall = null; ActiveNative = null; }
+    }
     public void Start(LeaderJoinReview reviewed)
     {
         try
@@ -219,7 +229,7 @@ public sealed class LeaderJoinLedger : GameComponent
             if (JsonSerializer.Serialize(fresh.Plan) != JsonSerializer.Serialize(reviewed.Plan) || fresh.Actor != reviewed.Actor || fresh.Source != reviewed.Source || fresh.TargetLeader != reviewed.TargetLeader)
                 throw new ArgumentException("Separate personal joining consent changed.");
             var r = new LeaderJoinRecord { Id = Guid.NewGuid().ToString("N"), Snapshot = LeaderJoinExecution.Prepare(fresh.Plan).Export(), Actor = fresh.Actor, Source = fresh.Source, Destination = fresh.Destination,
-                SourceFaction = fresh.SourceFaction, TargetFaction = fresh.TargetFaction, TargetLeader = fresh.TargetLeader, ActorLabel = fresh.Actor.LabelShort, SourceLabel = fresh.Source.Label, DestinationLabel = fresh.Destination.Label };
+                SourceFaction = fresh.SourceFaction, TargetFaction = fresh.TargetFaction, TargetLeader = fresh.TargetLeader, DisplayPhase = LeaderJoinPhase.Prepared, ActorLabel = fresh.Actor.LabelShort, SourceLabel = fresh.Source.Label, DestinationLabel = fresh.Destination.Label };
             if (records.Sum(old => (long)old.Snapshot.Length) + r.Snapshot.Length > 32000000) throw new ArgumentException("Joining archive capacity.");
             records.Add(r); Finish(r);
         }
@@ -228,16 +238,31 @@ public sealed class LeaderJoinLedger : GameComponent
     private void Finish(LeaderJoinRecord r)
     {
         var action = Review(r); Find.WorldPawns.gc.CancelGCPass();
+        if (action == LeaderJoinAction.ChangeOffice)
+        {
+            Change(r, j => j.BeginSuccession(Find.TickManager.TicksGame));
+            ScopedNative(r, () => {
+                r.SourceFaction.Notify_LeaderLost();
+                Change(r, j => j.RecordSuccessionReturn(r.SourceFaction.leader?.GetUniqueLoadID(), Find.TickManager.TicksGame));
+            });
+            action = Review(r);
+        }
+        if (action == LeaderJoinAction.ObserveSuccession)
+        {
+            r.Successor = r.SourceFaction.leader;
+            Change(r, j => j.ObserveSuccession(action, r.Successor.GetUniqueLoadID(), Find.TickManager.TicksGame)); action = Review(r);
+        }
         if (action == LeaderJoinAction.ChangeFaction)
         {
-            if (ActiveNative != null) throw new ArgumentException("Nested personal joining is not supported.");
-            Change(r, j => j.Begin(Find.TickManager.TicksGame)); activeNativeCall = r; ActiveNative = this;
-            try
+            bool separate = r.Journal().State.Plan.SeparateSuccession;
+            if (separate && PawnUtility.IsFactionLeader(r.Actor)) throw new ArgumentException("Recorded resignation must prevent a second native succession.");
+            Change(r, j => j.Begin(Find.TickManager.TicksGame));
+            void Affiliate()
             {
                 r.Actor.SetFaction(r.TargetFaction);
                 Change(r, j => j.RecordReturn(r.SourceFaction.leader?.GetUniqueLoadID(), r.Actor.playerSettings == null ? null : (int)r.Actor.playerSettings.medCare, Find.TickManager.TicksGame));
             }
-            finally { activeNativeCall = null; ActiveNative = null; }
+            if (separate) Affiliate(); else ScopedNative(r, Affiliate); // Legacy combined journals retain their original execution semantics.
             action = Review(r);
         }
         if (action == LeaderJoinAction.Observe)
@@ -277,8 +302,10 @@ public sealed class LeaderJoinLedger : GameComponent
         foreach (var r in records.Where(r => !r.Finished).ToArray())
         {
             list.Label("LJ_Pending".Translate(r.ActorLabel, r.SourceLabel, r.DestinationLabel)); var context = Current.Game;
+            var stage = r.DisplayPhase ??= r.Journal().State.Phase;
+            list.Label("LJ_Stage".Translate(("LJ_" + stage).Translate()));
             if (list.ButtonText("LJ_Recover".Translate())) Recover(r.Id, false, context);
-            if (list.ButtonText("LJ_Cancel".Translate())) Recover(r.Id, true, context);
+            if (stage == LeaderJoinPhase.Prepared && list.ButtonText("LJ_Cancel".Translate())) Recover(r.Id, true, context);
         }
         if (BlocksChanges || charter == null) return;
         if (list.ButtonText("LJ_Review".Translate()))
@@ -302,7 +329,14 @@ internal static class LeaderSuccessorNoRedress
     static MethodBase TargetMethod() => LeaderJoinLedger.Candidates;
     static void Postfix(PawnGenerationRequest __0, ref IEnumerable<Pawn> __result)
     {
-        if (LeaderJoinLedger.ActiveNative?.ExcludeSuccessionRedress(__0) == true) __result = Enumerable.Empty<Pawn>();
+        if (LeaderJoinLedger.ActiveNative?.ExcludeSuccessionRedress(__0) == true) { __result = Enumerable.Empty<Pawn>(); return; }
+        // A GC pin alone does not prevent native redress from changing a pending original pawn's health/gear.
+        // Leave entry/world generation alone; only filter exact execution-reserved references in a playing game.
+        if (Current.ProgramState != ProgramState.Playing || Current.Game == null || __result == null) return;
+        var game = Current.Game; var join = game.GetComponent<LeaderJoinLedger>();
+        var towns = game.GetComponent<TerritoryAdministrationLedger>(); var relocation = game.GetComponent<LeaderRelocationLedger>();
+        if (join?.BlocksChanges != true && relocation?.BlocksChanges != true && towns?.Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) != true && towns?.RestoreFailed != true) return;
+        __result = __result.Where(p => Current.Game == game && join?.ReservesResident(p) != true && towns?.ReservesResident(p) != true && relocation?.ReservesResident(p) != true);
     }
 }
 

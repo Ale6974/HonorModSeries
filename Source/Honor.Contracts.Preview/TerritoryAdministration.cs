@@ -32,8 +32,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     private LiveCharterLedger Charters => Current.Game.GetComponent<LiveCharterLedger>();
     public TerritoryAdministrationLedger(Game game) { }
     private string AdministrationId => Current.Game.GetComponent<RealmAdministrationLedger>().OwnedFaction?.GetUniqueLoadID();
-    internal bool ReservesResident(Pawn pawn) => references.Any(r => r?.Residents?.Pawns?.Contains(pawn) == true &&
-        (r.Residents.Started || Ledger.Transfers.Any(t => t.Id == r.Id && t.Phase == TerritoryTransferPhase.Prepared)));
+    internal bool ReservesResident(Pawn pawn) => references?.Any(r => r?.Residents?.Pawns?.Contains(pawn) == true &&
+        (RestoreFailed || r.Residents.Started || Ledger.Transfers.Any(t => t.Id == r.Id && t.Phase == TerritoryTransferPhase.Prepared))) == true;
     public override void ExposeData()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) snapshot = Ledger.Export();

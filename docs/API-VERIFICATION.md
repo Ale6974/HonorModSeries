@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## native 사임/승계와 개인 소속 변경의 별도 집행 — 0.3.34 / 2026-10-26
+
+설치1.7.4985 rev1269/net10.0 /10.0.13-waylithclr.dev를 재확인하고 기존 검증한 Faction.Notify_LeaderLost와 Pawn.SetFaction의 호출 순서를 사용했다. 새 개인 요청은 사임/승계 intention → native Notify_LeaderLost → 정확한 정상 반환/현재 successor 관측 → 별도 SuccessionRecorded → 아직 시작하지 않은 Pawn.SetFaction intention/call 순서다. source office를 원시 쓰기하지 않는다. 소속 변경 전 PawnUtility.IsFactionLeader가 false인지 다시 확인해 SetFaction 안에서 승계를 반복하지 않게 한다. 사임 직후 actor가 아직 source인 경계를 snapshot/참조로 저장·재검토할 수 있다. 이 단계는 guest/의료/수술 소속 변경 callbacks를 아직 시작하지 않았으므로 확인한 승계를 다시 실행하지 않고 다음 단계만 시작한다.
+
+사임 call의 정상 반환을 못 받았지만 실제 current successor/원 source actor·의료/명부·재고/장부가 긍정 확인되면 별도 current observation만 기록한다. source office와 affiliation 각각 FromNormalReturn/시각/원 successor를 보존한다. null returned successor를 나중 ruler로 채우지 않으며, affiliation Applying의 actor가 source인 불확실 call은 계속 재실행하지 않는다. 구버전0.3.33 combined intention은 flag/새 필드가 없던 원 JSON/enum/의미를 유지하고 새 source receipt를 소급 생성하지 않는다. 준비/실제 source mutation/소속 mutation의 취소 가능 경계를 분리한다.
+
+기존 GC pin만으로는 native GetValidCandidatesToRedress가 pending 원 Pawn을 재장비/재생성하는 것을 막지 못한다. 실제 playing game에서만 resident/retained-office/personal join journal이 reserve한 동일 참조를 후보 결과에서 제외한다. 일반 unrelated candidate와 순서는 유지하고 historical reference는 고정하지 않는다. world generation/entry에서는 component를 조회하지 않는다. 원 succession scoped no-redress/no-new-relations는 그대로며 nested native mutation callback에서는 새 집행/복구가 시작되지 않는다. 새 engine API/IL transpiler/raw native field write는 없고1.6은 기존 pinned metadata/별도 컴파일로 확인한다.
+
 ## 실제 개인 합류·native 후임·저장 배정 이전 — 0.3.33 / 2026-10-26
 
 설치1.7.4985 rev1269/net10.0 /10.0.13-waylithclr.dev를 재확인했다. 앞서 확인한 Pawn.SetFaction → Faction.Notify_LeaderLost → TryGenerateNewLeader 경로와 PawnGenerator.GetValidCandidatesToRedress/GeneratePawn/PawnGenerationRequest.CanGeneratePawnRelations, Scenario.AllParts/Notify_PawnGenerated를 읽었다. 후임 생성이 기존 Free/FactionLeader world pawn을 재사용하면서 RedressPawn으로 건강/장비·kind 등을 바꿀 수 있음을 확인했다. 기존 지도자나 다른 주민을 위험에 노출한 뒤 지문 차이만 검사하는 것으로 보존을 주장하지 않는다.

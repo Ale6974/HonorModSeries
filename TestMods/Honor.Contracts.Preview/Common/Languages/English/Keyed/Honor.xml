@@ -416,4 +416,10 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <LJ_Cancel>Cancel only unchanged preparation</LJ_Cancel>
   <LJ_Completed>{0} personally joined; native source successor and saved assignment at {1} verified. This does not confirm caravan travel or later map appearance.</LJ_Completed>
   <LJ_Unavailable>Personal joining unavailable/incomplete. Original intent and actors are retained. Verify supported saved leader, surviving source, own administration, reciprocal diplomacy, stock/rosters, callbacks and exact observed successor/care. No uncertain call was replayed.</LJ_Unavailable>
+  <LJ_Stage>Recorded execution stage: {0}</LJ_Stage>
+  <LJ_Prepared>unchanged personal consent preparation</LJ_Prepared>
+  <LJ_Applying>affiliation call started; uncertain calls are never repeated</LJ_Applying>
+  <LJ_Observed>target affiliation and successor observed; care/residency verification</LJ_Observed>
+  <LJ_SuccessionApplying>source succession started; only a positive current office may be observed</LJ_SuccessionApplying>
+  <LJ_SuccessionRecorded>source successor recorded; affiliation has not started</LJ_SuccessionRecorded>
 </LanguageData>

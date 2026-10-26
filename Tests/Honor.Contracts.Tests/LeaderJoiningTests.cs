@@ -22,6 +22,12 @@ internal static class LeaderJoiningTests
         Reject(() => LeaderJoinExecution.Prepare(plan with { TargetFaction = "player" }), "native player control is never the foreign leader destination");
         Reject(() => LeaderJoinExecution.Prepare(plan with { DestinationRoster = new[] { "old-leader" } }), "no initial duplicate residency");
         var j = LeaderJoinExecution.Prepare(plan);
+        string legacy = JsonSerializer.Serialize(new { Version = 1, Plan = new { plan.Charter, plan.Leader, plan.SourceFaction, plan.TargetFaction, plan.SourceCity, plan.DestinationCity,
+            plan.TargetLeader, plan.Book, plan.Transfers, plan.Actor, plan.SourceStock, plan.DestinationStock, plan.SourceRoster, plan.DestinationRoster, plan.Tick, plan.PersonalConsent },
+            Phase = LeaderJoinPhase.Prepared, NativeReturn = (LeaderJoinReturn)null, Successor = (string)null, ObservedCare = (int?)null, ObservedTick = (long?)null,
+            FromNormalReturn = false, FinishedTick = (long?)null, CareCheckTick = (long?)null });
+        Check(j.Export() == legacy && LeaderJoinExecution.Restore(legacy).Export() == legacy && (int)LeaderJoinPhase.Cancelled == 4,
+            "legacy prepared bytes, default omitted split fields and phase values remain unchanged");
         Check(Review(j, actor, "old-leader") == LeaderJoinAction.ChangeFaction && book.Export() == plan.Book && transfers.Export() == plan.Transfers, "preparation is not actual affiliation, succession or city ownership");
         Reject(() => j.Review(actor, "old-leader", "other-steward", book.Export(), transfers.Export(), stock, stock, plan.SourceRoster, plan.DestinationRoster, 20),
             "changed destination authority cannot inherit the personal agreement");

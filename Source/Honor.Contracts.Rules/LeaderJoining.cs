@@ -2,14 +2,19 @@ using System.Text.Json;
 
 namespace Honor.Contracts.Rules;
 
-public enum LeaderJoinPhase { Prepared, Applying, Observed, Completed, Cancelled }
-public enum LeaderJoinAction { ChangeFaction, Observe, RestoreCare, AddDestination, RemoveSource, Verify }
+public enum LeaderJoinPhase { Prepared, Applying, Observed, Completed, Cancelled, SuccessionApplying, SuccessionRecorded }
+public enum LeaderJoinAction { ChangeFaction, Observe, RestoreCare, AddDestination, RemoveSource, Verify, ChangeOffice, ObserveSuccession }
 public sealed record LeaderJoinPlan(string Charter, string Leader, string SourceFaction, string TargetFaction, string SourceCity, string DestinationCity,
     string TargetLeader, string Book, string Transfers, ResidentMoveEvidence Actor, string SourceStock, string DestinationStock,
-    IReadOnlyList<string> SourceRoster, IReadOnlyList<string> DestinationRoster, long Tick, bool PersonalConsent);
+    IReadOnlyList<string> SourceRoster, IReadOnlyList<string> DestinationRoster, long Tick, bool PersonalConsent,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool SeparateSuccession = false);
 public sealed record LeaderJoinReturn(string Successor, int? MedicalCare, long Tick);
+public sealed record LeaderSuccessionReturn(string Successor, long Tick);
+public sealed record LeaderSuccessionReceipt(string Successor, long Tick, bool FromNormalReturn);
 public sealed record LeaderJoinSave(int Version, LeaderJoinPlan Plan, LeaderJoinPhase Phase, LeaderJoinReturn NativeReturn = null,
-    string Successor = null, int? ObservedCare = null, long? ObservedTick = null, bool FromNormalReturn = false, long? FinishedTick = null, long? CareCheckTick = null);
+    string Successor = null, int? ObservedCare = null, long? ObservedTick = null, bool FromNormalReturn = false, long? FinishedTick = null, long? CareCheckTick = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] LeaderSuccessionReturn SuccessionReturn = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] LeaderSuccessionReceipt Succession = null);
 
 /// <summary>One separately consented leader joins a surviving source's nonplayer destination; no city or whole-faction transfer.</summary>
 public sealed class LeaderJoinExecution
@@ -19,7 +24,7 @@ public sealed class LeaderJoinExecution
     private static bool Care(int? n) => !n.HasValue || n is >= 0 and <= 4;
     private static bool Same(IEnumerable<string> a, IEnumerable<string> b) => a.SequenceEqual(b);
     private static void Require(bool value, string reason) { if (!value) throw new ArgumentException(reason); }
-    private void Time(long now) => Require(now >= (State.FinishedTick ?? State.CareCheckTick ?? State.ObservedTick ?? State.NativeReturn?.Tick ?? State.Plan.Tick) && now <= int.MaxValue, "Invalid leader join clock.");
+    private void Time(long now) => Require(now >= (State.FinishedTick ?? State.CareCheckTick ?? State.ObservedTick ?? State.NativeReturn?.Tick ?? State.Succession?.Tick ?? State.SuccessionReturn?.Tick ?? State.Plan.Tick) && now <= int.MaxValue, "Invalid leader join clock.");
     private static void Validate(LeaderJoinPlan p)
     {
         Require(p != null && Key(p.Charter) && Key(p.Leader) && Key(p.SourceFaction) && Key(p.TargetFaction) && Key(p.SourceCity) && Key(p.DestinationCity) && Key(p.TargetLeader) &&
@@ -46,7 +51,7 @@ public sealed class LeaderJoinExecution
         string sourceStock, string destinationStock, IEnumerable<string> sourceRoster, IEnumerable<string> destinationRoster, long now)
     {
         Time(now); var p = State.Plan;
-        Require(State.Phase is LeaderJoinPhase.Prepared or LeaderJoinPhase.Applying or LeaderJoinPhase.Observed && actor != null && actor.Id == p.Leader &&
+        Require(State.Phase is LeaderJoinPhase.Prepared or LeaderJoinPhase.Applying or LeaderJoinPhase.Observed or LeaderJoinPhase.SuccessionApplying or LeaderJoinPhase.SuccessionRecorded && actor != null && actor.Id == p.Leader &&
             actor.Preserved == p.Actor.Preserved && actor.MedicalCare.HasValue == p.Actor.MedicalCare.HasValue && Care(actor.MedicalCare) &&
             targetLeader == p.TargetLeader && book == p.Book && transfers == p.Transfers && sourceStock == p.SourceStock && destinationStock == p.DestinationStock,
             "Current leader, preservation, authority or original journals changed.");
@@ -55,8 +60,19 @@ public sealed class LeaderJoinExecution
         {
             Require(actor.Faction == p.SourceFaction && sourceLeader == p.Leader && actor.MedicalCare == p.Actor.MedicalCare &&
                 Same(source, p.SourceRoster) && Same(destination, p.DestinationRoster), "Only wholly unchanged preparation may start.");
-            return LeaderJoinAction.ChangeFaction;
+            return p.SeparateSuccession ? LeaderJoinAction.ChangeOffice : LeaderJoinAction.ChangeFaction;
         }
+        if (State.Phase is LeaderJoinPhase.SuccessionApplying or LeaderJoinPhase.SuccessionRecorded)
+        {
+            Require(p.SeparateSuccession && actor.Faction == p.SourceFaction && Key(sourceLeader) && sourceLeader != p.Leader &&
+                actor.MedicalCare == p.Actor.MedicalCare && Same(source, p.SourceRoster) && Same(destination, p.DestinationRoster),
+                "Only a positive source-office change with unchanged actor and rosters may continue; do not replay succession.");
+            if (State.Phase == LeaderJoinPhase.SuccessionRecorded)
+            { Require(sourceLeader == State.Succession.Successor, "Recorded source successor changed."); return LeaderJoinAction.ChangeFaction; }
+            Require(State.SuccessionReturn == null || sourceLeader == State.SuccessionReturn.Successor, "Do not fill a missing or changed returned successor.");
+            return LeaderJoinAction.ObserveSuccession;
+        }
+        Require(!p.SeparateSuccession || sourceLeader == State.Succession.Successor, "Original separately recorded successor must remain current.");
         if (State.Phase == LeaderJoinPhase.Applying)
         {
             Require(actor.Faction == p.TargetFaction && Key(sourceLeader) && sourceLeader != p.Leader && Same(source, p.SourceRoster) && Same(destination, p.DestinationRoster) &&
@@ -73,7 +89,20 @@ public sealed class LeaderJoinExecution
         return destOriginal ? LeaderJoinAction.AddDestination : original ? LeaderJoinAction.RemoveSource : LeaderJoinAction.Verify;
     }
     public void Begin(long now)
-    { Time(now); Require(State.Phase == LeaderJoinPhase.Prepared, "Prepare before native joining."); State = State with { Phase = LeaderJoinPhase.Applying }; }
+    { Time(now); Require(State.Plan.SeparateSuccession ? State.Phase == LeaderJoinPhase.SuccessionRecorded : State.Phase == LeaderJoinPhase.Prepared, "Record separate succession before starting affiliation."); State = State with { Phase = LeaderJoinPhase.Applying }; }
+    public void BeginSuccession(long now)
+    { Time(now); Require(State.Plan.SeparateSuccession && State.Phase == LeaderJoinPhase.Prepared, "Separate succession needs unchanged preparation."); State = State with { Phase = LeaderJoinPhase.SuccessionApplying }; }
+    public void RecordSuccessionReturn(string successor, long now)
+    {
+        Time(now); Require(State.Phase == LeaderJoinPhase.SuccessionApplying && State.SuccessionReturn == null && (successor == null || Key(successor)), "Record source-office return once.");
+        State = State with { SuccessionReturn = new(successor, now) };
+    }
+    public void ObserveSuccession(LeaderJoinAction action, string successor, long now)
+    {
+        Time(now); Require(State.Plan.SeparateSuccession && State.Phase == LeaderJoinPhase.SuccessionApplying && action == LeaderJoinAction.ObserveSuccession &&
+            Key(successor) && successor != State.Plan.Leader && (State.SuccessionReturn == null || State.SuccessionReturn.Successor == successor), "Exact positive source-office outcome required.");
+        State = State with { Phase = LeaderJoinPhase.SuccessionRecorded, Succession = new(successor, now, State.SuccessionReturn != null) };
+    }
     public void RecordReturn(string successor, int? care, long now)
     {
         Time(now); Require(State.Phase == LeaderJoinPhase.Applying && State.NativeReturn == null && (successor == null || Key(successor)) && Care(care), "Native return can be recorded once.");
@@ -96,7 +125,7 @@ public sealed class LeaderJoinExecution
         State = State with { CareCheckTick = now };
     }
     public void Cancel(LeaderJoinAction action, long now)
-    { Time(now); Require(State.Phase == LeaderJoinPhase.Prepared && action == LeaderJoinAction.ChangeFaction, "Only wholly unchanged preparation may cancel."); State = State with { Phase = LeaderJoinPhase.Cancelled, FinishedTick = now }; }
+    { Time(now); Require(State.Phase == LeaderJoinPhase.Prepared && action == (State.Plan.SeparateSuccession ? LeaderJoinAction.ChangeOffice : LeaderJoinAction.ChangeFaction), "Only wholly unchanged preparation may cancel."); State = State with { Phase = LeaderJoinPhase.Cancelled, FinishedTick = now }; }
     public string Export() => JsonSerializer.Serialize(State);
     public static LeaderJoinExecution Restore(string json)
     {
@@ -105,13 +134,26 @@ public sealed class LeaderJoinExecution
         bool observed = s.Phase is LeaderJoinPhase.Observed or LeaderJoinPhase.Completed, finished = s.Phase is LeaderJoinPhase.Completed or LeaderJoinPhase.Cancelled;
         Require(observed == s.ObservedTick.HasValue && observed == (s.Successor != null) && finished == s.FinishedTick.HasValue &&
             (!observed ? s.ObservedCare == null && !s.FromNormalReturn : Key(s.Successor) && s.Successor != s.Plan.Leader && Care(s.ObservedCare) &&
-                s.ObservedCare.HasValue == s.Plan.Actor.MedicalCare.HasValue && s.ObservedTick >= (s.NativeReturn?.Tick ?? s.Plan.Tick) && s.ObservedTick <= int.MaxValue &&
+                s.ObservedCare.HasValue == s.Plan.Actor.MedicalCare.HasValue && s.ObservedTick >= (s.NativeReturn?.Tick ?? s.Succession?.Tick ?? s.Plan.Tick) && s.ObservedTick <= int.MaxValue &&
                 s.FromNormalReturn == (s.NativeReturn != null) && (s.NativeReturn == null ? s.ObservedCare == s.Plan.Actor.MedicalCare : s.Successor == s.NativeReturn.Successor && s.ObservedCare == s.NativeReturn.MedicalCare)) &&
-            (s.NativeReturn == null || s.Phase is not (LeaderJoinPhase.Prepared or LeaderJoinPhase.Cancelled) &&
-                (s.NativeReturn.Successor == null || Key(s.NativeReturn.Successor)) && Care(s.NativeReturn.MedicalCare) && s.NativeReturn.Tick >= s.Plan.Tick && s.NativeReturn.Tick <= int.MaxValue) &&
+            (s.NativeReturn == null || s.Phase is LeaderJoinPhase.Applying or LeaderJoinPhase.Observed or LeaderJoinPhase.Completed &&
+                (s.NativeReturn.Successor == null || Key(s.NativeReturn.Successor)) && Care(s.NativeReturn.MedicalCare) && s.NativeReturn.Tick >= (s.Succession?.Tick ?? s.Plan.Tick) && s.NativeReturn.Tick <= int.MaxValue) &&
             (s.CareCheckTick == null || observed && s.CareCheckTick >= s.ObservedTick && s.CareCheckTick <= int.MaxValue) &&
             (s.Phase != LeaderJoinPhase.Completed || s.CareCheckTick.HasValue) &&
             (!finished || s.FinishedTick >= (s.CareCheckTick ?? s.ObservedTick ?? s.Plan.Tick) && s.FinishedTick <= int.MaxValue), "Invalid saved leader outcome evidence/clock.");
+        bool successionRecorded = s.Phase is LeaderJoinPhase.SuccessionRecorded or LeaderJoinPhase.Applying or LeaderJoinPhase.Observed or LeaderJoinPhase.Completed;
+        if (!s.Plan.SeparateSuccession)
+            Require(s.Succession == null && s.SuccessionReturn == null && s.Phase is not (LeaderJoinPhase.SuccessionApplying or LeaderJoinPhase.SuccessionRecorded), "Legacy joining cannot acquire fabricated office evidence.");
+        else
+        {
+            Require(successionRecorded == (s.Succession != null) &&
+                (s.SuccessionReturn == null || s.Phase is not (LeaderJoinPhase.Prepared or LeaderJoinPhase.Cancelled) &&
+                    (s.SuccessionReturn.Successor == null || Key(s.SuccessionReturn.Successor)) && s.SuccessionReturn.Tick >= s.Plan.Tick && s.SuccessionReturn.Tick <= int.MaxValue) &&
+                (s.Succession == null || Key(s.Succession.Successor) && s.Succession.Successor != s.Plan.Leader && s.Succession.Tick >= (s.SuccessionReturn?.Tick ?? s.Plan.Tick) &&
+                    s.Succession.Tick <= int.MaxValue && s.Succession.FromNormalReturn == (s.SuccessionReturn != null) &&
+                    (s.SuccessionReturn == null || s.Succession.Successor == s.SuccessionReturn.Successor) &&
+                    (s.Successor == null || s.Successor == s.Succession.Successor)), "Invalid split succession lineage or attribution.");
+        }
         var p = s.Plan; return new() { State = s with { Plan = p with { SourceRoster = Array.AsReadOnly(p.SourceRoster.ToArray()), DestinationRoster = Array.AsReadOnly(p.DestinationRoster.ToArray()) } } };
     }
 }

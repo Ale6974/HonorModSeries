@@ -416,4 +416,10 @@
   <LJ_Cancel>미변경 준비만 취소</LJ_Cancel>
   <LJ_Completed>{0} 개인 합류 완료: 실제 출발 세력 후임과 {1} 저장 배정을 확인했습니다. 상단 이동이나 향후 맵 출현을 확인한 것은 아닙니다.</LJ_Completed>
   <LJ_Unavailable>개인 합류가 불가하거나 미완료입니다. 원 의도와 주민을 보존합니다. 지원 저장 지도자·존속 출발 세력·자신의 관리청·상호 외교·재고/명부·알림 및 정확히 관측한 후임/의료 상태를 확인하세요. 불확실한 호출을 재실행하지 않았습니다.</LJ_Unavailable>
+  <LJ_Stage>기록된 집행 단계: {0}</LJ_Stage>
+  <LJ_Prepared>미변경 개인 동의 준비</LJ_Prepared>
+  <LJ_Applying>소속 변경 호출 시작·불확실 호출 반복 금지</LJ_Applying>
+  <LJ_Observed>목적지 소속·후임 관측·의료/배정 확인</LJ_Observed>
+  <LJ_SuccessionApplying>원 세력 승계 시작·실제 현재 직위의 긍정 관측만 허용</LJ_SuccessionApplying>
+  <LJ_SuccessionRecorded>원 세력 후임 기록됨·개인 소속 변경은 아직 시작 전</LJ_SuccessionRecorded>
 </LanguageData>
