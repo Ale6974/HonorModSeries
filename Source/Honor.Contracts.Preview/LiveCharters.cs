@@ -222,24 +222,31 @@ public sealed partial class LiveCharterLedger : GameComponent
     public void RequestRelease(string id)
     {
         Execute(() => {
-            if (Book.Charter(id).NpcAuthority != null) throw new ArgumentException("NPC subcharters require bilateral current NPC authority.");
-            var release = Book.Charter(id);
-            if (!Book.Entity(release.Terms.Subject).Player && Book.PlayerFollowers().Any(c => Book.IsBelow(c.Terms.Subject, release.Terms.Subject)))
-            { Messages.Message("NS_ReleaseBlocked".Translate(), MessageTypeDefOf.RejectInput); return; }
-            if (Current.Game.GetComponent<TributePaymentLedger>().HasPending(id)) throw new ArgumentException("Resolve pending physical delivery before release.");
-            var charter = Book.Charter(id);
-            string npcId = Book.Entity(charter.Terms.Liege).Player ? charter.Terms.Subject : charter.Terms.Liege;
-            var binding = bindings.Single(b => b.Identity == npcId);
-            var faction = binding.FactionGroup ? binding.OriginalFaction : binding.Settlement?.Faction;
-            // No player-facing button can fabricate the NPC's release signature.
-            if (faction?.leader == null || faction.leader.Dead || faction.leader.Faction != faction)
-                throw new ArgumentException("No current NPC representative.");
-            if (!charter.PlayerReleaseTick.HasValue) Book.ConsentToRelease(id, true, Find.TickManager.TicksGame, Observe());
-            if (faction.GoodwillWith(Faction.OfPlayer) < 20)
-            { Messages.Message("HCL_ReleaseRefused".Translate(), MessageTypeDefOf.RejectInput); return; }
-            Book.ConsentToRelease(id, false, Find.TickManager.TicksGame, Observe());
-            Current.Game.GetComponent<TributePaymentLedger>().Synchronize(id);
+            var review = ReviewRelease(id); var game = context;
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("CR_Confirm".Translate(review.Owner.Name, review.Leader.LabelShortCap), () => Execute(() => {
+                if (game != Current.Game) throw new ArgumentException("Review the current game.");
+                var fresh = ReviewRelease(id);
+                if (fresh != review) throw new ArgumentException("Release authority, terms or custody changed.");
+                var next = CharterBook.Restore(fresh.Plan.After); var payments = TributeLedger.Restore(fresh.Plan.PaymentsAfter);
+                finalConsents.ValidateBook(next); amendments.ValidateBook(next); playerRenewals.ValidatePair(amendments, next);
+                townLosses.ValidateBook(next); ownershipReturns.ValidatePair(townLosses, next);
+                context.GetComponent<CharterProtectionLedger>().Ledger.ValidateBook(next);
+                // Both models are validated before either assignment; no native callbacks or physical goods writes.
+                Book = next; context.GetComponent<TributePaymentLedger>().CommitCharterRelease(payments);
+            })));
         });
+    }
+    private (CharterReleaseReview Plan, Faction Owner, Pawn Leader) ReviewRelease(string id)
+    {
+        var payments = context.GetComponent<TributePaymentLedger>(); var towns = context.GetComponent<TerritoryAdministrationLedger>();
+        if (payments.RestoreFailed || towns.RestoreFailed || context.GetComponent<PlayerPoliticsLedger>().RestoreFailed ||
+            context.GetComponent<RealmAdministrationLedger>().RestoreFailed || context.GetComponent<UnionPoliticsLedger>().RestoreFailed)
+            throw new ArgumentException("Current political or payment records unavailable.");
+        var c = Book.Charter(id); var binding = Binding(Book.Entity(c.Terms.Subject).Player ? c.Terms.Liege : c.Terms.Subject);
+        var owner = binding.FactionGroup ? binding.OriginalFaction : binding.Settlement?.Faction;
+        var decision = NpcDecisionAuthority.Read(owner);
+        var plan = CharterReleases.Review(Book, payments.Ledger, towns.Ledger, id, decision, Find.TickManager.TicksGame, Observe());
+        return (plan, owner, owner.leader);
     }
 }
 

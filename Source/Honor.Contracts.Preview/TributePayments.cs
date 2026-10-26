@@ -49,6 +49,7 @@ public sealed class TributePaymentLedger : GameComponent
     private string snapshot;
     private List<TributeTransfer> transfers = [];
     public TributeLedger Ledger { get; private set; } = new();
+    internal void CommitCharterRelease(TributeLedger prepared) => Ledger = prepared;
     public bool RestoreFailed { get; private set; }
     public TributePaymentLedger(Game game) { }
     private LiveCharterLedger Charters => Current.Game.GetComponent<LiveCharterLedger>();

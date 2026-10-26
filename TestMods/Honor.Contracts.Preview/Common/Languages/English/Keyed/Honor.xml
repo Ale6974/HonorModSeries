@@ -41,7 +41,7 @@
   <HCL_Unavailable>Charter action unavailable: check the current owner, representative, diplomacy, pending offers and existing bonds.</HCL_Unavailable>
   <HCL_NpcAgreed>The NPC representative accepted the proposed record. Review the terms and confirm your own consent separately.</HCL_NpcAgreed>
   <HCL_NpcDeclined>The NPC representative declined. This initial negotiation policy requires at least {0} goodwill for this role.</HCL_NpcDeclined>
-  <HCL_ReleaseRefused>The NPC representative declined release; the charter remains active. This initial policy requires 20 goodwill.</HCL_ReleaseRefused>
+  <HCL_ReleaseRefused>The current NPC release decision is unavailable. Ordinary authority requires at least 50 goodwill and reciprocal nonhostility; collective procedures need a separate decision.</HCL_ReleaseRefused>
   <HCL_Target>Settlement: {0} · current faction: {1}</HCL_Target>
   <HCL_Terms>New offers can be drafted before NPC response. Each record below shows its own immutable terms. A proposal or NPC signature alone does not activate allegiance or physical payment. Military/protection request enforcement remains separate.</HCL_Terms>
   <HCL_SeekLiege>Request this settlement's faction as liege of all player colonies</HCL_SeekLiege>
@@ -467,4 +467,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <CN_PlayerTitle>Renegotiate your current vassal charter</CN_PlayerTitle>
   <CN_PlayerLimits>For an active, unsuspended player vassal already sharing the same ordinary liege's diplomacy. Every existing NPC follower must already belong to that same actual realm. The current ruler must accept mutual release and new terms using actual same-party tribute history. Confirmation updates the signed charter and political contract reference together. No city, person, goods or diplomacy is moved.</CN_PlayerLimits>
   <CN_PlayerWarning>End the old charter by mutual consent and sign a new one under the SAME liege? Old debts, signatures, follower contracts and war history remain. Physical tribute for the new charter must be enabled separately. The old charter's supplementary protection agreement ends with it; review a separate agreement for the new charter. Native player control, actual realm and diplomacy remain unchanged.</CN_PlayerWarning>
+  <CR_Confirm>End this charter by mutual agreement with {0}, represented by {1}? Current ordinary authority requires at least 50 goodwill and reciprocal nonhostility. Existing debts and descendants remain. Tribute closes at the agreed time. This does not move cities, change allegiance or grant independence; review any later political transition separately.</CR_Confirm>
 </LanguageData>
