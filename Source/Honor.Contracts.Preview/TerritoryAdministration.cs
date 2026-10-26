@@ -30,7 +30,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     public TerritoryTransferLedger Ledger { get; private set; } = new();
     public bool RestoreFailed { get; private set; }
     private LiveCharterLedger Charters => Current.Game.GetComponent<LiveCharterLedger>();
-    public TerritoryAdministrationLedger(Game game) { }
+    private readonly Game ownerGame;
+    public TerritoryAdministrationLedger(Game game) { ownerGame = game; }
     private string AdministrationId => Current.Game.GetComponent<RealmAdministrationLedger>().OwnedFaction?.GetUniqueLoadID();
     internal bool ReservesResident(Pawn pawn) => references?.Any(r => r?.Residents?.Pawns?.Contains(pawn) == true &&
         (RestoreFailed || r.Residents.Started || Ledger.Transfers.Any(t => t.Id == r.Id && t.Phase == TerritoryTransferPhase.Prepared))) == true;

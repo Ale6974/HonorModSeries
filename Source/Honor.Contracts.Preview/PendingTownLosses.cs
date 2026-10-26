@@ -19,6 +19,7 @@ public sealed partial class TerritoryAdministrationLedger
     internal void ValidatePoliticalLosses(AllegianceTransitionLedger journal)
     {
         pendingTownLosses.ValidatePair(Charters.Book, Ledger); politicalTownLosses.ValidatePair(Charters.Book, Ledger);
+        pendingTownLosses.ValidateUpperPair(Charters.LossArchive);
         pendingTownLosses.ValidatePolitical(journal); politicalTownLosses.ValidatePolitical(journal);
     }
     private void ExposePendingTownLosses()
@@ -33,6 +34,7 @@ public sealed partial class TerritoryAdministrationLedger
     }
     private void StandaloneLossReady()
     {
+        if (Current.Game != ownerGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Review this city journal's current game.");
         var political = Current.Game.GetComponent<PoliticalTransitionLedger>(); var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (RestoreFailed || Charters.RestoreFailed || Charters.UnresolvedTownLosses || nativeExecutionDepth != 0 || UnionWarCouncil.HasExternalProvider ||
             political.RestoreFailed || political.Executing || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges ||
@@ -41,6 +43,36 @@ public sealed partial class TerritoryAdministrationLedger
             throw new ArgumentException("Only a standalone city journal outside native execution may reconcile an observed empty leaf loss.");
         ValidatePoliticalLosses(political.Journal);
         if (political.Journal.Pending) political.ReviewTownLossContext();
+    }
+    private void ValidatePendingUpper(TownLossProof proof)
+    {
+        if (proof.Before != Charters.Book.Export() || Charters.UnresolvedTownLosses || proof.Kind != TownLossKind.Destroyed ||
+            proof.ScopeRoot != null || proof.PriorScopes != null || proof.ClosureTick.HasValue || proof.Resolution != null)
+            throw new ArgumentException("Only an isolated unchanged original upper scope is supported.");
+        var owners = Find.FactionManager.AllFactionsListForReading.Where(f => f != null && f.GetUniqueLoadID() == proof.OwnerAtLoss).Take(2).ToArray();
+        if (owners.Length != 1 || owners[0].GetType() != typeof(Faction) || owners[0].def == null || owners[0].def.GetType() != typeof(FactionDef) ||
+            !owners[0].def.humanlikeFaction || owners[0].def.permanentEnemy || owners[0].IsPlayer || owners[0].Hidden || owners[0].temporary ||
+            owners[0].defeated || !owners[0].HasGoodwill || owners[0].def.royalTitleTags?.Count > 0 || owners[0].def.defName == UnionPoliticsLedger.UnionDefName)
+            throw new ArgumentException("Unsupported actual upper realm; no collective authority is inferred.");
+        var book = Charters.Book; var root = book.Charter(proof.Root);
+        var descendants = book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active && book.IsBelow(c.Terms.Subject, proof.Territory)).ToArray();
+        if (descendants.Length == 0 || descendants.Any(c => c.PlayerReleaseTick.HasValue || c.NpcReleaseTick.HasValue))
+            throw new ArgumentException("Exact unchanged surviving subtree required.");
+        void Survivor(string party)
+        {
+            var b = Charters.Binding(party); var city = b.Settlement; var entity = book.Entity(party);
+            if (b.PlayerGroup || b.FactionGroup || city == null || city.GetType() != typeof(Settlement) || city.Destroyed ||
+                !Find.WorldObjects.AllWorldObjects.Contains(city) || city.Faction != owners[0] || !Ledger.VerifiedOwner(party, entity.NativeOwner, proof.OwnerAtLoss))
+                throw new ArgumentException("Surviving actual ownership or original higher party changed.");
+        }
+        foreach (var c in descendants) Survivor(c.Terms.Subject);
+        if (!book.Entity(root.Terms.Liege).Player) Survivor(root.Terms.Liege);
+        else
+        {
+            var b = Charters.Binding(root.Terms.Liege);
+            if (root.Terms.Liege != Charters.PlayerIdentity || !b.PlayerGroup || b.FactionGroup || b.OriginalFaction != Faction.OfPlayer ||
+                book.Entity(root.Terms.Liege).NativeOwner != Faction.OfPlayer.GetUniqueLoadID()) throw new ArgumentException("Original higher player party changed.");
+        }
     }
     private static EmptyTownStock Empty(Settlement city)
     {
@@ -62,7 +94,6 @@ public sealed partial class TerritoryAdministrationLedger
             reference.From == null || reference.From.GetUniqueLoadID() != t.FromOwner || reference.From.IsPlayer || reference.Target == null || reference.Target.IsPlayer ||
             reference.Target.GetUniqueLoadID() != t.TargetOwner || city.Faction != reference.From && city.Faction != reference.Target ||
             c.Phase != RecordedCharterPhase.Active || !Charters.Book.PlayerManaged(c) ||
-            Charters.Book.Charters.Any(child => child.Phase == RecordedCharterPhase.Active && child.Terms.Liege == t.Territory) ||
             Charters.Book.Charters.Any(offer => Charters.Book.Phase(offer, Find.TickManager.TicksGame) == RecordedCharterPhase.Offered &&
                 (offer.Terms.Subject == t.Territory || offer.Terms.Liege == t.Territory))) return null;
         var stock = Empty(city);
@@ -74,7 +105,15 @@ public sealed partial class TerritoryAdministrationLedger
         string context = political.Journal.Pending ? political.ReviewTownLossContext() : null;
         if (context != null && (!political.Journal.Current.Followers.Contains(t.Charter) ||
             PlayerAllegiance.Restore(political.Journal.Current.After).State.Authority != t.TargetOwner)) return null;
-        return new(Current.Game, city, new(t.Id, city.GetUniqueLoadID(), city.Faction.GetUniqueLoadID(), label, now, now, Charters.Book.Export(), Ledger.Export(), stock, PoliticalBefore: context));
+        TownLossProof upper = null;
+        if (Charters.Book.Charters.Any(child => child.Phase == RecordedCharterPhase.Active && child.Terms.Liege == t.Territory))
+        {
+            if (context != null || Charters.LossArchive.Records.Count >= TownSuccessionArchive.Capacity) return null;
+            upper = new(t.Charter, t.Territory, t.BaselineOwner, city.Faction.GetUniqueLoadID(), label, now, now, Charters.Book.Export());
+            ValidatePendingUpper(upper); Charters.LossArchive.CloseForObservation(upper);
+        }
+        return new(Current.Game, city, new PendingTownLoss(t.Id, city.GetUniqueLoadID(), city.Faction.GetUniqueLoadID(), label, now, now, Charters.Book.Export(), Ledger.Export(), stock,
+            PoliticalBefore: context) { UpperScope = upper });
     }
     internal void RecordPendingDestruction(Settlement city, PendingTownLossCandidate candidate)
     {
@@ -84,6 +123,7 @@ public sealed partial class TerritoryAdministrationLedger
             city.Faction?.GetUniqueLoadID() != candidate.Proof.Owner || Empty(city) != candidate.Proof.Stock)
             throw new ArgumentException("Normal native destruction outcome is not verified.");
         var proof = candidate.Proof with { ObservedTick = Find.TickManager.TicksGame };
+        if (proof.UpperScope != null) proof = proof with { UpperScope = proof.UpperScope with { ObservedTick = proof.ObservedTick } };
         var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
         if (proof.PoliticalBefore != (political.Journal.Pending ? political.ReviewTownLossContext() : null)) throw new ArgumentException("Political intent changed during native destruction.");
         var observed = pendingTownLosses.Observe(proof, Charters.Book, Ledger); observed.ValidatePolitical(political.Journal);
@@ -104,6 +144,7 @@ public sealed partial class TerritoryAdministrationLedger
     {
         StandaloneLossReady();
         var proof = pendingTownLosses.Records.Single(r => r.Transfer == id && r.ResolvedTick == null); VerifyDestructionNow(proof);
+        if (proof.UpperScope != null) ValidatePendingUpper(proof.UpperScope);
         return new(Current.Game, pendingTownLosses.Review(id, Charters.Book, Ledger, Find.TickManager.TicksGame), proof.Label);
     }
     public void ApplyPendingTownLoss(LivePendingTownLossReview reviewed)
@@ -114,15 +155,24 @@ public sealed partial class TerritoryAdministrationLedger
             var fresh = ReviewPendingTownLoss(reviewed.Plan.Transfer);
             if (fresh.Plan != reviewed.Plan) throw new ArgumentException("Loss review changed.");
             var result = pendingTownLosses.Commit(fresh.Plan, Charters.Book, Ledger, Find.TickManager.TicksGame);
+            var upper = result.Archive.StageUpper(fresh.Plan.Transfer, Charters.LossArchive, result.Book);
+            result.Archive.ValidateUpperPair(upper);
             var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
             bool coordinated = pendingTownLosses.Records.Single(r => r.Transfer == fresh.Plan.Transfer).PoliticalBefore != null;
             var nextPolitical = coordinated ? political.StageTownLoss(result.Archive, result.Book, result.Ledger, fresh.Plan.Transfer, Find.TickManager.TicksGame) : null;
             politicalTownLosses.ValidatePair(result.Book, result.Ledger);
             politicalTownLosses.ValidatePolitical(nextPolitical ?? political.Journal);
-            Charters.ReplaceAfterPendingTownLoss(fresh.Plan.BookBefore, result.Book);
+            Charters.ReplaceAfterPendingUpperLoss(fresh.Plan.BookBefore, result.Book, upper);
             Ledger = result.Ledger; pendingTownLosses = result.Archive;
             if (nextPolitical != null) political.CommitTownLoss(nextPolitical);
             Messages.Message("PL_Completed".Translate(fresh.Label), MessageTypeDefOf.NeutralEvent);
+            var scope = pendingTownLosses.Records.Single(r => r.Transfer == fresh.Plan.Transfer).UpperScope;
+            if (scope != null)
+            {
+                Messages.Message("PU_Continue".Translate(fresh.Label), MessageTypeDefOf.NeutralEvent);
+                try { Find.WindowStack.Add(new TownSuccessionWindow(scope.Root)); }
+                catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Loss reconciled; reopen town succession review. " + e.GetType().Name); }
+            }
         }
         catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Pending destruction not reconciled; original journals retained. " + e.GetType().Name); Messages.Message("PL_Blocked".Translate(), MessageTypeDefOf.RejectInput); }
     }
@@ -130,6 +180,7 @@ public sealed partial class TerritoryAdministrationLedger
     {
         DrawIndependentTownLosses(list, charter);
         list.Label("PL_Limits".Translate());
+        list.Label("PU_Limits".Translate());
         if (RestoreFailed) return;
         foreach (var proof in pendingTownLosses.Records.Where(r => r.ResolvedTick == null && (charter == null || Ledger.Transfer(r.Transfer).Charter == charter)).ToArray())
         {

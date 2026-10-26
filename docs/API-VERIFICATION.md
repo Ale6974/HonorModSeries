@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## Prepared 상위 도시 소실의 원본/지연 확정 연결 — 0.3.41 / 2026-10-26
+
+설치 Version.txt=1.7.4985 rev1269, 루트 RimWorld.runtimeconfig.json=net10.0 /10.0.13-waylithclr.dev를 재확인했다. 기존 검증된 WorldObject.Destroy normal-return Prefix/Postfix와 Settlement 명부/holder·현재 faction 참조만 사용하며 새 native 호출/IL patch는 없다. 1.6은 pinned1.6.4871/net472 참조 빌드이며 로컬 설치된1.6으로 표현하지 않는다.
+
+기존 pending leaf observer를 범위 증거가 있는 isolated upper 분기로 확장했다. 기존 leaf closure API는 그대로다. native 원본관찰→현재 전체 descendant 실제 realm/provenance/higher 확인→별도 명시적 book/transfer/loss-archive swap→현재 대표의 별도 succession commit을 연결한다. native 도시/pawn/재고/외교를 쓰지 않는다. 새 UpperScope/ClosureTick은 null 생략 init 속성이라 옛 positional 생성자와 JSON/hash bytes를 유지한다. paired restore가 원본 pending witness/실제 terminal receipt/upper scope를 상호 확인한다. Game/engine은 실행하지 않고 코드·규칙·타깃 빌드/패키지만 검사한다.
+
 ## 영지 소실 승계의 실제 NPC 소유 세력 분리 — 0.3.40 / 2026-10-26
 
 기존 승계 review는 PlayerPolitics.TerritoryAuthority를 소실 NPC 도시의 대표 세력으로 사용했다. 계약은 체결됐지만 실제 도시가 아직 이전되지 않았거나 플레이어의 정치적 소속이 다르면, 올바른 원 NPC 세력/생존 하위가 그대로 있어도 검토가 불가능했다. 이제 positive loss archive의 OwnerAtLoss로 exact registered NPC faction을 찾고 기존 NpcDecisionAuthority의 현재 ordinary 대표 검사를 적용한다. 플레이어의 현재 물리적 authority를 NPC 소유권/동의로 간주하지 않는다. 새 native API/IL patch/owner writes는 없다.

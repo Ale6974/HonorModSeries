@@ -18,6 +18,12 @@ public sealed partial class LiveCharterLedger
     internal IReadOnlyCollection<TownLossProof> TownLosses => townLosses.Records;
     internal bool TownLossReviewRoot(string id) => townLosses.IsReviewRoot(id);
     internal bool UnresolvedTownLosses => townLosses.HasUnresolved;
+    internal TownSuccessionArchive LossArchive => townLosses;
+    internal void ReplaceAfterPendingUpperLoss(string before, CharterBook after, TownSuccessionArchive staged)
+    {
+        if (RestoreFailed || Book.Export() != before) throw new ArgumentException("Original consent changed.");
+        staged.ValidateBook(after); Book = after; townLosses = staged;
+    }
     private void ExposeTownLosses()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) townLossSnapshot = townLosses.Export();
@@ -108,14 +114,17 @@ public sealed partial class LiveCharterLedger
 
 public sealed class TownSuccessionWindow : Window
 {
+    private readonly Game context = Current.Game;
     private string root;
     private LiveTownSuccessionReview review;
     private Vector2 scroll;
     private float height = 1200;
     public TownSuccessionWindow() { forcePause = true; doCloseX = true; doCloseButton = true; absorbInputAroundWindow = true; }
+    internal TownSuccessionWindow(string initialRoot) : this() { root = initialRoot; }
     public override Vector2 InitialSize => new(850, 760);
     public override void DoWindowContents(Rect rect)
     {
+        if (context != Current.Game) { Widgets.Label(rect, "ND_Unavailable".Translate()); return; }
         var ledger = Current.Game.GetComponent<LiveCharterLedger>();
         var area = new Rect(0, 0, rect.width, rect.height - 45);
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));

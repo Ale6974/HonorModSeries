@@ -195,6 +195,7 @@ assertions += TownSuccessionAuthorityTests.Run();
 assertions += TownLossCascadeTests.Run();
 assertions += TownLossMergeTests.Run();
 assertions += PendingTownLossTests.Run();
+assertions += PendingUpperTownLossTests.Run();
 assertions += PoliticalTownLossTests.Run();
 assertions += IndependentTownLossTests.Run();
 assertions += FactionMergerProposalTests.Run();

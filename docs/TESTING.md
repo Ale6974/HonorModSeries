@@ -1,5 +1,13 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.41 — 보류 이전 중 상위 도시 소실과 별도 승계 (2026-10-26)
+
+- 신규27개 assertion은 공통 실제 book/transfer/pending/upper archives에서 관찰→지연 명시적 정리→세 기록 저장 왕복→전체 후손 별도 승계를 연결한다. 실제 소실10/관찰12/정리20/승계30을 구분하고 원 하위 조건·서명/actors·채무 근거·깊은 계약/native owner를 유지한다.
+- missing/잘못된 paired slot·확정 시각·owner/label·범위·정치 context·overlap·미리 확정된 scope·stale plan을 거절하며 원 source bytes 불변을 검사한다. null 새 필드는 옛 JSON에 생기지 않고 children을 기존 leaf API로 우회하지 않는다. 실제 normal-return observer/현재 동일 realm·전체 소유권/provenance/higher 검증/atomic swap/승계 창 연결은 코드 검토와 양 Preview 빌드로 검사한다.
+- 1.6/net472·1.7/net10 전체 규칙 호스트: Contracts4,095 + Honor/runtime20,093 = 대상별24,188 assertion. EN/KO430키/자리표시자·FactionDef12필드. 패키지·설치 결과는 아래 완료 기록에 추가한다. 전체 합병/정당한 독립/미지원 보존·집단 의결·나머지 소실/복구는 남으며1단계 완료로 계산하지 않는다.
+
+- 완료: 양 전체 빌드 경고/오류0,6모드×두 런타임 선택/DLL 허용 목록 통과. 최종ZIP SHA256 27B1043C3D83422ABA8546C9EB502A72F6EB6319D5E6B088A0BCF3B6C83500E1. 로컬 설치는 실행 중인 RimWorld를 감지해 쓰기 전에 보류했다. 게임/설정/활성화/언어를 변경하지 않았다. 이번ZIP/source를 로컬 설치 완료로 표현하지 않는다.
+
 ## Contracts 0.3.40 — 원 NPC 소유 세력에 따른 실제 승계 (2026-10-26)
 
 - 신규29개 assertion은 실제 공통 book/loss archive에서 원 player 상위와 원 NPC 상위 두 경우를 검사한다. 현재 NPC 대표/실제 owner를 player party와 분리해 정상 review→원자 book/archive 교체→기존 저장 왕복을 확인했다. player 상위는 실제 player party, NPC 상위는 같은 기록된 NPC realm이어야 한다.

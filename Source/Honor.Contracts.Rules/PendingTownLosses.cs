@@ -10,7 +10,10 @@ public sealed record EmptyTownStock(bool Visited, bool ContainerExists, int Next
 }
 public sealed record PendingTownLoss(string Transfer, string City, string Owner, string Label, long LossTick, long ObservedTick,
     string BookBefore, string TransfersBefore, EmptyTownStock Stock, long? ResolvedTick = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string PoliticalBefore = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string PoliticalBefore = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public TownLossProof UpperScope { get; init; }
+}
 public sealed record PendingTownLossPlan(string Transfer, long Tick, string Proof, string BookBefore, string TransfersBefore, string BookAfter, string TransfersAfter);
 public sealed record PendingTownLossSave(int Version, PendingTownLoss[] Records);
 
@@ -36,7 +39,15 @@ public sealed class PendingTownLossArchive
             book.Entities.Any(e => e.Player && (e.NativeOwner == t.FromOwner || e.NativeOwner == t.TargetOwner)) ||
             (t.StockProof == null ? r.Stock.Visited || r.Stock.ContainerExists || r.Stock.NextRestockTick != -1 : t.StockProof != r.Stock.Proof))
             throw new ArgumentException("Witness must match one prepared empty NPC leaf transfer and its original stock state.");
-        var copy = CharterBook.Restore(book.Export()); copy.CloseDestroyedLeaf(t.Charter, t.Territory, t.BaselineOwner, r.LossTick, r.ObservedTick, true);
+        if (r.UpperScope == null)
+        { var copy = CharterBook.Restore(book.Export()); copy.CloseDestroyedLeaf(t.Charter, t.Territory, t.BaselineOwner, r.LossTick, r.ObservedTick, true); }
+        else
+        {
+            var u = r.UpperScope;
+            if (r.PoliticalBefore != null || u != new TownLossProof(t.Charter, t.Territory, t.BaselineOwner, r.Owner, r.Label, r.LossTick, r.ObservedTick, r.BookBefore))
+                throw new ArgumentException("Only an exact isolated original upper scope may accompany this pending native destruction.");
+            new TownSuccessionArchive().CloseForObservation(u); // Structural scope validation, never remove the leaf API guard.
+        }
         if (r.PoliticalBefore != null)
         {
             var intent = AllegianceTransitionLedger.Restore(r.PoliticalBefore); var current = intent.Current;
@@ -64,9 +75,10 @@ public sealed class PendingTownLossArchive
         if (!records.TryGetValue(id, out var r) || r.ResolvedTick != null || now < r.ObservedTick || now > int.MaxValue || now < book.LastTick || now < ledger.LastTick ||
             book.Export() != r.BookBefore || ledger.Export() != r.TransfersBefore) throw new ArgumentException("No unchanged pending destruction to review.");
         var source = Source(r); string proof = Digest(r);
-        source.Book.CloseDestroyedLeaf(source.Transfer.Charter, source.Transfer.Territory, source.Transfer.BaselineOwner, r.LossTick, now, true);
+        var after = r.UpperScope == null ? source.Book : new TownSuccessionArchive().CloseForObservation(r.UpperScope with { ClosureTick = now });
+        if (r.UpperScope == null) after.CloseDestroyedLeaf(source.Transfer.Charter, source.Transfer.Territory, source.Transfer.BaselineOwner, r.LossTick, now, true);
         source.Ledger.ResolveDestroyed(id, new(proof, r.Owner, r.LossTick, r.ObservedTick), now);
-        return new(id, now, proof, book.Export(), ledger.Export(), source.Book.Export(), source.Ledger.Export());
+        return new(id, now, proof, book.Export(), ledger.Export(), after.Export(), source.Ledger.Export());
     }
     public (CharterBook Book, TerritoryTransferLedger Ledger, PendingTownLossArchive Archive) Commit(PendingTownLossPlan plan, CharterBook book, TerritoryTransferLedger ledger, long now)
     {
@@ -91,6 +103,29 @@ public sealed class PendingTownLossArchive
         }
         if (ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Destroyed && (!records.TryGetValue(t.Id, out var r) || r.ResolvedTick == null)))
             throw new ArgumentException("Destroyed transfer requires its recorded native witness.");
+    }
+    public TownSuccessionArchive StageUpper(string id, TownSuccessionArchive losses, CharterBook after)
+    {
+        RuntimeCompat.NotNull(losses); var r = records.TryGetValue(id, out var found) ? found : throw new ArgumentException("Unknown pending loss.");
+        if (r.UpperScope == null) return losses;
+        if (!r.ResolvedTick.HasValue) throw new ArgumentException("Resolve original pending destruction before registering the upper scope.");
+        Source(r);
+        return losses.Observe(r.UpperScope with { ClosureTick = r.ResolvedTick }, after);
+    }
+    public void ValidateUpperPair(TownSuccessionArchive losses)
+    {
+        RuntimeCompat.NotNull(losses);
+        foreach (var r in records.Values.Where(r => r.UpperScope != null))
+        {
+            Source(r);
+            var actual = losses.Records.SingleOrDefault(p => p.Root == r.UpperScope.Root);
+            if (!r.ResolvedTick.HasValue ? actual != null : actual == null ||
+                actual with { Resolution = null } != r.UpperScope with { ClosureTick = r.ResolvedTick })
+                throw new ArgumentException("Delayed upper scope differs from its original pending native witness/closure time.");
+        }
+        foreach (var p in losses.Records.Where(p => p.ClosureTick.HasValue))
+            if (records.Values.Count(r => r.UpperScope?.Root == p.Root && r.ResolvedTick == p.ClosureTick) != 1)
+                throw new ArgumentException("A delayed upper closure requires its exact resolved pending witness.");
     }
     public void ValidatePolitical(AllegianceTransitionLedger journal)
     {

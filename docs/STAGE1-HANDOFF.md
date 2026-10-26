@@ -1,4 +1,10 @@
-# 1단계 예약 개발 인수인계 — 0.3.40 / 2026-10-26
+# 1단계 예약 개발 인수인계 — 0.3.41 / 2026-10-26
+
+## 최신 인수인계 — 0.3.41 / 2026-10-26
+
+독립 Prepared ActiveCharter 빈 상위 도시의 정상 파괴를 PendingTownLoss.UpperScope로 실제 관찰하고 명시적 정리/paired upper archive를 연결했다. 원본 소실/관찰과 나중 정리(ClosureTick)를 분리하며 pending ledgerDestroyed/Book rootLost/archive가 모두 맞아야 복원한다. Root incoming만 닫고 children은 보존; 원 recorded NPC realm과 원 higher·전체 descendant 실제 owner/provenance를 다시 확인한다. 그 다음 기존 TownSuccessionWindow(root)를 열고 현 대표 별도 승계로 연결한다. currentGame guard/legacy leaf semantics/null fields/positional API 유지. 아직 정치 전환 중 upper·혼합/재진입/중단/후속 재탈환이나 전체 합병/정당한 독립을 구현했다고 부르지 않는다.
+
+양 타깃 규칙 Contracts4095+Honor/runtime20093=24188개, EN/KO430키·FactionDef12. ZIP 해시는 TESTING의 이번 완료 기록을 따른다. 실행 중인 RimWorld 때문에0.3.41 로컬 설치는 쓰기 전 보류했다. 다음 실행에서 게임이 없을 때 백업 설치하고32파일/설정 해시를 확인한다; 게임을 종료시키지 않는다. 남은 노력은35/80/95/90/100/70%, 큰 묶음7~9/5~7/6~8/5~7/6~8/4~6이다. 다음은 아래 큰 잔여 우선이며, 이미 완성한 isolated pending upper 경로를 다시 구현하거나 전체 upper 정치 경로로 과장하지 않는다. 반복honor-1은 ACTIVE30분 그대로다.
 
 honor-1은30분 반복/ACTIVE다. 중복 예약/동시 집행 없이 main·AGENTS·확정 결정·STATUS를 먼저 읽는다.1단계는 미완료다.
 
@@ -30,6 +36,6 @@ honor-1은30분 반복/ACTIVE다. 중복 예약/동시 집행 없이 main·AGENT
 
 ## 검사·게시·설치
 
-1.6은 pinned1.6.4871/net472,1.7은 설치1.7.4985/net10.0이다. 코드·규칙·영한·패키지만 검사하고 게임/엔진은 시작하지 않는다. 양 전체 빌드 대상별 Contracts4068 + Honor/runtime20093 =24161개, 공용 EN/KO428키와 FactionDef12필드다. 패키지/설치·해시는 TESTING 최신 기록을 따른다. 검증 소스는 공개 main, 로컬 설치는 게임 없는 상태에서 백업 후 진행하고 활성화/언어/Steam은 유지한다. 질문은 가능한 독립 작업 뒤 모으고 없는 답변으로 동의를 꾸미지 않는다.
+1.6은 pinned1.6.4871/net472,1.7은 설치1.7.4985/net10.0이다. 코드·규칙·영한·패키지만 검사하고 게임/엔진은 시작하지 않는다. 양 전체 빌드 대상별 Contracts4095 + Honor/runtime20093 =24188개, 공용 EN/KO430키와 FactionDef12필드다. 패키지/설치·해시는 TESTING 최신 기록을 따른다. 검증 소스는 공개 main, 로컬 설치는 게임 없는 상태에서 백업 후 진행하고 활성화/언어/Steam은 유지한다. 질문은 가능한 독립 작업 뒤 모으고 없는 답변으로 동의를 꾸미지 않는다.
 
 잔여 노력 추정:1단계35%(7~9묶음),2단계80%(5~7),3단계95%(6~8),4단계90%(5~7),5단계100%(6~8),6단계70%(4~6). 이번은 실제 소실 재연결의 지원 범위 확장이며 상위/진행 중·재진입/재탈환과 전체 합병 등 큰 묶음 완료로 세지 않는다. 확정 명세의 실제 실행·저장/복구·영한 안내·양 타깃 기준을 충족할 때만 완료 보고/반복 종료한다.

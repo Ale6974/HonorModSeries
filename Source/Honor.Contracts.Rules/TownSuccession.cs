@@ -11,7 +11,10 @@ public sealed record TownLossProof(string Root, string Territory, string Baselin
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string CapturingOwner = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ScopeRoot = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] int? ScopeOrdinal = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string[] PriorScopes = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string[] PriorScopes = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public long? ClosureTick { get; init; }
+}
 public sealed record TownSuccessionPlan(string Root, string Before, string After, long Tick, string Parent,
     NpcCharterAuthority Authority, Dictionary<string, string> Replacements, string[] Descendants,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ScopePrefix = null,
@@ -33,7 +36,9 @@ public sealed partial class TownSuccessionArchive
     {
         if (proof == null || !Key(proof.Root) || !Key(proof.Territory) || !Key(proof.BaselineOwner) || !Key(proof.OwnerAtLoss) ||
             string.IsNullOrWhiteSpace(proof.Label) || proof.Label.Length > 200 || proof.LossTick < 0 || proof.ObservedTick < proof.LossTick || proof.ObservedTick > int.MaxValue ||
-            !RuntimeCompat.IsDefined(proof.Kind) || (proof.Kind == TownLossKind.HostileNativeOwnershipChange ? !Key(proof.CapturingOwner) || proof.CapturingOwner == proof.OwnerAtLoss : proof.CapturingOwner != null))
+            !RuntimeCompat.IsDefined(proof.Kind) || (proof.Kind == TownLossKind.HostileNativeOwnershipChange ? !Key(proof.CapturingOwner) || proof.CapturingOwner == proof.OwnerAtLoss : proof.CapturingOwner != null) ||
+            proof.ClosureTick.HasValue && (proof.Kind != TownLossKind.Destroyed || proof.ScopeRoot != null || proof.ScopeOrdinal != null || proof.PriorScopes != null ||
+                proof.ClosureTick < proof.ObservedTick || proof.ClosureTick > int.MaxValue))
             throw new ArgumentException("Invalid observed town loss.");
         var before = CharterBook.Restore(proof.Before); var root = before.Charter(proof.Root);
         if (before.LastTick > proof.LossTick || root.Terms.Subject != proof.Territory || proof.ScopeRoot == null && (!before.PlayerManaged(root) || proof.ScopeOrdinal != null) ||
@@ -49,7 +54,7 @@ public sealed partial class TownSuccessionArchive
         if (proof.ScopeRoot != null)
             book.CloseRecordedDescendantLoss(proof.Root, proof.Territory, proof.BaselineOwner, proof.LossTick, proof.ObservedTick, CascadeOrigin(proof, book));
         else if (proof.Kind == TownLossKind.Destroyed)
-            book.CloseDestroyedTown(proof.Root, proof.Territory, proof.BaselineOwner, proof.LossTick, proof.ObservedTick, true, true);
+            book.CloseDestroyedTown(proof.Root, proof.Territory, proof.BaselineOwner, proof.LossTick, proof.ClosureTick ?? proof.ObservedTick, true, true);
         else book.CloseHostileTransferredTown(proof.Root, proof.Territory, proof.BaselineOwner, proof.OwnerAtLoss,
             proof.CapturingOwner, proof.LossTick, proof.ObservedTick, true, true);
     }
@@ -119,12 +124,13 @@ public sealed partial class TownSuccessionArchive
         foreach (var proof in records.Values)
         {
             var source = Source(proof); var expected = source.Charter(proof.Root) with { Phase = RecordedCharterPhase.TerritoryLost, TerritoryLostTick = proof.LossTick };
-            if (current.Charter(proof.Root) != expected || proof.ObservedTick > current.LastTick) throw new ArgumentException("Historical town loss differs from book.");
+            if (current.Charter(proof.Root) != expected || (proof.ClosureTick ?? proof.ObservedTick) > current.LastTick) throw new ArgumentException("Historical town loss differs from book.");
             if (proof.Resolution == null) continue;
+            if (proof.Resolution.Tick < (proof.ClosureTick ?? proof.ObservedTick)) throw new ArgumentException("Succession cannot precede actual contractual loss closure.");
             if (proof.ScopeRoot != null || proof.Resolution.ScopeCompletion != null) { ValidateCascadeReceipt(current, proof); continue; }
             var r = proof.Resolution;
             var children = Descendants(source, proof.Territory).Where(c => c.Terms.Liege == proof.Territory).ToArray();
-            if (r.Authority == null || !Key(r.Authority.LiegeRepresentative) || !Key(r.Authority.SubjectRepresentative) || r.Tick < proof.ObservedTick ||
+            if (r.Authority == null || !Key(r.Authority.LiegeRepresentative) || !Key(r.Authority.SubjectRepresentative) || r.Tick < (proof.ClosureTick ?? proof.ObservedTick) ||
                 r.Tick > current.LastTick || r.Parent != expected.Terms.Liege || r.Replacements == null || children.Length != r.Replacements.Count ||
                 r.Replacements.Values.Distinct(StringComparer.Ordinal).Count() != children.Length) throw new ArgumentException("Invalid historical succession scope.");
             foreach (var child in children)
