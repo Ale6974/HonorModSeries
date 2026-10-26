@@ -6,10 +6,41 @@ namespace Honor.Contracts.Rules;
 
 public sealed record CityStockItem(string Id, string Def, string Stuff, int Count, int HitPoints, int? Quality);
 public sealed record CityTradeAnimal(string Id, string Def, string Faction, string Health, string Gear, string Status);
+public sealed record CityAnimalCargo(string Animal, IReadOnlyList<CityStockItem> Goods, bool UnloadEverything,
+    IReadOnlyList<string> NotForSale, IReadOnlyList<string> Unpacked);
 
-/// <summary>Owner-independent evidence for ordinary, non-nested goods; never a stock generator.</summary>
+/// <summary>Owner-independent ordinary stock and bounded animal inventory evidence; never a stock generator.</summary>
 public static class CityStockProof
 {
+    public static string CapturePackedAnimals(bool visited, bool containerExists, int nextRestockTick,
+        IEnumerable<CityStockItem> goods, IEnumerable<CityTradeAnimal> animals, IEnumerable<CityAnimalCargo> cargo)
+    {
+        RuntimeCompat.NotNull(goods); RuntimeCompat.NotNull(animals); RuntimeCompat.NotNull(cargo);
+        var ordinary = goods.Take(10001).ToArray(); var pawns = animals.Take(10001).ToArray(); var loads = cargo.Take(10001).ToArray();
+        if (loads.Length is < 1 or > 10000 || ordinary.Length + pawns.Length > 10000 ||
+            loads.Any(c => c == null || c.Goods == null || c.Goods.Count is < 1 or > 10000 || !pawns.Any(p => p?.Id == c.Animal)) ||
+            loads.Select(c => c.Animal).Distinct(StringComparer.Ordinal).Count() != loads.Length ||
+            loads.Sum(c => (long)c.Goods.Count) + ordinary.Length + pawns.Length > 10000)
+            throw new ArgumentException("Invalid original animal cargo scope.");
+        var carried = loads.SelectMany(c => c.Goods).ToArray();
+        string animalProof = CaptureAnimals(visited, containerExists, nextRestockTick, ordinary, pawns);
+        // Validate original ordinary item fields, including cross-holder IDs, without minting or moving goods.
+        Capture(visited, containerExists, nextRestockTick, ordinary.Concat(carried));
+        if (ordinary.Concat(carried).Select(i => i.Id).Intersect(pawns.Select(p => p.Id), StringComparer.Ordinal).Any())
+            throw new ArgumentException("Cargo and animal identities overlap.");
+        foreach (var load in loads)
+        {
+            var ids = new HashSet<string>(load.Goods.Select(g => g.Id), StringComparer.Ordinal);
+            foreach (var configured in new[] { load.NotForSale, load.Unpacked })
+                if (configured == null || configured.Count > load.Goods.Count || configured.Any(id => !ids.Contains(id)) ||
+                    configured.Distinct(StringComparer.Ordinal).Count() != configured.Count)
+                    throw new ArgumentException("Cargo sale/unpack references must identify the original held goods.");
+        }
+        var data = new { Version = 3, Animals = animalProof,
+            Cargo = loads.OrderBy(c => c.Animal, StringComparer.Ordinal).Select(c => new { c.Animal, Goods = c.Goods.OrderBy(g => g.Id, StringComparer.Ordinal).ToArray(),
+                c.UnloadEverything, c.NotForSale, c.Unpacked }).ToArray() };
+        return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(data))));
+    }
     public static bool Valid(string proof) => proof is { Length: 64 } && proof.All(c => c is >= '0' and <= '9' or >= 'A' and <= 'F');
     public static string Capture(bool visited, bool containerExists, int nextRestockTick, IEnumerable<CityStockItem> goods)
     {

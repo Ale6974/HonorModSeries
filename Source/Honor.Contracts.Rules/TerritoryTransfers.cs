@@ -101,7 +101,7 @@ public sealed class TerritoryTransferLedger
             loss.LossTick >= t.PreparedTick && loss.ObservedTick >= loss.LossTick && now >= loss.ObservedTick, "Exact observed empty-city destruction required.");
         transfers[transfers.IndexOf(t)] = t with { Phase = TerritoryTransferPhase.Destroyed, ResolvedTick = now, Destruction = loss }; LastTick = now;
     }
-    private static bool Preserved(TerritoryTransferObservation actual, string proof, string residents) => actual.StockFormat is 0 or 1 &&
+    private static bool Preserved(TerritoryTransferObservation actual, string proof, string residents) => actual.StockFormat is 0 or 1 or 2 &&
         (actual.StockFormat == 0 || proof != null) && !actual.HasMap &&
         (residents == null ? !actual.HasInhabitants && actual.ResidentProof == null : actual.HasInhabitants && CityStockProof.Valid(residents) && actual.ResidentProof == residents) &&
         (proof == null ? !actual.Visited : CityStockProof.Valid(proof) && actual.StockProof == proof);
@@ -118,7 +118,7 @@ public sealed class TerritoryTransferLedger
             foreach (var key in new[] { item.Id, item.Territory, item.BaselineOwner, item.FromOwner, item.TargetOwner, item.Charter }) Key(key);
             if (item.ReleasedRoot != null) { Key(item.ReleasedRoot); Require(item.Purpose == TerritoryTransferPurpose.ReleasedToUnion, "Subtree scope is union-only."); }
             Require(item.ResidentProof == null || CityStockProof.Valid(item.ResidentProof), "Invalid resident preservation proof.");
-            Require(item.StockFormat is 0 or 1 && (item.StockFormat == 0 || item.StockProof != null) &&
+            Require(item.StockFormat is 0 or 1 or 2 && (item.StockFormat == 0 || item.StockProof != null) &&
                 (item.StockProof == null || CityStockProof.Valid(item.StockProof)) &&
                 RuntimeCompat.IsDefined(item.Purpose) && RuntimeCompat.IsDefined(item.Phase) && item.FromOwner != item.TargetOwner &&
                 item.PreparedTick >= result.LastTick && item.PreparedTick <= save.LastTick &&

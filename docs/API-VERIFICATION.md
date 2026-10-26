@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 물자를 가진 거래 동물 재고 보존 — 0.3.38 / 2026-10-26
+
+설치1.7.4985의 Pawn_InventoryTracker에서 pawn/innerContainer와 private unloadEverything/itemsNotForSale/unpackedCaravanItems를 확인했다. 공개 UnloadEverything getter는 현재 하역 가능 물품에 따라 원 bool과 다르게 보일 수 있어 raw field를 읽기만 한다.1.6.4871 참조 metadata에서도 같은 필드/형식을 확인했다. 기존 native inventory ExposeData가 설정 참조·컨테이너를 저장하므로 모드는 이를 Deep/Reference로 이중 저장하지 않는다. Settlement/MapParent에는 SetFaction override가 없고 기존 WorldObject.SetFaction의 owner 변경 경로를 사용한다. 새 지원은 실제 inherited 선언과 foreign Harmony patch 부재를 확인한다.
+
+새 stock format2는 원 거래 동물의 같은 stock holder·같은 native inventory tracker/parent/container와 일반 물품 원 ID/정의/재질/수량/HP/quality·동물 ID/소속/관측 건강/gear/status 및 두 원 설정 참조 목록/순서와 원시 하역 bool을 묶는다. 원 물품을 다른 holder로 옮기거나 Pawn.SetFaction/Drop/재생성·재입고를 호출하지 않는다. 설정 목록은 현재 실제 inventory 원본의 부분 집합이어야 하며 foreign/null/중복 참조를 수리하지 않는다. root/동물/운반 물품 전체의 공통 ID domain과10000-entry 한도를 적용한다.
+
+기존 실제 도시 이전과 source/target 명시 복구는 StockFormat/StockProof를 함께 검사하므로 cargo 누락·다른 동물 배정·설정 변화·형식 다운그레이드는 완료/미변경 취소를 막는다. 평범한 빈 동물 재고/일반 물품은 format1/0의 옛 해시/JSON을 유지한다. 사람/시체/중첩/축소 물품·장비/의복/직접 운반·손상/미확인 상태는 계속 보류한다. 이 원본 관측은 이전 동의나 source 마지막 도시 예외가 아니다. 게임 분석 원문은 ignored 로컬 파일에만 둔다.
+
 ## native 기본 유전자 원본 보존 — 0.3.37 / 2026-10-26
 
 설치1.7.4985의 Pawn.SetFaction, PawnComponentsUtility.AddAndRemoveDynamicComponents, Gene/Pawn_GeneTracker와 욕구 재평가 경로를 읽었다. NPC간 소속 변경은 Gene 생성/제거/재발현 API를 직접 호출하지 않는다. 기본 Gene의 저장 필드는 def/pawn/loadID/overriddenByGene/passionPreAdd이며, tracker의 원 endogenes/xenogenes·private xenotype·xenotypeName/iconDef/hybrid를 읽어 바인딩한다. getter의 표시 fallback Xenotype은 원 private 값 대신 사용하지 않는다. 1.6.4871 참조 metadata에서도 해당 필드/접근자·EnablesNeed/DisablesNeed를 확인하고 별도 net472 빌드로 확인했다. 설치1.6 본문으로 주장하지 않는다.

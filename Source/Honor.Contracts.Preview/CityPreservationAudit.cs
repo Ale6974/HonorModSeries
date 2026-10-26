@@ -44,9 +44,11 @@ public sealed class CityPreservationAuditWindow : Window
             if (stock == null) lines.Add("CA_NoStock".Translate());
             else
             {
-                int animals = stock.OfType<Pawn>().Count(p => CityStockPreservation.PreservableAnimal(p, stock));
+                int animals = stock.OfType<Pawn>().Count(p => CityStockPreservation.PreservableAnimal(p, stock) || CityStockPreservation.PreservablePackAnimal(p, stock));
                 if (animals > 0) lines.Add("TA_Animals".Translate(animals));
-                var excluded = stock.Where(t => t is not Pawn p || !CityStockPreservation.PreservableAnimal(p, stock))
+                int packed = stock.OfType<Pawn>().Count(p => CityStockPreservation.PreservablePackAnimal(p, stock));
+                if (packed > 0) lines.Add("TA_PackAnimals".Translate(packed));
+                var excluded = stock.Where(t => t is not Pawn p || !CityStockPreservation.PreservableAnimal(p, stock) && !CityStockPreservation.PreservablePackAnimal(p, stock))
                     .Select(CityStockPreservation.StockExclusion).Where(reason => reason != null).GroupBy(reason => reason);
                 foreach (var group in excluded) lines.Add("CA_Excluded".Translate(group.Key.Translate(), group.Count()));
             }

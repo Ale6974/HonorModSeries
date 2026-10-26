@@ -1,5 +1,12 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.38 — 거래 동물의 일반 인벤토리 보존 (2026-10-26)
+
+- 신규48개 assertion: 원 cargo ID/정의/재질/수량/HP/quality·같은 보관 동물과 원 하역/판매 제외/포장 해제 참조·순서 독립성/저장 왕복을 확인했다. 누락/중복/다중 holder/외부 설정·root/동물/cargo ID 충돌·전역 한도 초과·미생성 stock 가장을 거절한다. 옛0/1 stock 검사는 그대로 통과한다.
+- 실제 common city ledger의 format2 준비→정확한 target/원 cargo 확인→완료·저장과 미변경 source 취소를 검사했다. 다른 stock profile/바뀐 보관 동물·cargo·map·누락 proof는 confirm/cancel을 막고 원 pending bytes를 유지한다. native helper는 같은 root/animal/inventory/pawn과 private 설정 참조를 읽기만 하며 실제 이전/명시 복구는 기존 실행 경로로 연결했다. animal SetFaction/Drop/재고 생성/이중 저장은 없다.
+- 1.6/net472·1.7/net10 전체 빌드/각 규칙 호스트: Contracts **4,010** + Honor/runtime **20,093** = 대상별 **24,103**개 assertion, 경고/오류0. 마지막 inherited native setter 가드 뒤1.6 Preview를 재빌드하고1.7 전체를 확인했다. EN/KO **424개** 키/자리표시자와 FactionDef12개 필드를 통과했다. source 마지막 도시와 다른 미지원 보존·전체 합병 가드는 유지하며1단계 완료로 계산하지 않는다.
+- 6모드×두 런타임 선택/DLL 허용 목록을 통과한 ZIP SHA256은 `F805DE2EFE0BEBCE2AFA3A80C1EC5E3E0352280E1D326A320935F5EA5DD1211A`이다. 실행 중인 게임이 없을 때0.3.37 로컬본을 `.local/contracts-preview-5ea5f7ee8ab744a08074c34d6b8cf1f9`에 백업하고0.3.38을 설치했다. 원본/설치32개 파일 집합·해시가 일치하고 ModsConfig.xml/Prefs.xml 해시는 불변이다. 활성화/언어/Steam은 유지한다.
+
 ## Contracts 0.3.37 — 기본 유전자 주민의 실제 이전 경로/프로필7 (2026-10-26)
 
 - 신규38개 assertion: 원 gene ID/정의/순서·내생/이식 분류·같은 tracker 억제 관계·원 passionPreAdd, parent pawn/저장 xenotype/name/icon/hybrid, null/빈 tracker·표시 fallback과 원 private 값의 구분·저장 왕복을 검사했다. duplicate/foreign/self/cyclic override·미정의 열정·누락/과다 rows·unbounded text는 거절한다.
