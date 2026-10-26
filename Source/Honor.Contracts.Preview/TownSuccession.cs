@@ -57,8 +57,8 @@ public sealed partial class LiveCharterLedger
                 if (lostCity == null || lostCity.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(lostCity))
                     throw new ArgumentException("The observed town is unavailable.");
                 if (lostCity.Faction?.GetUniqueLoadID() != loss.CapturingOwner)
-                    returnProof = ownershipReturns.RequireActiveWithTransfers(root, townLosses, Book, "territory/" + lostCity.GetUniqueLoadID(),
-                        lostCity.Faction?.GetUniqueLoadID(), Find.TickManager.TicksGame, Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export());
+                    returnProof = ownershipReturns.RequireActiveWithLineage(root, townLosses, Book, "territory/" + lostCity.GetUniqueLoadID(),
+                        lostCity.Faction?.GetUniqueLoadID(), Find.TickManager.TicksGame, Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), amendments.Export());
             }
         }
         var source = CharterBook.Restore(proof.Before); var original = source.Charter(root);
@@ -101,7 +101,7 @@ public sealed partial class LiveCharterLedger
             Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer),
             Higher = actualHigher.GetUniqueLoadID(), Consent = consent,
             Transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), Observations = Observe(),
-            OwnershipReturns = ownershipReturns.Export(), ReturnProof = returnProof });
+            OwnershipReturns = ownershipReturns.Export(), Amendments = amendments.Export(), ReturnProof = returnProof });
         return new(plan, stamp, authority.Name, authority.leader.LabelShortCap, Current.Game) {
             OwnershipReturnProof = returnProof,
             SeparateRealm = authority != Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority() };
@@ -117,10 +117,11 @@ public sealed partial class LiveCharterLedger
             var fresh = ReviewTownSuccession(reviewed.Plan.Root, prefix);
             if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("Succession authority or source changed.");
             var result = fresh.OwnershipReturnProof == null ? townLosses.Commit(Book, fresh.Plan, Find.TickManager.TicksGame, Observe()) :
-                ownershipReturns.CommitSuccessionWithTransfers(townLosses, Book, fresh.Plan, Find.TickManager.TicksGame, Observe(), fresh.OwnershipReturnProof,
+                ownershipReturns.CommitSuccessionWithLineage(townLosses, Book, fresh.Plan, Find.TickManager.TicksGame, Observe(), fresh.OwnershipReturnProof,
                     Binding(townLosses.Record(fresh.Plan.Root).Territory).Settlement?.Faction?.GetUniqueLoadID(),
-                    Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export());
+                    Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), amendments.Export());
             ownershipReturns.ValidatePair(result.Archive, result.Book);
+            ownershipReturns.ValidateAmendmentPair(amendments, result.Book);
             Book = result.Book; townLosses = result.Archive;
             Messages.Message("LS_Completed".Translate(fresh.Plan.Replacements.Count), MessageTypeDefOf.NeutralEvent);
         }, resolvingLoss: true);

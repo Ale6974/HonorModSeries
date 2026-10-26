@@ -1,5 +1,13 @@
 # 검증과 플레이 점검
 
+- 0.3.47 completion: both final full builds have zero warnings/errors and4208+20093=24301 rule assertions per target. Six-mod runtime selection, DLL allowlist, XML and443 EN/KO keys plus12 FactionDef fields pass. ZIP SHA256: `21C73874470DC785366B71EB8D68A1EDBA7275356863408F25CF5988DB240B76`. Backed up0.3.46 to `.local/contracts-preview-1424ac0e28dd49cbbb4ecb3c3d16d5cc` with no RimWorld process and installed0.3.47. All32 installed source/file hashes and ModsConfig.xml/Prefs.xml hashes match. Activation, language and Steam unchanged.
+
+## 2026-10-26 — Contracts0.3.47 / negotiated charter ownership-return lineage
+
+- Added12 integrated assertions: two actual same-party renegotiations after verified root/descendant transfers, exact original transfer identity and mutual release retention, normal positive return evidence, current transfer+amendment recheck, separately consented all-descendant reconnection, fresh root charter, paired restore, missing/empty/changed live negotiation slot, legacy APIs unable to bypass new dependencies, equal-baseline/same-root legacy shape, transfer-clock regression behind original negotiation evidence, unchanged original physical/payment/negotiation data. The existing hardcoded legacy return digest also passes.
+- Contracts4208 +Honor/runtime20093 =24301 assertions per target; common English/Korean443 keys and12 FactionDef fields unchanged. Final full-target/package/install results follow below.
+- Native pre/post observation and final current consent now bind original actual amendment lineage, with no new ownership/pawn/stock/diplomacy writes. The old constructor/API signatures remain; optional null Amendments is omitted on older proof modes. Final source/current book and embedded/live archive pairing are separately checked.
+
 - 0.3.46 completion: both full builds completed with zero warnings/errors; all six mods select exactly one target runtime and pass the DLL allowlist/package checks. ZIP SHA256: `0237EA96F5CD7134D3D6720457046A6A31B98F693629D055B32539F4FA048BF9`. With no RimWorld process, backed up0.3.45 to `.local/contracts-preview-41447ac65a1243b39a36615271ef1c88` and installed0.3.46. All32 source/installed files and ModsConfig.xml/Prefs.xml hashes match; activation/language/Steam unchanged.
 
 ## 2026-10-26 — Contracts0.3.46 / same-party town renegotiation

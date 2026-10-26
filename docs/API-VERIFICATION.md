@@ -1,5 +1,7 @@
 # 1.7 API·런타임 검증 기록
 
+0.3.47 keeps the existing installed WorldObject.SetFaction normal-return observer only; no new native API or native write was added. The observer now captures the exact existing negotiation archive alongside original physical transfer evidence for proven same-party amendment lineage. Current Game, exact town/factions, reciprocal hostility, epoch and original book/loss guards remain. Existing public transfer-only rule signatures and old TownOwnershipReturn constructor remain, with new explicit WithLineage APIs; null optional fields preserve previous serialized hashes.
+
 0.3.46 uses the existing verified NpcDecisionAuthority reader, settlement identity and goodwill observations; its acceptance policy is an Honor rule, not a claimed native negotiation API. No new native write or engine API binding is introduced. The live review/confirmation stages the common book, negotiation archive and final-consent audit together; native factions, leaders, pawns, stock and transfer journals remain unchanged. Both runtime targets compile against their existing verified references.
 
 ## 실제 이전 provenance를 보존한 소유권 복귀 —0.3.45 /2026-10-26

@@ -141,6 +141,63 @@ internal static class TownOwnershipReturnTests
         var migratedReload = TownOwnershipReturns.Restore(migratedReturns.Export());
         Check(migratedReload.Invalidate("root", 31, new string('\uD55C', 120)).Records.Single().InvalidatedTick == 31,
             "bounded journal reserves enough room for a future escaped Unicode invalidation identity");
+        var negotiated = CharterBook.Restore(original); var amendments = new CharterAmendments(); var payments = new TributeLedger();
+        var authority = new NpcRealmDecisionEvidence("admitted-realm", "current", NpcDecisionRegime.Ordinary, true, true, true, true, true, true);
+        foreach (var change in new[] { ("root", "amended", 10L), ("amended", "amended-again", 20L) })
+        {
+            var review = CharterAmendments.Review(negotiated, moves, payments, change.Item1, change.Item2, new(90, 6, 2, 15), authority, 60, change.Item3, normalizedObs);
+            var changedContract = amendments.Commit(review, negotiated, moves, payments, authority, 60, change.Item3, normalizedObs);
+            negotiated = changedContract.Book; amendments = changedContract.Archive;
+        }
+        string beforeNegotiatedLoss = negotiated.Export(), negotiationHistory = amendments.Export();
+        negotiated.CloseHostileTransferredTown("amended-again", "upper", "realm", "admitted-realm", "captor", 30, 32, true, true);
+        var amendedLoss = new TownLossProof("amended-again", "upper", "realm", "admitted-realm", "Upper", 30, 32, beforeNegotiatedLoss,
+            Kind: TownLossKind.HostileNativeOwnershipChange, CapturingOwner: "captor");
+        var amendedLosses = new TownSuccessionArchive().Observe(amendedLoss, negotiated);
+        var amendedWitness = new TownOwnershipReturn("amended-again", "upper", "captor", "admitted-realm", TownOwnershipReturns.LossDigest(amendedLoss), 40, 41)
+            { Transfers = transferSnapshot, Amendments = negotiationHistory };
+        var amendedReturns = returns.Observe(amendedWitness, amendedLosses, negotiated); amendedReturns.ValidateAmendmentPair(amendments, negotiated);
+        string amendedProof = amendedReturns.RequireActiveWithLineage("amended-again", amendedLosses, negotiated, "upper", "admitted-realm", 50, transferSnapshot, negotiationHistory);
+        Check(amendedReturns.Records.Single().Amendments == negotiationHistory && moves.Transfer("move-root").Charter == "root" &&
+            negotiated.Charter("root").Phase == RecordedCharterPhase.Released && negotiated.Charter("amended").Phase == RecordedCharterPhase.Released,
+            "two actual negotiated renewals retain original completed transfer identity, mutual releases and immutable ownership lineage");
+        Reject(() => returns.Observe(amendedWitness with { Amendments = null }, amendedLosses, negotiated), "different root cannot borrow a receipt without actual negotiated lineage");
+        Reject(() => returns.Observe(amendedWitness with { Amendments = new CharterAmendments().Export() }, amendedLosses, negotiated), "empty archive cannot invent missing same-party negotiation");
+        Reject(() => amendedReturns.RequireActiveWithTransfers("amended-again", amendedLosses, negotiated, "upper", "admitted-realm", 50, transferSnapshot),
+            "existing transfer-only API cannot bypass fresh current amendment history");
+        Reject(() => amendedReturns.RequireActiveWithLineage("amended-again", amendedLosses, negotiated, "upper", "admitted-realm", 50, transferSnapshot, new CharterAmendments().Export()),
+            "changed current negotiation archive blocks confirmation");
+        Reject(() => amendedReturns.ValidateAmendmentPair(new CharterAmendments(), negotiated), "embedded return history cannot substitute a missing live negotiation slot");
+        Reject(() => returns.Observe(migratedWitness with { Amendments = negotiationHistory }, migratedLosses, migrated), "same-root legacy proof does not silently acquire new lineage fields");
+        Reject(() => returns.Observe(witness with { Amendments = negotiationHistory }, losses, book), "equal-baseline legacy shape remains unchanged");
+        var amendedPlan = amendedLosses.Review("amended-again", negotiated, "returned-negotiated", new("current", "current"), 50, normalizedObs);
+        Reject(() => amendedReturns.CommitSuccessionWithTransfers(amendedLosses, negotiated, amendedPlan, 50, normalizedObs, amendedProof, "admitted-realm", transferSnapshot),
+            "old successor API cannot consume amendment-dependent authority");
+        var amendedDone = amendedReturns.CommitSuccessionWithLineage(amendedLosses, negotiated, amendedPlan, 50, normalizedObs, amendedProof,
+            "admitted-realm", transferSnapshot, negotiationHistory);
+        amendedReturns.ValidatePair(amendedDone.Archive, amendedDone.Book); amendedReturns.ValidateAmendmentPair(amendments, amendedDone.Book);
+        TownOwnershipReturns.Restore(amendedReturns.Export()).ValidatePair(TownSuccessionArchive.Restore(amendedDone.Archive.Export()), CharterBook.Restore(amendedDone.Book.Export()));
+        Check(amendedDone.Book.Root("g") == "p" && amendedDone.Book.Charter("amended-again").Phase == RecordedCharterPhase.TerritoryLost &&
+            amendedDone.Book.Charter("root") == negotiated.Charter("root") && amendedDone.Book.Charter("amended") == negotiated.Charter("amended") &&
+            amendedDone.Archive.Record("amended-again").Resolution.OwnershipReturnProof == amendedProof,
+            "return and separate successor execution retain every original contract, debt basis and descendant history across negotiated root changes");
+        var restoredAmended = CharterBook.Restore(amendedDone.Book.Export());
+        restoredAmended.Offer("fresh-after-amendment-return", Terms("p", "upper"), 60, PoliticalWorld.Day, normalizedObs);
+        restoredAmended.Sign("fresh-after-amendment-return", false, 60, normalizedObs); restoredAmended.Sign("fresh-after-amendment-return", true, 60, normalizedObs);
+        amendedReturns.ValidatePair(amendedDone.Archive, restoredAmended); amendedReturns.ValidateAmendmentPair(amendments, restoredAmended);
+        Check(restoredAmended.Charter("fresh-after-amendment-return").Phase == RecordedCharterPhase.Active && moves.Export() == transferSnapshot &&
+            amendments.Export() == negotiationHistory && payments.Accounts.Count == 0,
+            "fresh contract after recovery never rewrites original transfer or negotiations, invents tribute, or revives an old root");
+        var laterOriginalClock = TerritoryTransferLedger.Restore(JsonSerializer.Serialize(moveSave with { LastTick = 19 }));
+        var clockSource = CharterBook.Restore(original); var emptyAmendments = new CharterAmendments();
+        var clockPlan = CharterAmendments.Review(clockSource, laterOriginalClock, payments, "root", "clock-amended", new(90, 6, 2, 15), authority, 60, 20, normalizedObs);
+        var clockDone = emptyAmendments.Commit(clockPlan, clockSource, laterOriginalClock, payments, authority, 60, 20, normalizedObs);
+        var clockLoss = amendedLoss with { Root = "clock-amended", Before = clockDone.Book.Export() };
+        clockDone.Book.CloseHostileTransferredTown("clock-amended", "upper", "realm", "admitted-realm", "captor", 30, 32, true, true);
+        var clockLosses = new TownSuccessionArchive().Observe(clockLoss, clockDone.Book);
+        Reject(() => returns.Observe(amendedWitness with { Root = "clock-amended", LossProof = TownOwnershipReturns.LossDigest(clockLoss),
+            Amendments = clockDone.Archive.Export() }, clockLosses, clockDone.Book),
+            "current transfer clock cannot regress behind the actual negotiation's original journal, even with identical transfer rows");
         return count;
     }
 }

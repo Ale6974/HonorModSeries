@@ -10,6 +10,7 @@ public sealed record TownOwnershipReturn(string Root, string Territory, string F
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string AttemptedOwner = null)
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string Transfers { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string Amendments { get; init; }
 }
 public sealed record TownOwnershipReturnSave(int Version, TownOwnershipReturn[] Records);
 
@@ -42,20 +43,49 @@ public sealed class TownOwnershipReturns
             throw new ArgumentException("Return must match one exact original hostile loss.");
         if (p.OwnerAtLoss == p.BaselineOwner)
         {
-            if (r.Transfers != null) throw new ArgumentException("An unchanged baseline must retain its original return proof shape.");
+            if (r.Transfers != null || r.Amendments != null) throw new ArgumentException("An unchanged baseline must retain its original return proof shape.");
         }
         else
         {
             if (r.Transfers == null) throw new ArgumentException("A migrated owner requires its exact original completed transfer journal.");
             var transfers = TerritoryTransferLedger.Restore(r.Transfers);
             var last = transfers.Transfers.LastOrDefault(t => t.Territory == p.Territory && t.Phase == TerritoryTransferPhase.Applied);
-            var original = CharterBook.Restore(p.Before).Charter(p.Root);
+            var originalBook = CharterBook.Restore(p.Before);
+            var original = originalBook.Charter(p.Root);
             if (transfers.LastTick > p.LossTick || transfers.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) ||
-                !transfers.VerifiedOwner(p.Territory, p.BaselineOwner, p.OwnerAtLoss) || last == null || last.Charter != p.Root ||
-                last.Purpose != TerritoryTransferPurpose.ActiveCharter || last.PreparedTick < Math.Max(original.PlayerSignedTick.Value, original.NpcSignedTick.Value))
+                !transfers.VerifiedOwner(p.Territory, p.BaselineOwner, p.OwnerAtLoss) || last == null ||
+                last.Purpose != TerritoryTransferPurpose.ActiveCharter)
                 throw new ArgumentException("Return requires the matching root's completed pre-loss transfer, never a new normalization authority.");
+            if (last.Charter == p.Root)
+            {
+                if (r.Amendments != null) throw new ArgumentException("A same-root transfer must retain its original proof shape.");
+            }
+            else original = AmendmentOrigin(r, p, originalBook, transfers, last);
+            if (last.PreparedTick < Math.Max(original.PlayerSignedTick.Value, original.NpcSignedTick.Value))
+                throw new ArgumentException("Transfer must follow the actual original charter signatures.");
         }
         return p;
+    }
+    private static RecordedCharter AmendmentOrigin(TownOwnershipReturn r, TownLossProof loss, CharterBook before,
+        TerritoryTransferLedger transfers, TerritoryTransfer transfer)
+    {
+        if (r.Amendments == null) throw new ArgumentException("A different charter requires its exact negotiated same-party lineage.");
+        var archive = CharterAmendments.Restore(r.Amendments); archive.ValidateBook(before);
+        var current = before.Charter(loss.Root); var visited = new HashSet<string>(StringComparer.Ordinal);
+        while (current.Id != transfer.Charter)
+        {
+            if (!visited.Add(current.Id) || current.Amendment == null) throw new ArgumentException("Missing or circular negotiated ownership lineage.");
+            var row = archive.Records.SingleOrDefault(a => a.Witness.Next == current.Id && a.Proof == current.Amendment.Proof);
+            if (row == null || row.Witness.Decision.Realm != loss.OwnerAtLoss || row.Witness.Tick > loss.LossTick ||
+                !transfer.ResolvedTick.HasValue || transfer.ResolvedTick > row.Witness.Tick)
+                throw new ArgumentException("Negotiation must follow the completed original ownership transfer and retain its actual realm.");
+            var prior = TerritoryTransferLedger.Restore(row.Witness.Transfers);
+            if (prior.LastTick > transfers.LastTick || !prior.Transfers.SequenceEqual(transfers.Transfers.Take(prior.Transfers.Count)) ||
+                !prior.Transfers.Contains(transfer) || !prior.VerifiedOwner(loss.Territory, loss.BaselineOwner, loss.OwnerAtLoss))
+                throw new ArgumentException("Negotiation must retain the exact original transfer lineage, not relabel a later receipt.");
+            current = before.Charter(current.Amendment.Previous);
+        }
+        return current;
     }
     public TownOwnershipReturns Observe(TownOwnershipReturn r, TownSuccessionArchive losses, CharterBook book)
     {
@@ -77,11 +107,13 @@ public sealed class TownOwnershipReturns
     public string RequireActive(string root, TownSuccessionArchive losses, CharterBook book, string territory, string actualOwner, long now)
         => RequireActiveWithTransfers(root, losses, book, territory, actualOwner, now, null);
     public string RequireActiveWithTransfers(string root, TownSuccessionArchive losses, CharterBook book, string territory, string actualOwner, long now, string currentTransfers)
+        => RequireActiveWithLineage(root, losses, book, territory, actualOwner, now, currentTransfers, null);
+    public string RequireActiveWithLineage(string root, TownSuccessionArchive losses, CharterBook book, string territory, string actualOwner, long now, string currentTransfers, string currentAmendments)
     {
         var r = records.TryGetValue(root ?? "", out var found) ? found : throw new ArgumentException("No positive native ownership-return observation.");
         var p = Source(r, losses, book);
         if (p.Resolution != null || losses.ScopeLosses(p.Root).Length != 1 || r.InvalidatedTick.HasValue || now < r.ObservedTick || now > int.MaxValue || territory != r.Territory || actualOwner != r.ReturnedOwner ||
-            r.Transfers != null && r.Transfers != currentTransfers)
+            r.Transfers != null && r.Transfers != currentTransfers || r.Amendments != null && r.Amendments != currentAmendments)
             throw new ArgumentException("The observed ownership return is unavailable, interrupted or changed.");
         return ReceiptDigest(r);
     }
@@ -90,12 +122,15 @@ public sealed class TownOwnershipReturns
         => CommitSuccessionWithTransfers(losses, book, plan, now, observations, proof, null, null);
     public (CharterBook Book, TownSuccessionArchive Archive) CommitSuccessionWithTransfers(TownSuccessionArchive losses, CharterBook book,
         TownSuccessionPlan plan, long now, IEnumerable<TerritoryObservation> observations, string proof, string actualOwner, string currentTransfers)
+        => CommitSuccessionWithLineage(losses, book, plan, now, observations, proof, actualOwner, currentTransfers, null);
+    public (CharterBook Book, TownSuccessionArchive Archive) CommitSuccessionWithLineage(TownSuccessionArchive losses, CharterBook book,
+        TownSuccessionPlan plan, long now, IEnumerable<TerritoryObservation> observations, string proof, string actualOwner, string currentTransfers, string currentAmendments)
     {
         RuntimeCompat.NotNull(plan); RuntimeCompat.NotNull(observations);
         var actual = observations.ToArray(); var territory = losses.Record(plan.Root).Territory;
         var owner = actual.SingleOrDefault(o => o.Id == territory);
         if (owner == null || !owner.Exists || owner.NativeOwner != book.Entity(territory).NativeOwner ||
-            RequireActiveWithTransfers(plan.Root, losses, book, territory, actualOwner ?? owner.NativeOwner, now, currentTransfers) != proof)
+            RequireActiveWithLineage(plan.Root, losses, book, territory, actualOwner ?? owner.NativeOwner, now, currentTransfers, currentAmendments) != proof)
             throw new ArgumentException("Review the exact active return and current territory first.");
         var completed = losses.Commit(book, plan, now, actual);
         var saved = JsonSerializer.Deserialize<TownLossSave>(completed.Archive.Export());
@@ -115,6 +150,16 @@ public sealed class TownOwnershipReturns
         foreach (var p in losses.Records.Where(p => p.Resolution?.OwnershipReturnProof != null))
             if (!records.TryGetValue(p.Root, out var r) || ReceiptDigest(r) != p.Resolution.OwnershipReturnProof)
                 throw new ArgumentException("Returned-ownership succession requires its original positive native witness.");
+    }
+    public void ValidateAmendmentPair(CharterAmendments current, CharterBook book)
+    {
+        RuntimeCompat.NotNull(current); current.ValidateBook(book);
+        foreach (var r in records.Values.Where(r => r.Amendments != null))
+        {
+            var original = CharterAmendments.Restore(r.Amendments); original.ValidateBook(book);
+            if (original.Records.Any(p => !current.Records.Contains(p)))
+                throw new ArgumentException("Returned ownership needs its unchanged original live negotiation history.");
+        }
     }
     public string Export() => JsonSerializer.Serialize(new TownOwnershipReturnSave(1, records.Values.ToArray()));
     public static TownOwnershipReturns Restore(string json)
