@@ -1,5 +1,13 @@
 # 검증과 플레이 점검
 
+- 0.3.50 completion: final full1.6/net472 and1.7/net10 builds passed with zero warnings/errors and4302+20093=24395 assertions per target. Shared466 UNIQUE EN/KO keys plus12 FactionDef fields, XML, six-mod runtime selection and DLL allowlists pass. ZIP SHA256: `7D92FE2C1C71FC4500D3243D1DA5B62BBD85939ED65D6BC4F820C8EF96AA8454`. With no RimWorld process, backed up0.3.49 to `.local/contracts-preview-4894b6e2081d4720993e015b9a1bf7a4` and installed0.3.50. All32 installed file hashes and ModsConfig.xml/Prefs.xml hashes match; activation/language/Steam unchanged.
+
+## 2026-10-27 /0.3.50 — coupled player-subject charter renewal
+
+- Added22 assertions for actual source-unchanged contract-pointer replacement, old mutual release/new signatures/actual tribute witness, four-level unchanged children/economic history/physical and payment ledgers, completed no-move political intent, paired restore/missing peer/old pointer rejection, unshared/independent/suspended/foreign/pending state rejection, full follower scope, an otherwise eligible required move refused, actual same-pair overdue NPC refusal, successive renewal command prefixes, archived old war consent without declarations, duplicate/tampered receipt rejection and unchanged staged originals.
+- Contracts4302 +Honor/runtime20093 =24395 assertions per target; shared466 unique EN/KO keys and12 FactionDef fields. Final full-target/package/install evidence follows below.
+- Found existing CA_Open/CA_Title collisions between preservation audit and renegotiation introduced in0.3.46. Kept audit CA_ keys, moved amendment keys to CN_, and made Build.ps1 reject duplicate keys before checking format placeholders. The new player renewal window explains old physical tribute/protection closure and separate new opt-in; current native assets/diplomacy stay unchanged.
+
 - 0.3.49 completion: final full1.6/net472 and1.7/net10 builds passed with zero warnings/errors and4280+20093=24373 assertions per target. Common463 EN/KO keys and12 FactionDef fields, six-mod runtime selection/DLL allowlists and package layout passed. ZIP SHA256: `0CE4F23A6C1EAC0D9BA1209D411F993DB184184DB1ABB3696676640D97A78106`. With no RimWorld process, backed up0.3.48 to `.local/contracts-preview-1aac23986bbc4f5e9e175477e161a155` and installed0.3.49. All32 installed files and ModsConfig.xml/Prefs.xml hashes match; activation/language/Steam unchanged.
 
 ## 2026-10-27 /0.3.49 — saved aid generation partial-outcome recovery

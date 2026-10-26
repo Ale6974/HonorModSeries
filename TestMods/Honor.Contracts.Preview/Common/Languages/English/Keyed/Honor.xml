@@ -435,15 +435,15 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <ND_Unsupported>This realm requires a separate collective, royal or provider authority procedure. No council vote, permission, release or signature was inferred from its ruler.</ND_Unsupported>
   <ND_Unavailable>The current game or realm representative is unavailable or changed. Review again when the same registered, willing, decision-capable and unreserved representative holds the unique current office. Existing contracts and debts remain unchanged.</ND_Unavailable>
   <LS_SeparateRealm>The recorded NPC realm is different from the player's current political authority. Reconnection uses that original realm's current consent and the verified original higher player/NPC party. It changes only the reviewed contracts; towns, people, resources, allegiance and diplomacy are not moved or rewritten. Changed survivor/higher ownership remains blocked.</LS_SeparateRealm>
-  <CA_Open>Renegotiate this town charter</CA_Open>
-  <CA_Title>Same-party town charter renegotiation</CA_Title>
-  <CA_Limits>For player-liege NPC town charters only. A current ordinary representative must agree to both release and acceptable new terms. Confirmation ends the old charter by mutual consent and signs a new one atomically. Old terms, debts, child contracts and ownership history remain. Affiliation, people and goods stay unchanged. NPC tribute collection remains outside this feature.</CA_Limits>
-  <CA_Review>Review new terms with the current representative</CA_Review>
-  <CA_Ready>{0}, represented by {1}, accepts the reviewed renewal under the ordinary NPC policy.</CA_Ready>
-  <CA_Confirm>Confirm mutual release and the new charter</CA_Confirm>
-  <CA_Warning>Mutually end the old charter and sign the reviewed same-party replacement now? Old signatures, conditions, debts and every child contract remain in history. Current authority, ownership and terms are checked again before anything is committed.</CA_Warning>
-  <CA_Completed>The old charter was mutually released and the new same-party charter signed. Original economic history and all child contracts remain intact.</CA_Completed>
-  <CA_Unavailable>The NPC does not accept these terms, or the current representative, ownership, charter or pending operations cannot be verified. Original records remain unchanged.</CA_Unavailable>
+  <CN_Open>Renegotiate current charter</CN_Open>
+  <CN_Title>Same-party town charter renegotiation</CN_Title>
+  <CN_Limits>For player-liege NPC town charters only. A current ordinary representative must agree to both release and acceptable new terms. Confirmation ends the old charter by mutual consent and signs a new one atomically. Old terms, debts, child contracts and ownership history remain. Affiliation, people and goods stay unchanged. NPC tribute collection remains outside this feature.</CN_Limits>
+  <CN_Review>Review new terms with the current representative</CN_Review>
+  <CN_Ready>{0}, represented by {1}, accepts the reviewed renewal under the ordinary NPC policy.</CN_Ready>
+  <CN_Confirm>Confirm mutual release and the new charter</CN_Confirm>
+  <CN_Warning>Mutually end the old charter and sign the reviewed same-party replacement now? Old signatures, conditions, debts and every child contract remain in history. Current authority, ownership and terms are checked again before anything is committed.</CN_Warning>
+  <CN_Completed>The old charter was mutually released and the new same-party charter signed. Original economic history and all child contracts remain intact.</CN_Completed>
+  <CN_Unavailable>The NPC does not accept these terms, or the current representative, ownership, charter or pending operations cannot be verified. Original records remain unchanged.</CN_Unavailable>
   <CP_Open>Protection agreement and allied aid</CP_Open>
   <CP_Terms>Separate agreement for an active player vassal sharing the liege's diplomacy. The current ordinary liege must be a reciprocal ally with goodwill at least 75. Covers manual native friendly-aid requests to player home settlements under an active shared-enemy attack above the native aid threshold. At most one request per liege per game day, with no additional payment. New agreement waits while actual tribute is overdue or billing history is incomplete.</CP_Terms>
   <CP_Limits>Aid uses normal game AI. An arrival is not proof of victory or complete protection performance. Unavailable, failed or interrupted aid never establishes intentional refusal, dishonor or independence rights. Nothing is automatically dispatched.</CP_Limits>
@@ -464,4 +464,7 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <CP_ReviewGeneration>Review the recorded arrivals from this interrupted request</CP_ReviewGeneration>
   <CP_ConfirmGeneration>{0} exact recorded reinforcements are currently present with their original faction on the original map. Acknowledge the saved generation outcome? The full dispatch return, orders, victory and complete protection performance remain unverified. This never repeats dispatch or changes people or orders. Only the pending-aid block is cleared; the original request time, quota and history remain.</CP_ConfirmGeneration>
   <CP_GenerationSaved>Saved reinforcement generation acknowledged. The full dispatch result remains unknown; original request time and history are retained.</CP_GenerationSaved>
+  <CN_PlayerTitle>Renegotiate your current vassal charter</CN_PlayerTitle>
+  <CN_PlayerLimits>For an active, unsuspended player vassal already sharing the same ordinary liege's diplomacy. Every existing NPC follower must already belong to that same actual realm. The current ruler must accept mutual release and new terms using actual same-party tribute history. Confirmation updates the signed charter and political contract reference together. No city, person, goods or diplomacy is moved.</CN_PlayerLimits>
+  <CN_PlayerWarning>End the old charter by mutual consent and sign a new one under the SAME liege? Old debts, signatures, follower contracts and war history remain. Physical tribute for the new charter must be enabled separately. The old charter's supplementary protection agreement ends with it; review a separate agreement for the new charter. Native player control, actual realm and diplomacy remain unchanged.</CN_PlayerWarning>
 </LanguageData>

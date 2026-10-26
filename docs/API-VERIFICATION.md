@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 2026-10-27 /0.3.50 — same-authority player charter renewal
+
+No new native execution API, Harmony target or engine write was added. Current ordinary NPC authority, actual shared PlayerPolitics authority, every real follower's ownership/transfer provenance and exact current relations/payment records are reread. Only a no-move plan at the same actual authority qualifies. The native player Faction/Settlement/Pawn and native relations remain unchanged.
+
+Replay the actual mutual release/new NPC+player signatures and the new BindLiege contract-reference command on copies. Stage a completed no-move political journal with unchanged native player/authority/followers; archive any prior war admission on its exact command prefix. Validate every paired record before the common book/amendment/final-audit/player-renewal/allegiance/journal/history assignments. There are no native callbacks between assignments. All methods reusing existing runtime types retain the1.6 reference-only/net472 and installed1.7.4990/net10 distinction.
+
+Player renewal uses its own bounded Scribe slot and optional Payments only on new player-subject witnesses. Legacy NPC-town witness shape/constructors/null JSON remain. Restore checks own book/receipt pairs during PostLoadInit, then checks actual political command/journal/history lineage only after all component slots have loaded in FinalizeInit. Missing allegiance never becomes an invented independent default. Existing proposal/transfer/resident/provider/quest/base/war guards remain; this is economic renewal, not allegiance migration, war acceptance, merger or justified independence.
+
 ## 2026-10-27 /0.3.49 — partial aid generation receipt and acknowledgement
 
 - Rechecked installed1.7.4990 rev1069, Assembly-CSharp SHA256 `4E61D57205944C113631234BC55136A1A7C1679667B26008BEE5425BCFFA1463`. Reused the0.3.48 exact TryGenerateRaidInfo(IncidentParms,out List<Pawn>,bool) normal-return hook; no new native target or write API. Its inspected1.7 body performs arrival/post-processing before returning, then the outer worker handles letters/lords. Save only positively observed current spawned/alive/new same-source output, never assume that ordering for the1.6 extern reference bodies. The old1.6 method signatures remain the binding evidence.

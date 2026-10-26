@@ -22,6 +22,23 @@ public sealed class PoliticalTransitionLedger : GameComponent
     private TerritoryAdministrationLedger Territories => Current.Game.GetComponent<TerritoryAdministrationLedger>();
     private LiveCharterLedger Charters => Current.Game.GetComponent<LiveCharterLedger>();
     public PoliticalTransitionLedger(Game game) { }
+    internal string RenewalHistoryToken => JsonSerializer.Serialize(warHistory);
+    internal (AllegianceTransitionLedger Journal, List<string> History) StageCharterRenewal(PlayerCharterRenewal receipt)
+    {
+        Ready();
+        if (BlocksChanges || Journal.Export() != receipt.TransitionBefore || Politics.Model.Export() != receipt.Before)
+            throw new ArgumentException("Political renewal scope changed.");
+        var next = AllegianceTransitionLedger.Restore(receipt.TransitionAfter); var history = warHistory.ToList();
+        if (Journal.Current?.Wars != null) history.Add(Journal.Export());
+        UnionWarAdmission.ValidateHistory(history, next.Current); return (next, history);
+    }
+    internal void CommitCharterRenewal(AllegianceTransitionLedger prepared, List<string> history) { Journal = prepared; warHistory = history; }
+    internal void ValidateCharterRenewalHistory(IEnumerable<PlayerCharterRenewal> renewals)
+    {
+        foreach (var r in renewals)
+            if (AllegianceTransitionLedger.Restore(r.TransitionBefore).Current?.Wars != null && !warHistory.Contains(r.TransitionBefore))
+                throw new ArgumentException("Original war admission must remain archived across charter renewal.");
+    }
     public override void ExposeData()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) snapshot = Journal.Export();

@@ -32,6 +32,7 @@ public sealed partial class LiveCharterLedger
     public override void FinalizeInit()
     {
         ValidateOwnershipReturnClock();
+        ValidatePlayerRenewalLineage();
         if (!RestoreFailed && (Book.LastTick > Find.TickManager.TicksGame || npcWorldInitialized && npcWorldTick > Find.TickManager.TicksGame))
         { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Charter/initial NPC registry clock mismatch; source records retained."); }
     }

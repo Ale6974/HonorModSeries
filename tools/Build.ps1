@@ -32,6 +32,9 @@ try {
     [xml]$korean = Get-Content "$($mod.FullName)/Common/Languages/Korean/Keyed/Honor.xml" -Raw
     $englishKeys = @($english.LanguageData.ChildNodes | Where-Object NodeType -eq Element | ForEach-Object Name)
     $koreanKeys = @($korean.LanguageData.ChildNodes | Where-Object NodeType -eq Element | ForEach-Object Name)
+    if (@($englishKeys | Group-Object | Where-Object Count -gt 1).Count -gt 0 -or @($koreanKeys | Group-Object | Where-Object Count -gt 1).Count -gt 0) {
+        throw "Duplicate translation keys in $($mod.Name)."
+    }
     if (Compare-Object $englishKeys $koreanKeys) { throw 'English/Korean translation keys differ.' }
     foreach ($key in $englishKeys) {
         $left = @([regex]::Matches($english.SelectSingleNode("LanguageData/$key").InnerText, '\{\d+\}') | ForEach-Object Value | Sort-Object)

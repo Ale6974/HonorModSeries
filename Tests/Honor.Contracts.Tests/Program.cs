@@ -187,6 +187,7 @@ assertions += CharterOfferTests.Run();
 assertions += CharterAmendmentTests.Run();
 assertions += CharterProtectionTests.Run();
 assertions += CharterAidGenerationTests.Run();
+assertions += PlayerCharterRenewalTests.Run();
 assertions += AlternativeOfferTests.Run();
 assertions += LiegeInvitationTests.Run();
 assertions += AdmissionDiplomacyTests.Run();

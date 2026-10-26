@@ -228,7 +228,7 @@ public sealed class CharterBook
         var c = Charter(id); var old = Charter(previous);
         Require(c.Phase == RecordedCharterPhase.Offered && c.Amendment == null && c.NpcAuthority == null && old.NpcAuthority == null &&
             old.Phase == RecordedCharterPhase.Released && c.Terms.Liege == old.Terms.Liege && c.Terms.Subject == old.Terms.Subject &&
-            Entity(c.Terms.Liege).Player && !Entity(c.Terms.Subject).Player && CityStockProof.Valid(proof), "Invalid same-party amendment link.");
+            Entity(c.Terms.Liege).Player != Entity(c.Terms.Subject).Player && CityStockProof.Valid(proof), "Invalid same-party amendment link.");
         charters[id] = c with { Amendment = new(previous, proof) };
     }
     public void ConsentNpcRelease(string id, string party, long now, IEnumerable<TerritoryObservation> observations)
@@ -377,7 +377,7 @@ public sealed class CharterBook
             {
                 Key(c.Amendment.Previous); var old = book.Charter(c.Amendment.Previous);
                 Require(old.Id != c.Id && CityStockProof.Valid(c.Amendment.Proof) && c.NpcAuthority == null && old.NpcAuthority == null &&
-                    book.Entity(c.Terms.Liege).Player && !book.Entity(c.Terms.Subject).Player && old.Phase == RecordedCharterPhase.Released &&
+                    book.Entity(c.Terms.Liege).Player != book.Entity(c.Terms.Subject).Player && old.Phase == RecordedCharterPhase.Released &&
                     c.Terms.Liege == old.Terms.Liege && c.Terms.Subject == old.Terms.Subject &&
                     Math.Max(old.PlayerReleaseTick.Value, old.NpcReleaseTick.Value) <= c.OfferedTick, "Invalid saved negotiated amendment.");
                 var seen = new HashSet<string>(StringComparer.Ordinal) { c.Id }; var previous = old;

@@ -18,6 +18,9 @@ public sealed class PlayerPoliticsLedger : GameComponent
     public PlayerPoliticsLedger(Game game) { }
     private LiveCharterLedger Charters => Current.Game.GetComponent<LiveCharterLedger>();
     internal PlayerAllegiance Model => allegiance ??= new(Faction.OfPlayer.GetUniqueLoadID());
+    internal PlayerAllegiance RenewalModel => allegiance ?? throw new ArgumentException("Original player allegiance is unavailable.");
+    // The caller stages/validates the common book, exact command lineage and journal before this assignment.
+    internal void CommitCharterRenewal(PlayerAllegiance prepared) => allegiance = prepared;
     public override void ExposeData()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed && allegiance != null) snapshot = allegiance.Export();

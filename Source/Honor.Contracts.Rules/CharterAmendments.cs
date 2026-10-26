@@ -4,7 +4,10 @@ using System.Text.Json;
 namespace Honor.Contracts.Rules;
 
 public sealed record CharterAmendmentWitness(string Previous, string Next, long Tick, string Book, string Transfers,
-    CharterOfferDraft Draft, NpcRealmDecisionEvidence Decision, int Goodwill);
+    CharterOfferDraft Draft, NpcRealmDecisionEvidence Decision, int Goodwill)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string Payments { get; init; }
+}
 public sealed record CharterAmendmentPlan(CharterAmendmentWitness Witness, string Proof, string Prepared, string After);
 public sealed record CharterAmendmentSave(int Version, CharterAmendmentPlan[] Records);
 
@@ -22,14 +25,28 @@ public sealed class CharterAmendments
             throw new ArgumentException("Invalid amendment witness.");
         NpcRealmDecision.Consent(w.Decision);
         var book = CharterBook.Restore(w.Book); var transfers = TerritoryTransferLedger.Restore(w.Transfers); var old = book.Charter(w.Previous);
+        bool playerSubject = book.Entity(old.Terms.Subject).Player;
+        var npc = book.Entity(playerSubject ? old.Terms.Liege : old.Terms.Subject);
+        bool accepted;
+        if (playerSubject)
+        {
+            if (w.Payments == null) throw new ArgumentException("Player-subject renewal requires its exact current tribute evidence.");
+            var payments = TributeLedger.Restore(w.Payments);
+            if (payments.LastTick > w.Tick || payments.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared)) throw new ArgumentException("Resolve reserved or future tribute first.");
+            accepted = CharterOffers.Assess(book, payments, old.Terms.Subject, old.Terms.Liege, true, w.Draft, w.Goodwill, w.Tick).Accepted;
+        }
+        else
+        {
+            if (w.Payments != null) throw new ArgumentException("Legacy NPC-town renewals retain their original witness shape.");
+            accepted = w.Draft.Assess(false, w.Goodwill).Accepted;
+        }
         if (w.Tick < book.LastTick || w.Tick < transfers.LastTick || old.Phase != RecordedCharterPhase.Active || old.NpcAuthority != null ||
-            old.PlayerReleaseTick.HasValue || old.NpcReleaseTick.HasValue || !book.Entity(old.Terms.Liege).Player || book.Entity(old.Terms.Subject).Player ||
+            old.PlayerReleaseTick.HasValue || old.NpcReleaseTick.HasValue || npc.Player || book.Entity(old.Terms.Liege).Player == playerSubject ||
             book.Charters.Any(c => c.Id == w.Next || book.Phase(c, w.Tick) == RecordedCharterPhase.Offered &&
                 (c.Terms.Subject == old.Terms.Subject || c.Terms.Liege == old.Terms.Subject)) ||
             transfers.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) ||
-            !transfers.VerifiedOwner(old.Terms.Subject, book.Entity(old.Terms.Subject).NativeOwner, w.Decision.Realm) ||
-            w.Goodwill < 20 || !w.Draft.Assess(false, w.Goodwill).Accepted)
-            throw new ArgumentException("An unchanged, unreleased player-liege town and fresh willing ordinary NPC response are required.");
+            !transfers.VerifiedOwner(npc.Id, npc.NativeOwner, w.Decision.Realm) || w.Goodwill < 20 || !accepted)
+            throw new ArgumentException("An unchanged, unreleased same-party charter and fresh willing ordinary NPC response are required.");
         var actual = observed.ToArray(); book.ValidateCurrent(old.Id, actual);
         string proof = Hash(w);
         book.ConsentToRelease(old.Id, true, w.Tick, actual); book.ConsentToRelease(old.Id, false, w.Tick, actual);
@@ -45,7 +62,8 @@ public sealed class CharterAmendments
         RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(transfers); RuntimeCompat.NotNull(payments); RuntimeCompat.NotNull(observations);
         if (payments.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) || payments.LastTick > now)
             throw new ArgumentException("Resolve reserved physical deliveries first.");
-        return Build(new(previous, next, now, book.Export(), transfers.Export(), draft, decision, goodwill), observations);
+        return Build(new CharterAmendmentWitness(previous, next, now, book.Export(), transfers.Export(), draft, decision, goodwill) {
+            Payments = book.Entity(book.Charter(previous).Terms.Subject).Player ? payments.Export() : null }, observations);
     }
     public (CharterBook Book, CharterAmendments Archive) Commit(CharterAmendmentPlan plan, CharterBook book, TerritoryTransferLedger transfers,
         TributeLedger payments, NpcRealmDecisionEvidence decision, int goodwill, long now, IEnumerable<TerritoryObservation> observations)
