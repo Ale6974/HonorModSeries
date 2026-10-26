@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## native 기본 유전자 원본 보존 — 0.3.37 / 2026-10-26
+
+설치1.7.4985의 Pawn.SetFaction, PawnComponentsUtility.AddAndRemoveDynamicComponents, Gene/Pawn_GeneTracker와 욕구 재평가 경로를 읽었다. NPC간 소속 변경은 Gene 생성/제거/재발현 API를 직접 호출하지 않는다. 기본 Gene의 저장 필드는 def/pawn/loadID/overriddenByGene/passionPreAdd이며, tracker의 원 endogenes/xenogenes·private xenotype·xenotypeName/iconDef/hybrid를 읽어 바인딩한다. getter의 표시 fallback Xenotype은 원 private 값 대신 사용하지 않는다. 1.6.4871 참조 metadata에서도 해당 필드/접근자·EnablesNeed/DisablesNeed를 확인하고 별도 net472 빌드로 확인했다. 설치1.6 본문으로 주장하지 않는다.
+
+기본 Gene/Pawn_GeneTracker 정확한 클래스·등록된 def·원 parent pawn만 허용한다. native 소속/동적 component/욕구 갱신·gene ID/Active·목록 getter에 unknown Harmony patch가 있으면 새 지원 경로를 보류한다. cachedGenes는 private layout을 확인하고 nonnull일 때 실제 xenogenes→endogenes 참조/순서와 같아야 하며, 관찰을 위해 getter를 호출해 생성/수리하지 않는다. native 욕구 처리의 정상 null-cache materialization은 지문 변경으로 보지 않는다. 특수 subclass·잘못된 ID/parent/foreign/cyclic override·unbounded records는 보류한다.
+
+새 profile7은 기존 profile6 임상/수술/신앙/포로 지문에 독립 genetics 지문을 더해 실제 주민 SetFaction/포로 host 변경 전후 및 명시 복구에서 검증한다. 유전자와 tracker는 원 Pawn의 native Deep/Reference saving에 맡기며 이중 저장/복원 API는 없다. native 로딩이 손상 데이터를 정리하더라도 원 지문과 달라진 결과를 자동 수리·완료로 인정하지 않는다. 기존 profile1–6 bytes와 저장된 프로필 복구·5인수 Compose 공개 시그니처는 유지한다. 지도자 경로는 기존 profile5를 유지하며 전체 합병/노예/특수 유전자 지원으로 확장하지 않는다. 게임 원문은 ignored 로컬 분석 파일에만 둔다.
+
 ## 도시 미배정 월드 지도자의 실제 개인 합류 — 0.3.36 / 2026-10-26
 
 이미 검증한 native world-pawn/leader 참조, Settlement.previouslyGeneratedInhabitants, Notify_LeaderLost와 Pawn.SetFaction 경로를 사용한다. 새 engine API/원시 faction·leader 쓰기는 없다. 기존 세계 객체의 모든 Settlement와 공통 장부 binding에 남은 과거 Settlement 참조를 합쳐 확인하며, 명부가 누락되면 미배정으로 추정하지 않는다. 현재 지도자가 어떤 원 도시 명부에도 없을 때 새 UnassignedSource=true/SeparateSuccession=true 의도를 기록한다. 원 계약 도시는 권한/재고/명부 확인 대상이며 거주지로 가정하지 않는다.

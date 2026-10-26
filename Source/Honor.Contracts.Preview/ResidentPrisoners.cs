@@ -70,7 +70,7 @@ internal static class ResidentPrisoners
         if (!RuntimeCompat.IsFinite(resistance.min) || !RuntimeCompat.IsFinite(resistance.max) || resistance.min < 0 || resistance.max < resistance.min ||
             !RuntimeCompat.IsFinite(will.min) || !RuntimeCompat.IsFinite(will.max) || will.min < 0 || will.max < will.min)
             throw new ArgumentException("Invalid native prisoner initialization ranges.");
-        if (profile is not (4 or 5 or 6)) throw new ArgumentException("Unsupported prisoner preservation profile.");
+        if (profile is not (4 or 5 or 6 or 7)) throw new ArgumentException("Unsupported prisoner preservation profile.");
         if (profile >= 5) ResidentIdeology.Proof(p);
         // NPC-to-NPC host change keeps the prisoner role. The native drop path returns before touching unheld world-pawn gear.
         if (p.SpawnedOrAnyParentSpawned || p.InContainerEnclosed) throw new ArgumentException("Prisoner gear cannot be preserved here.");

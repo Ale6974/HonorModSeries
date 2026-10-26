@@ -1,5 +1,12 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.37 — 기본 유전자 주민의 실제 이전 경로/프로필7 (2026-10-26)
+
+- 신규38개 assertion: 원 gene ID/정의/순서·내생/이식 분류·같은 tracker 억제 관계·원 passionPreAdd, parent pawn/저장 xenotype/name/icon/hybrid, null/빈 tracker·표시 fallback과 원 private 값의 구분·저장 왕복을 검사했다. duplicate/foreign/self/cyclic override·미정의 열정·누락/과다 rows·unbounded text는 거절한다.
+- 새 profile7을 기존 실제 ResidentMoveSet/medical reset/저장 복구에 연결해 원 genetics가 바뀌거나 사라지면 완료를 막는지 확인했다. 기존1~6에는 새 genetics 권한을 주입할 수 없고 기존 fingerprint regression들과5인수 Compose binary API가 유지된다. native helper는 같은 Pawn/원 Gene만 읽고 원 tracker의 native 저장을 사용한다. 특수 Gene subclass·알 수 없는 callbacks/원본 변화와 지도자 유전자·노예/맵/복잡 stock 등 미지원 상태는 보류한다.
+- 1.6/net472·1.7/net10 전체 빌드/각 규칙 호스트가 경고/오류0으로 통과했다. Contracts **3,962** + Honor/runtime **20,093** = 대상별 **24,055**개 assertion. 최종 native getter/cache/크기 가드 뒤 양 Preview를 재빌드했다. EN/KO **423개** 키/자리표시자·FactionDef12개 필드를 확인한다. 실제 설치1.7/참조1.6 metadata를 구분하고 engine 실행·새 IL patch/외부 의존성을 추가하지 않았다.1단계 완료를 주장하지 않는다.
+- 6모드×두 런타임 선택/DLL 허용 목록을 통과한 ZIP SHA256: `6C9A4157D64BA98BC9E4842378D5096D8095CAFF7C2A7C95281D6CA71EC5CD01`. 실행 중인 게임이 없을 때0.3.36 로컬본을 `.local/contracts-preview-9698a85547db4d38a5bf65579e25777a`에 백업하고0.3.37을 설치했다. 원본/설치32개 파일 집합과 해시가 일치하며 ModsConfig.xml/Prefs.xml 해시는 불변이다. 활성화/언어/Steam은 유지한다.
+
 ## Contracts 0.3.36 — 도시 미배정 월드 지도자 개인 합류 (2026-10-26)
 
 - 신규38개 assertion은 빈 원 명부/다른 주민만 있는 원 명부 각각에서 미배정 actor의 실제 native 후임 기록 경계→소속 관측/의료1회→목적지 추가/완료·저장 왕복을 검사한다. 원 배정의 가짜 생성/삭제, 원 actor가 있는 상태의 미배정 표시, 구버전 combined로의 변환, 중복 목적지·원/목적지 새 배정·원 명부 변화·이미 소진한 의료 재복원·불확실 source-side call 재실행을 거절한다. 원 book/transfer/계약·채무 bytes는 유지한다.

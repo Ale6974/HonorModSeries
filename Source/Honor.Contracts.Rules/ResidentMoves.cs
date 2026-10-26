@@ -11,10 +11,15 @@ public enum ResidentMoveAction { ChangeFaction, RestoreMedicalCare, Verify }
 public static class ResidentMoveProfiles
 {
     public static string Compose(string legacy, string surgery, int profile, string ideology = null, string custody = null)
+        => Compose(legacy, surgery, profile, ideology, custody, null);
+    public static string Compose(string legacy, string surgery, int profile, string ideology, string custody, string genetics)
     {
-        if (!CityStockProof.Valid(legacy) || profile is not (1 or 2 or 3 or 4 or 5 or 6) || (profile == 1 ? surgery != null : !CityStockProof.Valid(surgery)) ||
-            (profile >= 3 ? !CityStockProof.Valid(ideology) : ideology != null) || (profile >= 4 ? !CityStockProof.Valid(custody) : custody != null))
+        if (!CityStockProof.Valid(legacy) || profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7) || (profile == 1 ? surgery != null : !CityStockProof.Valid(surgery)) ||
+            (profile >= 3 ? !CityStockProof.Valid(ideology) : ideology != null) || (profile >= 4 ? !CityStockProof.Valid(custody) : custody != null) ||
+            (profile == 7 ? !CityStockProof.Valid(genetics) : genetics != null))
             throw new ArgumentException("Invalid resident preservation profile.");
+        if (profile == 7) return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(
+            JsonSerializer.Serialize(new { Profile = 7, Previous = Compose(legacy, surgery, 6, ideology, custody), Genetics = genetics }))));
         if (profile == 6) return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(
             JsonSerializer.Serialize(new { Profile = 6, Previous = Compose(legacy, surgery, 5, ideology, custody) }))));
         if (profile == 5) return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(

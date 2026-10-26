@@ -199,6 +199,7 @@ assertions += LeaderJoiningTests.Run();
 assertions += LeaderSuccessionSplitTests.Run();
 assertions += LeaderNativeCallScopeTests.Run();
 assertions += UnassignedLeaderJoinTests.Run();
+assertions += ResidentGeneticsTests.Run();
 assertions += UnionWarAdmissionTests.Run();
 assertions += FeudalWarAdmissionTests.Run();
 assertions += FollowerTransfersTests.Run();

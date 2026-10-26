@@ -28,7 +28,7 @@ public sealed class ResidentExecutionRecord : IExposable
         Scribe_Collections.Look(ref Prisoners, "prisonerCustody", LookMode.Deep);
         if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; Prisoners ??= []; }
     }
-    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
+    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 or 7 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
 }
 
 internal static class ResidentExecution
@@ -53,7 +53,7 @@ internal static class ResidentExecution
             (!retainedLeader && PawnUtility.IsFactionLeader(p)) || p.InMentalState || p.Downed || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
             p.GetLord() != null || profile < 3 && p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
             p.HasExtraHomeFaction() || p.HasExtraMiniFaction() || p.GetExtraHostFaction() != null || p.questTags?.Count > 0 ||
-            (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
+            (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || profile < 7 && (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
             p.health?.surgeryBills == null || profile == 1 && p.health.surgeryBills.Count != 0 || p.health.hediffSet?.hediffs == null || p.needs?.AllNeeds == null || p.relations?.DirectRelations == null ||
             p.relations.DirectRelations.Count > 1000 || p.relations.DirectRelations.Any(r => r == null || r.def == null || r.otherPawn == null) ||
             (p.needs.mood?.thoughts?.memories?.Memories.Count ?? 0) > 1000 ||
@@ -83,7 +83,7 @@ internal static class ResidentExecution
     internal static ResidentMoveActual ReadJoiningLeader(Pawn p) => ReadInternal(p, 5, null, null, true);
     private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader)
     {
-        if (profile is not (1 or 2 or 3 or 4 or 5 or 6)) throw new ArgumentException("Unknown resident profile.");
+        if (profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7)) throw new ArgumentException("Unknown resident profile.");
         Eligible(p, profile, retainedLeader); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
@@ -98,11 +98,12 @@ internal static class ResidentExecution
                 settings.hostilityResponse, settings.selfTend, settings.displayOrder, settings.animalForage, settings.animalDig }
         });
         preserved = ResidentMoveProfiles.Compose(preserved, profile >= 2 ? ResidentSurgery.Proof(p, surgery) : null, profile,
-            profile >= 3 ? ResidentIdeology.Proof(p) : null, profile >= 4 ? ResidentPrisoners.Proof(p, prisoner, profile) : null);
+            profile >= 3 ? ResidentIdeology.Proof(p) : null, profile >= 4 ? ResidentPrisoners.Proof(p, prisoner, profile) : null,
+            profile >= 7 ? ResidentGenes.Proof(p) : null);
         // Faction in the shared move planner denotes the changing authority; prisoner affiliation is separately proof-bound.
         return new(baseline.Id, profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
     }
-    internal static ResidentExecutionRecord Capture(Settlement city, int profile = 6)
+    internal static ResidentExecutionRecord Capture(Settlement city, int profile = 7)
     {
         EnsureRetention();
         CheckTown(city); var pawns = city.previouslyGeneratedInhabitants.OrderBy(p => p?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
@@ -115,7 +116,7 @@ internal static class ResidentExecution
         var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
         return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners };
     }
-    internal static string Proof(Settlement city, int profile = 6, Faction target = null)
+    internal static string Proof(Settlement city, int profile = 7, Faction target = null)
     {
         try
         {

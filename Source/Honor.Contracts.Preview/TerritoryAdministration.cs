@@ -101,7 +101,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
         !faction.defeated && faction.HasGoodwill && faction.def.humanlikeFaction && !faction.def.permanentEnemy &&
         !(faction.def.royalTitleTags?.Count > 0) && (!faction.HostileTo(Faction.OfPlayer) || faction.GetUniqueLoadID() == releasedSource);
-    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null, int residentProfile = 6)
+    internal static TerritoryTransferObservation Observe(Settlement city, string territory, Faction target, string releasedSource = null, int residentProfile = 7)
     {
         var all = Cities(); bool exists = city != null && all.Contains(city); var owner = exists ? city.Faction : null;
         int format = 0;
