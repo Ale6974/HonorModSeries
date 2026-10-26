@@ -66,7 +66,44 @@ internal static class OverlappingPoliticalLossTests
         Reject(() => first.Archive.Review("loss-a", altered, transfers, first.Political, 40), "unrelated book changes cannot be rebased");
         Reject(() => first.Archive.Review("loss-a", first.Book, transfers, journal, 40), "old command head cannot erase acknowledged sibling");
         var newer = Witness("d") with { BookBefore = first.Book.Export(), PoliticalBefore = first.Political.Export(), LossTick = 31, ObservedTick = 31 };
-        Reject(() => first.Archive.Observe(newer, first.Book, transfers, first.Political), "another epoch cannot strand unresolved earlier observations");
+        var laterObserved = first.Archive.Observe(newer, first.Book, transfers, first.Political);
+        Check(laterObserved.Records.Count == 4 && laterObserved.Records.Single(r => r.Id == "loss-d").PoliticalBefore == first.Political.Export() &&
+            laterObserved.Records.Single(r => r.Id == "loss-a").BookBefore == beforeBook,
+            "a later native observation preserves its actual head without rewriting unresolved older evidence");
+        foreach (bool newerFirst in new[] { false, true })
+        {
+            var mixed = PoliticalTownLossArchive.Restore(laterObserved.Export()); mixed.ValidatePair(first.Book, transfers); mixed.ValidatePolitical(first.Political);
+            string next = newerFirst ? "loss-d" : "loss-a", after = newerFirst ? "loss-a" : "loss-d";
+            var partial = mixed.Commit(mixed.Review(next, first.Book, transfers, first.Political, 40), first.Book, transfers, first.Political, 40);
+            var resumed = PoliticalTownLossArchive.Restore(partial.Archive.Export());
+            resumed.ValidatePair(CharterBook.Restore(partial.Book.Export()), transfers); resumed.ValidatePolitical(AllegianceTransitionLedger.Restore(partial.Political.Export()));
+            Check(resumed.Pending && resumed.Records.Single(r => r.Id == "loss-d").BookBefore == newer.BookBefore &&
+                resumed.Records.Single(r => r.Id == "loss-a").PoliticalBefore == beforePolitical,
+                "either newer-first or older-first acknowledgement survives partial reload with both original scopes intact");
+            var penultimate = resumed.Commit(resumed.Review(after, partial.Book, transfers, partial.Political, 50), partial.Book, transfers, partial.Political, 50);
+            var all = penultimate.Archive.Commit(penultimate.Archive.Review("loss-c", penultimate.Book, transfers, penultimate.Political, 60), penultimate.Book, transfers, penultimate.Political, 60);
+            all.Archive.ValidatePair(all.Book, transfers); all.Archive.ValidatePolitical(all.Political);
+            Check(!all.Archive.Pending && all.Political.LostCharters.Count() == 4 && all.Book.Charter("d").TerritoryLostTick == 31 &&
+                all.Book.Charter("a").TerritoryLostTick == 20 && all.Book.Entity("territory/d").NativeOwner == "source" && transfers.Export() == beforeTransfers,
+                "interleaved observations close in either actual order without ownership, transfer or loss-time fabrication");
+            var finished = AllegianceTransitionLedger.Restore(all.Political.Export());
+            finished.Complete(player, FollowerTransfers.Review(all.Book, transfers, Array.Empty<FollowerCandidate>(), "union", 60), 60);
+            all.Archive.ValidatePolitical(finished);
+            Check(!finished.Pending && finished.Current.Followers.Count == 4 && finished.Current.TownLosses.Length == 4,
+                "remaining migration completes only after all actual losses are acknowledged while retaining the full original set");
+        }
+        var mixedSave = JsonSerializer.Deserialize<PoliticalTownLossSave>(laterObserved.Export());
+        Reject(() => PoliticalTownLossArchive.Restore(JsonSerializer.Serialize(mixedSave with { Records = mixedSave.Records.Where(r => r.Id != "loss-b").ToArray() })),
+            "a later observation cannot supply a missing earlier native head");
+        var wrongOriginalBook = CharterBook.Restore(newer.BookBefore); wrongOriginalBook.Register(new("unexpected", "source", false), 30);
+        Reject(() => PoliticalTownLossArchive.Restore(JsonSerializer.Serialize(mixedSave with { Records = mixedSave.Records.Select(r => r.Id == "loss-d" ? r with { BookBefore = wrongOriginalBook.Export() } : r).ToArray() })),
+            "an unrelated mutation cannot be hidden inside a later original snapshot");
+        Reject(() => PoliticalTownLossArchive.Restore(JsonSerializer.Serialize(mixedSave with { Records = mixedSave.Records.Select(r => r.Id == "loss-d" ? r with { PoliticalBefore = beforePolitical } : r).ToArray() })),
+            "a current book cannot be assigned to an earlier command head");
+        var alteredPhysical = JsonSerializer.Deserialize<TerritoryTransfersSave>(beforeTransfers);
+        Reject(() => PoliticalTownLossArchive.Restore(JsonSerializer.Serialize(mixedSave with { Records = mixedSave.Records.Select(r => r.Id == "loss-d" ? r with {
+            TransfersBefore = JsonSerializer.Serialize(alteredPhysical with { LastTick = 30 }) } : r).ToArray() })),
+            "a different physical-ledger epoch cannot bypass unresolved custody boundaries");
         Reject(() => archive.Observe(Witness("a") with { Id = "duplicate" }, book, transfers, journal), "same city cannot acquire duplicate observation authority");
         Reject(() => new PoliticalTownLossArchive().Observe(Witness("a") with { AcknowledgedBefore = beforePolitical }, book, transfers, journal), "unresolved witness cannot invent acknowledgement lineage");
         var saved = JsonSerializer.Deserialize<PoliticalTownLossSave>(third.Archive.Export());
@@ -88,6 +125,13 @@ internal static class OverlappingPoliticalLossTests
         var legacy = standalone.Commit(standalone.Review("loss-a", book, transfers, journal, 30), book, transfers, journal, 30);
         Check(!legacy.Archive.Export().Contains("AcknowledgedBefore") && !JsonSerializer.Serialize(Witness("a")).Contains("AcknowledgedBefore"),
             "single-loss legacy shape, positional constructor and original digest remain unchanged");
+        var laterBook = CharterBook.Restore(legacy.Book.Export()); laterBook.Register(new("later-unrelated", "source", false), 31);
+        var freshPeriod = Witness("b") with { BookBefore = laterBook.Export(), PoliticalBefore = legacy.Political.Export(), LossTick = 40, ObservedTick = 40 };
+        var freshArchive = legacy.Archive.Observe(freshPeriod, laterBook, transfers, legacy.Political);
+        var freshResult = freshArchive.Commit(freshArchive.Review("loss-b", laterBook, transfers, legacy.Political, 50), laterBook, transfers, legacy.Political, 50);
+        freshResult.Archive.ValidatePolitical(freshResult.Political);
+        Check(freshResult.Book.Entity("later-unrelated").NativeOwner == "source" && !freshResult.Archive.Pending,
+            "a fresh period after all earlier losses finished does not replay obsolete original book snapshots");
         Reject(() => final.Review("loss-a", third.Book, transfers, third.Political, 51), "completed acknowledgement cannot replay");
         Check(book.Export() == beforeBook && transfers.Export() == beforeTransfers && journal.Export() == beforePolitical && archive.Records.All(r => r.ResolvedTick == null),
             "successful staging and rejected changes never mutate original book, journal, stock or witnesses");

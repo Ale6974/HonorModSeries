@@ -48,25 +48,47 @@ public sealed class PoliticalTownLossArchive
         return (book, ledger, journal);
     }
     private static string Digest(PoliticalTownLoss r) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(r with { ResolvedTick = null, AcknowledgedBefore = null }))));
-    private static bool SameEpoch(PoliticalTownLoss a, PoliticalTownLoss b) => a.BookBefore == b.BookBefore &&
-        a.TransfersBefore == b.TransfersBefore && a.PoliticalBefore == b.PoliticalBefore;
+    private static string Scope(PoliticalTownLoss r) => JsonSerializer.Serialize(
+        AllegianceTransitionLedger.Restore(r.PoliticalBefore).Current with { TownLosses = null });
+    private static int OriginalPosition(PoliticalTownLoss r) => AllegianceTransitionLedger.Restore(r.PoliticalBefore).Current.TownLosses?.Length ?? 0;
+    private static int AcknowledgedPosition(PoliticalTownLoss r) => AllegianceTransitionLedger.Restore(r.AcknowledgedBefore ?? r.PoliticalBefore).Current.TownLosses?.Length ?? 0;
+    private static bool SameScope(PoliticalTownLoss a, PoliticalTownLoss b) => a.TransfersBefore == b.TransfersBefore && Scope(a) == Scope(b);
     private (CharterBook Book, TerritoryTransferLedger Ledger, AllegianceTransitionLedger Political) CurrentSource(PoliticalTownLoss r)
     {
-        var source = Source(r);
-        // Only disjoint, positively witnessed leaf closures from the SAME original epoch may advance this source.
-        // The exact acknowledged command head establishes order, including several confirmations on one tick.
-        foreach (var sibling in records.Values.Where(s => s.Id != r.Id && s.ResolvedTick.HasValue && SameEpoch(s, r))
-            .OrderBy(s => AllegianceTransitionLedger.Restore(s.AcknowledgedBefore ?? s.PoliticalBefore).Current.TownLosses?.Length ?? 0))
+        Source(r);
+        string scopeKey = Scope(r);
+        var scope = records.Values.Where(s => s.TransfersBefore == r.TransfersBefore && Scope(s) == scopeKey)
+            .Select(s => (Record: s, Original: OriginalPosition(s), Acknowledged: AcknowledgedPosition(s))).ToArray();
+        var pending = scope.Where(s => s.Record.ResolvedTick == null).ToArray();
+        if (pending.Length == 0) throw new ArgumentException("No pending loss source.");
+        int anchor = pending.Min(s => s.Original), earlier;
+        // An older observation may be acknowledged after a newer one was captured. Follow that
+        // dependency back to its real original head, never invent a replacement book snapshot.
+        do
+        {
+            earlier = anchor;
+            foreach (var s in scope.Where(s => s.Record.ResolvedTick.HasValue && s.Acknowledged >= anchor)) anchor = Math.Min(anchor, s.Original);
+        } while (anchor < earlier);
+        var relevant = scope.Where(s => s.Record.ResolvedTick == null || s.Acknowledged >= anchor).ToArray();
+        var origin = relevant.First(s => s.Original == anchor).Record;
+        var source = Source(origin);
+        var heads = new Dictionary<string, string>(StringComparer.Ordinal) { [source.Political.Export()] = source.Book.Export() };
+        foreach (var sibling in relevant.Where(s => s.Record.ResolvedTick.HasValue).OrderBy(s => s.Acknowledged).Select(s => s.Record))
         {
             Source(sibling);
-            if ((sibling.AcknowledgedBefore ?? sibling.PoliticalBefore) != source.Political.Export() || sibling.Charter == r.Charter || sibling.City == r.City)
-                throw new ArgumentException("Sibling loss must retain the exact preceding command head and distinct territory.");
+            if (!heads.TryGetValue(sibling.PoliticalBefore, out var originalBook) || originalBook != sibling.BookBefore ||
+                (sibling.AcknowledgedBefore ?? sibling.PoliticalBefore) != source.Political.Export())
+                throw new ArgumentException("A native loss must retain its exact original book and actual preceding command head.");
             var c = source.Book.Charter(sibling.Charter);
             source.Book.ClosePoliticalLostLeaf(c.Id, c.Terms.Subject, source.Book.Entity(c.Terms.Subject).NativeOwner,
                 sibling.LossTick, sibling.ResolvedTick.Value, new(sibling.Id, Digest(sibling)));
             source.Political = AllegianceTransitionLedger.Restore(JsonSerializer.Serialize(new AllegianceTransitionSave(1,
                 source.Political.Current with { TownLosses = (source.Political.Current.TownLosses ?? []).Append(Receipt(sibling.Id)).ToArray() })));
+            heads.Add(source.Political.Export(), source.Book.Export());
         }
+        foreach (var s in pending.Select(s => s.Record))
+            if (!heads.TryGetValue(s.PoliticalBefore, out var originalBook) || originalBook != s.BookBefore)
+                throw new ArgumentException("Pending observation does not match an actual preserved command/book head.");
         return source;
     }
     public AllegianceTownLoss Receipt(string id)
@@ -80,8 +102,8 @@ public sealed class PoliticalTownLossArchive
         if (r.ResolvedTick != null || records.Count >= Capacity || records.ContainsKey(r.Id) ||
             records.Values.Any(old => old.Charter == r.Charter) || book.Export() != r.BookBefore || transfers.Export() != r.TransfersBefore || journal.Export() != r.PoliticalBefore)
             throw new ArgumentException("Duplicate, overlapping, full or changed political town-loss observation.");
-        if (records.Values.Any(s => s.ResolvedTick == null && !SameEpoch(s, r)))
-            throw new ArgumentException("A new observation epoch cannot bypass unresolved original town losses.");
+        if (records.Values.Any(s => s.ResolvedTick == null && !SameScope(s, r)))
+            throw new ArgumentException("An observation cannot bypass a different unresolved intent, war or physical-ledger scope.");
         var copy = Restore(Export()); copy.records.Add(r.Id, r); copy.ValidatePair(book, transfers); copy.ValidatePolitical(journal);
         if (copy.Export().Length > 32000000) throw new ArgumentException("Political town-loss archive capacity.");
         return copy;
@@ -118,7 +140,7 @@ public sealed class PoliticalTownLossArchive
             if (r.ResolvedTick == null)
             {
                 if (pendingOrigin == null) { var expected = CurrentSource(r); pendingOrigin = r; pendingBook = expected.Book.Export(); pendingTransfers = expected.Ledger.Export(); }
-                if (!SameEpoch(pendingOrigin, r) || book.Export() != pendingBook || transfers.Export() != pendingTransfers)
+                if (!SameScope(pendingOrigin, r) || book.Export() != pendingBook || transfers.Export() != pendingTransfers)
                     throw new ArgumentException("Pending independent loss source changed.");
             }
             else if (r.ResolvedTick > book.LastTick || book.Charter(r.Charter) != c with { Phase = RecordedCharterPhase.TerritoryLost, TerritoryLostTick = r.LossTick, PoliticalLoss = new(r.Id, Digest(r)) } ||
@@ -143,7 +165,7 @@ public sealed class PoliticalTownLossArchive
             if (r.ResolvedTick == null)
             {
                 if (pendingOrigin == null) { pendingOrigin = r; pendingHead = CurrentSource(r).Political.Export(); }
-                if (!SameEpoch(pendingOrigin, r) || pendingHead != journal.Export()) throw new ArgumentException("Pending independent loss intent changed.");
+                if (!SameScope(pendingOrigin, r) || pendingHead != journal.Export()) throw new ArgumentException("Pending independent loss intent changed.");
             }
             else if (receipts.SingleOrDefault(l => l.Loss == r.Id) != Receipt(r.Id) ||
                 !(AllegianceTransitionLedger.Restore(r.AcknowledgedBefore ?? r.PoliticalBefore).Current.TownLosses ?? []).SequenceEqual(receipts.TakeWhile(l => l.Loss != r.Id)))
@@ -167,7 +189,8 @@ public sealed class PoliticalTownLossArchive
             result.records.Add(r.Id, r);
         }
         var pending = result.Records.Where(r => r.ResolvedTick == null).ToArray();
-        if (pending.Skip(1).Any(r => !SameEpoch(pending[0], r))) throw new ArgumentException("Overlapping independent observation epochs.");
+        if (pending.Skip(1).Any(r => !SameScope(pending[0], r))) throw new ArgumentException("Overlapping independent intent/war/physical scopes.");
+        if (pending.Length > 0) result.CurrentSource(pending[0]);
         return result;
     }
 }

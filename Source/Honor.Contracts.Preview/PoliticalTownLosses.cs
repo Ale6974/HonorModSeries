@@ -36,8 +36,6 @@ public sealed partial class TerritoryAdministrationLedger
         string context = IndependentLossReady(); var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
         if (city == null || city.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(city) ||
             politicalTownLosses.Records.Count >= PoliticalTownLossArchive.Capacity) return null;
-        if (politicalTownLosses.Records.Any(r => r.ResolvedTick == null && (r.BookBefore != Charters.Book.Export() ||
-            r.TransfersBefore != Ledger.Export() || r.PoliticalBefore != context))) return null;
         string territory = "territory/" + city.GetUniqueLoadID();
         var charter = Charters.Book.Charters.SingleOrDefault(c => c.Terms.Subject == territory && c.Phase == RecordedCharterPhase.Active);
         if (charter == null || !Charters.Book.PlayerManaged(charter) || !political.Journal.Current.Followers.Contains(charter.Id) ||

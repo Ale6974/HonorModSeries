@@ -1,5 +1,13 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.43 — 부분 정리 중 추가 소실과 과거 명령별 복구 (2026-10-26)
+
+- 신규11개 assertion 및 기존 epoch 경계 검사를 갱신했다. B를 정리한 뒤의 다른 original book/head에서 D 소실을 관찰하고, 옛 A 또는 새 D를 먼저 정리하는 두 순서 모두 partial reload→나머지 소실 정리→원 정치 intent 완료까지 검사한다. 옛/native 원본·개별 소실 시각·계약/채무 근거·전체 follower/이전 기록을 유지한다.
+- 과거 native head 누락, 새 관찰에 섞인 무관한 book 변경, 현재 book을 옛 head에 붙임, 다른 physical-ledger 시점을 거절한다. 모든 이전 소실 정리 이후 book에 정상적으로 새 기준이 생겼을 때 옛 원본을 재생하지 않는 회귀 검사도 포함한다. Schema/positional 생성자/원 digest는0.3.42와 동일하다.
+- 양 규칙 호스트 기준 Contracts4,128 + Honor/runtime20,093 = 대상별24,221개, EN/KO431키·FactionDef12필드다. 양 전체 빌드/패키지/설치 결과는 아래 완료 기록에 추가한다. 전체 합병/정당한 독립/집단 의결/나머지 보존·상위/재진입·재탈환은 남는다.
+
+- 완료: 양 전체 빌드 경고/오류0,6모드×두 런타임 선택·DLL 허용 목록 통과. ZIP SHA256: `210193C4B63FA386D82A825CA13C03C50F07AC149DA834ECDFC43C4B73CAEE9A`. 실행 중인 RimWorld가 확인돼0.3.43 로컬 설치는 보류했다. 기존 설치 파일·활성화·언어·Steam을 변경하지 않았다.
+
 ## Contracts 0.3.42 — 동일 정치 범위의 다중 말단 소실 (2026-10-26)
 
 - 신규22개 assertion은4개 원 follower 중3개 실제 소실 witness→B/A를 동일 tick에 명시 정리→부분 저장 왕복→C 정리→생존D의 실제 공통 이전 journal 확인→원 정치 intent 완료를 검사한다. 원 전체 follower 집합·계약 조건/서명·채무 근거·소실 시각·이전 이력을 보존한다.

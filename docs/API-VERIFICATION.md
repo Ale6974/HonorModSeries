@@ -1,5 +1,11 @@
 # 1.7 API·런타임 검증 기록
 
+## 서로 다른 관찰 시점의 말단 소실 연결 — 0.3.43 / 2026-10-26
+
+기존 WorldObject.Destroy normal-return observer와 Native current-book/intent/stock proof 경계를 유지한다. 새 native API/권한/IL 변경은 없고, 이전의 한 Prepared 물리 이전 제한도 그대로다. 1.7.4985 rev1269/net10.0 및1.6.4871/net472 참조 대상 구분은 유지한다.
+
+CurrentSource가 원 source position과 실제 ack position의 의존성을 따라 필요한 최소 과거 head까지 내려가 원본 book별 canonical timeline을 복사본에 만든다. 해당 scope의 실제 receipt만 실제 순서로 반영하고, 모든 pending/관련 resolved 관찰의 original head/book을 그 타임라인과 비교한다. 원 임무/war/authority/follower/physical ledger를 동일하게 유지해야 하며 미래·누락·다른 book을 추정하지 않는다. 기존 cached per-validation head는 같은 fixed scope에만 공유한다. Restore 및 live explicit commit 경로에 연결했고 추가 저장 필드나 native 재호출은 없다.
+
 ## 중단 정치 전환의 동일 범위 다중 말단 소실 — 0.3.42 / 2026-10-26
 
 설치 Version.txt1.7.4985 rev1269와 루트 runtimeconfig net10.0/10.0.13-waylithclr.dev를 다시 확인했다. 기존 normal-return WorldObject.Destroy observer와 실제 Settlement 참조·빈 명부/재고 검사만 사용한다. 새 native API/IL patch는 없으며 단일 Prepared 물리 이전 가드도 유지한다. 1.6은 pinned1.6.4871/net472 참조다.
