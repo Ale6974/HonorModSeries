@@ -42,6 +42,7 @@ public sealed partial class LiveCharterLedger
                 throw new ArgumentException("The observed hostile owner changed again; another review adapter is required.");
         }
         var authority = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
+        var decision = NpcDecisionAuthority.Read(authority);
         if (authority == null || authority.def == null || authority.IsPlayer || authority.def.defName == UnionPoliticsLedger.UnionDefName ||
             authority.def.royalTitleTags?.Count > 0 ||
             authority.GetUniqueLoadID() != proof.OwnerAtLoss || authority.leader == null || authority.leader.Dead ||
@@ -53,7 +54,7 @@ public sealed partial class LiveCharterLedger
             throw new ArgumentException("The surviving higher liege is not represented by this realm.");
         long now = Find.TickManager.TicksGame;
         var plan = townLosses.Review(root, Book, prefix ?? Guid.NewGuid().ToString("N"),
-            new(authority.leader.GetUniqueLoadID(), authority.leader.GetUniqueLoadID()), now, Observe());
+            NpcRealmDecision.Consent(decision), now, Observe());
         var current = plan.Descendants.Select(Book.Charter).ToArray();
         var actual = new List<object>();
         foreach (var c in current)
@@ -102,6 +103,7 @@ public sealed class TownSuccessionWindow : Window
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(12000, height + 1000)));
         list.Label("LS_Warning".Translate());
+        list.Label("ND_Limits".Translate());
         list.Label("HL_Limits".Translate());
         list.Label("LC_Warning".Translate());
         list.Label("LM_Warning".Translate());
@@ -117,6 +119,7 @@ public sealed class TownSuccessionWindow : Window
             if (root != null && list.ButtonText("LS_Review".Translate()))
             {
                 try { review = ledger.ReviewTownSuccession(root); }
+                catch (NpcDecisionBlocked e) { review = null; Messages.Message(e.Key.Translate(), MessageTypeDefOf.RejectInput); }
                 catch (ArgumentException) { review = null; Messages.Message("LS_Blocked".Translate(), MessageTypeDefOf.RejectInput); }
             }
             if (review != null)

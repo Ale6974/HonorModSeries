@@ -6,7 +6,10 @@ using Verse;
 
 namespace Honor.Contracts.Preview;
 
-public sealed record LiveSubcharterReview(NpcSubcharterPlan Plan, string Stamp, int RetainedDescendants, string Realm, string Representative);
+public sealed record LiveSubcharterReview(NpcSubcharterPlan Plan, string Stamp, int RetainedDescendants, string Realm, string Representative)
+{
+    [System.Text.Json.Serialization.JsonIgnore] public Game Context { get; init; }
+}
 
 public sealed partial class LiveCharterLedger
 {
@@ -23,6 +26,7 @@ public sealed partial class LiveCharterLedger
     }
     public LiveSubcharterReview ReviewSubcharter(string previous, string parent, string created = null)
     {
+        if (Current.ProgramState != ProgramState.Playing || Current.Game == null) throw new NpcDecisionBlocked("ND_Unavailable");
         var transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>();
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (RestoreFailed || transfers.RestoreFailed || payments.RestoreFailed || Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges ||
@@ -30,6 +34,7 @@ public sealed partial class LiveCharterLedger
             throw new ArgumentException("Resolve coordinated, physical or unavailable journals first.");
         var old = Book.Charter(previous);
         var authority = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
+        var decision = NpcDecisionAuthority.Read(authority);
         var liege = parent == PlayerIdentity ? authority : SubcharterRepresentative(parent); var subject = SubcharterRepresentative(old.Terms.Subject);
         if (liege != authority || subject != authority || !Book.Entity(old.Terms.Liege).Player && SubcharterRepresentative(old.Terms.Liege) != authority)
             throw new ArgumentException("All affected authorities must already belong to the same current player realm.");
@@ -37,19 +42,19 @@ public sealed partial class LiveCharterLedger
         foreach (var c in descendants)
             if (SubcharterRepresentative(c.Terms.Subject) != authority) throw new ArgumentException("Align every descendant's actual realm first.");
         var observed = Observe(); long now = Find.TickManager.TicksGame;
-        var plan = NpcSubcharters.Review(Book, previous, parent, created ?? Guid.NewGuid().ToString("N"),
-            new(liege.leader.GetUniqueLoadID(), subject.leader.GetUniqueLoadID()), now, observed);
+        var plan = NpcSubcharters.ReviewAuthorized(Book, previous, parent, created ?? Guid.NewGuid().ToString("N"), decision, now, observed);
         string stamp = JsonSerializer.Serialize(new { plan.Before, plan.After, plan.Tick, Transfers = transfers.Ledger.Export(),
             Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer), Observed = observed });
-        return new(plan, stamp, descendants.Length - 1, authority.Name, authority.leader.LabelShortCap);
+        return new(plan, stamp, descendants.Length - 1, authority.Name, authority.leader.LabelShortCap) { Context = Current.Game };
     }
     public void ApplySubcharter(LiveSubcharterReview reviewed)
     {
         Execute(() => {
-            if (reviewed == null) throw new ArgumentException("Review first.");
+            if (reviewed == null || reviewed.Context != Current.Game) throw new ArgumentException("Review this current game first.");
             var fresh = ReviewSubcharter(reviewed.Plan.Previous, reviewed.Plan.Parent, reviewed.Plan.Created);
             if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("NPC consent, graph or world changed.");
-            var replacement = NpcSubcharters.Commit(Book, fresh.Plan, Find.TickManager.TicksGame, Observe());
+            var replacement = NpcSubcharters.CommitAuthorized(Book, fresh.Plan,
+                NpcDecisionAuthority.Read(Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority()), Find.TickManager.TicksGame, Observe());
             Book = replacement; // Only one in-memory swap, after the entire replacement has been validated.
             Messages.Message("NS_Applied".Translate(), MessageTypeDefOf.NeutralEvent);
         });
@@ -58,6 +63,7 @@ public sealed partial class LiveCharterLedger
 
 public sealed class NpcSubchartersWindow : Window
 {
+    private readonly Game context = Current.Game;
     private string previous, parent;
     private LiveSubcharterReview review;
     private Vector2 scroll;
@@ -66,11 +72,13 @@ public sealed class NpcSubchartersWindow : Window
     public NpcSubchartersWindow() { forcePause = true; doCloseX = true; doCloseButton = true; absorbInputAroundWindow = true; }
     public override void DoWindowContents(Rect rect)
     {
+        if (context != Current.Game) { Widgets.Label(rect, "ND_Unavailable".Translate()); return; }
         var ledger = Current.Game.GetComponent<LiveCharterLedger>();
         var area = new Rect(0, 0, rect.width, rect.height - 45);
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(20000, height + 1000)));
         list.Label("NS_Warning".Translate());
+        list.Label("ND_Limits".Translate());
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else
         {
@@ -89,6 +97,7 @@ public sealed class NpcSubchartersWindow : Window
             if (previous != null && parent != null && list.ButtonText("NS_Review".Translate()))
             {
                 try { review = ledger.ReviewSubcharter(previous, parent); }
+                catch (NpcDecisionBlocked e) { review = null; Messages.Message(e.Key.Translate(), MessageTypeDefOf.RejectInput); }
                 catch (ArgumentException) { review = null; Messages.Message("NS_Rejected".Translate(), MessageTypeDefOf.RejectInput); }
             }
             if (review != null)

@@ -164,6 +164,7 @@ assertions += RescuePledgeTests.Run();
 assertions += PoliticalWorldTests.Run();
 assertions += CharterBookTests.Run();
 assertions += NpcSubcharterTests.Run();
+assertions += NpcRealmDecisionTests.Run();
 assertions += NpcWorldHierarchyTests.Run();
 assertions += TributeLedgerTests.Run();
 assertions += UnionAdmissionsTests.Run();

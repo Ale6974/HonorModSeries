@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## NPC 현재 의사결정 권한과 Game 경계 — 0.3.39 / 2026-10-26
+
+기존 NPC 재편 경로는 같은 세력의 살아 있는 leader/우호도50을 확인했지만 union/royal 소속을 구분하지 않았고, LiveSubcharterReview에 Game 참조가 없었다. 이제 현재 일반 세력 정책의 별도 evidence와 final reauthorization을 실제 book 교체에 연결한다. Royalty tags/known union은 별도 결정 절차 없이는 지원하지 않으며, 이를 그 체제의 지도자에게 권한이 없다는 native 사실로 주장하지 않는다. Hegemony/WD2는 기존 authoritative adapter 없이는 이 native 결정 경로를 승인하지 않는다.
+
+이미 사용 중인 native faction/leader/QuestManager/PawnsFinder/Awake/extra-faction/관계 API를 읽어 현재 등록·유일 직위·살아 있고 깨어 있는 대표·구금/정신 상태/외부 소속/예약 부재와 원 우호도50/상호 비적대를 확인한다. 새 native 실행 API/IL patch는 없다. 미지원 class는 속성을 평가하기 전에 보류한다. NPC 재편은 현 Game에 묶은 review/window와 component-owned Game를 확인하고 기존 실제 계약 원자 교체 전 현재 권한을 다시 읽는다. 영지 소실 후 기존 같은 realm 승계에도 같은 현재 대표 조건을 적용한다. 범용 realm 조회/기존 subtree exit 경로의 정책은 바꾸지 않는다.
+
+Decision evidence는 새 ephemeral review plan에만 있으며 null일 때 옛 JSON에 생기지 않는다. 기존 review/plan positional 생성자와 낮은 수준의 verified-input rules API를 유지한다. 구버전 계약·원 서명·채무/손실 기록은 고치거나 지우지 않으며, 새 authorization API가 옛 actor IDs를 자동 승인 근거로 채우지 않는다. Game 경계는 참조 비교/컴포넌트 호출 경로의 코드 검사와 양 빌드로 확인하며 별도 engine 기반 성공을 주장하지 않는다. 집단 의결/전체 합병/정당한 독립은 여전히 별도 구현이 필요하다.
+
 ## 물자를 가진 거래 동물 재고 보존 — 0.3.38 / 2026-10-26
 
 설치1.7.4985의 Pawn_InventoryTracker에서 pawn/innerContainer와 private unloadEverything/itemsNotForSale/unpackedCaravanItems를 확인했다. 공개 UnloadEverything getter는 현재 하역 가능 물품에 따라 원 bool과 다르게 보일 수 있어 raw field를 읽기만 한다.1.6.4871 참조 metadata에서도 같은 필드/형식을 확인했다. 기존 native inventory ExposeData가 설정 참조·컨테이너를 저장하므로 모드는 이를 Deep/Reference로 이중 저장하지 않는다. Settlement/MapParent에는 SetFaction override가 없고 기존 WorldObject.SetFaction의 owner 변경 경로를 사용한다. 새 지원은 실제 inherited 선언과 foreign Harmony patch 부재를 확인한다.

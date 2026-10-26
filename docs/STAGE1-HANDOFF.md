@@ -1,8 +1,10 @@
-# 1단계 예약 개발 인수인계 — 0.3.38 / 2026-10-26
+# 1단계 예약 개발 인수인계 — 0.3.39 / 2026-10-26
 
 honor-1은30분 반복/ACTIVE다. 중복 예약/동시 집행 없이 main·AGENTS·확정 결정·STATUS를 먼저 읽는다.1단계는 미완료다.
 
-이번은 native 거래 동물의 일반 pack inventory를 stock format2로 실제 도시 이전/명시 복구에 연결했다. 같은 root holder·동물/소속·정확한 Pawn_InventoryTracker/parent/container와 원 물품 ID/정의/재질/수량/HP/quality 및 raw unloadEverything/itemsNotForSale/unpackedCaravanItems 참조를 읽기만 한다. 원 동물이나 물품을 refaction/이동/Drop/재생성/이중 저장하지 않는다. 설정 refs는 원 실제 인벤토리의 중복 없는 부분 집합이어야 하며 root/동물/cargo 공통 ID domain·10000-entry 전체 한도를 적용했다. 상위 stock root holdership과 실제 inherited WorldObject.SetFaction/foreign patch 부재도 확인한다. 장비/의복·직접 carried thing·중첩/사람/시체·손상/unknown references는 보류한다. 실제 confirm/cancel/recovery는 format2+원 hash를 비교하며0/1과 빈 동물 재고 해시는 그대로다. 영한 관측 화면은 pack animals 수를 추가하지만 권한을 주지 않는다.
+이번은 NPC 재편의 현재 동의/현 Game 경계를 수정했다. 기존 LiveSubcharters는 살아 있는 realm leader/우호도50만 읽어 union/royal을 단일 지도자 동의로 처리할 수 있었고 review에는 Game이 없었다. NpcDecisionAuthority가 native 등록/유일 직위/현재 alive·awake·정신/구금/외부 소속·퀘스트 예약/상호 비적대·기존50 정책과 known provider 부재를 확인한다. 새 ReviewAuthorized/CommitAuthorized는 현재 evidence를 실제 book 원자 교체 직전에 재승인하고 옛 actorIDs-only plan을 자동 upgrade하지 않는다. LiveSubcharterReview는 기존 positional 생성자를 유지한 채 ephemeral JsonIgnore Context를 추가하고 window/context/common LiveCharterLedger.Execute 소유 Game를 확인한다. 다른 Game/old component는 새 signature/release를 만들지 못한다. TownSuccession의 기존 ordinary same-realm 복구도 이 대표 조건을 쓴다. 범용 SubcharterRepresentative 및 subtree exit의 기존 정책은 바꾸지 않았다. 집단/royal/provider 의결은 별도 미구현이지 이 gate를 구현으로 부르지 않는다. 기존 계약/서명/채무를 소급 수정하거나 blame을 만들지 않는다.
+
+0.3.38의 pack animals stock format2는 그대로 유지한다. 같은 root/animal/소속/native inventory parent/holder·원 물품과 raw unloadEverything/itemsNotForSale/unpacked refs를 읽고 실제 city confirm/cancel/recovery에서 원 hash/format2를 비교한다. 원 물품 이동/Drop/재생성/refaction/이중 저장은 없고0/1 해시는 유지한다. 손상/중첩/직접 carried/장비·의복 재고는 보류한다.
 
 0.3.37의 resident profile7 기본 Gene 보존은 유지한다. 원 Gene/pawn/등록 def/ID/순서·내생/이식·raw xenotype/name/icon/hybrid·passion/같은 tracker acyclic override를 검증한다. cachedGenes null은 native가 만들 수 있으나 nonnull 불일치는 수리하지 않는다. 옛 profile1~6/5인수 Compose API와 저장된 프로필 복구를 보존한다. 지도자 둘은 계속 profile5라 genetic leader 지원으로 부르지 않는다.
 
@@ -24,6 +26,6 @@ honor-1은30분 반복/ACTIVE다. 중복 예약/동시 집행 없이 main·AGENT
 
 ## 검사·게시·설치
 
-1.6은 pinned1.6.4871/net472,1.7은 설치1.7.4985/net10.0이다. 코드·규칙·영한·패키지만 검사하고 게임/엔진은 시작하지 않는다. 양 전체 빌드 대상별 Contracts4010 + Honor/runtime20093 =24103개, 공용 EN/KO424키와 FactionDef12필드다. 최종 setter 선언 가드 뒤1.6 Preview/1.7 전체를 확인했다. 패키지/설치·해시는 TESTING 최신 기록을 따른다. 검증 소스는 공개 main, 로컬 설치는 게임 없는 상태에서 백업 후 진행하고 활성화/언어/Steam은 유지한다. 질문은 가능한 독립 작업 뒤 모으고 없는 답변으로 동의를 꾸미지 않는다.
+1.6은 pinned1.6.4871/net472,1.7은 설치1.7.4985/net10.0이다. 코드·규칙·영한·패키지만 검사하고 게임/엔진은 시작하지 않는다. 양 전체 빌드 대상별 Contracts4039 + Honor/runtime20093 =24132개, 공용 EN/KO427키와 FactionDef12필드다. 최종 unknown-class 조기 차단 뒤 양 Preview도 재빌드했다. 패키지/설치·해시는 TESTING 최신 기록을 따른다. 검증 소스는 공개 main, 로컬 설치는 게임 없는 상태에서 백업 후 진행하고 활성화/언어/Steam은 유지한다. 질문은 가능한 독립 작업 뒤 모으고 없는 답변으로 동의를 꾸미지 않는다.
 
-잔여 노력 추정:1단계35%(7~9묶음),2단계80%(5~7),3단계95%(6~8),4단계90%(5~7),5단계100%(6~8),6단계70%(4~6). 이번은 복잡 재고의 한 실제 분기지만 전체 합병 등 큰 묶음 완료는 아니므로 비율을 낮추지 않는다. 확정 명세의 실제 실행·저장/복구·영한 안내·양 타깃 기준을 충족할 때만 완료 보고/반복 종료한다.
+잔여 노력 추정:1단계35%(7~9묶음),2단계80%(5~7),3단계95%(6~8),4단계90%(5~7),5단계100%(6~8),6단계70%(4~6). 이번은 부당한 동의/다른 Game 재사용을 차단하는 정확성 수정이며 전체 합병 등 큰 묶음 완료로 세지 않는다. 확정 명세의 실제 실행·저장/복구·영한 안내·양 타깃 기준을 충족할 때만 완료 보고/반복 종료한다.

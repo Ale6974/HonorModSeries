@@ -425,4 +425,7 @@
   <LJ_Observed>목적지 소속·후임 관측·의료/배정 확인</LJ_Observed>
   <LJ_SuccessionApplying>원 세력 승계 시작·실제 현재 직위의 긍정 관측만 허용</LJ_SuccessionApplying>
   <LJ_SuccessionRecorded>원 세력 후임 기록됨·개인 소속 변경은 아직 시작 전</LJ_SuccessionRecorded>
+  <ND_Limits>NPC 계층 재편과 영지 소실 후 계약 승계는 현재 살아 있고 깨어 있는 지원 일반 세력의 정당한 현 대표가 필요합니다. 연합 평의회·귀족 체제·외부 권위 제공자는 별도 동의 절차가 필요하며 지도자 이름만으로 집단 결정을 대신하지 않습니다. 다른 저장으로 바꾸면 새로 검토하세요.</ND_Limits>
+  <ND_Unsupported>이 세력에는 별도의 집단·귀족 체제 또는 외부 제공자 권한 절차가 필요합니다. 지도자만으로 평의회 표결·허가·해약·서명을 만들어 내지 않았습니다.</ND_Unsupported>
+  <ND_Unavailable>현재 게임 또는 세력 대표가 바뀌었거나 의사결정을 할 수 없습니다. 같은 등록 세력의 의사 있는 대표가 깨어 있고 구금·퀘스트 제한 없이 유일한 현 직위를 가질 때 다시 검토하세요. 기존 계약과 채무는 유지합니다.</ND_Unavailable>
 </LanguageData>

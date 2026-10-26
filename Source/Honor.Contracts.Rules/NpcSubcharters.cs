@@ -1,9 +1,25 @@
 namespace Honor.Contracts.Rules;
 
-public sealed record NpcSubcharterPlan(string Previous, string Parent, string Created, string Before, string After, long Tick, NpcCharterAuthority Authority);
+public sealed record NpcSubcharterPlan(string Previous, string Parent, string Created, string Before, string After, long Tick, NpcCharterAuthority Authority)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public NpcRealmDecisionEvidence Decision { get; init; }
+}
 
 public static class NpcSubcharters
 {
+    public static NpcSubcharterPlan ReviewAuthorized(CharterBook source, string previous, string parent, string created,
+        NpcRealmDecisionEvidence current, long now, IEnumerable<TerritoryObservation> observations)
+        => Review(source, previous, parent, created, NpcRealmDecision.Consent(current), now, observations) with { Decision = current };
+    public static CharterBook CommitAuthorized(CharterBook current, NpcSubcharterPlan plan, NpcRealmDecisionEvidence evidence,
+        long now, IEnumerable<TerritoryObservation> observations)
+    {
+        RuntimeCompat.NotNull(plan);
+        var original = NpcRealmDecision.Consent(plan.Decision); var actual = NpcRealmDecision.Consent(evidence);
+        if (plan.Decision.Realm != evidence.Realm || original != actual || plan.Authority != actual)
+            throw new ArgumentException("Current realm/representative must match the separately reviewed ordinary decision.");
+        return Commit(current, plan, now, observations);
+    }
     /// <summary>Atomically replace the incoming contract only. Descendant contracts and all old records survive.</summary>
     public static NpcSubcharterPlan Review(CharterBook source, string previous, string parent, string created,
         NpcCharterAuthority authority, long now, IEnumerable<TerritoryObservation> observations)

@@ -30,7 +30,8 @@ public sealed partial class LiveCharterLedger : GameComponent
     private List<TerritoryBinding> bindings = [];
     public CharterBook Book { get; private set; } = new();
     public bool RestoreFailed { get; private set; }
-    public LiveCharterLedger(Game game) { }
+    private readonly Game context;
+    public LiveCharterLedger(Game game) { context = game; }
     public string PlayerIdentity => "player/" + Faction.OfPlayer.GetUniqueLoadID();
     internal TerritoryBinding Binding(string identity) => bindings.SingleOrDefault(b => b.Identity == identity)
         ?? throw new ArgumentException("Unknown territory binding.");
@@ -153,11 +154,14 @@ public sealed partial class LiveCharterLedger : GameComponent
     }
     private bool Execute(Action action, bool resolvingLoss = false)
     {
+        if (context != Current.Game || Current.ProgramState != ProgramState.Playing)
+        { Messages.Message("ND_Unavailable".Translate(), MessageTypeDefOf.RejectInput); return false; }
         var transition = Current.Game.GetComponent<PoliticalTransitionLedger>();
         if (resolvingLoss ? transition.BlocksApartFromTownLosses : transition.BlocksChanges)
         { Messages.Message((UnresolvedTownLosses ? "LS_Freeze" : "PS_Pending").Translate(), MessageTypeDefOf.RejectInput); return false; }
         if (RestoreFailed) return false;
         try { action(); return true; }
+        catch (NpcDecisionBlocked e) { Messages.Message(e.Key.Translate(), MessageTypeDefOf.RejectInput); return false; }
         catch (ArgumentException) { Messages.Message("HCL_Unavailable".Translate(), MessageTypeDefOf.RejectInput); return false; }
     }
     public void Request(Settlement settlement, bool playerSubject) => Request(settlement, playerSubject, new(), settlement?.Faction, settlement?.Faction?.leader);

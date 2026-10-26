@@ -425,4 +425,7 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <LJ_Observed>target affiliation and successor observed; care/residency verification</LJ_Observed>
   <LJ_SuccessionApplying>source succession started; only a positive current office may be observed</LJ_SuccessionApplying>
   <LJ_SuccessionRecorded>source successor recorded; affiliation has not started</LJ_SuccessionRecorded>
+  <ND_Limits>NPC hierarchy changes and town-loss succession currently require a supported ordinary realm's current living, awake representative. Union councils, royal decision procedures and external authority providers require their own consent adapters; a ruler's identity alone is not a collective decision. Reopen reviews after changing saves.</ND_Limits>
+  <ND_Unsupported>This realm requires a separate collective, royal or provider authority procedure. No council vote, permission, release or signature was inferred from its ruler.</ND_Unsupported>
+  <ND_Unavailable>The current game or realm representative is unavailable or changed. Review again when the same registered, willing, decision-capable and unreserved representative holds the unique current office. Existing contracts and debts remain unchanged.</ND_Unavailable>
 </LanguageData>

@@ -1,5 +1,12 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.39 — NPC 실제 동의·현재 Game 경계 수정 (2026-10-26)
+
+- 신규29개 assertion: 실제 공통 book의 NPC 재편 review/commit에 현재 ordinary decision evidence를 연결해 정상 원자 교체·원 source bytes/조건/다른 계약·저장 왕복을 확인했다. union/royal/unknown regime, unavailable/unregistered/ineligible/중복 직위/의사 없음/provider authority·누락 대표를 review와 final commit 양쪽에서 거절하며 부분 해약/서명은 생기지 않는다.
+- 옛 검토 후 대표/realm 변경, 기존 actor ID만 있는 legacy plan, plan의 signing actor 변경을 current commit에 넣으면 원 book을 유지한다. 옛 plan의 null Decision JSON omission을 확인했다. Native review/window/component의 Game 참조 검사와 대표의 실제 생존/awake/정신/구금/extra-faction/quest 조건은 코드 검토 및 양 Preview 빌드로 확인했다. 엔진 기반 교차 저장 실행 검사로 주장하지 않는다.
+- 1.6/net472·1.7/net10 전체 빌드와 각 규칙 호스트: Contracts **4,039** + Honor/runtime **20,093** = 대상별 **24,132**개 assertion. 최종 unknown-class 조기 차단 뒤 양 Preview를 재빌드했으며 경고/오류0이다. EN/KO **427개** 키/자리표시자·FactionDef12개 필드가 통과했다. 원 book/Scribe 슬롯/서명·채무·NPC 일반 원자 교체·물리/정치 pending 가드는 유지했다. 이 수정은 집단 의결/전체 합병/1단계 완료가 아니다.
+- 6모드×두 런타임 선택/DLL 허용 목록을 통과한 ZIP SHA256은 `8C1A28E4407F4FB12F547AC744C21084036FD6CB6FFD6C71D14AB067BD0A5D2D`이다. 실행 중인 게임이 없을 때0.3.38을 `.local/contracts-preview-e4adb665ba264c8fb6f41a53a876a5ce`에 백업하고0.3.39를 설치했다. 원본/설치32개 파일 집합·해시가 일치하며 ModsConfig.xml/Prefs.xml 해시는 불변이다. 활성화/언어/Steam은 유지한다.
+
 ## Contracts 0.3.38 — 거래 동물의 일반 인벤토리 보존 (2026-10-26)
 
 - 신규48개 assertion: 원 cargo ID/정의/재질/수량/HP/quality·같은 보관 동물과 원 하역/판매 제외/포장 해제 참조·순서 독립성/저장 왕복을 확인했다. 누락/중복/다중 holder/외부 설정·root/동물/cargo ID 충돌·전역 한도 초과·미생성 stock 가장을 거절한다. 옛0/1 stock 검사는 그대로 통과한다.
