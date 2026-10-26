@@ -386,4 +386,25 @@
   <PS_LossProgress>원래 봉신 {1}개 중 실제 파괴 확인 {0}개입니다. 나머지 원래 봉신은 모두 현재 상태를 확인해야 합니다.</PS_LossProgress>
   <PI_Pending>도시 이전을 시작하기 전 또는 이전을 확인 완료한 뒤에 발생한 별도의 실제 소실입니다. 기존 이전 기록을 변경하지 않습니다. 원래 정치 봉신 목록을 유지하며 생존 봉신 전체를 확인해야 합니다.</PI_Pending>
   <PI_Confirm>{0}: 기록된 실제 파괴를 확인해 기존 영지 계약만 종료하고 채무·서명·과거 이전 결과를 모두 보존할까요? 가짜 이전을 만들거나 기존 이전을 변경하지 않으며 별도 정치 소실 사건으로 남깁니다.</PI_Confirm>
+  <FM_Open>별도 세력 전체 합병 협의</FM_Open>
+  <FM_Limits>동의 준비 단계입니다. 세력 전체 합병 집행은 아직 구현되지 않았습니다. 도시·주민·직위·세력·외교·물품·채무·제삼자 권리를 변경하지 않으며 마지막 도시 제한도 유지합니다. 지도자 개인 합류/승계와 전체 보존은 별도 집행·검토가 필요합니다.</FM_Limits>
+  <FM_Policy>일반 지도자의 명시 제안 응답 규칙: 플레이어 우호도75 이상·실제 플레이어 관리청과 상호 동맹·현재 대외 전쟁 일치가 필요합니다. 실제 출발 세력 도시 모두에 기존 관리 계약이 있어야 합니다. 귀족/집단 의결을 추정하지 않습니다. NPC 응답과 플레이어 확인은 별개이며 미응답 수락은3일 뒤 만료합니다.</FM_Policy>
+  <FM_Review>출발 세력 전체 검토</FM_Review>
+  <FM_Scope>{0} → {1}; 대표: {2}; 실제 도시: {3}; native 소속 주민 신원: {4}.</FM_Scope>
+  <FM_Offer>별도 정치 합병 동의 요청</FM_Offer>
+  <FM_History>{0} → {1}: {2}; 원래 대표: {3}.</FM_History>
+  <FM_NpcAccepted>NPC 정치 동의·플레이어 확인 대기</FM_NpcAccepted>
+  <FM_NpcDeclined>NPC가 이 제안을 거절함</FM_NpcDeclined>
+  <FM_PlayerConfirmed>별도 동의 기록됨·집행 미지원</FM_PlayerConfirmed>
+  <FM_PlayerDeclined>플레이어 거절</FM_PlayerDeclined>
+  <FM_ReasonAccepted>명시된 일반 지도자 제안 규칙이 이 정확한 범위에 동의했습니다. native 엔진의 합병 권한을 뜻하지 않습니다.</FM_ReasonAccepted>
+  <FM_ReasonRelationship>NPC 응답: 우호도75 미만.</FM_ReasonRelationship>
+  <FM_ReasonInternalAlliance>NPC 응답: 목적지 관리청과 상호 동맹이 아님.</FM_ReasonInternalAlliance>
+  <FM_ReasonExternalWars>NPC 응답: 기존 대외 전쟁이 다릅니다. 전쟁을 인수하거나 선포하지 않습니다.</FM_ReasonExternalWars>
+  <FM_Confirm>이 별도 정치 동의 확인</FM_Confirm>
+  <FM_ConfirmText>같은 현재 지도자·모든 도시·소속 신원·계약·외교를 재확인한 뒤 별도 플레이어 동의를 기록할까요? 합병 집행은 미지원이며 자산을 이전하거나 보존·개인 동의·승계·채무·제삼자 권리를 면제하지 않습니다.</FM_ConfirmText>
+  <FM_Decline>이 제안 거절</FM_Decline>
+  <FM_Expired>응답 기간이 만료되었습니다. 원 NPC 응답은 이력에 유지됩니다.</FM_Expired>
+  <FM_Blocked>합병 제안이 불가하거나 검토 내용이 바뀌었습니다. 보류 작업·현재 권위·도시 전체 계약·외교를 먼저 확인하세요. 합병을 집행하지 않았습니다.</FM_Blocked>
+  <FM_Recorded>별도 정치 합병 동의를 기록했습니다. 도시와 주민은 그대로이며 합병 집행은 아직 사용할 수 없습니다.</FM_Recorded>
 </LanguageData>

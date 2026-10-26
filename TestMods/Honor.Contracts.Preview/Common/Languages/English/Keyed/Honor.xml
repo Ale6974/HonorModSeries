@@ -386,4 +386,25 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <PS_LossProgress>Original followers: {1}; separately acknowledged destroyed towns: {0}. All other original followers still require current verification.</PS_LossProgress>
   <PI_Pending>This is a separate actual loss before a city move starts or after a verified completed move. Prior transfers remain unchanged. The original political follower list and all surviving followers still require verification.</PI_Pending>
   <PI_Confirm>{0}: confirm the recorded actual destruction, close only its incoming territory charter and retain debts, signatures and every previous transfer outcome? No transfer is fabricated or changed; the loss is a separate political event.</PI_Confirm>
+  <FM_Open>Separate whole-faction merger proposal</FM_Open>
+  <FM_Limits>Consent preparation only. Whole-faction merger execution is not implemented. No city, pawn, office, faction, diplomacy, goods, debt or third-party right is changed. Existing last-base restrictions remain. Personal leader joining/succession and full preservation require separate execution and review.</FM_Limits>
+  <FM_Policy>Explicit proposal rule for ordinary rulers: goodwill toward the player at least 75, reciprocal alliance with the actual player administration and identical current external wars. All actual source towns need existing managed charters. No noble/collective authority is inferred. NPC response and player confirmation are separate; an unanswered acceptance expires after three days.</FM_Policy>
+  <FM_Review>Review complete source faction</FM_Review>
+  <FM_Scope>{0} → {1}; representative: {2}; actual towns: {3}; native affiliated pawn identities: {4}.</FM_Scope>
+  <FM_Offer>Request separate political merger consent</FM_Offer>
+  <FM_History>{0} → {1}: {2}; original representative: {3}.</FM_History>
+  <FM_NpcAccepted>NPC political consent; awaiting player confirmation</FM_NpcAccepted>
+  <FM_NpcDeclined>NPC declined this proposal</FM_NpcDeclined>
+  <FM_PlayerConfirmed>Separate consent recorded; execution unavailable</FM_PlayerConfirmed>
+  <FM_PlayerDeclined>Player declined</FM_PlayerDeclined>
+  <FM_ReasonAccepted>The documented ordinary-ruler proposal rule accepted this exact scope; it is not native engine merger authority.</FM_ReasonAccepted>
+  <FM_ReasonRelationship>NPC response: goodwill below75.</FM_ReasonRelationship>
+  <FM_ReasonInternalAlliance>NPC response: no reciprocal alliance with the destination administration.</FM_ReasonInternalAlliance>
+  <FM_ReasonExternalWars>NPC response: existing external wars differ; no war is assumed or declared.</FM_ReasonExternalWars>
+  <FM_Confirm>Confirm this separate political consent</FM_Confirm>
+  <FM_ConfirmText>Record separate player confirmation after checking the same current ruler, all towns, affiliated identities, contracts and diplomacy? Merger execution is unavailable; this neither transfers assets nor waives preservation, personal consent, succession, debt or third-party rights.</FM_ConfirmText>
+  <FM_Decline>Decline this proposal</FM_Decline>
+  <FM_Expired>Response period expired; original NPC response remains in history.</FM_Expired>
+  <FM_Blocked>Merger proposal unavailable or review changed. Resolve pending operations, current authority, complete town charters or diplomacy first. No merger was executed.</FM_Blocked>
+  <FM_Recorded>Separate political merger consent recorded. Cities and people remain unchanged; merger execution is not available yet.</FM_Recorded>
 </LanguageData>

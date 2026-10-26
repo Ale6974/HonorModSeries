@@ -391,6 +391,7 @@ public sealed class TerritoryAdministrationWindow : Window
         list.Label("CT_Warning".Translate());
         list.Label("RE_Limits".Translate());
         Current.Game.GetComponent<LeaderRelocationLedger>().Draw(list, charter);
+        if (list.ButtonText("FM_Open".Translate())) Find.WindowStack.Add(new FactionMergerProposalWindow(charter));
         ledger.DrawPendingTownLosses(list, charter);
         if (list.ButtonText("CA_Open".Translate())) ledger.OpenPreservationAudit(charter);
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());

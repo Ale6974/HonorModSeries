@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 세력 전체 합병의 별도 제안/동의 준비 — 0.3.32 / 2026-10-26
+
+설치1.7.4985 rev1269/net10.0 /10.0.13-waylithclr.dev를 확인하고 WorldObject.SetFaction, Pawn.SetFaction, Faction.Notify_LeaderLost/TryGenerateNewLeader, FactionManager.Notify_PawnLeftFaction/FactionCanBeRemoved의 설치 본문을 읽었다. WorldObject의 일반 소속 변경은 그 객체의 owner를 바꾸며 세력 전체 병합·주민/지도자 이전을 수행하지 않는다. Pawn의 native 소속 변경은 원 지도자 상실 알림/새 지도자 선정이 실제 faction 변경보다 앞서 실행될 수 있고, 손님·수술/의료/정신 상태 및 여러 알림도 처리한다. 일반 NPC 지도자 선정은 새 Pawn을 생성할 수 있으므로 승계·원본 보존·중단 상태를 별도로 다뤄야 한다. FactionManager의 해당 자동 제거 판정은 temporary 세력에 한정되어, 마지막 도시 이전을 세력 전체 합병/적법한 해산으로 해석할 수 없다. 읽은 게임 본문은 ignored local에만 두며 소스/패키지에 포함하지 않는다.
+
+이번 구현은 이 확인에 따라 native 병합을 시작하지 않고 실제 게임의 별도 정치 제안/응답/플레이어 확인을 새 Scribe slot honorFactionMergerProposalsV1에 저장한다. Current ordinary leader와 실제 source 전체 Settlement/WorldObject, PawnsFinder.AllMapsWorldAndTemporary_AliveOrDead의 소속/관리·노예/추가 세력 관련 신원, 원 book/transfer와 실제 양방향 외교를 읽는다. 이 새 Pawn finder/extra-faction API는 양 타깃 컴파일로 시그니처를 확인하며,1.6은 pinned 참조/net472이고 설치 본문 확인으로 주장하지 않는다. 주민·지도자·town·Faction/relations 쓰기나 native succession 호출은 추가하지 않는다.
+
+NPC 응답은 native merger AI를 주장하지 않는 명시 모드 규칙 v1(우호도75·실제 관리청과 상호 동맹·대외 전쟁 일치)이다. 연합/귀족·집단 의결/known providers는 제외한다. 별도 final player confirmation은 같은 current Game·전체 town/관련 pawn/world object IDs·현재 대표·book/transfer·외교를 재검사한다. 동의 저장은 실제 집행·개인 합류·승계·보존·제삼자 권리 면제의 증거가 아니다. 과거 응답/대표를 다시 쓰거나 historical Pawn을 pin하지 않는다. 기존 마지막 도시 제한은 그대로다.
+
 ## 개별 이전을 만들지 않는 별도 정치 소실 — 0.3.31 / 2026-10-26
 
 설치1.7.4985 rev1269와 net10.0 /10.0.13-waylithclr.dev를 재확인했다. 새 native 진입점/소유권·주민·재고 쓰기는 추가하지 않는다. 기존 검증한 WorldObject.Destroy 정상 반환 전후·exact Settlement/빈 trader/등록 주민·실제 월드 제거를 재사용하며, 해당 도시는 기존 계약 binding과 원 ledger의 실제 verified owner에 정확히 연결한다. 정치 Executing/도시 nativeExecutionDepth/다른 Prepared 이전이 없을 때만 독립 observer가 준비되고 기존 Prepared observer와 겹치지 않는다. 이전 시작 전에는 새 이전을 생성하지 않고, 이전 완료 후에는 기존 Applied/stock·resident proof/시간 등 모든 이전 결과를 그대로 유지한다.

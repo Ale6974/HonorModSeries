@@ -1,5 +1,15 @@
 # 검증과 플레이 점검
 
+## Contracts 0.3.32 — 세력 전체 합병 별도 정치 제안/응답/확인 준비 (2026-10-26)
+
+- 신규37개 assertion: 도시 서명과 구분되는 별도 NPC 응답·플레이어 확인, 우호도75/상호 동맹/대외 전쟁 응답 구분, 원 대표/전체 도시·관련 주민/world object·외교 변경 시 확인 거절, 동의/거절/만료·저장 왕복과 immutable 원 범위, 실패 전후 common book/physical ledger 불변을 확인했다. 동의가 실제 이전이나 마지막 도시 예외를 만들지 않음을 확인했다.
+- 과거 NPC 거절을 나중 우호도로 수락으로 바꾸기, 중복 확인/ID·응답/phase/시각/기한 변조, native player target, 대표 누락/도시 중복/외국 owner, 기존 open 제안 덮기·늦은 응답으로 과거 겹침 숨기기를 거절한다. 만료된 옛 제안의 늦은 거절과 이후 제안 이력 순서를 보존하며, 부분 해약/현재 touching offer는 보류하고 만료된 touching offer는 영구 차단하지 않는다.
+- 1.6/net472·1.7/net10 전체 빌드와 각 규칙 호스트를 검사했다. 마지막 회귀 뒤 양 Contracts 호스트와 최신1.7 Preview를 다시 확인했다. Contracts **3,801** + Honor/runtime **20,093** = 대상별 **23,894**개 assertion, 최종 빌드 경고/오류0. EN/KO **406개** 공용 키/자리표시자와 FactionDef12개 필드를 검사했다.
+- 실제 UI/현재 Game·현재 일반 대표/모든 native source 도시·관련 pawn/world object·원 common book/transfer·외교 → 별도 NPC 응답/플레이어 확인 → Scribe string archive를 연결했다. historical pawn 참조/pinning이나 source 등록/소속·외교·물품·직위 쓰기는 추가하지 않았다. malformed raw는 제안 subsystem만 막는다. 연합/왕실·집단 의결과 provider 권위를 추정하지 않는다.
+- **전체 합병 집행은 미구현**이며 이번 준비 UI/저장 검사를 합병·주민/지도자 이전/승계/자산 보존 완료로 계산하지 않는다. 설치 DLL의 SetFaction/지도자 상실·선정/세력 제거 경계를 확인해 원 last-base 가드를 유지했다.
+- 6모드/두 런타임 선택과 DLL 허용 목록을 패키지 도구로 검사했다. 영한406개 키 중복 부재와 신규 FM UI21개 키를 별도로 확인했다. ZIP SHA256: `C997EBF59DBA3099344E8C31DBA93DAA5FB62BF6AB58B4F080397DACE26D1341`.
+- 실행 중인 게임이 없는 상태에서 기존0.3.31 로컬본을 .local에 백업하고0.3.32를 설치했다. 원본/설치32개 파일 해시·About 버전이 일치하고 ModsConfig.xml/Prefs.xml 해시는 불변이다. 다른 모듈/Steam/활성화/언어는 바꾸지 않았다.1단계 미완료로30분 반복은 유지한다.
+
 ## Contracts 0.3.31 — 이전 전/이전 완료 후 별도 정치 소실·기존 결과 보존 (2026-10-26)
 
 - 신규51개 assertion: 아직 이전하지 않은 경우와 실제 Applied 이전을 마친 경우 모두 양의 독립 소실 관측/검토/명시 확정·저장 왕복·생존 전체 이전 뒤 완료를 검사했다. 원 계약 조건/서명/채무 이력·원래 전체 Followers와 모든 이전 row를 보존하며 이전 없음을 유지하거나 과거 Applied를 그대로 남긴다. 새 독립 사건은 가짜 Prepared/Destroyed 이전을 만들지 않는다. NPC 간접 말단 봉신 소실과 부모 계약/권한 보존·생존 부모 실제 이전 후 완료, 상위 영지 가드도 검사했다.
