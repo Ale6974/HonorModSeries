@@ -1,5 +1,13 @@
 # 1.7 API·런타임 검증 기록
 
+## 원 소유권 복귀의 normal-return 관찰과 승계 증거 —0.3.44 /2026-10-26
+
+설치 Version.txt=1.7.4985 rev1269, 루트 runtimeconfig=net10.0/10.0.13-waylithclr.dev를 재확인했다. 기존 검증 WorldObject.SetFaction(Faction)에 void Prefix/Postfix observer를 추가했다. 새 native 실행 API/IL patch나 third-party 코드 복사는 없다. 1.6은 pinned1.6.4871/net472+기존 Harmony2.4.3 참조 대상이다.
+
+새 observer는 exact town/binding/Game·등록된 유일한 standard Faction refs·원 book/loss 범위와 양방향 적대의 전후 상태를 확인한다. process-local ownership epoch는 중간 callback이 있으면 긍정 증거 생성을 막는다. 새 authoritative provider 지원으로 표현하지 않으며 알려진 Hegemony/WD2는 계속 제외한다. 기존 미사용 return이 있는 후속 ownership attempt는 원 native 호출 전에 별도 archive에 무효화를 저장한다; uncertain/exception을 성공으로 바꾸지 않는다.
+
+새 honorTownOwnershipReturnsV1은 bounded JSON으로 소유권 사실만 저장한다. Source loss digest는 Resolution을 제외해 원 사실에 고정하고, receipt digest는 이후 attempt를 제외하되 active 여부를 따로 검사한다. 실제 successor receipt의 OwnershipReturnProof와 상호 검증한다. null 생략 init 속성이므로 기존 TownSuccessionReceipt positional 생성자/옛 JSON은 동일하다. 원 book/주민/재고 deep-copy나 native writes는 없다. 코드·규칙·빌드/패키지로 검사한다.
+
 ## 서로 다른 관찰 시점의 말단 소실 연결 — 0.3.43 / 2026-10-26
 
 기존 WorldObject.Destroy normal-return observer와 Native current-book/intent/stock proof 경계를 유지한다. 새 native API/권한/IL 변경은 없고, 이전의 한 Prepared 물리 이전 제한도 그대로다. 1.7.4985 rev1269/net10.0 및1.6.4871/net472 참조 대상 구분은 유지한다.

@@ -1,4 +1,12 @@
-# 1단계 예약 개발 인수인계 — 0.3.43 / 2026-10-26
+# 1단계 예약 개발 인수인계 — 0.3.44 / 2026-10-26
+
+## 최신 인수인계 —0.3.44 /2026-10-26
+
+최신0.3.44 로컬 설치 완료:0.3.43 백업은.local/contracts-preview-6b36734ab5eb469b9b47a8c30805b329,32파일/설정 해시 일치, 활성화·언어/Steam 불변. ZIP SHA256과 양 전체 빌드 완료 근거는 TESTING 최신 기록을 따른다. 설치 대기는 해소됐다.
+
+한 isolated hostile upper loss의 원래 standard NPC ownership return을 실제 normal-return 관찰→별도 save proof→fresh current NPC 대표/원 higher/전체 후손 consent→atomic 후손 재연결→기존 새 root charter offer/sign으로 연결했다. 원 root는 Lost 그대로이며 old terms/signatures/debt/loss tick/하위 역사는 불변이다. source.actualOwner==baseline만 지원, 원/native captor→source 전후 상호 적대와 exact registered refs/Game/book/archive를 확인한다. process ownership epoch가 중간 callback을 막고, 다음 소유권 ATTEMPT는 native 전에 미사용 receipt를 invalidate한다; 실패/불확실을 성공으로 꾸미지 않는다. 추가 child loss에서도 역사 pairing은 유지하되 authority를 넓히지 않는다. 새 원 slot/새 receipt proof는 paired restore; old null JSON/ctor는 유지한다. Hegemony/WD2·정규화 baseline/상위 중첩·재진입 등은 계속 보류한다.
+
+이번 시작에0.3.43을 백업(.local/contracts-preview-badf75d9d24f4bb1a62dde03773fbb91) 후 설치해32파일/설정 해시가 일치했다. 최신0.3.44 설치/패키지 근거는 TESTING을 따른다. Contracts4158+Honor/runtime20093=24251/대상, EN/KO434키·FactionDef12. 잔여35/80/95/90/100/70%, 큰 묶음7~9/5~7/6~8/5~7/6~8/4~6,1단계 미완료다. 다음은 whole-faction merger/정당한 독립의 실제 권한/실행/복구·집단 의결·미지원 보존/상위/실물 소실 등의 큰 잔여를 우선한다. 반복honor-1 ACTIVE30분은 유지하고 단계 완료로 과장하지 않는다.
 
 ## 최신 인수인계 — 0.3.43 / 2026-10-26
 

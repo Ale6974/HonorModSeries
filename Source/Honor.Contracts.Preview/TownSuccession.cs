@@ -8,6 +8,7 @@ namespace Honor.Contracts.Preview;
 
 public sealed record LiveTownSuccessionReview(TownSuccessionPlan Plan, string Stamp, string Realm, string Representative, Game Context = null)
 {
+    public string OwnershipReturnProof { get; init; }
     public bool SeparateRealm { get; init; }
 }
 
@@ -28,11 +29,13 @@ public sealed partial class LiveCharterLedger
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) townLossSnapshot = townLosses.Export();
         Scribe_Values.Look(ref townLossSnapshot, "honorUpperTownLossesV1");
+        ExposeOwnershipReturns();
     }
     private void ValidateTownLosses()
     {
         if (townLossSnapshot != null) townLosses = TownSuccessionArchive.Restore(townLossSnapshot);
         townLosses.ValidateBook(Book);
+        ValidateOwnershipReturns();
     }
     public LiveTownSuccessionReview ReviewTownSuccession(string root, string prefix = null)
     {
@@ -40,6 +43,7 @@ public sealed partial class LiveCharterLedger
         if (Current.Game.GetComponent<PlayerPoliticsLedger>().RestoreFailed || Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed ||
             Current.Game.GetComponent<UnionPoliticsLedger>().RestoreFailed) throw new ArgumentException("Current player political records are unavailable.");
         var proof = townLosses.Record(root);
+        string returnProof = null;
         foreach (var loss in townLosses.ScopeLosses(root))
         {
             var lostCity = Binding(loss.Territory).Settlement;
@@ -48,9 +52,14 @@ public sealed partial class LiveCharterLedger
                 if (lostCity != null && !lostCity.Destroyed && Find.WorldObjects.AllWorldObjects.Contains(lostCity))
                     throw new ArgumentException("The previously destroyed object returned; review its new rights separately.");
             }
-            else if (lostCity == null || lostCity.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(lostCity) ||
-                lostCity.Faction?.GetUniqueLoadID() != loss.CapturingOwner)
-                throw new ArgumentException("The observed hostile owner changed again; another review adapter is required.");
+            else
+            {
+                if (lostCity == null || lostCity.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(lostCity))
+                    throw new ArgumentException("The observed town is unavailable.");
+                if (lostCity.Faction?.GetUniqueLoadID() != loss.CapturingOwner)
+                    returnProof = ownershipReturns.RequireActive(root, townLosses, Book, "territory/" + lostCity.GetUniqueLoadID(),
+                        lostCity.Faction?.GetUniqueLoadID(), Find.TickManager.TicksGame);
+            }
         }
         var source = CharterBook.Restore(proof.Before); var original = source.Charter(root);
         // A signed NPC charter need not yet have migrated to the player's physical realm.
@@ -91,8 +100,10 @@ public sealed partial class LiveCharterLedger
         string stamp = JsonSerializer.Serialize(new { Plan = plan, Archive = townLosses.Export(), Actual = actual,
             Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer),
             Higher = actualHigher.GetUniqueLoadID(), Consent = consent,
-            Transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), Observations = Observe() });
+            Transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), Observations = Observe(),
+            OwnershipReturns = ownershipReturns.Export(), ReturnProof = returnProof });
         return new(plan, stamp, authority.Name, authority.leader.LabelShortCap, Current.Game) {
+            OwnershipReturnProof = returnProof,
             SeparateRealm = authority != Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority() };
     }
     public void ApplyTownSuccession(LiveTownSuccessionReview reviewed)
@@ -105,7 +116,9 @@ public sealed partial class LiveCharterLedger
                 if (separator < 1) throw new ArgumentException("Invalid succession identity."); prefix = sample.Substring(0, separator); }
             var fresh = ReviewTownSuccession(reviewed.Plan.Root, prefix);
             if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("Succession authority or source changed.");
-            var result = townLosses.Commit(Book, fresh.Plan, Find.TickManager.TicksGame, Observe());
+            var result = fresh.OwnershipReturnProof == null ? townLosses.Commit(Book, fresh.Plan, Find.TickManager.TicksGame, Observe()) :
+                ownershipReturns.CommitSuccession(townLosses, Book, fresh.Plan, Find.TickManager.TicksGame, Observe(), fresh.OwnershipReturnProof);
+            ownershipReturns.ValidatePair(result.Archive, result.Book);
             Book = result.Book; townLosses = result.Archive;
             Messages.Message("LS_Completed".Translate(fresh.Plan.Replacements.Count), MessageTypeDefOf.NeutralEvent);
         }, resolvingLoss: true);
@@ -132,6 +145,7 @@ public sealed class TownSuccessionWindow : Window
         list.Label("LS_Warning".Translate());
         list.Label("ND_Limits".Translate());
         list.Label("HL_Limits".Translate());
+        list.Label("OR_Limits".Translate());
         list.Label("LC_Warning".Translate());
         list.Label("LM_Warning".Translate());
         if (ledger.UnresolvedTownLosses) list.Label("LS_Freeze".Translate());
@@ -158,6 +172,7 @@ public sealed class TownSuccessionWindow : Window
                 }
                 list.Label("LS_Plan".Translate(review.Realm, review.Representative, ledger.Label(review.Plan.Parent), review.Plan.Replacements.Count, review.Plan.Descendants.Length));
                 if (review.SeparateRealm) list.Label("LS_SeparateRealm".Translate());
+                if (review.OwnershipReturnProof != null) list.Label("OR_Review".Translate());
                 foreach (var p in review.Plan.Replacements) list.Label(ledger.Label(ledger.Book.Charter(p.Key).Terms.Subject));
                 if (list.ButtonText("LS_Confirm".Translate())) { ledger.ApplyTownSuccession(review); review = null; }
             }

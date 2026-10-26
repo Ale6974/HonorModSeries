@@ -1,5 +1,14 @@
 # 검증과 플레이 점검
 
+## Contracts0.3.44 — 원 소유권 복귀 후 별도 승계와 새 계약 (2026-10-26)
+
+- 신규30개 assertion: 기존 실제 공통 book의 hostile upper loss→별도 return witness→저장 왕복→현 대표 별도 successor commit→새 root offer/새 서명까지 연결했다. 옛 root TerritoryLost/조건/서명·채무 근거·실제 소실 시각과 깊은 하위/원 NativeOwner를 보존하며, 새 경제 조건/시작 서명 시각을 별개로 유지한다.
+- 현재 소유자만으로는 증거를 만들지 않고, 잘못된 source/target/loss digest/tick·중복·바뀐 현 소유자/영지·future proof·잘못된 token·미사용 증거 뒤의 소유권 시도·원 slot 누락/변경을 거절한다. 추가 child loss는 역사 pairing을 보존하되 isolated return authority는 거절한다. 단일/기존 successor receipt의 null JSON 생략과 원 positional constructor를 유지한다.
+- native pre/post/Game/book/loss/hostility/유일한 실제 faction refs·callback epoch·호출 전 attempt 무효화·현재 대표의 별도 검토/atomic swap·기존 실제 offer UI 연결은 코드 검토와 양 Preview 빌드로 검사한다. native 새 소유권/주민/물품/외교 쓰기나 battle legitimacy는 주장하지 않는다.
+- 양 규칙 호스트 기준 Contracts4,158+Honor/runtime20,093=대상별24,251개, 공용 EN/KO434키·FactionDef12필드다. 양 빌드/패키지/최신 설치 결과는 아래 완료 기록을 따른다. 이번 시작 시0.3.43을 이전 버전 백업 후 설치했고32파일 집합/해시 및 활성화·언어 설정 해시를 확인했다. 백업은.local/contracts-preview-badf75d9d24f4bb1a62dde03773fbb91이다.
+
+- 완료: 양 전체 빌드 경고/오류0,6모드×두 런타임 선택/DLL 허용 목록 통과. 최종ZIP SHA256: `D68A2F4BCC20F56F43285D26111E19D7FA42FC7E24BF6092F6700F3CAD92ABA3`. 게임 실행이 없는 상태에서0.3.43을 `.local/contracts-preview-6b36734ab5eb469b9b47a8c30805b329`에 백업하고0.3.44를 설치했다. 원본/설치32파일 집합·해시 및 ModsConfig.xml/Prefs.xml 해시가 일치하며 활성화/언어/Steam은 유지했다.
+
 ## Contracts 0.3.43 — 부분 정리 중 추가 소실과 과거 명령별 복구 (2026-10-26)
 
 - 신규11개 assertion 및 기존 epoch 경계 검사를 갱신했다. B를 정리한 뒤의 다른 original book/head에서 D 소실을 관찰하고, 옛 A 또는 새 D를 먼저 정리하는 두 순서 모두 partial reload→나머지 소실 정리→원 정치 intent 완료까지 검사한다. 옛/native 원본·개별 소실 시각·계약/채무 근거·전체 follower/이전 기록을 유지한다.
