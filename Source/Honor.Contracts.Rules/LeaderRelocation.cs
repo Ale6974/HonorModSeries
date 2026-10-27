@@ -33,7 +33,7 @@ public sealed class LeaderRelocationPlan
         _ = EffectiveResidentProfile;
         if (d.Version != 1 || !Key(d.Charter) || !Key(d.Leader) || !Key(d.Faction) || !Key(d.Source) || !Key(d.Destination) || d.Source == d.Destination ||
             !CityStockProof.Valid(d.Book) || !CityStockProof.Valid(d.Preserved) || d.Care is < 0 or > 4 || d.Tick < 0 ||
-            !CityStockProof.Valid(d.SourceStock) || !CityStockProof.Valid(d.DestinationStock) || d.SourceFormat is < 0 or > 1 || d.DestinationFormat is < 0 or > 1 ||
+            !CityStockProof.Valid(d.SourceStock) || !CityStockProof.Valid(d.DestinationStock) || d.SourceFormat is < 0 or > 2 || d.DestinationFormat is < 0 or > 2 ||
             d.SourceRoster == null || d.DestinationRoster == null || d.SourceRoster.Length is < 1 or > 128 || d.DestinationRoster.Length > 127 ||
             d.SourceRoster.Concat(d.DestinationRoster).Any(s => !Key(s)) ||
             d.SourceRoster.Concat(d.DestinationRoster).Distinct(StringComparer.Ordinal).Count() != d.SourceRoster.Length + d.DestinationRoster.Length ||
