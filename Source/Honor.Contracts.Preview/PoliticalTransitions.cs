@@ -19,8 +19,12 @@ public sealed class PoliticalTransitionLedger : GameComponent
     public bool RestoreFailed { get; private set; }
     public bool Executing { get; private set; }
     private bool sharingPeace;
-    internal bool PeaceSharingBlocked => Journal.Pending && Journal.Current.Peace != null && (!Executing || !sharingPeace);
-    internal void VerifyPeace() => UnionPeaceCouncil.Verify(Politics.RecordedAuthority, Journal.Current);
+    internal bool PeaceSharingBlocked => Journal.Pending && (Journal.Current.Peace != null || Journal.Current.Wars?.IncomingCharters != null) && (!Executing || !sharingPeace);
+    internal void VerifyPeace()
+    {
+        UnionPeaceCouncil.Verify(Politics.RecordedAuthority, Journal.Current);
+        UnionWarCouncil.VerifyCurrentCouncil(Politics.RecordedAuthority, Journal.Current);
+    }
     internal bool BlocksApartFromTownLosses => RestoreFailed || Journal.Pending || Current.Game.GetComponent<CharterProtectionLedger>().Executing || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges ||
         Current.Game.GetComponent<TerritoryAdministrationLedger>().RestoreFailed || Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared);
     public bool BlocksChanges => BlocksApartFromTownLosses || Charters.RestoreFailed || Charters.UnresolvedTownLosses;
@@ -114,6 +118,11 @@ public sealed class PoliticalTransitionLedger : GameComponent
         var command = Politics.PlanCommand(joinUnion, wars);
         var root = Find.FactionManager.AllFactionsListForReading.Single(f => f.GetUniqueLoadID() == command.Authority);
         var followers = Territories.ReviewFollowersFor(root); FutureRelations(root, followers, wars);
+        if (wars?.AuthorityKind == AdmissionAuthorityKind.UnionCouncil)
+        {
+            UnionPeaceCouncil.CheckRepresentative(root);
+            wars = UnionWarAdmission.BindIncoming(wars, followers);
+        }
         var peace = joinUnion && wars == null ? UnionPeaceCouncil.Review(root, followers.Moves) : null;
         if (peace?.Accepted == false) throw new ArgumentException("Membership council declined admission.");
         return new(root, command, followers, Stamp(root, command, followers, wars, peace), wars, Current.Game) { Peace = peace };
@@ -175,7 +184,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
         if (!Journal.Pending || !Journal.IsAfter(Politics.Model)) throw new ArgumentException("No applied transition to resume; unchanged preparation may be cancelled.");
         CheckRetainedSource();
         var root = Politics.TransitionAuthority();
-        var wars = Journal.Current.Wars == null ? null : UnionWarCouncil.Review(root, Journal.Current.Wars.Targets.Select(t => t.Enemy), Journal.Current.Wars.AuthorityKind);
+        var wars = Journal.Current.Wars == null ? null : UnionWarCouncil.ReviewForTransition(root, Journal.Current);
         if (wars != null && !UnionWarAdmission.SameWars(Journal.Current.Wars, wars)) throw new ArgumentException("War admission scope changed.");
         Politics.CheckTransitionAdmission(root, wars);
         var followers = Territories.ReviewFollowersFor(root); SameFollowers(followers); FutureRelations(root, followers, wars);

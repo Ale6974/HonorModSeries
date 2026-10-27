@@ -9,6 +9,7 @@ public sealed record UnionWarConsent(string Union, string Player, string Represe
     UnionWarTarget[] Targets, UnionAdmissionVote[] Votes,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] AdmissionAuthorityKind AuthorityKind = AdmissionAuthorityKind.UnionCouncil)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string[] IncomingCharters { get; init; }
     public int TotalWeight => Votes.Sum(v => v.Weight);
     public int ApprovedWeight => Votes.Where(v => v.Approve).Sum(v => v.Weight);
     public bool Accepted => ApprovedWeight * 2 > TotalWeight;
@@ -20,6 +21,16 @@ public sealed record UnionWarResult(string Enemy, UnionWarStep Step = UnionWarSt
 /// <summary>Admission-specific base votes. Unknown contribution/size grants no invented influence bonus.</summary>
 public static class UnionWarAdmission
 {
+    public static UnionWarConsent BindIncoming(UnionWarConsent consent, FollowerTransferPlan followers)
+    {
+        Validate(consent); RuntimeCompat.NotNull(followers);
+        if (consent.AuthorityKind != AdmissionAuthorityKind.UnionCouncil || consent.IncomingCharters != null || followers.Target != consent.Union ||
+            followers.ReviewedTick != consent.Tick || !consent.Accepted || followers.Moves == null)
+            throw new ArgumentException("Bind the original actual incoming-city plan to accepted current union war consent.");
+        var copy = System.Text.Json.JsonSerializer.Deserialize<UnionWarConsent>(System.Text.Json.JsonSerializer.Serialize(consent)) with {
+            IncomingCharters = followers.Moves.OrderBy(s => s, StringComparer.Ordinal).ToArray() };
+        Validate(copy); return copy;
+    }
     public static void ValidateHistory(IEnumerable<string> history, AllegianceTransition current)
     {
         RuntimeCompat.NotNull(history); var rows = history.Take(129).ToArray();
@@ -78,6 +89,8 @@ public static class UnionWarAdmission
             consent.Targets.Select(t => t.Enemy).Distinct(StringComparer.Ordinal).Count() != consent.Targets.Length ||
             consent.Votes.Any(v => v == null || !Key(v.Seat) || v.Weight != 1 || !RuntimeCompat.IsDefined(v.Reason) || v.Approve != (v.Reason == UnionAdmissionVoteReason.Accepted)) ||
             consent.Votes.Select(v => v.Seat).Distinct(StringComparer.Ordinal).Count() != consent.Votes.Length ||
+            consent.IncomingCharters != null && (consent.AuthorityKind != AdmissionAuthorityKind.UnionCouncil || consent.IncomingCharters.Length > CharterBook.MaxEntities ||
+                consent.IncomingCharters.Any(s => !Key(s)) || consent.IncomingCharters.Distinct(StringComparer.Ordinal).Count() != consent.IncomingCharters.Length) ||
             (consent.AuthorityKind == AdmissionAuthorityKind.FeudalLeader ? consent.Founding || consent.Votes.Length != 1 || consent.Votes[0].Seat != "liege/" + consent.Union :
              consent.Founding != (consent.Votes.Length == 1 && consent.Votes[0].Seat == "founding/" + consent.Union)))
             throw new ArgumentException("Invalid actual union admission consent scope.");
@@ -95,6 +108,7 @@ public static class UnionWarAdmission
     {
         Validate(original); Validate(fresh);
         return original.AuthorityKind == fresh.AuthorityKind && original.Union == fresh.Union && original.Player == fresh.Player &&
+            (original.IncomingCharters == null ? fresh.IncomingCharters == null : fresh.IncomingCharters != null && original.IncomingCharters.SequenceEqual(fresh.IncomingCharters)) &&
             original.Targets.Select(t => t.Enemy).OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(fresh.Targets.Select(t => t.Enemy).OrderBy(id => id, StringComparer.Ordinal));
     }
 }

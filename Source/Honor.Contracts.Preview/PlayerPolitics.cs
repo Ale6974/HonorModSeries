@@ -405,6 +405,7 @@ public sealed class PlayerAllegianceWindow : Window
                         (review.Peace.Founding ? "WU_Founding" : "WU_Council").Translate()));
                 if (review.Wars != null)
                 {
+                    if (review.Wars.IncomingCharters != null) list.Label("UW_Incoming".Translate(review.Wars.IncomingCharters.Length));
                     if (review.Wars.AuthorityKind == AdmissionAuthorityKind.FeudalLeader)
                         list.Label("WF_Accepted".Translate(review.Destination.Name, review.Destination.leader?.LabelShortCap ?? "HCL_Missing".Translate()));
                     else list.Label("WU_Votes".Translate(review.Wars.ApprovedWeight, review.Wars.TotalWeight));

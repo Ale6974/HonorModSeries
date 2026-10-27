@@ -21,6 +21,20 @@ internal static class UnionWarCouncil
         FactionRelationKind.Neutral => SharedRelationKind.Neutral, _ => throw new ArgumentException("Unknown native relation.") };
     internal static UnionWarConsent Review(Faction union, IEnumerable<string> requiredEnemies = null,
         AdmissionAuthorityKind authorityKind = AdmissionAuthorityKind.UnionCouncil)
+        => ReviewCore(union, requiredEnemies, authorityKind, null);
+    internal static UnionWarConsent ReviewForTransition(Faction union, AllegianceTransition intent)
+    {
+        if (intent?.Wars == null) throw new ArgumentException("Original war admission required.");
+        var original = intent.Wars;
+        UnionWarAdmission.Validate(original);
+        if (union?.GetUniqueLoadID() != original.Union) throw new ArgumentException("Re-review the exact recorded admission destination.");
+        if (original.IncomingCharters == null) return Review(union, original.Targets.Select(t => t.Enemy), original.AuthorityKind);
+        UnionPeaceCouncil.CheckRepresentative(union);
+        var fresh = ReviewCore(union, original.Targets.Select(t => t.Enemy), original.AuthorityKind, intent)
+            with { IncomingCharters = original.IncomingCharters.ToArray() };
+        UnionWarAdmission.Validate(fresh); return fresh;
+    }
+    private static UnionWarConsent ReviewCore(Faction union, IEnumerable<string> requiredEnemies, AdmissionAuthorityKind authorityKind, AllegianceTransition intent)
     {
         if (!RuntimeCompat.IsDefined(authorityKind)) throw new ArgumentException("Unknown admission authority.");
         if (union == null || union.IsPlayer || union.def == null || union.Hidden || union.defeated || union.temporary || !union.HasGoodwill ||
@@ -42,7 +56,8 @@ internal static class UnionWarCouncil
         if (authorityKind == AdmissionAuthorityKind.FeudalLeader && union.def.royalTitleTags?.Count > 0)
             throw new FeudalWarAuthorityUnavailable();
         if (HasExternalProvider) throw new UnionWarProviderUnavailable();
-        var seats = Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Where(s => !s.Destroyed && s.Faction == union).Select(s => s.GetUniqueLoadID()).ToArray();
+        var seats = intent == null ? Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Where(s => !s.Destroyed && s.Faction == union).Select(s => s.GetUniqueLoadID()).ToArray()
+            : UnionPeaceCouncil.Seats(union, intent);
         var observations = targets.Select(id => {
             var enemy = Enemy(id);
             if (enemy == Faction.OfPlayer || enemy == union || enemy == Current.Game.GetComponent<RealmAdministrationLedger>().OwnedFaction ||
@@ -63,7 +78,15 @@ internal static class UnionWarCouncil
     internal static void ValidateAccepted(Faction union, UnionWarConsent accepted)
     {
         UnionWarAdmission.Validate(accepted);
-        var fresh = Review(union, accepted.Targets.Select(t => t.Enemy), accepted.AuthorityKind);
+        UnionWarConsent fresh;
+        if (accepted.IncomingCharters == null) fresh = Review(union, accepted.Targets.Select(t => t.Enemy), accepted.AuthorityKind);
+        else
+        {
+            var journal = Current.Game.GetComponent<PoliticalTransitionLedger>().Journal;
+            if (!journal.Pending || journal.Current.Wars == null || !UnionWarAdmission.SameWars(journal.Current.Wars, accepted))
+                throw new ArgumentException("Incoming-city war consent needs its exact current pending political intent.");
+            fresh = ReviewForTransition(union, journal.Current);
+        }
         if (!accepted.Accepted || fresh?.Accepted == false)
             throw new UnionWarRejected((fresh ?? accepted).Votes.First(v => !v.Approve).Reason);
         if (fresh == null || !UnionWarAdmission.SameScope(accepted, fresh) || accepted.Representative != fresh.Representative)
@@ -107,6 +130,11 @@ internal static class UnionWarCouncil
         if (!journal.WarsReady || union.GetUniqueLoadID() != journal.Current.Wars.Union || journal.Current.Wars.Targets.Any(t => {
             var e = Enemy(t.Enemy); return union.RelationKindWith(e) != FactionRelationKind.Hostile || e.RelationKindWith(union) != FactionRelationKind.Hostile;
         })) throw new ArgumentException("Current reciprocal war outcomes are not verified.");
+    }
+    internal static void VerifyCurrentCouncil(Faction union, AllegianceTransition intent)
+    {
+        if (intent?.Wars?.IncomingCharters == null) return;
+        ValidateAccepted(union, intent.WarReaffirmations?.LastOrDefault() ?? intent.Wars);
     }
 }
 

@@ -43,10 +43,22 @@ public static class UnionPeaceAdmission
     public static void RequireIncomingReceipt(AllegianceTransition intent, CharterBook book, TerritoryTransferLedger transfers, string charter, string actualOwner)
     {
         RuntimeCompat.NotNull(intent); RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(transfers); Validate(intent.Peace);
+        RequireIncomingReceiptCore(intent, book, transfers, charter, actualOwner, intent.Peace.Union, intent.Peace.IncomingCharters);
+    }
+    public static void RequireWarIncomingReceipt(AllegianceTransition intent, CharterBook book, TerritoryTransferLedger transfers, string charter, string actualOwner)
+    {
+        RuntimeCompat.NotNull(intent); RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(transfers); UnionWarAdmission.Validate(intent.Wars);
+        if (intent.Wars.IncomingCharters == null || intent.Wars.AuthorityKind != AdmissionAuthorityKind.UnionCouncil)
+            throw new ArgumentException("Legacy or feudal consent cannot authorize pending union seat exclusions.");
+        RequireIncomingReceiptCore(intent, book, transfers, charter, actualOwner, intent.Wars.Union, intent.Wars.IncomingCharters);
+    }
+    private static void RequireIncomingReceiptCore(AllegianceTransition intent, CharterBook book, TerritoryTransferLedger transfers,
+        string charter, string actualOwner, string union, string[] incoming)
+    {
         var c = book.Charter(charter); var entity = book.Entity(c.Terms.Subject);
         var row = transfers.Transfers.LastOrDefault(t => t.Territory == entity.Id);
-        if (intent.Phase != AllegianceTransitionPhase.AllegianceApplied || !intent.Peace.IncomingCharters.Contains(charter) || !intent.Followers.Contains(charter) ||
-            c.Phase != RecordedCharterPhase.Active || !book.PlayerManaged(c) || entity.Player || actualOwner != intent.Peace.Union ||
+        if (intent.Phase != AllegianceTransitionPhase.AllegianceApplied || !incoming.Contains(charter) || !intent.Followers.Contains(charter) ||
+            c.Phase != RecordedCharterPhase.Active || !book.PlayerManaged(c) || entity.Player || actualOwner != union ||
             row == null || row.Charter != charter || row.Purpose != TerritoryTransferPurpose.ActiveCharter || row.Phase != TerritoryTransferPhase.Applied ||
             row.TargetOwner != actualOwner || row.PreparedTick < intent.PreparedTick ||
             !transfers.VerifiedOwner(entity.Id, entity.NativeOwner, actualOwner))

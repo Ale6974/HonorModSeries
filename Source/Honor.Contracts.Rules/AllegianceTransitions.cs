@@ -97,12 +97,16 @@ public sealed partial class AllegianceTransitionLedger
         {
             UnionWarAdmission.Validate(wars);
             Require(wars.Accepted && wars.Union == command.Authority && wars.Player == actual.NativePlayer && wars.Tick == command.Tick &&
+                (wars.IncomingCharters == null || wars.IncomingCharters.SequenceEqual(followers.Moves.OrderBy(s => s, StringComparer.Ordinal))) &&
                 UnionWarAdmission.MatchesAction(wars, command.Action), "Accepted current consent must match the destination's decision authority.");
         }
+        var previous = Current;
         Current = new(id, before, after.Export(), Digest(transfers.Export()),
             Array.AsReadOnly(followers.Entries.Select(e => e.Charter).OrderBy(id => id, StringComparer.Ordinal).ToArray()), command.Tick,
             Wars: wars == null ? null : JsonSerializer.Deserialize<UnionWarConsent>(JsonSerializer.Serialize(wars)),
             WarResults: wars?.Targets.Select(t => new UnionWarResult(t.Enemy)).ToArray());
+        if (wars?.IncomingCharters != null && Export().Length > 7000000)
+        { Current = previous; throw new ArgumentException("Retain space for later admission results."); }
     }
     public void ReaffirmWars(UnionWarConsent fresh, long now)
     {
@@ -111,7 +115,10 @@ public sealed partial class AllegianceTransitionLedger
             (Current.WarReaffirmations?.Length ?? 0) < 64, "Fresh current council consent and identical scope required.");
         if (JsonSerializer.Serialize((Current.WarReaffirmations ?? []).LastOrDefault() ?? Current.Wars) == JsonSerializer.Serialize(fresh)) return;
         var retained = (Current.WarReaffirmations ?? []).Append(JsonSerializer.Deserialize<UnionWarConsent>(JsonSerializer.Serialize(fresh))).ToArray();
-        Current = Current with { WarReaffirmations = retained };
+        var candidate = new AllegianceTransitionLedger { Current = Current with { WarReaffirmations = retained } };
+        if (Current.Wars.IncomingCharters != null && candidate.Export().Length > 7000000)
+            throw new ArgumentException("Retain admission journal space before current council reaffirmation.");
+        Current = candidate.Current;
     }
     public void BeginWar(string enemy, long now)
     {
@@ -234,6 +241,7 @@ public sealed partial class AllegianceTransitionLedger
             UnionWarAdmission.Validate(c.Wars);
             Require(c.Wars.Accepted && UnionWarAdmission.MatchesAction(c.Wars, command.Action) && c.Wars.Union == command.Authority && c.Wars.Player == old.NativePlayer &&
                 c.Wars.Tick == c.PreparedTick && c.WarResults != null && c.WarResults.Length == c.Wars.Targets.Length && c.WarResults.All(r => r != null) &&
+                (c.Wars.IncomingCharters == null || c.Wars.IncomingCharters.All(c.Followers.Contains)) &&
                 c.WarResults.Select(r => r.Enemy).OrderBy(id => id, StringComparer.Ordinal).SequenceEqual(c.Wars.Targets.Select(t => t.Enemy).OrderBy(id => id, StringComparer.Ordinal)),
                 "Invalid saved war admission binding.");
             foreach (var r in c.WarResults)
