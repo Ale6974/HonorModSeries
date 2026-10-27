@@ -170,6 +170,9 @@ internal static class ResidentExecution
     }
     internal static void Apply(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
     {
+        var executionGame = Current.Game;
+        if (executionGame == null || Current.ProgramState != ProgramState.Playing)
+            throw new ArgumentException("Resident execution requires the current game.");
         EnsureRetention();
         ValidateReferences(record, city, proof);
         var set = record.Set(); var rows = ReadAll(record);
@@ -179,15 +182,21 @@ internal static class ResidentExecution
         Find.WorldPawns.gc.CancelGCPass();
         for (int i = 0; i < record.Pawns.Count; i++)
         {
+            if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+                throw new ArgumentException("Current game changed during resident execution; original intent retained.");
             var p = record.Pawns[i];
             var surgery = record.Profile >= 2 ? record.Surgery[i] : null;
             var prisoner = record.Prisoners.SingleOrDefault(r => r.Pawn == p);
             var action = set.ActionFor(Read(p, record.Profile, surgery, prisoner), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
             if (surgery != null && action == ResidentMoveAction.ChangeFaction) ResidentSurgery.Detach(surgery);
+            if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+                throw new ArgumentException("Current game changed before resident authority change; original intent retained.");
             if (action == ResidentMoveAction.ChangeFaction)
             {
                 if (prisoner != null) ResidentPrisoners.ChangeHost(prisoner, source, target, record.Profile);
                 else p.SetFaction(target);
+                if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+                    throw new ArgumentException("Current game changed during resident authority change; original intent retained.");
             }
             if ((record.Profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction?.GetUniqueLoadID()) != target.GetUniqueLoadID())
                 throw new ArgumentException("Native resident authority did not reach the target.");
@@ -196,10 +205,16 @@ internal static class ResidentExecution
             var before = set.Residents[i];
             if (actual.Preserved != before.Preserved || actual.MedicalCare.HasValue != before.MedicalCare.HasValue)
                 throw new ArgumentException("Native resident preservation mismatch; original intent retained.");
+            if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+                throw new ArgumentException("Current game changed before resident restoration; original intent retained.");
             if (before.MedicalCare.HasValue) p.playerSettings.medCare = (MedicalCareCategory)before.MedicalCare.Value;
             if (prisoner != null) ResidentPrisoners.Restore(prisoner, source, target, record.Profile);
+            if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+                throw new ArgumentException("Current game changed during resident restoration; original intent retained.");
             if (surgery != null) ResidentSurgery.Restore(surgery);
         }
+        if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+            throw new ArgumentException("Current game changed before resident verification; original intent retained.");
         set.VerifyDestination(ReadAll(record), source.GetUniqueLoadID(), target.GetUniqueLoadID());
         if (record.Surgery.Any(s => s.Detached.Count != 0)) throw new ArgumentException("Surgical orders remain detached.");
     }
