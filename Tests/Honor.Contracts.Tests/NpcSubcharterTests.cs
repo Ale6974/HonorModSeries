@@ -46,6 +46,7 @@ internal static class NpcSubcharterTests
         var abc = NpcSubcharters.Review(after, "bond-c", "b", "b-c", authority, 2, Observe(after));
         var chain = NpcSubcharters.Commit(after, abc, 2, Observe(after));
         Check(chain.IsBelow("c", "a") && chain.IsBelow("c", "b"), "four-level root/player-NPC chain includes descendants");
+        Check(chain.HierarchyPath("c").SequenceEqual(["player", "a", "b", "c"]), "active hierarchy displays the actual complete four-level path");
         Reject(chain, () => NpcSubcharters.Review(chain, "bond-d", "c", "too-deep", authority, 3, Observe(chain)), "fifth level rejected before replacing any old contract");
         Reject(chain, () => NpcSubcharters.Review(chain, "bond-a", "d", "d-a", authority, 3, Observe(chain)), "moving a parent validates the depth of all retained descendants");
         var move = NpcSubcharters.Review(after, "bond-a", "d", "d-a", authority, 3, Observe(after));
@@ -57,6 +58,7 @@ internal static class NpcSubcharterTests
         Check(promoted.Charter("promoted-a").NpcAuthority == null && promoted.Charter("promoted-a").Terms.Liege == "player" &&
             promoted.Charter("a-b") == moved.Charter("a-b"), "a middle NPC lord can return to direct player allegiance without resetting its child contract");
         Check(promoted.IsBelow("b", "a") && !promoted.IsBelow("a", "d") && promoted.PlayerFollowers().Length == 5, "promotion retains the subtree while reducing depth");
+        Check(promoted.HierarchyPath("b").SequenceEqual(["player", "a", "b"]), "promoted hierarchy follows the current active contract rather than released history");
         var modified = CharterBook.Restore(after.Export()); modified.Register(new("fresh", "source", false), 2);
         Reject(modified, () => NpcSubcharters.Commit(modified, move, 3, Observe(modified)), "unrelated intervening registry mutation invalidates reviewed book");
         Reject(after, () => NpcSubcharters.Commit(after, move with { After = move.Before }, 3, Observe(after)), "invented after-state cannot be committed");

@@ -83,6 +83,22 @@ public sealed class CharterBook
         }
     }
     public string RecordedPoliticalOwner(string entityId) => Entity(Root(entityId)).NativeOwner;
+    /// <summary>Current active contractual path, ordered from the actual root to this party.</summary>
+    public IReadOnlyList<string> HierarchyPath(string entityId)
+    {
+        Entity(entityId); var active = Active(); var seen = new HashSet<string>(StringComparer.Ordinal);
+        var path = new List<string>(); var cursor = entityId;
+        while (true)
+        {
+            Require(seen.Add(cursor), "Cyclic political structure.");
+            path.Add(cursor);
+            Require(path.Count <= 4, "Contract hierarchy exceeds four levels.");
+            var parent = active.SingleOrDefault(c => c.Terms.Subject == cursor);
+            if (parent == null) break;
+            Entity(parent.Terms.Liege); cursor = parent.Terms.Liege;
+        }
+        path.Reverse(); return path.AsReadOnly();
+    }
     public bool IsBelow(string node, string ancestor)
     {
         Entity(node); Entity(ancestor);

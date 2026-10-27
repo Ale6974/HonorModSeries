@@ -146,6 +146,15 @@ public sealed partial class LiveCharterLedger : GameComponent
         var root = Book.Root(identity);
         return Label(root);
     }
+    // Read the current native faction separately from the contractual root; this grants no transfer authority.
+    public string CurrentNativeFaction(string identity)
+    {
+        var binding = bindings.SingleOrDefault(b => b.Identity == identity);
+        if (binding == null) return "HCL_Missing".Translate();
+        var faction = binding.PlayerGroup ? Faction.OfPlayer : binding.FactionGroup ? binding.OriginalFaction :
+            binding.Settlement == null || binding.Settlement.Destroyed ? null : binding.Settlement.Faction;
+        return faction?.Name ?? "HCL_Missing".Translate();
+    }
     public Faction CounterpartyFaction(string charterId)
     {
         var charter = Book.Charter(charterId);

@@ -109,7 +109,13 @@ public sealed class NpcSubchartersWindow : Window
                 list.Label("NS_Terms".Translate(terms.TributeValue.ToString("0.##"), (terms.IntervalTicks / (double)PoliticalWorld.Day).ToString("0.##")));
                 if (list.ButtonText("NS_Confirm".Translate())) { ledger.ApplySubcharter(review); review = null; }
             }
-            foreach (var c in followers) list.Label("NS_Link".Translate(ledger.Label(c.Terms.Liege), ledger.Label(c.Terms.Subject), ledger.PoliticalOwner(c.Terms.Subject)));
+            foreach (var c in followers)
+            {
+                var path = ledger.Book.HierarchyPath(c.Terms.Subject);
+                list.Label("NS_Tier".Translate(path.Count, string.Join(" → ", path.Select(ledger.Label))));
+                list.Label("NS_Link".Translate(ledger.Label(c.Terms.Liege), ledger.Label(c.Terms.Subject), ledger.PoliticalOwner(c.Terms.Subject)));
+                list.Label("NS_NativeFaction".Translate(ledger.CurrentNativeFaction(c.Terms.Subject)));
+            }
         }
         height = list.CurHeight + 20; list.End(); Widgets.EndScrollView();
     }
