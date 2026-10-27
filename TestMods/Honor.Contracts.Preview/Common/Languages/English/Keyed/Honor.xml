@@ -472,4 +472,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <UP_Decision>Membership admission: {0}/{1} base votes in favor. {2} Original consent is saved; recovery reviews the current council and preserves every earlier decision.</UP_Decision>
   <UW_Incoming>Wartime admission includes {0} incoming towns. They gain council votes after coordinated admission completes; pending seat exclusions require the original plan and each actual completed migration receipt. Verified war declarations are retained and never replayed during recovery.</UW_Incoming>
   <AR_Source>The complete accompanying estates and migration plan reviewed at admission are retained. Recovery checks that original scope even after some towns have moved; existing contracts and debts remain.</AR_Source>
+  <FA_Consent>The current ordinary ruler accepts applying this signed charter. Original consent is retained; a changed ruler or unavailable authority needs explicit recovery review. Royal and collective decisions require their own procedure and are not inferred from one ruler.</FA_Consent>
 </LanguageData>

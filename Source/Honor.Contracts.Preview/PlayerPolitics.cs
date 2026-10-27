@@ -400,6 +400,7 @@ public sealed class PlayerAllegianceWindow : Window
             }
             if (review != null)
             {
+                if (review.Feudal != null) list.Label("FA_Consent".Translate());
                 if (review.Peace != null)
                     list.Label("UP_Decision".Translate(review.Peace.ApprovedWeight, review.Peace.TotalWeight,
                         (review.Peace.Founding ? "WU_Founding" : "WU_Council").Translate()));
@@ -426,7 +427,7 @@ public sealed class PlayerAllegianceWindow : Window
                     list.Label("FB_Entry".Translate(territories.FollowerLabel(entry.Charter), territories.OwnerLabel(entry.Observation.Owner),
                         (review.Followers.Moves.Contains(entry.Charter) ? "FB_Move" : "FB_Already").Translate()));
                 list.Label("PS_DebtsRetained".Translate());
-                if (review.Command == null && transition.Journal.Current?.FollowerReview != null || review.Command?.Action == AllegianceAction.JoinUnion && (review.Peace != null || review.Wars?.IncomingCharters != null))
+                if (review.Command == null && transition.Journal.Current?.FollowerReview != null || review.Command != null && (review.Feudal != null || review.Peace != null || review.Wars?.IncomingCharters != null))
                     list.Label("AR_Source".Translate());
                 if (list.ButtonText((review.Command == null ? "PS_Resume" : "PS_Confirm").Translate()))
                 { if (review.Command == null) transition.Resume(review); else transition.Start(review); review = null; }

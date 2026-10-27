@@ -28,11 +28,16 @@ public static class AdmissionFollowerReviews
         var book = CharterBook.Restore(saved.Book); var transfers = TerritoryTransferLedger.Restore(saved.Ledger);
         var before = PlayerAllegiance.Restore(intent.Before); var after = PlayerAllegiance.Restore(intent.After);
         var command = JsonSerializer.Deserialize<PlayerAllegianceSave>(intent.After).Commands.Last();
-        var incoming = intent.Peace?.IncomingCharters ?? intent.Wars?.IncomingCharters;
-        if (command.Action != AllegianceAction.JoinUnion || incoming == null || command.Authority != saved.Target ||
+        var incoming = intent.Feudal?.Moves ?? intent.Peace?.IncomingCharters ?? intent.Wars?.IncomingCharters;
+        if ((command.Action == AllegianceAction.BindLiege ? intent.Feudal == null : command.Action != AllegianceAction.JoinUnion) || incoming == null || command.Authority != saved.Target ||
             !book.Entities.Any(e => e.Player && e.NativeOwner == before.NativePlayer) || after.NativePlayer != before.NativePlayer ||
             Hash(saved.Ledger) != intent.TransferBaseline)
-            throw new ArgumentException("Only the exact original union admission and physical ledger can bind this review.");
+            throw new ArgumentException("Only the exact original admission and physical ledger can bind this review.");
+        if (intent.Feudal != null)
+        {
+            var c = FeudalAdmissions.Review(book, before.NativePlayer, command.Contract, saved.Now, intent.Feudal.Decision, incoming);
+            if (!FeudalAdmissions.SameReview(c, intent.Feudal)) throw new ArgumentException("Original actual feudal charter differs from admission consent.");
+        }
         var replay = FollowerTransfers.Review(book, transfers, saved.Entries, saved.Target, saved.Now, saved.Administration);
         if (replay.Stamp != r.Original || !replay.Entries.Select(e => e.Charter).SequenceEqual(intent.Followers) ||
             !replay.Moves.OrderBy(s => s, StringComparer.Ordinal).SequenceEqual(incoming))

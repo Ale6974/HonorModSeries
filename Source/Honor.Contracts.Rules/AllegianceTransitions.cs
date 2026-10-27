@@ -19,6 +19,8 @@ public sealed record AllegianceTransition(string Id, string Before, string After
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public UnionPeaceConsent Peace { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public UnionPeaceConsent[] PeaceReaffirmations { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public AdmissionFollowerReview FollowerReview { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public FeudalAdmissionConsent Feudal { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public FeudalAdmissionConsent[] FeudalReaffirmations { get; init; }
 }
 public sealed record AllegianceTransitionSave(int Version, AllegianceTransition Current);
 
@@ -78,6 +80,7 @@ public sealed partial class AllegianceTransitionLedger
         (Current.WarResults == null || Current.WarResults.All(r => !r.ObservedTick.HasValue || r.ObservedTick <= now)) &&
         (Current.WarReaffirmations == null || Current.WarReaffirmations.All(r => r.Tick <= now)) &&
             (Current.PeaceReaffirmations == null || Current.PeaceReaffirmations.All(r => r.Tick <= now)) &&
+            (Current.FeudalReaffirmations == null || Current.FeudalReaffirmations.All(r => r.Tick <= now)) &&
         (Current.LostFollowers == null || Current.LostFollowers.All(r => r.ResolvedTick <= now)) &&
         (Current.TownLosses == null || Current.TownLosses.All(r => r.ResolvedTick <= now)),
         "Invalid transition clock.");
@@ -159,6 +162,7 @@ public sealed partial class AllegianceTransitionLedger
     {
         RuntimeCompat.NotNull(current); Time(now);
         Require(Current.Peace == null || Current.PeaceReaffirmations?.Length > 0, "Membership admission needs its applied current council review.");
+        Require(Current.Feudal == null || Current.FeudalReaffirmations?.Length > 0, "Liege admission needs its current applied ordinary representative review.");
         Require(Current.Phase == AllegianceTransitionPhase.AllegianceApplied && IsAfter(actual) && WarsReady && !actual.State.Suspended && actual.LastTick <= now &&
             current.Target == actual.State.Authority && current.ReviewedTick == now && current.Moves != null && current.Entries != null &&
             current.Entries.All(e => e != null && Key(e.Charter)) && current.Moves.Count == 0 &&
@@ -196,6 +200,8 @@ public sealed partial class AllegianceTransitionLedger
             original.PreparedTick == current.PreparedTick && original.AllegianceTick == current.AllegianceTick && original.Followers.SequenceEqual(current.Followers) &&
             JsonSerializer.Serialize(original.Wars) == JsonSerializer.Serialize(current.Wars) &&
             JsonSerializer.Serialize(original.Peace) == JsonSerializer.Serialize(current.Peace) &&
+            JsonSerializer.Serialize(original.Feudal) == JsonSerializer.Serialize(current.Feudal) &&
+            (original.FeudalReaffirmations ?? []).Select(p => JsonSerializer.Serialize(p)).SequenceEqual((current.FeudalReaffirmations ?? []).Take(original.FeudalReaffirmations?.Length ?? 0).Select(p => JsonSerializer.Serialize(p))) &&
             original.FollowerReview == current.FollowerReview &&
             (original.PeaceReaffirmations ?? []).Select(p => JsonSerializer.Serialize(p)).SequenceEqual((current.PeaceReaffirmations ?? []).Take(original.PeaceReaffirmations?.Length ?? 0).Select(p => JsonSerializer.Serialize(p))) &&
             (original.LostFollowers ?? []).SequenceEqual((current.LostFollowers ?? []).Take(original.LostFollowers?.Length ?? 0)) &&
@@ -259,6 +265,7 @@ public sealed partial class AllegianceTransitionLedger
         }
         else Require(c.WarResults == null && c.WarReaffirmations == null, "War results require their original consent.");
         ValidatePeace(c, command, old.NativePlayer);
+        FeudalAdmissions.ValidateIntent(c, command, old.NativePlayer);
         AdmissionFollowerReviews.Validate(c);
         Require(c.LostFollowers == null || applied && c.LostFollowers.Length is > 0 and <= PendingTownLossArchive.Capacity &&
             c.LostFollowers.All(l => l != null && Key(l.Transfer) && c.Followers.Contains(l.Charter) && l.Proof?.Length == 64 &&

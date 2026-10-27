@@ -41,6 +41,7 @@ public sealed class PoliticalTownLossArchive
             (intent.LostFollowers ?? []).Any(l => l.ResolvedTick > r.LossTick) || (intent.TownLosses ?? []).Any(l => l.ResolvedTick > r.LossTick) ||
             intent.WarResults?.Any(w => w.ObservedTick > r.LossTick) == true || intent.WarReaffirmations?.Any(w => w.Tick > r.LossTick) == true ||
             intent.PeaceReaffirmations?.Any(p => p.Tick > r.LossTick) == true ||
+            intent.FeudalReaffirmations?.Any(p => p.Tick > r.LossTick) == true ||
             c.Phase != RecordedCharterPhase.Active || !book.PlayerManaged(c) || c.Terms.Subject != "territory/" + r.City || book.Entity(c.Terms.Subject).Player ||
             book.Entities.Any(e => e.Player && e.NativeOwner == r.Owner) || book.LastTick > r.LossTick || ledger.LastTick > r.LossTick ||
             ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) || !ledger.VerifiedOwner(c.Terms.Subject, book.Entity(c.Terms.Subject).NativeOwner, r.Owner))

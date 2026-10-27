@@ -101,6 +101,7 @@ internal static class UnionWarCouncil
         ValidateAccepted(union, reviewed); journal.ReaffirmWars(reviewed, Find.TickManager.TicksGame);
         foreach (string id in journal.Current.Wars.Targets.Select(t => t.Enemy))
         {
+            FeudalAdmissionAuthority.Verify(union, journal.Current);
             ValidateAccepted(union, reviewed);
             var enemy = Enemy(id); var state = journal.Current.WarResults.Single(r => r.Enemy == id);
             bool hostile = union.RelationKindWith(enemy) == FactionRelationKind.Hostile && enemy.RelationKindWith(union) == FactionRelationKind.Hostile;
@@ -123,6 +124,7 @@ internal static class UnionWarCouncil
             journal.ObserveWar(id, true, union.BaseGoodwillWith(enemy), enemy.BaseGoodwillWith(union), returned, Find.TickManager.TicksGame);
         }
         ValidateAccepted(union, reviewed); // A native callback may have changed the ruler or electorate during the last declaration.
+        FeudalAdmissionAuthority.Verify(union, journal.Current);
     }
     internal static void Verify(Faction union, AllegianceTransitionLedger journal)
     {

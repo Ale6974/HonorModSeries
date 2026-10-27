@@ -8,6 +8,7 @@ namespace Honor.Contracts.Preview;
 public sealed record PoliticalChangeReview(Faction Destination, AllegianceCommand Command, FollowerTransferPlan Followers, string Stamp, UnionWarConsent Wars = null, Game Context = null)
 {
     public UnionPeaceConsent Peace { get; init; }
+    public FeudalAdmissionConsent Feudal { get; init; }
 }
 
 /// <summary>Coordinates one reviewed allegiance change and all live NPC subjects; never resumes automatically on load.</summary>
@@ -19,11 +20,12 @@ public sealed class PoliticalTransitionLedger : GameComponent
     public bool RestoreFailed { get; private set; }
     public bool Executing { get; private set; }
     private bool sharingPeace;
-    internal bool PeaceSharingBlocked => Journal.Pending && (Journal.Current.Peace != null || Journal.Current.Wars?.IncomingCharters != null) && (!Executing || !sharingPeace);
+    internal bool PeaceSharingBlocked => Journal.Pending && (Journal.Current.Peace != null || Journal.Current.Wars?.IncomingCharters != null || Journal.Current.Feudal != null) && (!Executing || !sharingPeace);
     internal void VerifyPeace()
     {
         UnionPeaceCouncil.Verify(Politics.RecordedAuthority, Journal.Current);
         UnionWarCouncil.VerifyCurrentCouncil(Politics.RecordedAuthority, Journal.Current);
+        FeudalAdmissionAuthority.Verify(Politics.RecordedAuthority, Journal.Current);
     }
     internal bool BlocksApartFromTownLosses => RestoreFailed || Journal.Pending || Current.Game.GetComponent<CharterProtectionLedger>().Executing || Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges ||
         Current.Game.GetComponent<TerritoryAdministrationLedger>().RestoreFailed || Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared);
@@ -39,15 +41,15 @@ public sealed class PoliticalTransitionLedger : GameComponent
         if (BlocksChanges || Journal.Export() != receipt.TransitionBefore || Politics.Model.Export() != receipt.Before)
             throw new ArgumentException("Political renewal scope changed.");
         var next = AllegianceTransitionLedger.Restore(receipt.TransitionAfter); var history = warHistory.ToList();
-        if (Journal.Current?.Wars != null || Journal.Current?.Peace != null) history.Add(Journal.Export());
+        if (Journal.Current?.Wars != null || Journal.Current?.Peace != null || Journal.Current?.Feudal != null) history.Add(Journal.Export());
         UnionWarAdmission.ValidateHistory(history, next.Current); return (next, history);
     }
     internal void CommitCharterRenewal(AllegianceTransitionLedger prepared, List<string> history) { Journal = prepared; warHistory = history; }
     internal void ValidateCharterRenewalHistory(IEnumerable<PlayerCharterRenewal> renewals)
     {
         foreach (var r in renewals)
-            if (AllegianceTransitionLedger.Restore(r.TransitionBefore).Current?.Wars != null && !warHistory.Contains(r.TransitionBefore))
-                throw new ArgumentException("Original war admission must remain archived across charter renewal.");
+            if (AllegianceTransitionLedger.Restore(r.TransitionBefore).Current is { } before && (before.Wars != null || before.Peace != null || before.Feudal != null) && !warHistory.Contains(r.TransitionBefore))
+                throw new ArgumentException("Original political admission must remain archived across charter renewal.");
     }
     public override void ExposeData()
     {
@@ -67,6 +69,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
         if (c.PreparedTick > Find.TickManager.TicksGame || c.AllegianceTick > Find.TickManager.TicksGame || c.FinishedTick > Find.TickManager.TicksGame ||
             c.WarResults?.Any(r => r.ObservedTick > Find.TickManager.TicksGame) == true || c.WarReaffirmations?.Any(w => w.Tick > Find.TickManager.TicksGame) == true ||
             c.PeaceReaffirmations?.Any(p => p.Tick > Find.TickManager.TicksGame) == true ||
+            c.FeudalReaffirmations?.Any(p => p.Tick > Find.TickManager.TicksGame) == true ||
             c.LostFollowers?.Any(l => l.ResolvedTick > Find.TickManager.TicksGame) == true ||
             c.TownLosses?.Any(l => l.ResolvedTick > Find.TickManager.TicksGame) == true ||
             PlayerAllegiance.Restore(c.Before).NativePlayer != Faction.OfPlayer.GetUniqueLoadID() ||
@@ -107,8 +110,8 @@ public sealed class PoliticalTransitionLedger : GameComponent
         }
         return AllegianceChangeSource.ReleasedMigrationSource(Charters.Book, before, target.GetUniqueLoadID(), Find.TickManager.TicksGame);
     }
-    private string Stamp(Faction root, AllegianceCommand command, FollowerTransferPlan plan, UnionWarConsent wars = null, UnionPeaceConsent peace = null) => JsonSerializer.Serialize(new {
-        Command = command, Allegiance = Politics.Model.Export(), Intent = Journal.Export(), Followers = plan.Stamp, Relations = Politics.ReviewToken(root), Wars = wars, Peace = peace });
+    private string Stamp(Faction root, AllegianceCommand command, FollowerTransferPlan plan, UnionWarConsent wars = null, UnionPeaceConsent peace = null, FeudalAdmissionConsent feudal = null) => JsonSerializer.Serialize(new {
+        Command = command, Allegiance = Politics.Model.Export(), Intent = Journal.Export(), Followers = plan.Stamp, Relations = Politics.ReviewToken(root), Wars = wars, Peace = peace, Feudal = feudal });
     public PoliticalChangeReview Review(bool joinUnion, bool acceptWars = false)
     {
         Ready(); if (Journal.Pending) throw new ArgumentException("A transition already needs attention.");
@@ -125,7 +128,9 @@ public sealed class PoliticalTransitionLedger : GameComponent
         }
         var peace = joinUnion && wars == null ? UnionPeaceCouncil.Review(root, followers.Moves) : null;
         if (peace?.Accepted == false) throw new ArgumentException("Membership council declined admission.");
-        return new(root, command, followers, Stamp(root, command, followers, wars, peace), wars, Current.Game) { Peace = peace };
+        var feudal = joinUnion ? null : FeudalAdmissionAuthority.Review(root, command.Contract, followers.Moves);
+        if (feudal != null && wars != null && feudal.Decision.Representative != wars.Representative) throw new ArgumentException("Current ordinary and war representatives differ.");
+        return new(root, command, followers, Stamp(root, command, followers, wars, peace, feudal), wars, Current.Game) { Peace = peace, Feudal = feudal };
     }
     public void Start(PoliticalChangeReview reviewed)
     {
@@ -135,17 +140,19 @@ public sealed class PoliticalTransitionLedger : GameComponent
             var current = Review(reviewed.Command.Action == AllegianceAction.JoinUnion, reviewed.Wars != null);
             if (current.Stamp != reviewed.Stamp) throw new ArgumentException("Review changed.");
             var next = AllegianceTransitionLedger.Restore(Journal.Export());
-            if (current.Peace != null || current.Wars?.IncomingCharters != null)
+            if (current.Feudal != null)
+                next.PrepareReviewedLiegeAdmission(Guid.NewGuid().ToString("N"), Politics.Model, current.Command, current.Followers, Territories.Ledger, current.Feudal, current.Wars);
+            else if (current.Peace != null || current.Wars?.IncomingCharters != null)
                 next.PrepareReviewedAdmission(Guid.NewGuid().ToString("N"), Politics.Model, current.Command, current.Followers, Territories.Ledger, current.Wars, current.Peace);
             else next.Prepare(Guid.NewGuid().ToString("N"), Politics.Model, current.Command, current.Followers, Territories.Ledger, current.Wars);
             var history = warHistory.ToList();
-            if (Journal.Current?.Wars != null || Journal.Current?.Peace != null) history.Add(Journal.Export());
+            if (Journal.Current?.Wars != null || Journal.Current?.Peace != null || Journal.Current?.Feudal != null) history.Add(Journal.Export());
             UnionWarAdmission.ValidateHistory(history, next.Current);
             Journal = next; warHistory = history;
             Executing = true;
             Politics.Model.Apply(current.Command);
             Journal.ConfirmAllegiance(Politics.Model, Find.TickManager.TicksGame);
-            Finish(current.Destination, current.Wars, current.Peace);
+            Finish(current.Destination, current.Wars, current.Peace, current.Feudal);
         }
         catch (Exception e)
         { Interrupted(e); }
@@ -192,7 +199,9 @@ public sealed class PoliticalTransitionLedger : GameComponent
         var followers = Territories.ReviewFollowersFor(root); SameFollowers(followers); FutureRelations(root, followers, wars);
         var peace = Journal.Current.Peace == null ? null : UnionPeaceCouncil.Review(root, Journal.Current.Peace.IncomingCharters, Journal.Current);
         if (peace?.Accepted == false) throw new ArgumentException("Current membership council declined recovery.");
-        return new(root, null, followers, Stamp(root, null, followers, wars, peace), wars, Current.Game) { Peace = peace };
+        var feudal = Journal.Current.Feudal == null ? null : FeudalAdmissionAuthority.Review(root, Journal.Current.Feudal.Charter, Journal.Current.Feudal.Moves);
+        if (feudal != null && wars != null && feudal.Decision.Representative != wars.Representative) throw new ArgumentException("Current admission and war representatives differ.");
+        return new(root, null, followers, Stamp(root, null, followers, wars, peace, feudal), wars, Current.Game) { Peace = peace, Feudal = feudal };
     }
     public void Resume(PoliticalChangeReview reviewed)
     {
@@ -202,15 +211,16 @@ public sealed class PoliticalTransitionLedger : GameComponent
             if (reviewed == null || reviewed.Context != Current.Game || reviewed.Command != null || current.Stamp != reviewed.Stamp) throw new ArgumentException("Recovery review changed.");
             Executing = true;
             if (Journal.Current.Phase == AllegianceTransitionPhase.Prepared) Journal.ConfirmAllegiance(Politics.Model, Find.TickManager.TicksGame);
-            Finish(current.Destination, current.Wars, current.Peace);
+            Finish(current.Destination, current.Wars, current.Peace, current.Feudal);
         }
         catch (Exception e) { Interrupted(e); }
         finally { Executing = false; }
     }
-    private void Finish(Faction root, UnionWarConsent wars = null, UnionPeaceConsent peace = null)
+    private void Finish(Faction root, UnionWarConsent wars = null, UnionPeaceConsent peace = null, FeudalAdmissionConsent feudal = null)
     {
         Ready(); CheckRetainedSource();
         if (Journal.Current.Peace != null) { Journal.ReaffirmPeace(peace, Find.TickManager.TicksGame); VerifyPeace(); }
+        if (Journal.Current.Feudal != null) { Journal.ReaffirmFeudal(feudal, Find.TickManager.TicksGame); VerifyPeace(); }
         UnionWarCouncil.Apply(root, Journal, wars);
         UnionWarCouncil.Verify(root, Journal);
         sharingPeace = true;
