@@ -21,6 +21,7 @@ public sealed record AllegianceTransition(string Id, string Before, string After
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public AdmissionFollowerReview FollowerReview { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public FeudalAdmissionConsent Feudal { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public FeudalAdmissionConsent[] FeudalReaffirmations { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string LawfulExit { get; init; }
 }
 public sealed record AllegianceTransitionSave(int Version, AllegianceTransition Current);
 
@@ -202,7 +203,7 @@ public sealed partial class AllegianceTransitionLedger
             JsonSerializer.Serialize(original.Peace) == JsonSerializer.Serialize(current.Peace) &&
             JsonSerializer.Serialize(original.Feudal) == JsonSerializer.Serialize(current.Feudal) &&
             (original.FeudalReaffirmations ?? []).Select(p => JsonSerializer.Serialize(p)).SequenceEqual((current.FeudalReaffirmations ?? []).Take(original.FeudalReaffirmations?.Length ?? 0).Select(p => JsonSerializer.Serialize(p))) &&
-            original.FollowerReview == current.FollowerReview &&
+            original.FollowerReview == current.FollowerReview && original.LawfulExit == current.LawfulExit &&
             (original.PeaceReaffirmations ?? []).Select(p => JsonSerializer.Serialize(p)).SequenceEqual((current.PeaceReaffirmations ?? []).Take(original.PeaceReaffirmations?.Length ?? 0).Select(p => JsonSerializer.Serialize(p))) &&
             (original.LostFollowers ?? []).SequenceEqual((current.LostFollowers ?? []).Take(original.LostFollowers?.Length ?? 0)) &&
             (original.TownLosses ?? []).SequenceEqual((current.TownLosses ?? []).Take(original.TownLosses?.Length ?? 0)) &&
@@ -267,6 +268,7 @@ public sealed partial class AllegianceTransitionLedger
         ValidatePeace(c, command, old.NativePlayer);
         FeudalAdmissions.ValidateIntent(c, command, old.NativePlayer);
         AdmissionFollowerReviews.Validate(c);
+        LawfulAdmissions.ValidateIntent(c);
         Require(c.LostFollowers == null || applied && c.LostFollowers.Length is > 0 and <= PendingTownLossArchive.Capacity &&
             c.LostFollowers.All(l => l != null && Key(l.Transfer) && c.Followers.Contains(l.Charter) && l.Proof?.Length == 64 &&
                 l.Proof.All(x => x is >= '0' and <= '9' or >= 'A' and <= 'F') && l.ObservedTick >= c.AllegianceTick &&

@@ -60,11 +60,12 @@ public sealed class TributePaymentLedger : GameComponent
             if (Charters.RestoreFailed || Ledger.LastTick > Find.TickManager.TicksGame || Ledger.Accounts.Any(a => {
                 var charter = Charters.Book.Charter(a.CharterId);
                 return charter.Terms != a.Terms || !Charters.Book.Entity(a.Terms.Subject).Player ||
-                    charter.Phase is not (RecordedCharterPhase.Active or RecordedCharterPhase.Released) ||
+                    charter.Phase is not (RecordedCharterPhase.Active or RecordedCharterPhase.Released or RecordedCharterPhase.LawfullyEnded) ||
                     !charter.PlayerSignedTick.HasValue || !charter.NpcSignedTick.HasValue ||
                     Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value) > a.StartedTick ||
-                    a.ClosedTick.HasValue && (charter.Phase != RecordedCharterPhase.Released ||
-                        a.ClosedTick != Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value));
+                    (charter.LawfulExit != null ? a.ClosedTick != charter.LawfulExit.Tick :
+                        a.ClosedTick.HasValue && (charter.Phase != RecordedCharterPhase.Released ||
+                        a.ClosedTick != Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value)));
             })) throw new ArgumentException("Payment account does not match charter.");
         }
         catch (ArgumentException) { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Payment/charter mismatch; data retained."); }

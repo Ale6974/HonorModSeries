@@ -27,6 +27,8 @@ public static class AdmissionFollowerReviews
             throw new ArgumentException("Original admission review must match preparation scope and clock.");
         var book = CharterBook.Restore(saved.Book); var transfers = TerritoryTransferLedger.Restore(saved.Ledger);
         var before = PlayerAllegiance.Restore(intent.Before); var after = PlayerAllegiance.Restore(intent.After);
+        if (before.State.Mode == PlayerAllegianceMode.Vassal && book.Charter(before.State.Contract).LawfulExit != null && intent.LawfulExit == null)
+            throw new ArgumentException("A unilateral original source cannot be relabeled as ordinary mutual admission.");
         var command = JsonSerializer.Deserialize<PlayerAllegianceSave>(intent.After).Commands.Last();
         var incoming = intent.Feudal?.Moves ?? intent.Peace?.IncomingCharters ?? intent.Wars?.IncomingCharters;
         if ((command.Action == AllegianceAction.BindLiege ? intent.Feudal == null : command.Action != AllegianceAction.JoinUnion) || incoming == null || command.Authority != saved.Target ||

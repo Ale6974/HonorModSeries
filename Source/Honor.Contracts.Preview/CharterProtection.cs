@@ -331,6 +331,17 @@ public sealed class CharterProtectionWindow(string charter) : Window
         foreach (var r in displayedRequests.Where(r => r.Plan.Charter == charter).Reverse())
         {
             list.Label("CP_Record".Translate((r.Plan.Tick / (double)PoliticalWorld.Day).ToString("0.##"), ("CP_" + r.Outcome).Translate(), r.Arrivals?.Length ?? 0));
+            if (current && r.Outcome == CharterAidOutcome.IntentionallyRefused && list.ButtonText("LX_Review".Translate()))
+            {
+                try
+                {
+                    var transition = context.GetComponent<PoliticalTransitionLedger>();
+                    var review = transition.ReviewLawfulIndependence(r.Plan.Id);
+                    Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("LX_Confirm".Translate(review.Admission.Destination.Name),
+                        () => transition.StartLawfulIndependence(review)));
+                }
+                catch (ArgumentException) { Messages.Message("LX_Unavailable".Translate(), MessageTypeDefOf.RejectInput); }
+            }
             if (r.Outcome == CharterAidOutcome.Applying && r.Generation != null && list.ButtonText("CP_ReviewGeneration".Translate()))
             {
                 try { var review = ledger.ReviewGeneration(r.Plan.Id); Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("CP_ConfirmGeneration".Translate(review.Pawns.Length), () => ledger.AcknowledgeGeneration(review))); }

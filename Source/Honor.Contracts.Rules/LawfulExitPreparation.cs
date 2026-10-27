@@ -15,6 +15,9 @@ public sealed class LawfulExitPreparation
     public long Tick => saved.Original.Tick;
     public string AfterBook => saved.AfterBook;
     public string AfterPayments => saved.AfterPayments;
+    public string BeforePolitics => saved.Original.Politics;
+    public string BeforeBook => saved.Original.Book;
+    public string BeforeTransfers => saved.Original.Transfers;
     private LawfulExitPreparation(Save value) { saved = value; }
     private static string Hash(string value) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(value)));
     private static string Json<T>(T value) => JsonSerializer.Serialize(value);

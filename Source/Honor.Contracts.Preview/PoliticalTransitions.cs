@@ -12,8 +12,9 @@ public sealed record PoliticalChangeReview(Faction Destination, AllegianceComman
 }
 
 /// <summary>Coordinates one reviewed allegiance change and all live NPC subjects; never resumes automatically on load.</summary>
-public sealed class PoliticalTransitionLedger : GameComponent
+public sealed partial class PoliticalTransitionLedger : GameComponent
 {
+    private readonly Game context;
     private string snapshot;
     private List<string> warHistory = [];
     public AllegianceTransitionLedger Journal { get; private set; } = new();
@@ -33,7 +34,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
     private PlayerPoliticsLedger Politics => Current.Game.GetComponent<PlayerPoliticsLedger>();
     private TerritoryAdministrationLedger Territories => Current.Game.GetComponent<TerritoryAdministrationLedger>();
     private LiveCharterLedger Charters => Current.Game.GetComponent<LiveCharterLedger>();
-    public PoliticalTransitionLedger(Game game) { }
+    public PoliticalTransitionLedger(Game game) { context = game; }
     internal string RenewalHistoryToken => JsonSerializer.Serialize(warHistory);
     internal (AllegianceTransitionLedger Journal, List<string> History) StageCharterRenewal(PlayerCharterRenewal receipt)
     {
@@ -78,6 +79,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
     }
     private void Ready()
     {
+        if (Current.Game != context || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Review the current game.");
         Territories.ValidatePoliticalLosses(Journal);
         if (Territories.HasPendingTownLosses) throw new ArgumentException("Explicitly reconcile observed town losses before resuming politics.");
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
@@ -161,6 +163,12 @@ public sealed class PoliticalTransitionLedger : GameComponent
     private void CheckRetainedSource()
     {
         AdmissionFollowerReviews.Validate(Journal.Current);
+        if (Journal.Current.LawfulExit != null)
+        {
+            LawfulAdmissions.ValidatePair(Journal.Current, Charters.Book, Current.Game.GetComponent<TributePaymentLedger>().Ledger, Current.Game.GetComponent<CharterProtectionLedger>().Ledger);
+            if (Territories.Ledger.Transfers.Count != 0 || Charters.Book.PlayerFollowers().Length != 0) throw new ArgumentException("Initial legal admission has no physical follower scope.");
+            return;
+        }
         var before = PlayerAllegiance.Restore(Journal.Current.Before).State;
         var command = JsonSerializer.Deserialize<PlayerAllegianceSave>(Journal.Current.After).Commands.Last();
         AllegianceChangeSource.Validate(Charters.Book, before, command, Current.Game.GetComponent<TributePaymentLedger>().Ledger);
