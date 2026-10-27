@@ -1,5 +1,9 @@
 # 1.7 API·런타임 검증 기록
 
+## 0.3.62 resolved transfer history — 2026-10-27
+
+No new native API, ownership/pawn/stock call or Harmony target is introduced. The existing current-Game lawful union coordinator accepts an original nonempty territory-transfer journal only if every row is resolved, the actual player-follower graph is empty and existing native territory/loss archives validate. A new explicit optional default-omitted intent marker binds the full original journal/follower-review hash and distinguishes this mode from unchanged legacy zero-history intents. Pending political recovery compares the exact current journal to the original; completed history does not freeze future independent physical transactions. No past outcome is replayed, no city ownership is inferred from history alone, and old source/custody/provider guards remain. Existing 1.6 reference/net472 and installed1.7/net10 boundaries are unchanged.
+
 ## 0.3.61 initial lawful union execution — 2026-10-27
 
 No new native API or Harmony target is introduced. The actual current-Game coordinator reuses the already inspected union-council, PlayerAllegiance, shared diplomacy and explicit political-recovery adapters. It atomically assigns copied book, tribute ledger, applied political journal/history and player-allegiance model before any native diplomacy callbacks, then runs the existing frozen-sharing/reviewed completion path. This initial proof rejects any active NPC followers or physical transfer rows and requires no new war declarations; no settlement, pawn, stock or native player-faction ownership is written. The original refusal/compact, legal closure, saved admission intent, current tribute cutoff and old receipt history are paired during restore and current recovery; malformed/unpaired data block changes and keep raw sources. Game and provider/current council checks remain. Other native follower/war/merge APIs are not used or waived.

@@ -166,7 +166,9 @@ public sealed partial class PoliticalTransitionLedger : GameComponent
         if (Journal.Current.LawfulExit != null)
         {
             LawfulAdmissions.ValidatePair(Journal.Current, Charters.Book, Current.Game.GetComponent<TributePaymentLedger>().Ledger, Current.Game.GetComponent<CharterProtectionLedger>().Ledger);
-            if (Territories.Ledger.Transfers.Count != 0 || Charters.Book.PlayerFollowers().Length != 0) throw new ArgumentException("Initial legal admission has no physical follower scope.");
+            LawfulAdmissions.ValidateCurrentPhysical(Journal.Current, Territories.Ledger);
+            if (Charters.Book.PlayerFollowers().Length != 0)
+                throw new ArgumentException("Original physical history or empty follower scope changed.");
             return;
         }
         var before = PlayerAllegiance.Restore(Journal.Current.Before).State;
