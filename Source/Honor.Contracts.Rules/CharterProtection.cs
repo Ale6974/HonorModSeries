@@ -8,7 +8,8 @@ public sealed record CharterProtectionCompact(string Charter, RecordedCharter Or
     NpcRealmDecisionEvidence Decision, int Goodwill, bool ReciprocalAlliance);
 public sealed record CharterAidPlan(string Id, string Charter, string Source, string Representative, string Map,
     string[] Threats, string[] BeforePawns, long Tick, string BookProof, string PoliticsProof, NpcRealmDecisionEvidence Decision);
-public enum CharterAidOutcome { Applying, ArrivalsObserved, ReturnedFalse, ReturnedUnverified, GenerationAcknowledged }
+public enum CharterAidOutcome { Applying, ArrivalsObserved, ReturnedFalse, ReturnedUnverified, GenerationAcknowledged, IntentionallyRefused }
+public sealed record CharterAidRefusal(string PlanProof, NpcRealmDecisionEvidence Decision, string Trait, int Policy, decimal NativePoints, long Tick);
 public sealed record CharterAidGeneration(string PlanProof, long Tick, string[] Pawns)
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool RepeatedReturn { get; init; }
@@ -17,6 +18,7 @@ public sealed record CharterAidReceipt(CharterAidPlan Plan, CharterAidOutcome Ou
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public CharterAidGeneration Generation { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public long? AcknowledgedTick { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public CharterAidRefusal Refusal { get; init; }
 }
 public sealed record CharterProtectionSave(int Version, long LastTick, CharterProtectionCompact[] Compacts, CharterAidReceipt[] Requests);
 
@@ -85,6 +87,18 @@ public sealed class CharterProtection
         Review(book, plan, decision, reciprocalAlliance, now); var copy = Restore(Export()); copy.requests.Add(new(Clone(plan))); copy.LastTick = now;
         if (copy.Export().Length > MaxCharacters - OutcomeReserve) throw new ArgumentException("Retain room for both native generation and final arrival receipts before starting aid.");
         return copy;
+    }
+    // A fresh NPC response, never a reinterpretation of an Applying/failed/unknown dispatch.
+    public CharterProtection Refuse(CharterBook book, CharterAidPlan plan, NpcRealmDecisionEvidence decision, bool reciprocalAlliance,
+        string trait, int policy, decimal nativePoints, long now)
+    {
+        Review(book, plan, decision, reciprocalAlliance, now);
+        if (trait != "Honor_Vile" || policy != 1 || nativePoints <= 0 || nativePoints > 100000)
+            throw new ArgumentException("Supported explicit NPC refusal policy and positive native capability evidence required.");
+        var copy = Restore(Export());
+        copy.requests.Add(new(Clone(plan), CharterAidOutcome.IntentionallyRefused) {
+            Refusal = new(PlanProof(plan), decision, trait, policy, nativePoints, now) });
+        copy.LastTick = now; copy.Bounded(); return copy;
     }
     public CharterProtection Returned(string id, bool returned, string[] arrivals, long now)
     {
@@ -160,6 +174,16 @@ public sealed class CharterProtection
                 throw new ArgumentException("Invalid aid call history.");
             NpcRealmDecision.Consent(p.Decision);
             var g = r.Generation;
+            if (r.Outcome == CharterAidOutcome.IntentionallyRefused)
+            {
+                var f = r.Refusal;
+                if (f == null || f.PlanProof != PlanProof(p) || f.Decision != p.Decision || f.Trait != "Honor_Vile" || f.Policy != 1 ||
+                    f.NativePoints <= 0 || f.NativePoints > 100000 || f.Tick != p.Tick || f.Tick > s.LastTick ||
+                    g != null || r.ReturnedTick.HasValue || r.Arrivals != null || r.AcknowledgedTick.HasValue)
+                    throw new ArgumentException("Refusal is a separate original NPC decision, not a native return or inferred inability.");
+                result.requests.Add(r); continue;
+            }
+            if (r.Refusal != null) throw new ArgumentException("Only an original explicit refusal can carry refusal evidence.");
             if (g != null && (g.PlanProof != PlanProof(p) || !Keys(g.Pawns, false) || g.Pawns.Any(p.BeforePawns.Contains) || g.Tick < p.Tick || g.Tick > s.LastTick))
                 throw new ArgumentException("Invalid original native generation receipt.");
             if (r.Outcome == CharterAidOutcome.Applying)

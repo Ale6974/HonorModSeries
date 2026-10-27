@@ -26,6 +26,35 @@ internal static class CharterProtectionTests
         Check(empty.Compacts.Count == 0 && agreed.Compacts.Single().Original == book.Charter("c") && book.Export() == original,
             "separate agreement is saved on a copy without rewriting original economic terms, signatures or followers");
         var pending = agreed.Begin(book, plan, decision, true, 10);
+        var refusal = agreed.Refuse(book, plan, decision, true, "Honor_Vile", 1, 120, 10);
+        Check(!refusal.Pending && refusal.Requests.Single().Outcome == CharterAidOutcome.IntentionallyRefused &&
+            refusal.Requests.Single().ReturnedTick == null && refusal.Requests.Single().Generation == null && refusal.Requests.Single().Arrivals == null,
+            "fresh deliberate ordinary NPC response has no fabricated dispatch, army, arrival or native return");
+        var refusalRow = refusal.Requests.Single();
+        Check(CharterProtection.Restore(refusal.Export()).Export() == refusal.Export() && refusalRow.Refusal.Decision == decision &&
+            refusalRow.Refusal.Tick == plan.Tick && refusalRow.Refusal.NativePoints == 120 && refusal.Compacts.Single().Original == book.Charter("c"),
+            "original decision/capability policy binds the exact signed obligation and defense request through restore");
+        Reject(() => agreed.Refuse(book, plan, decision, true, "Honor_Honorable", 1, 120, 10), "unimplemented personality policy cannot create an intentional refusal");
+        Reject(() => agreed.Refuse(book, plan, decision, true, "Honor_Vile", 2, 120, 10), "unknown decision policy cannot grant rights");
+        Reject(() => agreed.Refuse(book, plan, decision, true, "Honor_Vile", 1, 0, 10), "absence of positive capability cannot be refusal");
+        Reject(() => agreed.Refuse(book, plan, decision, true, "Honor_Vile", 1, 100001, 10), "unsupported capability range cannot be refusal");
+        Reject(() => agreed.Refuse(book, plan, decision with { Representative = "later-ruler" }, true, "Honor_Vile", 1, 120, 10), "changed current decision cannot be substituted for requested representative");
+        Reject(() => pending.Refuse(book, plan, decision, true, "Honor_Vile", 1, 120, 10), "an uncertain begun native dispatch can never be relabeled as deliberate refusal");
+        Reject(() => refusal.Returned("aid", true, ["invented"], 11), "refusal has no native dispatch to return later");
+        Reject(() => refusal.Refuse(book, plan, decision, true, "Honor_Vile", 1, 120, 10), "one original NPC response is immutable and cannot be duplicated");
+        Reject(() => refusal.Begin(book, plan with { Id = "spam", Tick = 11 }, decision, true, 11), "daily source quota includes refused requests");
+        var refusalSave = JsonSerializer.Deserialize<CharterProtectionSave>(refusal.Export());
+        foreach (var altered in new[] {
+            refusalRow with { Refusal = null }, refusalRow with { ReturnedTick = 10 }, refusalRow with { Arrivals = [] },
+            refusalRow with { Refusal = refusalRow.Refusal with { PlanProof = new('F', 64) } },
+            refusalRow with { Refusal = refusalRow.Refusal with { Tick = 11 } },
+            refusalRow with { Refusal = refusalRow.Refusal with { NativePoints = 0 } },
+            refusalRow with { Outcome = CharterAidOutcome.ReturnedFalse, ReturnedTick = 10, Arrivals = [] },
+            refusalRow with { Refusal = refusalRow.Refusal with { Decision = decision with { Representative = "other" } } } })
+            Reject(() => CharterProtection.Restore(JsonSerializer.Serialize(refusalSave with { Requests = [altered] })), "changed refusal pairing/clock/decision/call attribution rejected");
+        refusal.ValidateBook(book);
+        Check(book.Export() == original && book.Charter("follower") == oldFollower && agreed.Requests.Count == 0,
+            "NPC refusal alone never changes allegiance, old signatures, economic terms, debts or descendant charters");
         Check(pending.Pending && pending.Requests.Single().Outcome == CharterAidOutcome.Applying && pending.Requests.Single().ReturnedTick == null,
             "save Applying before native dispatch; no success or refusal is inferred");
         var pendingRestored = CharterProtection.Restore(pending.Export()); pendingRestored.ValidateBook(book);

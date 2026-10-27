@@ -12,7 +12,7 @@ public sealed record ProtectionAgreementReview(Game Context, string Charter, str
 public sealed record ProtectionAidReview(Game Context, CharterAidPlan Plan, Map Map, Faction Source, Pawn Representative, string Stamp);
 public sealed record ProtectionGenerationReview(Game Context, string Request, Map Map, Faction Source, string[] Pawns, string Stamp);
 
-/// <summary>Separate explicit allied protection compact, then a journalled real native friendly-aid request. Never adjudicates refusal or independence.</summary>
+/// <summary>Separate allied protection compact, native aid, or an explicit supported NPC refusal response. No automatic independence.</summary>
 public sealed class CharterProtectionLedger : GameComponent
 {
     private readonly Game context;
@@ -180,6 +180,7 @@ public sealed class CharterProtectionLedger : GameComponent
         var worker = Worker();
         var parms = new IncidentParms { target = fresh.Map, faction = fresh.Source, points = StorytellerUtility.DefaultThreatPointsNow(fresh.Map),
             pawnGroupKind = PawnGroupKindDefOf.Combat, raidStrategy = RaidStrategyDefOf.ImmediateAttackFriendly, raidArrivalMode = PawnsArrivalModeDefOf.EdgeWalkIn };
+        if (TryRefuse(fresh, worker, parms)) return;
         Ledger = Ledger.Begin(Charters.Book, fresh.Plan, NpcDecisionAuthority.Read(fresh.Source), Allied(fresh.Source), Find.TickManager.TicksGame);
         // Persist Applying before ANY native dispatch. An exception retains it; never replay or call inability a refusal.
         nativeParms = parms; nativeWorker = worker; nativeRequest = fresh.Plan.Id; generated = []; generationObserved = generationAmbiguous = false;
@@ -203,6 +204,46 @@ public sealed class CharterProtectionLedger : GameComponent
         finally { Executing = false; active = null; nativeParms = null; nativeWorker = null; nativeRequest = null; generated = null; }
         Messages.Message(resultKey.Translate(), MessageTypeDefOf.NeutralEvent);
     });
+    private bool TryRefuse(ProtectionAidReview reviewed, IncidentWorker_RaidFriendly worker, IncidentParms parms)
+    {
+        bool Vile() => Honor.Core.HonorDefOf.Honor_Vile != null && reviewed.Representative.story?.traits?.HasTrait(Honor.Core.HonorDefOf.Honor_Vile) == true;
+        if (!Vile()) return false;
+        Unpatched(AccessTools.Method(typeof(TraitSet), nameof(TraitSet.HasTrait), [typeof(TraitDef)]));
+        if (DefDatabase<TraitDef>.GetNamedSilentFail("Honor_Vile") != Honor.Core.HonorDefOf.Honor_Vile)
+            throw new ArgumentException("Registered original response trait required.");
+        // This mod-authored ordinary NPC policy refuses deployment only after positive native availability AND group-capability checks.
+        // These checks do not generate or dispatch pawns. Any false/exception keeps inability separate from deliberate refusal.
+        Unpatched(AccessTools.Method(typeof(IncidentParmsUtility), nameof(IncidentParmsUtility.GetDefaultPawnGroupMakerParms), [typeof(PawnGroupKindDef), typeof(IncidentParms), typeof(bool)]));
+        Unpatched(AccessTools.Method(typeof(PawnGroupMaker), nameof(PawnGroupMaker.CanGenerateFrom), [typeof(PawnGroupMakerParms)]));
+        Unpatched(AccessTools.Method(typeof(PawnGroupMaker), nameof(PawnGroupMaker.MinPointsToGenerateAnything), [typeof(FactionDef), typeof(PawnGroupMakerParms)]));
+        Unpatched(AccessTools.Method(typeof(PawnGroupKindWorker_Normal), nameof(PawnGroupKindWorker_Normal.MinPointsToGenerateAnything), [typeof(PawnGroupMaker), typeof(FactionDef), typeof(PawnGroupMakerParms)]));
+        Unpatched(AccessTools.Method(typeof(PawnGroupKindWorker_Normal), nameof(PawnGroupKindWorker_Normal.CanGenerateFrom), [typeof(PawnGroupMakerParms), typeof(PawnGroupMaker)]));
+        Unpatched(AccessTools.Method(typeof(PawnGroupKindWorker), nameof(PawnGroupKindWorker.CanGenerateFrom), [typeof(PawnGroupMakerParms), typeof(PawnGroupMaker)]));
+        Unpatched(AccessTools.Method(typeof(PawnGroupMakerUtility), "AnyOptions"));
+        bool available;
+        active = this; Executing = true;
+        try
+        {
+            available = worker.FactionCanBeGroupSource(reviewed.Source, parms) && worker.CanFireNow(parms);
+            if (available)
+            {
+                var group = IncidentParmsUtility.GetDefaultPawnGroupMakerParms(PawnGroupKindDefOf.Combat, parms);
+                available = reviewed.Source.def.pawnGroupMakers?.Any(m => m != null && m.GetType() == typeof(PawnGroupMaker) &&
+                    m.kindDef == PawnGroupKindDefOf.Combat && !float.IsNaN(m.commonality) && !float.IsInfinity(m.commonality) && m.commonality > 0 && m.CanGenerateFrom(group)) == true;
+            }
+        }
+        finally { Executing = false; active = null; }
+        var fresh = ReviewAid(reviewed.Plan.Charter, reviewed.Map, reviewed.Plan.Id);
+        if (fresh.Stamp != reviewed.Stamp || fresh.Source != reviewed.Source || fresh.Representative != reviewed.Representative || !Vile() ||
+            parms.target != fresh.Map || parms.faction != fresh.Source || parms.points != StorytellerUtility.DefaultThreatPointsNow(fresh.Map) ||
+            parms.raidStrategy != RaidStrategyDefOf.ImmediateAttackFriendly || parms.raidArrivalMode != PawnsArrivalModeDefOf.EdgeWalkIn)
+            throw new ArgumentException("NPC response scope or current personality changed during capability review.");
+        if (!available) return false;
+        Ledger = Ledger.Refuse(Charters.Book, fresh.Plan, NpcDecisionAuthority.Read(fresh.Source), Allied(fresh.Source),
+            Honor.Core.HonorDefOf.Honor_Vile.defName, 1, (decimal)parms.points, Find.TickManager.TicksGame);
+        Find.LetterStack.ReceiveLetter("CP_RefusalTitle".Translate(), "CP_Refused".Translate(fresh.Source.Name, fresh.Representative.LabelShort), LetterDefOf.NegativeEvent);
+        return true;
+    }
     public ProtectionGenerationReview ReviewGeneration(string id)
     {
         if (context != Current.Game || Current.ProgramState != ProgramState.Playing || RestoreFailed || Charters.RestoreFailed ||
