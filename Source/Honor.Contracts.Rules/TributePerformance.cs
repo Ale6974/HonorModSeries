@@ -27,14 +27,14 @@ public static class TributePerformanceReview
             accounts++;
             var charter = book.Charter(account.CharterId);
             if (charter.Terms != account.Terms || !book.Entity(charter.Terms.Subject).Player ||
-                charter.Phase is not (RecordedCharterPhase.Active or RecordedCharterPhase.Released) ||
+                charter.Phase is not (RecordedCharterPhase.Active or RecordedCharterPhase.Released or RecordedCharterPhase.LawfullyEnded) ||
                 !charter.PlayerSignedTick.HasValue || !charter.NpcSignedTick.HasValue ||
                 account.StartedTick < Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value))
                 throw new ArgumentException("Payment history does not match actual signed terms.");
             long cutoff = now;
-            if (charter.Phase == RecordedCharterPhase.Released)
+            if (charter.Phase is RecordedCharterPhase.Released or RecordedCharterPhase.LawfullyEnded)
             {
-                long closed = Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value);
+                long closed = charter.LawfulExit?.Tick ?? Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value);
                 if (closed < account.StartedTick || account.ClosedTick.HasValue && account.ClosedTick != closed)
                     throw new ArgumentException("Payment closure differs from actual release.");
                 cutoff = Math.Min(now, closed); // Read-only closure even before the physical adapter synchronizes its account.

@@ -186,6 +186,7 @@ assertions += PrisonerHistoryTests.Run();
 assertions += CharterOfferTests.Run();
 assertions += CharterAmendmentTests.Run();
 assertions += CharterProtectionTests.Run();
+assertions += LawfulExitPreparationTests.Run();
 assertions += CharterAidGenerationTests.Run();
 assertions += PlayerCharterRenewalTests.Run();
 assertions += CharterReleaseTests.Run();

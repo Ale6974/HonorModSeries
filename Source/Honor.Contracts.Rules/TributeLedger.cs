@@ -48,8 +48,8 @@ public sealed class TributeLedger
     {
         Time(now); var account = Account(id); var charter = book.Charter(id);
         Require(charter.Terms == account.Terms, "Terms cannot be changed in place.");
-        if (charter.Phase != RecordedCharterPhase.Released || account.ClosedTick.HasValue) return;
-        long closed = Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value);
+        if (charter.Phase is not (RecordedCharterPhase.Released or RecordedCharterPhase.LawfullyEnded) || account.ClosedTick.HasValue) return;
+        long closed = charter.LawfulExit?.Tick ?? Math.Max(charter.PlayerReleaseTick.Value, charter.NpcReleaseTick.Value);
         Require(closed >= account.StartedTick && closed <= now && receipts.Values.Where(r => r.CharterId == id)
             .All(r => account.StartedTick + account.Terms.IntervalTicks * r.Period <= closed), "Invalid account closing time or post-closure receipt.");
         accounts[id] = account with { ClosedTick = closed }; LastTick = now; Revision++;

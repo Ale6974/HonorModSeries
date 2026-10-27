@@ -44,7 +44,7 @@ public sealed class CharterAcceptances
         foreach (var record in records.Values)
         {
             var c = book.Charter(record.Charter);
-            if (c.NpcAuthority != null || c.Phase is not (RecordedCharterPhase.Active or RecordedCharterPhase.Released or RecordedCharterPhase.TerritoryLost) ||
+            if (c.NpcAuthority != null || c.Phase is not (RecordedCharterPhase.Active or RecordedCharterPhase.Released or RecordedCharterPhase.TerritoryLost or RecordedCharterPhase.LawfullyEnded) ||
                 c.PlayerSignedTick != record.SignedTick || c.NpcSignedTick != record.FirstNpcConsentTick || record.SignedTick > book.LastTick || Proof(c.Terms) != record.TermsProof)
                 throw new ArgumentException("Final-consent audit differs from charter history.");
         }

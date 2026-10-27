@@ -49,6 +49,8 @@ public sealed partial class LiveCharterLedger : GameComponent
         try
         {
             if (snapshot != null) Book = CharterBook.Restore(snapshot);
+            // Staged rule outputs are not a live independence transaction. Keep raw data until the paired executor exists.
+            if (Book.Charters.Any(c => c.LawfulExit != null)) throw new ArgumentException("Staged lawful closure has no live paired execution archive.");
             ValidateNpcWorld();
             ValidateFinalConsents();
             ValidateTownLosses();

@@ -2,7 +2,8 @@ using System.Text.Json;
 
 namespace Honor.Contracts.Rules;
 
-public enum RecordedCharterPhase { Offered, Active, Declined, Released, Expired, TerritoryLost, Replaced }
+public enum RecordedCharterPhase { Offered, Active, Declined, Released, Expired, TerritoryLost, Replaced, LawfullyEnded }
+public sealed record RecordedLawfulExit(string Request, string Proof, long Tick);
 public sealed record LostTownReplacement(string LostRoot, string Next, long Tick,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string[] SkippedRoots = null);
 public enum CharterAvailability { Current, MissingTerritory, OwnershipChanged, Ineligible }
@@ -24,6 +25,7 @@ public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] RecordedPoliticalLoss PoliticalLoss = null)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public CharterAmendmentLink Amendment { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public RecordedLawfulExit LawfulExit { get; init; }
 }
 public sealed record CharterBookSave(int Version, long LastTick, TerritoryIdentity[] Entities, RecordedCharter[] Charters);
 
@@ -223,6 +225,16 @@ public sealed class CharterBook
         Require(Charter(id).NpcAuthority == null, "Player release slots cannot release NPC-only contracts.");
         ReleaseCore(id, player, now, observations);
     }
+    // Only the paired transaction can construct this staged closure. No NPC release signature is invented.
+    internal void StageLawfulExit(string id, RecordedLawfulExit proof, long now, IEnumerable<TerritoryObservation> observations)
+    {
+        Time(now); var c = Charter(id);
+        Require(c.Phase == RecordedCharterPhase.Active && c.NpcAuthority == null && Entity(c.Terms.Subject).Player &&
+            !Entity(c.Terms.Liege).Player && !c.PlayerReleaseTick.HasValue && !c.NpcReleaseTick.HasValue && c.LawfulExit == null &&
+            proof != null && proof.Tick == now && CityStockProof.Valid(proof.Proof), "Fresh unilateral player closure required.");
+        Key(proof.Request); Fresh(c.Terms, observations);
+        charters[id] = c with { Phase = RecordedCharterPhase.LawfullyEnded, LawfulExit = proof }; LastTick = now;
+    }
     internal void BindAmendment(string id, string previous, string proof)
     {
         var c = Charter(id); var old = Charter(previous);
@@ -355,7 +367,16 @@ public sealed class CharterBook
                 Require(charter.NpcAuthority == null && book.Entity(charter.Terms.Subject).Player && !book.Entity(charter.Terms.Liege).Player &&
                     (!charter.PlayerSignedTick.HasValue || charter.NpcSignedTick.HasValue && charter.PlayerSignedTick >= charter.NpcSignedTick),
                     "Invalid saved conditional proposal scope or consent order.");
-            Require(both == (charter.Phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released or RecordedCharterPhase.TerritoryLost or RecordedCharterPhase.Replaced), "Invalid saved bilateral consent.");
+            Require(both == (charter.Phase is RecordedCharterPhase.Active or RecordedCharterPhase.Released or RecordedCharterPhase.TerritoryLost or RecordedCharterPhase.Replaced or RecordedCharterPhase.LawfullyEnded), "Invalid saved bilateral consent.");
+            Require((charter.Phase == RecordedCharterPhase.LawfullyEnded) == (charter.LawfulExit != null), "Missing or misplaced lawful-exit marker.");
+            if (charter.LawfulExit != null)
+            {
+                Key(charter.LawfulExit.Request);
+                Require(charter.NpcAuthority == null && book.Entity(charter.Terms.Subject).Player && !book.Entity(charter.Terms.Liege).Player &&
+                    !charter.PlayerReleaseTick.HasValue && !charter.NpcReleaseTick.HasValue && CityStockProof.Valid(charter.LawfulExit.Proof) &&
+                    charter.LawfulExit.Tick >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value) && charter.LawfulExit.Tick <= save.LastTick,
+                    "Invalid lawful closure identity/time or fabricated mutual release.");
+            }
             foreach (var release in new[] { charter.PlayerReleaseTick, charter.NpcReleaseTick })
                 Require(!release.HasValue || both && release >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value) && release <= save.LastTick,
                     "Invalid saved release time.");

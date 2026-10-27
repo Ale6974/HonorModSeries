@@ -42,7 +42,7 @@ public sealed class CharterProtection
     private static bool SameIds(string[] a, string[] b) => a.OrderBy(s => s, StringComparer.Ordinal).SequenceEqual(b.OrderBy(s => s, StringComparer.Ordinal));
     private static bool SameOriginal(RecordedCharter current, RecordedCharter original) => current with {
         Phase = original.Phase, PlayerReleaseTick = original.PlayerReleaseTick, NpcReleaseTick = original.NpcReleaseTick,
-        TerritoryLostTick = original.TerritoryLostTick, Replacement = original.Replacement, PoliticalLoss = original.PoliticalLoss } == original;
+        TerritoryLostTick = original.TerritoryLostTick, Replacement = original.Replacement, PoliticalLoss = original.PoliticalLoss, LawfulExit = original.LawfulExit } == original;
     private static RecordedCharter Active(CharterBook book, string id)
     {
         var c = book.Charter(id);
@@ -58,7 +58,7 @@ public sealed class CharterProtection
             var c = book.Charter(a.Charter);
             if (!SameOriginal(c, a.Original) || book.Entity(c.Terms.Liege).NativeOwner != a.Source || !book.Entity(c.Terms.Subject).Player)
                 throw new ArgumentException("Protection agreement differs from its original signed charter.");
-            long? ended = c.Phase == RecordedCharterPhase.Released ? Math.Max(c.PlayerReleaseTick.Value, c.NpcReleaseTick.Value) : c.TerritoryLostTick ?? c.Replacement?.Tick;
+            long? ended = c.Phase == RecordedCharterPhase.Released ? Math.Max(c.PlayerReleaseTick.Value, c.NpcReleaseTick.Value) : c.LawfulExit?.Tick ?? c.TerritoryLostTick ?? c.Replacement?.Tick;
             if (ended.HasValue && (a.Tick > ended.Value || requests.Any(r => r.Plan.Charter == c.Id && r.Plan.Tick > ended.Value)))
                 throw new ArgumentException("Protection cannot be accepted or requested after the actual original charter ended.");
         }
