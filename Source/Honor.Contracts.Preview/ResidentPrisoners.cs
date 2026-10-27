@@ -168,25 +168,42 @@ internal static class ResidentPrisoners
     }
     internal static void ChangeHost(ResidentPrisonerRecord record, Faction source, Faction target, int profile = 4)
     {
+        var executionGame = Current.Game;
+        if (executionGame == null || Current.ProgramState != ProgramState.Playing)
+            throw new ArgumentException("Prisoner custody change requires the current game.");
         NeedsRestore(record, source, target, profile); var p = record.Pawn;
         if (Authority(p) != source.GetUniqueLoadID()) throw new ArgumentException("Prisoner is not at the reviewed source.");
+        if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+            throw new ArgumentException("Current game changed before prisoner custody change.");
         p.guest.SetGuestStatus(target, GuestStatus.Prisoner); // Never SetFaction, release, enslave or recapture the prisoner.
         // If the native call throws before this observation, recovery deliberately cannot invent a reset proof.
+        if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+            throw new ArgumentException("Current game changed during prisoner custody change; no reset proof was recorded.");
         var actual = Describe(p, profile);
         if (Authority(p) != target.GetUniqueLoadID() || actual.OriginalFaction != record.Evidence().OriginalFaction || actual.State != record.Evidence().State)
             throw new ArgumentException("Native custody change did not preserve prisoner state.");
         if (actual.Resistance < 0 || actual.Will < 0) throw new ArgumentException("Native custody initialization was not observed.");
+        if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+            throw new ArgumentException("Current game changed before prisoner reset observation; no reset proof was recorded.");
         record.ResetSnapshot = JsonSerializer.Serialize(new PrisonerNativeReset(target.GetUniqueLoadID(), actual.Resistance, actual.Will));
     }
     internal static void Restore(ResidentPrisonerRecord record, Faction source, Faction target, int profile = 4)
     {
-        if (NeedsRestore(record, source, target, profile))
+        var executionGame = Current.Game;
+        if (executionGame == null || Current.ProgramState != ProgramState.Playing)
+            throw new ArgumentException("Prisoner restoration requires the current game.");
+        bool needsRestore = NeedsRestore(record, source, target, profile);
+        if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+            throw new ArgumentException("Current game changed before prisoner restoration; original reset proof retained.");
+        if (needsRestore)
         {
             var before = record.Evidence();
             record.Pawn.guest.resistance = before.Resistance; record.Pawn.guest.will = before.Will;
         }
         if (Authority(record.Pawn) != target.GetUniqueLoadID() || NeedsRestore(record, source, target, profile))
             throw new ArgumentException("Prisoner custody preservation incomplete.");
+        if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
+            throw new ArgumentException("Current game changed before prisoner reset proof consumption.");
         // Consume the reset permission. Later natural progress must never match an old random reset and become repairable again.
         record.ResetSnapshot = null;
     }
