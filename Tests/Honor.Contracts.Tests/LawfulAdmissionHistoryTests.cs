@@ -58,6 +58,37 @@ internal static class LawfulAdmissionHistoryTests
         Check(true, "completed historical claim does not require the unrelated current physical ledger to stay frozen forever");
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmissionWithHistory("empty", politics, command, followers, new TerritoryTransferLedger(), closure, peace),
             "a different physical baseline cannot be substituted for the original historical evidence");
+        var combinedBook = CharterBook.Restore(book.Export()); combinedBook.Register(new("town2", "legacy-origin", false), 5);
+        var combinedObs = combinedBook.Entities.Select(e => new TerritoryObservation(e.Id, e.NativeOwner, true, e.Player, true)).ToArray();
+        combinedBook.Offer("child", Terms("p", "town2"), 5, PoliticalWorld.Day, combinedObs);
+        combinedBook.Sign("child", true, 5, combinedObs); combinedBook.Sign("child", false, 5, combinedObs);
+        var prior = TerritoryTransferLedger.Restore(originalPhysical); var legacyTown = new TerritoryTransferObservation("town2", "legacy-origin", 2);
+        prior.Prepare("earlier", combinedBook, "child", legacyTown, "realm", "realm", null, TerritoryTransferPurpose.ActiveCharter, 6);
+        prior.Confirm("earlier", legacyTown with { Owner = "realm" }, 7);
+        var combinedAid = aid with { Id = "combined-refusal", BookProof = Hash(combinedBook.Export()) };
+        var combinedProtection = new CharterProtection().Agree(combinedBook, "c", d, 75, true, 5).Refuse(combinedBook, combinedAid, d, true, "Honor_Vile", 1, 120, now);
+        var combined = LawfulExitPreparation.Prepare(combinedBook, payments, politics, prior, combinedProtection, combinedAid.Id, now, combinedObs);
+        var combinedAfter = CharterBook.Restore(combined.AfterBook); var town2 = new TerritoryTransferObservation("town2", "realm", 2);
+        var combinedFollowers = FollowerTransfers.Review(combinedAfter, prior, [new("child", town2)], "union", now);
+        var combinedPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], combinedFollowers.Moves);
+        var joined = new AllegianceTransitionLedger(); joined.PrepareLawfulFollowerAdmission("combined", politics, command, combinedFollowers, prior, combined, combinedPeace);
+        player = PlayerAllegiance.Restore(politics.Export()); player.Apply(command); joined.ConfirmAllegiance(player, now);
+        Check(joined.Current.LawfulHistoricalTransfers && joined.Current.LawfulFollowerMigration && joined.Current.Followers.SequenceEqual(["child"]),
+            "new migration retains both explicit original history and original complete follower scope");
+        var appended = TerritoryTransferLedger.Restore(prior.Export());
+        appended.Prepare("new-move", combinedAfter, "child", town2, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(joined.Current, appended);
+        var changedPrefix = JsonSerializer.Deserialize<TerritoryTransfersSave>(appended.Export());
+        changedPrefix.Transfers[0] = changedPrefix.Transfers[0] with { Phase = TerritoryTransferPhase.Cancelled };
+        var rewritten = TerritoryTransferLedger.Restore(JsonSerializer.Serialize(changedPrefix));
+        Reject(() => LawfulAdmissions.ValidateCurrentPhysical(joined.Current, rewritten), "a new valid follower move cannot rewrite an older applied transfer as cancelled");
+        appended.Confirm("new-move", town2 with { Owner = "union" }, now); LawfulAdmissions.ValidateCurrentPhysical(joined.Current, appended);
+        var final = FollowerTransfers.Review(combinedAfter, appended, [new("child", town2 with { Owner = "union", SourceSettlements = 1 })], "union", now);
+        joined.ReaffirmPeace(combinedPeace, now); joined.Complete(player, final, now);
+        LawfulAdmissions.ValidateArchive([joined.Export()], combinedAfter, TributeLedger.Restore(combined.AfterPayments), combinedProtection);
+        Check(appended.Transfers[0].Phase == TerritoryTransferPhase.Applied && appended.Transfers[0].Id == "past" && appended.Transfers[1].Id == "earlier" &&
+            appended.Transfers[2].Id == "new-move" && appended.Transfers[2].BaselineOwner == "legacy-origin" && appended.Transfers[2].FromOwner == "realm",
+            "completion retains both earlier outcomes and moves from the verified current realm without relabeling the original baseline");
         return count;
     }
 }

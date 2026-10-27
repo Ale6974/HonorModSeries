@@ -24,6 +24,7 @@ public sealed partial class PoliticalTransitionLedger : GameComponent
     internal bool PeaceSharingBlocked => Journal.Pending && (Journal.Current.Peace != null || Journal.Current.Wars?.IncomingCharters != null || Journal.Current.Feudal != null) && (!Executing || !sharingPeace);
     internal void VerifyPeace()
     {
+        if (Journal.Pending && Journal.Current?.LawfulFollowerMigration == true) CheckRetainedSource();
         UnionPeaceCouncil.Verify(Politics.RecordedAuthority, Journal.Current);
         UnionWarCouncil.VerifyCurrentCouncil(Politics.RecordedAuthority, Journal.Current);
         FeudalAdmissionAuthority.Verify(Politics.RecordedAuthority, Journal.Current);
@@ -162,18 +163,34 @@ public sealed partial class PoliticalTransitionLedger : GameComponent
     }
     private void CheckRetainedSource()
     {
+        if (Current.Game != context || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("The original current game changed.");
         AdmissionFollowerReviews.Validate(Journal.Current);
         if (Journal.Current.LawfulExit != null)
         {
             LawfulAdmissions.ValidatePair(Journal.Current, Charters.Book, Current.Game.GetComponent<TributePaymentLedger>().Ledger, Current.Game.GetComponent<CharterProtectionLedger>().Ledger);
             LawfulAdmissions.ValidateCurrentPhysical(Journal.Current, Territories.Ledger);
-            if (Charters.Book.PlayerFollowers().Length != 0)
-                throw new ArgumentException("Original physical history or empty follower scope changed.");
+            if (!Journal.MatchesSurvivingFollowers(Charters.Book.PlayerFollowers().Select(c => c.Id)))
+                throw new ArgumentException("Original complete follower scope changed.");
+            if (Journal.Current.LawfulFollowerMigration)
+            {
+                var original = PlayerAllegiance.Restore(LawfulExitPreparation.Restore(Journal.Current.LawfulExit).BeforePolitics);
+                var sources = Find.FactionManager.AllFactionsListForReading.Where(f => f != null && f.GetUniqueLoadID() == original.State.Authority).Take(2).ToArray();
+                var destination = Politics.TransitionAuthority();
+                if (sources.Length != 1 || sources[0].GetType() != typeof(Faction) || sources[0].defeated || sources[0].IsPlayer ||
+                    sources[0].HostileTo(destination) || destination.HostileTo(sources[0]))
+                    throw new ArgumentException("The original realm and current union must remain registered and reciprocally nonhostile.");
+            }
             return;
         }
         var before = PlayerAllegiance.Restore(Journal.Current.Before).State;
         var command = JsonSerializer.Deserialize<PlayerAllegianceSave>(Journal.Current.After).Commands.Last();
         AllegianceChangeSource.Validate(Charters.Book, before, command, Current.Game.GetComponent<TributePaymentLedger>().Ledger);
+    }
+    internal void VerifyLawfulPhysicalRecovery()
+    {
+        if (Current.Game != context || !Journal.Pending || Journal.Current?.LawfulFollowerMigration != true || Executing)
+            throw new ArgumentException("Explicit current-game recovery outside native political execution required.");
+        CheckRetainedSource();
     }
     private void SameFollowers(FollowerTransferPlan plan)
     {

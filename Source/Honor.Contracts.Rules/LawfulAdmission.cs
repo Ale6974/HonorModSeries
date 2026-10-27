@@ -13,18 +13,21 @@ public static class LawfulAdmissions
     {
         if (c?.LawfulExit == null)
         {
-            if (c?.LawfulHistoricalTransfers == true) throw new ArgumentException("Historical transfer mode needs its original lawful exit.");
+            if (c?.LawfulHistoricalTransfers == true || c?.LawfulFollowerMigration == true) throw new ArgumentException("Lawful modes need their original lawful exit.");
             return;
         }
         var p = LawfulExitPreparation.Restore(c.LawfulExit);
         var scope = c.FollowerReview == null ? null : JsonSerializer.Deserialize<AdmissionFollowerSource>(c.FollowerReview.Original);
         var physical = TerritoryTransferLedger.Restore(p.BeforeTransfers);
+        var before = PlayerAllegiance.Restore(p.BeforePolitics);
         Require(c.Before == p.BeforePolitics && c.PreparedTick == p.Tick && c.Peace != null && c.Peace.Accepted && c.Wars == null && c.Feudal == null &&
-            c.Followers.Count == 0 && c.LostFollowers == null && c.TownLosses == null && scope != null && scope.Book == p.AfterBook && scope.Ledger == p.BeforeTransfers &&
-            scope.Entries.Length == 0 && c.TransferBaseline == Hash(p.BeforeTransfers) && !physical.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) &&
+            c.LostFollowers == null && c.TownLosses == null && scope != null && scope.Book == p.AfterBook && scope.Ledger == p.BeforeTransfers &&
+            (c.LawfulFollowerMigration ? before.State.Authority != scope.Target && scope.Entries.Length > 0 &&
+                scope.Entries.All(e => e.Observation.Owner == before.State.Authority && !e.Observation.HasInhabitants && e.Observation.ResidentProof == null) : scope.Entries.Length == 0) &&
+            c.TransferBaseline == Hash(p.BeforeTransfers) && !physical.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) &&
             (c.LawfulHistoricalTransfers ? physical.Transfers.Count > 0 : physical.Transfers.Count == 0) &&
-            CharterBook.Restore(p.AfterBook).PlayerFollowers().Length == 0 && c.Phase != AllegianceTransitionPhase.Cancelled,
-            "Lawful admission requires exact original closure, actual peaceful council and an empty complete physical scope.");
+            c.Phase != AllegianceTransitionPhase.Cancelled,
+            "Lawful admission requires exact original closure, council and complete explicitly scoped physical evidence.");
     }
     public static void ValidatePair(AllegianceTransition c, CharterBook book, TributeLedger payments, CharterProtection protection)
     {
@@ -56,8 +59,27 @@ public static class LawfulAdmissions
     public static void ValidateCurrentPhysical(AllegianceTransition c, TerritoryTransferLedger current)
     {
         ValidateIntent(c);
-        Require(current.Export() == LawfulExitPreparation.Restore(c.LawfulExit).BeforeTransfers,
-            "The original physical journal must stay unchanged during this no-move admission.");
+        var p = LawfulExitPreparation.Restore(c.LawfulExit); var original = TerritoryTransferLedger.Restore(p.BeforeTransfers);
+        if (!c.LawfulFollowerMigration)
+        {
+            Require(current.Export() == p.BeforeTransfers, "The original physical journal must stay unchanged during a no-move admission.");
+            return;
+        }
+        var rows = current.Transfers; var old = original.Transfers;
+        Require(rows.Count >= old.Count && rows.Take(old.Count).Select(Json).SequenceEqual(old.Select(Json)), "Original physical outcomes must remain an exact prefix.");
+        if (rows.Count == old.Count) Require(current.Export() == p.BeforeTransfers, "An unchanged prefix cannot advance its original clock.");
+        else Require(current.LastTick == (rows.Last().ResolvedTick ?? rows.Last().PreparedTick), "Physical journal clock must follow its last actual appended outcome.");
+        var scope = JsonSerializer.Deserialize<AdmissionFollowerSource>(c.FollowerReview.Original);
+        var book = CharterBook.Restore(p.AfterBook); var command = JsonSerializer.Deserialize<PlayerAllegianceSave>(c.After).Commands.Last();
+        foreach (var row in rows.Skip(old.Count))
+        {
+            var entry = scope.Entries.SingleOrDefault(e => e.Charter == row.Charter);
+            Require(entry != null && row.Territory == entry.Observation.Territory && row.BaselineOwner == book.Entity(row.Territory).NativeOwner &&
+                row.FromOwner == entry.Observation.Owner && row.TargetOwner == command.Authority && row.Purpose == TerritoryTransferPurpose.ActiveCharter &&
+                row.ReleasedRoot == null && row.PreparedTick >= c.PreparedTick && row.Phase != TerritoryTransferPhase.Destroyed &&
+                row.StockProof == entry.Observation.StockProof && row.StockFormat == entry.Observation.StockFormat && row.ResidentProof == entry.Observation.ResidentProof,
+                "Only the original follower's exact reviewed source, destination and preservation evidence may be appended.");
+        }
     }
     public static void ValidateArchive(IEnumerable<string> entries, CharterBook book, TributeLedger payments, CharterProtection protection)
     {
@@ -87,14 +109,17 @@ public sealed partial class AllegianceTransitionLedger
         => PrepareLawfulAdmissionCore(id, actual, command, followers, transfers, closure, peace, false);
     public void PrepareLawfulAdmissionWithHistory(string id, PlayerAllegiance actual, AllegianceCommand command, FollowerTransferPlan followers,
         TerritoryTransferLedger transfers, LawfulExitPreparation closure, UnionPeaceConsent peace)
-        => PrepareLawfulAdmissionCore(id, actual, command, followers, transfers, closure, peace, true);
+        => PrepareLawfulAdmissionCore(id, actual, command, followers, transfers, closure, peace, true, false);
+    public void PrepareLawfulFollowerAdmission(string id, PlayerAllegiance actual, AllegianceCommand command, FollowerTransferPlan followers,
+        TerritoryTransferLedger transfers, LawfulExitPreparation closure, UnionPeaceConsent peace)
+        => PrepareLawfulAdmissionCore(id, actual, command, followers, transfers, closure, peace, transfers.Transfers.Count > 0, true);
     private void PrepareLawfulAdmissionCore(string id, PlayerAllegiance actual, AllegianceCommand command, FollowerTransferPlan followers,
-        TerritoryTransferLedger transfers, LawfulExitPreparation closure, UnionPeaceConsent peace, bool history)
+        TerritoryTransferLedger transfers, LawfulExitPreparation closure, UnionPeaceConsent peace, bool history, bool migrate = false)
     {
-        if (actual.Export() != closure.BeforePolitics || followers.Entries.Count != 0 || transfers.Export() != closure.BeforeTransfers)
+        if (actual.Export() != closure.BeforePolitics || (migrate ? followers.Entries.Count == 0 : followers.Entries.Count != 0) || transfers.Export() != closure.BeforeTransfers)
             throw new ArgumentException("Original player/physical scope changed.");
         var next = Restore(Export()); next.PreparePeace(id, actual, command, followers, transfers, peace);
-        next.Current = next.Current with { LawfulExit = closure.Export(), LawfulHistoricalTransfers = history };
+        next.Current = next.Current with { LawfulExit = closure.Export(), LawfulHistoricalTransfers = history, LawfulFollowerMigration = migrate };
         next.Current = next.Current with { FollowerReview = AdmissionFollowerReviews.Capture(next.Current, followers) };
         LawfulAdmissions.ValidateIntent(next.Current);
         if (next.Export().Length > 7000000) throw new ArgumentException("Paired lawful-admission journal capacity.");

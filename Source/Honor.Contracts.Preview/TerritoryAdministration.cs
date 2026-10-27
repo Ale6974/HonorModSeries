@@ -147,10 +147,17 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose, c.Observation.StockProof, c.Observation.ResidentProof),
             c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0);
     }
-    public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true) => ApplyForTarget(reviewed, notify, null);
+    public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true)
+    {
+        var transition = Current.Game?.GetComponent<PoliticalTransitionLedger>();
+        if (nativeExecutionDepth != 0 || transition?.Journal.Pending == true && transition.Journal.Current?.LawfulExit != null)
+        { Reject(); return false; }
+        return ApplyForTarget(reviewed, notify, null);
+    }
     private bool ApplyForTarget(TerritoryAdministrationReview reviewed, bool notify, Faction target)
     {
-        if (reviewed == null) { Reject(); return false; }
+        if (reviewed == null || nativeExecutionDepth != 0) { Reject(); return false; }
+        var executionGame = Current.Game;
         try
         {
             nativeExecutionDepth++;
@@ -168,7 +175,9 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             var reference = new TerritoryTransferReference { Id = id, City = c.City, From = c.City.Faction, Target = c.Target, Residents = residents };
             references.Add(reference);
             if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
+            if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before city ownership call.");
             c.City.SetFaction(c.Target);
+            if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed during city ownership call; intent retained.");
             CityStockPreservation.InvalidateMaterial(c.City);
             if (residents != null) ResidentExecution.Verify(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
             Ledger.Confirm(id, Observe(c.City, c.Charter.Terms.Subject, c.Target), Find.TickManager.TicksGame);
@@ -177,7 +186,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             return true;
         }
         catch (Exception e)
-        { Log.Warning("[Honor.Contracts.Preview] Territory execution incomplete; recorded intent retained. " + e.GetType().Name); Reject(); Find.TickManager.Pause(); return false; }
+        { Log.Warning("[Honor.Contracts.Preview] Territory execution incomplete; recorded intent retained. " + e.GetType().Name); if (Current.Game == executionGame) { Reject(); Find.TickManager.Pause(); } return false; }
         finally { nativeExecutionDepth--; }
     }
     public FollowerTransferPlan ReviewFollowers() => ReviewFollowersFor(Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority());
@@ -249,11 +258,16 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     }
     public void Recover(string id)
     {
+        if (nativeExecutionDepth != 0) { Reject(); return; }
+        var executionGame = Current.Game;
         if (RestoreFailed || Charters.RestoreFailed) { Reject(); return; }
         if (pendingTownLosses.HasPending(id)) { Messages.Message("PL_Pending".Translate(), MessageTypeDefOf.RejectInput); return; }
         try
         {
             nativeExecutionDepth++;
+            var political = Current.Game.GetComponent<PoliticalTransitionLedger>();
+            if (political.Journal.Pending && political.Journal.Current?.LawfulFollowerMigration == true)
+                political.VerifyLawfulPhysicalRecovery();
             var item = Ledger.Transfer(id); var reference = references.Single(r => r.Id == id);
             if (reference.City == null || reference.City.Faction == null || "territory/" + reference.City.GetUniqueLoadID() != item.Territory ||
                 reference.From == null || reference.From.GetUniqueLoadID() != item.FromOwner || reference.Target == null ||
@@ -274,7 +288,9 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 {
                     ValidateResidentRecovery(item, reference);
                     ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
+                    if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed during resident recovery.");
                     if (reference.City.Faction == reference.From) reference.City.SetFaction(reference.Target);
+                    if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed during city recovery; intent retained.");
                     CityStockPreservation.InvalidateMaterial(reference.City);
                     ResidentExecution.Verify(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
                     Ledger.Confirm(id, Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents.Profile), Find.TickManager.TicksGame);
@@ -291,7 +307,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             }
         }
         catch (Exception e)
-        { Log.Warning("[Honor.Contracts.Preview] Territory recovery incomplete; original resident/stock intent retained. " + e.GetType().Name); Reject(); Find.TickManager.Pause(); }
+        { Log.Warning("[Honor.Contracts.Preview] Territory recovery incomplete; original resident/stock intent retained. " + e.GetType().Name); if (Current.Game == executionGame) { Reject(); Find.TickManager.Pause(); } }
         finally { nativeExecutionDepth--; }
     }
     private void ValidateResidentRecovery(TerritoryTransfer item, TerritoryTransferReference reference)

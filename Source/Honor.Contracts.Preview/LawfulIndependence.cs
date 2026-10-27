@@ -9,6 +9,13 @@ public sealed record LawfulIndependenceReview(Game Context, LawfulExitPreparatio
 
 public sealed partial class PoliticalTransitionLedger
 {
+    private static void RequireLawfulSource(Faction root, string authority)
+    {
+        var sources = Find.FactionManager.AllFactionsListForReading.Where(f => f != null && f.GetUniqueLoadID() == authority).Take(2).ToArray();
+        if (sources.Length != 1 || sources[0].GetType() != typeof(Faction) || sources[0].defeated ||
+            sources[0].HostileTo(root) || root.HostileTo(sources[0]))
+            throw new ArgumentException("The unique original realm and union must remain reciprocally nonhostile.");
+    }
     internal void ValidateLawfulArchive()
     {
         if (Current.Game != context || RestoreFailed) throw new ArgumentException("Original current political archive required.");
@@ -17,8 +24,8 @@ public sealed partial class PoliticalTransitionLedger
     }
     public LawfulIndependenceReview ReviewLawfulIndependence(string request)
     {
-        Ready(); if (Journal.Pending || Charters.Book.PlayerFollowers().Length != 0 || Territories.Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared))
-            throw new ArgumentException("This executor requires no NPC followers and no unresolved physical transfer.");
+        Ready(); if (Journal.Pending || Territories.Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared))
+            throw new ArgumentException("This executor requires no unresolved physical transfer.");
         var payments = context.GetComponent<TributePaymentLedger>(); var protection = context.GetComponent<CharterProtectionLedger>();
         if (protection.RestoreFailed || protection.Executing) throw new ArgumentException("Original protection history unavailable.");
         ValidateLawfulArchive();
@@ -27,12 +34,23 @@ public sealed partial class PoliticalTransitionLedger
         var root = Politics.UnionCandidate; Politics.CheckTransitionAdmission(root);
         var command = new AllegianceCommand(AllegianceAction.JoinUnion, Find.TickManager.TicksGame, root.GetUniqueLoadID(),
             Consent: true, NoActiveFeudalContract: true, OldContractReleased: true);
-        var followers = Territories.ReviewEmptyLawfulFollowers(CharterBook.Restore(closure.AfterBook), root);
+        var original = Territories.ReviewFollowersFor(root);
+        if (original.Entries.Any(e => e.Observation.Owner != Politics.State.Authority))
+            throw new ArgumentException("Every original follower must remain in the exact recorded old realm.");
+        if (original.Entries.Any(e => e.Observation.HasInhabitants || e.Observation.ResidentProof != null))
+            throw new ArgumentException("Resident-bearing towns need separately journaled medical reset evidence.");
+        if (original.Entries.Count > 0)
+        {
+            RequireLawfulSource(root, Politics.State.Authority);
+            FutureRelations(root, original);
+        }
+        var followers = Territories.ReviewLawfulFollowers(CharterBook.Restore(closure.AfterBook), root, original.Entries);
         var peace = UnionPeaceCouncil.Review(root, followers.Moves);
         if (!peace.Accepted) throw new ArgumentException("Actual membership council declined independence admission.");
         var admission = new PoliticalChangeReview(root, command, followers, Stamp(root, command, followers, peace: peace), Context: context) { Peace = peace };
         var check = AllegianceTransitionLedger.Restore(Journal.Export());
-        if (Territories.Ledger.Transfers.Count == 0) check.PrepareLawfulAdmission("review-lawful", Politics.Model, command, followers, Territories.Ledger, closure, peace);
+        if (followers.Entries.Count > 0) check.PrepareLawfulFollowerAdmission("review-lawful", Politics.Model, command, followers, Territories.Ledger, closure, peace);
+        else if (Territories.Ledger.Transfers.Count == 0) check.PrepareLawfulAdmission("review-lawful", Politics.Model, command, followers, Territories.Ledger, closure, peace);
         else check.PrepareLawfulAdmissionWithHistory("review-lawful", Politics.Model, command, followers, Territories.Ledger, closure, peace);
         return new(context, closure, admission);
     }
@@ -47,9 +65,16 @@ public sealed partial class PoliticalTransitionLedger
                 throw new ArgumentException("Original closure, current council or native relations changed.");
             var payments = context.GetComponent<TributePaymentLedger>(); var protection = context.GetComponent<CharterProtectionLedger>();
             fresh.Closure.CheckBefore(Charters.Book, payments.Ledger, Politics.Model, Territories.Ledger, protection.Ledger, Find.TickManager.TicksGame, Charters.Observe());
+            if (Current.Game != context) throw new ArgumentException("Current game changed during final review.");
+            Politics.CheckTransitionAdmission(fresh.Admission.Destination);
+            if (fresh.Admission.Followers.Entries.Count > 0) RequireLawfulSource(fresh.Admission.Destination, Politics.State.Authority);
+            var council = UnionPeaceCouncil.Review(fresh.Admission.Destination, fresh.Admission.Followers.Moves);
+            if (!council.Accepted || !UnionPeaceAdmission.SameReview(fresh.Admission.Peace, council))
+                throw new ArgumentException("Current union consent changed during final review.");
             var next = AllegianceTransitionLedger.Restore(Journal.Export());
             var id = Guid.NewGuid().ToString("N");
-            if (Territories.Ledger.Transfers.Count == 0) next.PrepareLawfulAdmission(id, Politics.Model, fresh.Admission.Command, fresh.Admission.Followers, Territories.Ledger, fresh.Closure, fresh.Admission.Peace);
+            if (fresh.Admission.Followers.Entries.Count > 0) next.PrepareLawfulFollowerAdmission(id, Politics.Model, fresh.Admission.Command, fresh.Admission.Followers, Territories.Ledger, fresh.Closure, fresh.Admission.Peace);
+            else if (Territories.Ledger.Transfers.Count == 0) next.PrepareLawfulAdmission(id, Politics.Model, fresh.Admission.Command, fresh.Admission.Followers, Territories.Ledger, fresh.Closure, fresh.Admission.Peace);
             else next.PrepareLawfulAdmissionWithHistory(id, Politics.Model, fresh.Admission.Command, fresh.Admission.Followers, Territories.Ledger, fresh.Closure, fresh.Admission.Peace);
             var nextPolitics = PlayerAllegiance.Restore(Politics.Model.Export()); nextPolitics.Apply(fresh.Admission.Command);
             next.ConfirmAllegiance(nextPolitics, Find.TickManager.TicksGame);
@@ -62,7 +87,11 @@ public sealed partial class PoliticalTransitionLedger
             Charters.CommitLawfulExit(book); payments.CommitCharterRelease(tribute); Journal = next; warHistory = history; Politics.CommitCharterRenewal(nextPolitics);
             Executing = true; Finish(fresh.Admission.Destination, peace: fresh.Admission.Peace);
         }
-        catch (Exception e) { Interrupted(e); }
+        catch (Exception e)
+        {
+            if (Current.Game == context) Interrupted(e);
+            else Log.Warning("[Honor.Contracts.Preview] Lawful admission interrupted after the current game changed; original intent retained. " + e.GetType().Name);
+        }
         finally { Executing = false; }
     }
 }
@@ -81,10 +110,10 @@ public sealed partial class LiveCharterLedger
 
 public sealed partial class TerritoryAdministrationLedger
 {
-    internal FollowerTransferPlan ReviewEmptyLawfulFollowers(CharterBook book, Faction target)
+    internal FollowerTransferPlan ReviewLawfulFollowers(CharterBook book, Faction target, IReadOnlyList<FollowerCandidate> original)
     {
-        if (RestoreFailed || Charters.RestoreFailed || Charters.Book.PlayerFollowers().Length != 0 || book.PlayerFollowers().Length != 0 || Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared))
-            throw new ArgumentException("Original resolved physical scope and no followers required.");
-        return FollowerTransfers.Review(book, Ledger, Array.Empty<FollowerCandidate>(), target.GetUniqueLoadID(), Find.TickManager.TicksGame, AdministrationId);
+        if (RestoreFailed || Charters.RestoreFailed || original == null || Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared))
+            throw new ArgumentException("Original resolved physical scope required.");
+        return FollowerTransfers.Review(book, Ledger, original, target.GetUniqueLoadID(), Find.TickManager.TicksGame, AdministrationId);
     }
 }
