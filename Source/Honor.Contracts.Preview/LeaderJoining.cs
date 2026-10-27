@@ -15,6 +15,7 @@ public sealed class LeaderJoinRecord : IExposable
     public Faction SourceFaction, TargetFaction;
     public Settlement Source, Destination;
     public bool Finished;
+    public ResidentSurgeryRecord Surgery;
     internal LeaderJoinPhase? DisplayPhase; // UI cache only; execution always restores/reviews Snapshot afresh.
     public void ExposeData()
     {
@@ -23,10 +24,14 @@ public sealed class LeaderJoinRecord : IExposable
         Scribe_References.Look(ref Actor, "actor"); Scribe_References.Look(ref Successor, "successor"); Scribe_References.Look(ref TargetLeader, "targetLeader");
         Scribe_References.Look(ref SourceFaction, "sourceFaction"); Scribe_References.Look(ref TargetFaction, "targetFaction");
         Scribe_References.Look(ref Source, "source"); Scribe_References.Look(ref Destination, "destination");
+        Scribe_Deep.Look(ref Surgery, "surgicalCustody");
     }
     public LeaderJoinExecution Journal() => LeaderJoinExecution.Restore(Snapshot);
 }
-public sealed record LeaderJoinReview(Game Context, LeaderJoinPlan Plan, Pawn Actor, Faction SourceFaction, Faction TargetFaction, Settlement Source, Settlement Destination, Pawn TargetLeader);
+public sealed record LeaderJoinReview(Game Context, LeaderJoinPlan Plan, Pawn Actor, Faction SourceFaction, Faction TargetFaction, Settlement Source, Settlement Destination, Pawn TargetLeader)
+{
+    public ResidentSurgeryRecord Surgery { get; init; }
+}
 
 /// <summary>One saved leader personally joins the player's nonplayer administration; native succession and explicit forward recovery.</summary>
 public sealed class LeaderJoinLedger : GameComponent
@@ -58,7 +63,8 @@ public sealed class LeaderJoinLedger : GameComponent
                 var state = r.Journal().State;
                 r.DisplayPhase = state.Phase;
                 if (r.Finished != (state.Phase is LeaderJoinPhase.Completed or LeaderJoinPhase.Cancelled)) throw new ArgumentException("Joining phase mismatch.");
-                if (!r.Finished) References(r); else ClearActors(r);
+                if (!r.Finished) References(r);
+                else { if (r.Surgery != null) throw new ArgumentException("Finished join retains surgical custody."); ClearActors(r); }
             }
         }
         catch (Exception e) when (e is ArgumentException or JsonException or InvalidOperationException)
@@ -81,11 +87,23 @@ public sealed class LeaderJoinLedger : GameComponent
         { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Personal join clock/reference mismatch; changes blocked. " + e.GetType().Name); }
     }
     private static void ClearActors(LeaderJoinRecord r)
-    { r.Actor = null; r.Successor = null; r.TargetLeader = null; r.Source = null; r.Destination = null; r.SourceFaction = null; r.TargetFaction = null; }
+    {
+        if (r.Surgery != null)
+        {
+            if (ResidentSurgery.Review(r.Surgery, true) != SurgeryCustodyAction.Verify) throw new ArgumentException("Never discard detached surgical originals.");
+            r.Surgery = null;
+        }
+        r.Actor = null; r.Successor = null; r.TargetLeader = null; r.Source = null; r.Destination = null; r.SourceFaction = null; r.TargetFaction = null;
+    }
     private static void NoPatches(MethodInfo method, bool own = false)
     {
         if (method == null || Harmony.GetPatchInfo(method)?.Owners.Any(id => !own || id != "honor.series.contracts.preview") == true)
             throw new ArgumentException("Unverified native succession/faction callbacks.");
+    }
+    private static void SurgeryApi()
+    {
+        NoPatches(AccessTools.Method(typeof(BillStack), nameof(BillStack.Clear), []));
+        NoPatches(AccessTools.PropertyGetter(typeof(BillStack), nameof(BillStack.Bills)));
     }
     private static void NativeApi()
     {
@@ -184,21 +202,24 @@ public sealed class LeaderJoinLedger : GameComponent
         Charters.Book.ValidateCurrent(charter, Charters.Observe());
         var source = sourceCity.Faction; var target = Current.Game.GetComponent<RealmAdministrationLedger>().TerritoryAuthority(); SourceAuthority(source, target);
         Town(sourceCity, source); Town(destination, target); var actor = source.leader;
-        var actual = ResidentExecution.ReadRetainedLeader(actor, LeaderPreservationProfiles.Current);
+        SurgeryApi(); var surgery = ResidentSurgery.Capture(actor);
+        var actual = ResidentExecution.ReadRetainedLeader(actor, LeaderPreservationProfiles.Current, surgery);
         bool unassigned = !sourceCity.previouslyGeneratedInhabitants.Contains(actor);
-        if (actor.health.surgeryBills.Count != 0 || sourceCity == destination || Find.QuestManager.IsReservedByAnyQuest(actor) || target.leader == null || target.leader == actor ||
+        if (sourceCity == destination || Find.QuestManager.IsReservedByAnyQuest(actor) || target.leader == null || target.leader == actor ||
             target.leader.Dead || target.leader.Faction != target || Find.QuestManager.IsReservedByAnyQuest(target.leader) ||
             destination.previouslyGeneratedInhabitants.Count >= 128 || destination.previouslyGeneratedInhabitants.Contains(actor)) throw new ArgumentException("Unsupported personal actor/office/surgery/residency.");
         OtherResidency(actor, sourceCity, destination, unassigned);
         SuccessionAvailable(source, actor);
         var plan = new LeaderJoinPlan(charter, actor.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID(), sourceCity.GetUniqueLoadID(), destination.GetUniqueLoadID(),
             target.leader.GetUniqueLoadID(), Charters.Book.Export(), Territories.Ledger.Export(), new(actual.Id, actual.Preserved, actual.MedicalCare), Stock(sourceCity), Stock(destination),
-            Roster(sourceCity), Roster(destination), Find.TickManager.TicksGame, true, SeparateSuccession: true, UnassignedSource: unassigned) { ResidentProfile = LeaderPreservationProfiles.Current };
-        LeaderJoinExecution.Prepare(plan); return new(Current.Game, plan, actor, source, target, sourceCity, destination, target.leader);
+            Roster(sourceCity), Roster(destination), Find.TickManager.TicksGame, true, SeparateSuccession: true, UnassignedSource: unassigned) { ResidentProfile = LeaderPreservationProfiles.Current, SurgeryOrders = surgery.Snapshot };
+        LeaderJoinExecution.Prepare(plan); return new(Current.Game, plan, actor, source, target, sourceCity, destination, target.leader) { Surgery = surgery };
     }
     private static void References(LeaderJoinRecord r)
     {
         var s = r.Journal().State; var p = s.Plan;
+        if (p.SurgeryOrders == null ? r.Surgery != null : r.Surgery == null || r.Surgery.Pawn != r.Actor || r.Surgery.Snapshot != p.SurgeryOrders || r.Surgery.LoadFailed)
+            throw new ArgumentException("Personal joining surgical custody binding changed.");
         if (r.Actor == null || r.Actor.GetUniqueLoadID() != p.Leader || r.Source == null || r.Source.GetUniqueLoadID() != p.SourceCity ||
             r.Destination == null || r.Destination.GetUniqueLoadID() != p.DestinationCity || r.SourceFaction?.GetUniqueLoadID() != p.SourceFaction ||
             r.TargetFaction?.GetUniqueLoadID() != p.TargetFaction || r.TargetLeader?.GetUniqueLoadID() != p.TargetLeader ||
@@ -207,12 +228,17 @@ public sealed class LeaderJoinLedger : GameComponent
     private LeaderJoinAction Review(LeaderJoinRecord r)
     {
         Ready(true); References(r); var j = r.Journal(); var p = j.State.Plan;
+        if (p.SurgeryOrders != null) SurgeryApi();
         if (r.Finished || Current.Game.GetComponent<RealmAdministrationLedger>().TerritoryAuthority() != r.TargetFaction) throw new ArgumentException("Joining authority changed.");
         SourceAuthority(r.SourceFaction, r.TargetFaction); Town(r.Source, r.SourceFaction); Town(r.Destination, r.TargetFaction);
-        if (r.TargetFaction.leader != r.TargetLeader || r.TargetLeader.Dead || Find.QuestManager.IsReservedByAnyQuest(r.Actor) || Find.QuestManager.IsReservedByAnyQuest(r.TargetLeader) || r.Actor.health.surgeryBills.Count != 0)
+        if (r.TargetFaction.leader != r.TargetLeader || r.TargetLeader.Dead || Find.QuestManager.IsReservedByAnyQuest(r.Actor) || Find.QuestManager.IsReservedByAnyQuest(r.TargetLeader) || p.SurgeryOrders == null && r.Actor.health.surgeryBills.Count != 0)
             throw new ArgumentException("Unexpected office, medical orders or outside residency.");
         OtherResidency(r.Actor, r.Source, r.Destination, p.UnassignedSource);
-        if (j.State.Phase == LeaderJoinPhase.Prepared) { ResidentExecution.ReadRetainedLeader(r.Actor, p.EffectiveResidentProfile); SuccessionAvailable(r.SourceFaction, r.Actor); }
+        if (j.State.Phase == LeaderJoinPhase.Prepared)
+        {
+            if (r.Surgery != null && ResidentSurgery.Review(r.Surgery, true) != SurgeryCustodyAction.Verify) throw new ArgumentException("Prepared joining cannot own detached orders.");
+            ResidentExecution.ReadRetainedLeader(r.Actor, p.EffectiveResidentProfile, r.Surgery); SuccessionAvailable(r.SourceFaction, r.Actor);
+        }
         bool officeRequired = r.Actor.Faction == r.TargetFaction || p.SeparateSuccession && j.State.Phase != LeaderJoinPhase.Prepared;
         if (officeRequired && (r.SourceFaction.leader == null || r.SourceFaction.leader == r.Actor || r.SourceFaction.leader.Dead || r.SourceFaction.leader.Downed ||
             !r.SourceFaction.leader.Awake() || r.SourceFaction.leader.InMentalState || r.SourceFaction.leader.IsPrisoner || r.SourceFaction.leader.IsSlave || r.SourceFaction.leader.HostFaction != null || r.SourceFaction.leader.Faction != r.SourceFaction ||
@@ -220,7 +246,7 @@ public sealed class LeaderJoinLedger : GameComponent
             throw new ArgumentException("No actual valid surviving source successor or office separation.");
         if (officeRequired && Find.FactionManager.AllFactionsListForReading.Any(f => f != r.SourceFaction && f.leader == r.SourceFaction.leader))
             throw new ArgumentException("Source successor holds an unreviewed other faction office.");
-        return j.Review(ResidentExecution.ReadJoiningLeader(r.Actor, p.EffectiveResidentProfile), r.SourceFaction.leader?.GetUniqueLoadID(), r.TargetFaction.leader?.GetUniqueLoadID(), Charters.Book.Export(), Territories.Ledger.Export(),
+        return j.Review(ResidentExecution.ReadJoiningLeader(r.Actor, p.EffectiveResidentProfile, r.Surgery), r.SourceFaction.leader?.GetUniqueLoadID(), r.TargetFaction.leader?.GetUniqueLoadID(), Charters.Book.Export(), Territories.Ledger.Export(),
             Stock(r.Source), Stock(r.Destination), Roster(r.Source), Roster(r.Destination), Find.TickManager.TicksGame);
     }
     private static void Change(LeaderJoinRecord r, Action<LeaderJoinExecution> action) { var j = r.Journal(); action(j); r.Snapshot = j.Export(); r.DisplayPhase = j.State.Phase; }
@@ -242,7 +268,7 @@ public sealed class LeaderJoinLedger : GameComponent
                 throw new ArgumentException("Separate personal joining consent changed.");
             var r = new LeaderJoinRecord { Id = Guid.NewGuid().ToString("N"), Snapshot = LeaderJoinExecution.Prepare(fresh.Plan).Export(), Actor = fresh.Actor, Source = fresh.Source, Destination = fresh.Destination,
                 SourceFaction = fresh.SourceFaction, TargetFaction = fresh.TargetFaction, TargetLeader = fresh.TargetLeader, DisplayPhase = LeaderJoinPhase.Prepared, ActorLabel = fresh.Actor.LabelShort,
-                SourceLabel = fresh.Plan.UnassignedSource ? fresh.SourceFaction.Name : fresh.Source.Label, DestinationLabel = fresh.Destination.Label };
+                SourceLabel = fresh.Plan.UnassignedSource ? fresh.SourceFaction.Name : fresh.Source.Label, DestinationLabel = fresh.Destination.Label, Surgery = fresh.Surgery };
             if (records.Sum(old => (long)old.Snapshot.Length) + r.Snapshot.Length > 32000000) throw new ArgumentException("Joining archive capacity.");
             records.Add(r); Finish(r);
         }
@@ -269,6 +295,10 @@ public sealed class LeaderJoinLedger : GameComponent
         {
             bool separate = r.Journal().State.Plan.SeparateSuccession;
             if (separate && PawnUtility.IsFactionLeader(r.Actor)) throw new ArgumentException("Recorded resignation must prevent a second native succession.");
+            // The saved original bills leave the native stack before SetFaction can clear it.
+            // An interruption here remains SuccessionRecorded and can recheck custody without repeating succession.
+            if (r.Surgery != null) { ResidentSurgery.Detach(r.Surgery); action = Review(r); }
+            if (action != LeaderJoinAction.ChangeFaction) throw new ArgumentException("Affiliation review changed after surgical detachment.");
             Change(r, j => j.Begin(Find.TickManager.TicksGame));
             void Affiliate()
             {
@@ -280,9 +310,10 @@ public sealed class LeaderJoinLedger : GameComponent
         }
         if (action == LeaderJoinAction.Observe)
         {
-            var actor = ResidentExecution.ReadJoiningLeader(r.Actor, r.Journal().State.Plan.EffectiveResidentProfile); r.Successor = r.SourceFaction.leader;
+            var actor = ResidentExecution.ReadJoiningLeader(r.Actor, r.Journal().State.Plan.EffectiveResidentProfile, r.Surgery); r.Successor = r.SourceFaction.leader;
             Change(r, j => j.Observe(action, r.Successor.GetUniqueLoadID(), actor.MedicalCare, Find.TickManager.TicksGame)); action = Review(r);
         }
+        if (r.Surgery != null) { ResidentSurgery.Restore(r.Surgery); action = Review(r); }
         if (action == LeaderJoinAction.RestoreCare)
         { Change(r, j => j.SealCare(action, Find.TickManager.TicksGame)); r.Actor.playerSettings.medCare = (MedicalCareCategory)r.Journal().State.Plan.Actor.MedicalCare.Value; action = Review(r); }
         if (!r.Journal().State.CareCheckTick.HasValue)
@@ -291,6 +322,7 @@ public sealed class LeaderJoinLedger : GameComponent
         { r.Destination.previouslyGeneratedInhabitants.Add(r.Actor); action = Review(r); }
         if (action == LeaderJoinAction.RemoveSource)
         { if (!r.Source.previouslyGeneratedInhabitants.Remove(r.Actor)) throw new ArgumentException("Source residency disappeared."); action = Review(r); }
+        if (r.Surgery != null && ResidentSurgery.Review(r.Surgery, true) != SurgeryCustodyAction.Verify) throw new ArgumentException("Cannot complete with detached surgical orders.");
         Change(r, j => j.Finish(action, Find.TickManager.TicksGame)); r.Finished = true; ClearActors(r);
         Messages.Message("LJ_Completed".Translate(r.ActorLabel, r.DestinationLabel), MessageTypeDefOf.NeutralEvent);
     }

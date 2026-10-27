@@ -75,17 +75,21 @@ internal static class ResidentExecution
     internal static ResidentMoveActual ReadRetainedLeader(Pawn p)
         => ReadRetainedLeader(p, 5);
     internal static ResidentMoveActual ReadRetainedLeader(Pawn p, int profile)
+        => ReadRetainedLeader(p, profile, null);
+    internal static ResidentMoveActual ReadRetainedLeader(Pawn p, int profile, ResidentSurgeryRecord surgery)
     {
         if (p == null || p.Faction == null || p.Faction.leader != p || p.IsPrisoner || p.IsSlave || p.HostFaction != null ||
             !PawnUtility.IsFactionLeader(p) || Find.FactionManager.AllFactionsListForReading.Any(f => f != p.Faction && f.leader == p))
             throw new ArgumentException("Not the exact ordinary retained faction leader.");
         if (profile is not (5 or 7)) throw new ArgumentException("Unsupported leader profile.");
-        return ReadInternal(p, profile, null, null, true);
+        return ReadInternal(p, profile, surgery, null, true);
     }
     // Dedicated separately consented join journal verifies office/succession. Ordinary resident leader guards stay unchanged.
     internal static ResidentMoveActual ReadJoiningLeader(Pawn p) => ReadInternal(p, 5, null, null, true);
     internal static ResidentMoveActual ReadJoiningLeader(Pawn p, int profile)
-        => profile is 5 or 7 ? ReadInternal(p, profile, null, null, true) : throw new ArgumentException("Unsupported joining leader profile.");
+        => ReadJoiningLeader(p, profile, null);
+    internal static ResidentMoveActual ReadJoiningLeader(Pawn p, int profile, ResidentSurgeryRecord surgery)
+        => profile is 5 or 7 ? ReadInternal(p, profile, surgery, null, true) : throw new ArgumentException("Unsupported joining leader profile.");
     private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader)
     {
         if (profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7)) throw new ArgumentException("Unknown resident profile.");

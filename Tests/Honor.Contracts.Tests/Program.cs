@@ -195,6 +195,7 @@ assertions += AdmissionFollowerReviewTests.Run();
 assertions += FeudalAdmissionTests.Run();
 assertions += LeaderGeneticProfilesTests.Run();
 assertions += LeaderCargoRelocationTests.Run();
+assertions += LeaderSurgeryJoiningTests.Run();
 assertions += AlternativeOfferTests.Run();
 assertions += LiegeInvitationTests.Run();
 assertions += AdmissionDiplomacyTests.Run();
