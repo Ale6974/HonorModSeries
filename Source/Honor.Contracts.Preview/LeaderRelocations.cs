@@ -114,13 +114,13 @@ public sealed class LeaderRelocationLedger : GameComponent
     {
         Ready(); if (records.Count >= 200) throw new ArgumentException("Relocation archive full.");
         var source = Source(charter); var faction = source.Faction; Town(source, faction); Town(destination, faction); Destination(destination);
-        var leader = faction.leader; var actor = ResidentExecution.ReadRetainedLeader(leader);
+        var leader = faction.leader; var actor = ResidentExecution.ReadRetainedLeader(leader, LeaderPreservationProfiles.Current);
         if (source == destination || source.previouslyGeneratedInhabitants.Count(p => p == leader) != 1 || destination.previouslyGeneratedInhabitants.Count >= 128 ||
             Cities().Any(s => s != source && s.previouslyGeneratedInhabitants?.Contains(leader) == true))
             throw new ArgumentException("Leader must reside only at the source town.");
         var sourceStock = Stock(source, out int sourceFormat); var destinationStock = Stock(destination, out int destinationFormat);
-        var plan = LeaderRelocationPlan.Capture(charter, leader.GetUniqueLoadID(), faction.GetUniqueLoadID(), source.GetUniqueLoadID(), destination.GetUniqueLoadID(),
-            Charters.Book.Export(), actor, sourceStock, sourceFormat, destinationStock, destinationFormat, Roster(source), Roster(destination), Find.TickManager.TicksGame);
+        var plan = LeaderRelocationPlan.CaptureProfiled(charter, leader.GetUniqueLoadID(), faction.GetUniqueLoadID(), source.GetUniqueLoadID(), destination.GetUniqueLoadID(),
+            Charters.Book.Export(), actor, sourceStock, sourceFormat, destinationStock, destinationFormat, Roster(source), Roster(destination), Find.TickManager.TicksGame, LeaderPreservationProfiles.Current);
         return new(source, destination, leader, faction, plan);
     }
     private static void References(LeaderRelocationRecord r)
@@ -138,7 +138,7 @@ public sealed class LeaderRelocationLedger : GameComponent
         if (Cities().Any(s => s != r.Source && s != r.Destination && s.previouslyGeneratedInhabitants?.Contains(r.Leader) == true))
             throw new ArgumentException("Leader acquired an unrelated residency.");
         var sourceStock = Stock(r.Source, out int sourceFormat); var destinationStock = Stock(r.Destination, out int destinationFormat);
-        return plan.Review(ResidentExecution.ReadRetainedLeader(r.Leader), r.Faction.leader?.GetUniqueLoadID(), r.Source.Faction.GetUniqueLoadID(), r.Destination.Faction.GetUniqueLoadID(),
+        return plan.Review(ResidentExecution.ReadRetainedLeader(r.Leader, plan.EffectiveResidentProfile), r.Faction.leader?.GetUniqueLoadID(), r.Source.Faction.GetUniqueLoadID(), r.Destination.Faction.GetUniqueLoadID(),
             Charters.Book.Export(), sourceStock, sourceFormat, destinationStock, destinationFormat, Roster(r.Source), Roster(r.Destination));
     }
     public void Start(LeaderRelocationReview reviewed)

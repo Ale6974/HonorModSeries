@@ -184,7 +184,7 @@ public sealed class LeaderJoinLedger : GameComponent
         Charters.Book.ValidateCurrent(charter, Charters.Observe());
         var source = sourceCity.Faction; var target = Current.Game.GetComponent<RealmAdministrationLedger>().TerritoryAuthority(); SourceAuthority(source, target);
         Town(sourceCity, source); Town(destination, target); var actor = source.leader;
-        var actual = ResidentExecution.ReadRetainedLeader(actor);
+        var actual = ResidentExecution.ReadRetainedLeader(actor, LeaderPreservationProfiles.Current);
         bool unassigned = !sourceCity.previouslyGeneratedInhabitants.Contains(actor);
         if (actor.health.surgeryBills.Count != 0 || sourceCity == destination || Find.QuestManager.IsReservedByAnyQuest(actor) || target.leader == null || target.leader == actor ||
             target.leader.Dead || target.leader.Faction != target || Find.QuestManager.IsReservedByAnyQuest(target.leader) ||
@@ -193,7 +193,7 @@ public sealed class LeaderJoinLedger : GameComponent
         SuccessionAvailable(source, actor);
         var plan = new LeaderJoinPlan(charter, actor.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID(), sourceCity.GetUniqueLoadID(), destination.GetUniqueLoadID(),
             target.leader.GetUniqueLoadID(), Charters.Book.Export(), Territories.Ledger.Export(), new(actual.Id, actual.Preserved, actual.MedicalCare), Stock(sourceCity), Stock(destination),
-            Roster(sourceCity), Roster(destination), Find.TickManager.TicksGame, true, SeparateSuccession: true, UnassignedSource: unassigned);
+            Roster(sourceCity), Roster(destination), Find.TickManager.TicksGame, true, SeparateSuccession: true, UnassignedSource: unassigned) { ResidentProfile = LeaderPreservationProfiles.Current };
         LeaderJoinExecution.Prepare(plan); return new(Current.Game, plan, actor, source, target, sourceCity, destination, target.leader);
     }
     private static void References(LeaderJoinRecord r)
@@ -212,7 +212,7 @@ public sealed class LeaderJoinLedger : GameComponent
         if (r.TargetFaction.leader != r.TargetLeader || r.TargetLeader.Dead || Find.QuestManager.IsReservedByAnyQuest(r.Actor) || Find.QuestManager.IsReservedByAnyQuest(r.TargetLeader) || r.Actor.health.surgeryBills.Count != 0)
             throw new ArgumentException("Unexpected office, medical orders or outside residency.");
         OtherResidency(r.Actor, r.Source, r.Destination, p.UnassignedSource);
-        if (j.State.Phase == LeaderJoinPhase.Prepared) { ResidentExecution.ReadRetainedLeader(r.Actor); SuccessionAvailable(r.SourceFaction, r.Actor); }
+        if (j.State.Phase == LeaderJoinPhase.Prepared) { ResidentExecution.ReadRetainedLeader(r.Actor, p.EffectiveResidentProfile); SuccessionAvailable(r.SourceFaction, r.Actor); }
         bool officeRequired = r.Actor.Faction == r.TargetFaction || p.SeparateSuccession && j.State.Phase != LeaderJoinPhase.Prepared;
         if (officeRequired && (r.SourceFaction.leader == null || r.SourceFaction.leader == r.Actor || r.SourceFaction.leader.Dead || r.SourceFaction.leader.Downed ||
             !r.SourceFaction.leader.Awake() || r.SourceFaction.leader.InMentalState || r.SourceFaction.leader.IsPrisoner || r.SourceFaction.leader.IsSlave || r.SourceFaction.leader.HostFaction != null || r.SourceFaction.leader.Faction != r.SourceFaction ||
@@ -220,7 +220,7 @@ public sealed class LeaderJoinLedger : GameComponent
             throw new ArgumentException("No actual valid surviving source successor or office separation.");
         if (officeRequired && Find.FactionManager.AllFactionsListForReading.Any(f => f != r.SourceFaction && f.leader == r.SourceFaction.leader))
             throw new ArgumentException("Source successor holds an unreviewed other faction office.");
-        return j.Review(ResidentExecution.ReadJoiningLeader(r.Actor), r.SourceFaction.leader?.GetUniqueLoadID(), r.TargetFaction.leader?.GetUniqueLoadID(), Charters.Book.Export(), Territories.Ledger.Export(),
+        return j.Review(ResidentExecution.ReadJoiningLeader(r.Actor, p.EffectiveResidentProfile), r.SourceFaction.leader?.GetUniqueLoadID(), r.TargetFaction.leader?.GetUniqueLoadID(), Charters.Book.Export(), Territories.Ledger.Export(),
             Stock(r.Source), Stock(r.Destination), Roster(r.Source), Roster(r.Destination), Find.TickManager.TicksGame);
     }
     private static void Change(LeaderJoinRecord r, Action<LeaderJoinExecution> action) { var j = r.Journal(); action(j); r.Snapshot = j.Export(); r.DisplayPhase = j.State.Phase; }
@@ -280,7 +280,7 @@ public sealed class LeaderJoinLedger : GameComponent
         }
         if (action == LeaderJoinAction.Observe)
         {
-            var actor = ResidentExecution.ReadJoiningLeader(r.Actor); r.Successor = r.SourceFaction.leader;
+            var actor = ResidentExecution.ReadJoiningLeader(r.Actor, r.Journal().State.Plan.EffectiveResidentProfile); r.Successor = r.SourceFaction.leader;
             Change(r, j => j.Observe(action, r.Successor.GetUniqueLoadID(), actor.MedicalCare, Find.TickManager.TicksGame)); action = Review(r);
         }
         if (action == LeaderJoinAction.RestoreCare)

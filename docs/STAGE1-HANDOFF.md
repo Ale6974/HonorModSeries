@@ -1,3 +1,17 @@
+# 1단계 예약 개발 인수인계 — 0.3.56 / 2026-10-27
+
+최신0.3.56 설치 완료:0.3.55 백업 `.local/contracts-preview-858471a9c1ff4ae495594bd5f3876a67`,32파일·설정 해시 일치. 양 전체 빌드 경고/오류0,4457+20093=24550/대상·영한472키/FactionDef12·패키지 통과. ZIP SHA256 913AB94478FE0E3A159E26414817C0542E6AEB5F6CC9A7E83C3CDA0F9BEBC9D6. New personal join/retained-office relocation uses explicit ResidentProfile7 and existing native base-Gene proof; ALL pending actor reads/observations resolve saved profile. Zero omission remains old5 with unchanged constructors/APIs/bytes/golden hashes, unknown/mixed markers reject. New7 personal joining requires separate succession; no gene reset/add/remove/deep-save, no source-last-city/surgery/slave/title/map/special-gene waiver. Actual succession/affiliation/one-shot care/rosters and same-faction relocation/recovery are connected. Current1.7 gene tracker fields/cache body and1.6 reference signatures rechecked only under .local. Next big remaining: genuine intentional protection-refusal evidence/lawful independence exercise+union/followers; full native merger lifecycle/execution/recovery; royal collective authority/complex wartime moves; unsupported residents/leaders/maps/stock and upper/pending/reentrant losses. Do not use Faction.deactivated or a gene proof as merger/ownership authority. Stage1 remains35%(7~9), others80/95/90/100/70; honor-1 ACTIVE30min/limit-resume instructions retained.
+
+## 0.3.56 — 기본 유전자 지도자의 개인 합류·직위 유지 전출
+
+새 지도자 개인 합류와 같은 세력 내 안전한 거처 이전은 기존 주민 profile7의 검사를 재사용해 지원되는 native 기본 Gene 원본도 검증한다. ID/순서·내생/이식 분류·원 저장 유전형/이름/아이콘/혼합 여부·passionPreAdd·같은 트래커 억제 관계를 기존 신원/건강/장비/관계/신앙/의료 증거에 묶는다. 실제 별도 직위 승계→소속 적용→한 번의 의료 설정 확인→같은 인물의 명부 이동 및 같은 세력 전출/명시적 복구 경로에 연결했다. 유전자 생성·제거·재발현이나 옛 상태 복원으로 검사를 통과시키지 않는다.
+
+새 기록만 explicit ResidentProfile7을 저장한다. 이전의 생략된0 표시는 계속 profile5이며, 원 생성자·Capture/Read APIs·null/default JSON과 지문을 유지한다. 복구의 모든 actor 읽기는 저장된 형식을 사용하고 형식 혼용·알 수 없는 값·새 유전 합류의 옛 combined 호출 사용을 거부한다. 전출 profile도 그 원 proof에 포함한다. 원본 유전자나 명부/의료/권한이 달라지면 원 기록을 남긴 채 보류한다. 개인 합류는 출발 세력 존속·별도 동의·분리 승계/소속 journal과 기존 no-redress/새 관계 제외 범위를 유지한다.
+
+1.7.4990 설치 DLL의 원 xenotype/cachedGenes 필드와 캐시가 xenogenes→endogenes 원 참조로 구성되는 것을 다시 확인했고,1.6.4871 참조의 같은 필드/공개 접근 시그니처를 확인했다. 새 native hook은 없다. 특수/커스텀 Gene 클래스·외국/손상 링크·미확인 패치는 기존 검사로 보류하며, 수술 지시·노예·왕족 작위·로딩 맵·마지막 출발 도시 등 미지원 지도자 상태를 새 형식으로 우회하지 않는다. 전체 합병·도시 소유 이전·이동/도착 보장을 추가하지 않는다.
+
+현재 집중1단계 미완료. 잔여 노력 추정35/80/95/90/100/70%, 큰 묶음7~9/5~7/6~8/5~7/6~8/4~6 유지. 전체 합병 native 집행/복구·정당한 독립권 행사·귀족 집단 권한·복잡 전시 이적 및 미지원 주민/지도자/로딩 맵/재고·상위/진행 중/재진입 소실은 남는다.
+
 # 1단계 예약 개발 인수인계 — 0.3.55 / 2026-10-27
 
 최신0.3.55 설치 완료:0.3.54 백업 `.local/contracts-preview-157cf77b082743f2bdd3b3f3851a704d`,32파일·활성화/언어 해시 일치. 양 전체 빌드 경고/오류0,4434+20093=24527/대상·영한472키/FactionDef12·패키지 통과. ZIP SHA256 33EACE2E0990B5C5C248C29E7B630A9B8ABE2B9608E7E84A4CBB60E912AED8BE. 새 일반 BindLiege는 실제 현재 NpcDecisionAuthority 동의를 Feudal로 저장하고 REQUIRED 원 FollowerReview와 준비한다. 평시/전시 실행·전체 후손 이전·소실 계보·명시적 후임 재검토·경제 갱신 뒤 history 보존을 연결했다. 기존 서명/채무/선언/주민/돌봄/재고는 유지, 귀족·집단 권한은 개인으로 대체하지 않는다. old null 자료를 소급 서명하지 않으며 확인 불능을 고의 보호 거부로 만들지 않는다. 다음 큰 잔여는 실제 고의 계약상 보호 거부/정당한 독립 행사·연합/전체 후손 전환, 전체 합병 native 생명주기·집행/복구, 귀족 집단 권한·복잡 전시 이적과 미지원 주민/지도자/로딩 맵/재고·상위/진행 중/재진입 소실이다. Faction.deactivated 필드나 전투 패배만으로 합병 완료를 만들지 않는다.1단계35%(7~9), 나머지80/95/90/100/70% 유지. honor-1 ACTIVE30분 및 한도 이후 다음 가능한 예약 재개 지시 유지.

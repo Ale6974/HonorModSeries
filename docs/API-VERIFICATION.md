@@ -1,5 +1,10 @@
 # 1.7 API·런타임 검증 기록
 
+## 0.3.56 leader genetics boundary — 2026-10-27
+
+Rechecked installed1.7.4990 Assembly-CSharp SHA2564E61D57205944C113631234BC55136A1A7C1679667B26008BEE5425BCFFA1463. IL metadata/body for RimWorld.Pawn_GeneTracker retains private XenotypeDef xenotype and List&lt;Gene&gt; cachedGenes; GenesListForReading materializes native cached references in xenogenes then endogenes order. EnablesNeed/DisablesNeed remain the existing native boundary. Krafs1.6.4871 reference retains the same private field shapes and public getter/method signatures; its extern members do not establish actual1.6 body behavior. Local decompilation evidence remains only under .local/api/leader-genes4990; no third-party body is distributed. No new Harmony target is added: leaders reuse the existing profile7 ResidentGenes checks of exact base classes/registered defs/parent, original gene IDs/classification/order, raw metadata/passions/acyclic override links and unpatched faction/component/need/gene access. Cached getters are not populated for inspection. No setters/add/remove/re-expression APIs are called. Native Pawn saving owns gene serialization; leader journals carry only preserved hashes/profile marker and original Pawn references.
+
+
 ## 2026-10-27 /0.3.50 — same-authority player charter renewal
 
 No new native execution API, Harmony target or engine write was added. Current ordinary NPC authority, actual shared PlayerPolitics authority, every real follower's ownership/transfer provenance and exact current relations/payment records are reread. Only a no-move plan at the same actual authority qualifies. The native player Faction/Settlement/Pawn and native relations remain unchanged.

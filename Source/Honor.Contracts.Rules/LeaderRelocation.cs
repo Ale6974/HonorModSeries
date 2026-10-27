@@ -11,7 +11,10 @@ public sealed class LeaderRelocationPlan
 {
     private sealed record Data(int Version, string Charter, string Leader, string Faction, string Source, string Destination, string Book,
         string Preserved, int? Care, string SourceStock, int SourceFormat, string DestinationStock, int DestinationFormat,
-        string[] SourceRoster, string[] DestinationRoster, long Tick);
+        string[] SourceRoster, string[] DestinationRoster, long Tick)
+    {
+        [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public int ResidentProfile { get; init; }
+    }
     private readonly Data data;
     public string Charter => data.Charter;
     public string Leader => data.Leader;
@@ -21,10 +24,13 @@ public sealed class LeaderRelocationPlan
     public string Book => data.Book;
     public long Tick => data.Tick;
     public string Proof { get; }
+    public int ResidentProfile => data.ResidentProfile;
+    public int EffectiveResidentProfile => LeaderPreservationProfiles.Resolve(data.ResidentProfile);
     private static bool Key(string s) => !string.IsNullOrWhiteSpace(s) && s.Length <= 180 && !s.Any(char.IsControl);
     private LeaderRelocationPlan(Data d)
     {
         data = d;
+        _ = EffectiveResidentProfile;
         if (d.Version != 1 || !Key(d.Charter) || !Key(d.Leader) || !Key(d.Faction) || !Key(d.Source) || !Key(d.Destination) || d.Source == d.Destination ||
             !CityStockProof.Valid(d.Book) || !CityStockProof.Valid(d.Preserved) || d.Care is < 0 or > 4 || d.Tick < 0 ||
             !CityStockProof.Valid(d.SourceStock) || !CityStockProof.Valid(d.DestinationStock) || d.SourceFormat is < 0 or > 1 || d.DestinationFormat is < 0 or > 1 ||
@@ -45,6 +51,15 @@ public sealed class LeaderRelocationPlan
         return new(new(1, charter, leader, faction, source, destination, Hash(book), actor.Preserved, actor.MedicalCare,
             sourceStock, sourceFormat, destinationStock, destinationFormat,
             sourceRoster.Take(129).OrderBy(s => s, StringComparer.Ordinal).ToArray(), destinationRoster.Take(129).OrderBy(s => s, StringComparer.Ordinal).ToArray(), tick));
+    }
+    public static LeaderRelocationPlan CaptureProfiled(string charter, string leader, string faction, string source, string destination, string book,
+        ResidentMoveActual actor, string sourceStock, int sourceFormat, string destinationStock, int destinationFormat,
+        IEnumerable<string> sourceRoster, IEnumerable<string> destinationRoster, long tick, int residentProfile)
+    {
+        _ = LeaderPreservationProfiles.Resolve(residentProfile);
+        var original = Capture(charter, leader, faction, source, destination, book, actor, sourceStock, sourceFormat,
+            destinationStock, destinationFormat, sourceRoster, destinationRoster, tick);
+        return new(original.data with { ResidentProfile = residentProfile });
     }
     public LeaderRelocationAction Review(ResidentMoveActual actor, string actualLeader, string sourceOwner, string destinationOwner, string book,
         string sourceStock, int sourceFormat, string destinationStock, int destinationFormat, IEnumerable<string> sourceRoster, IEnumerable<string> destinationRoster)

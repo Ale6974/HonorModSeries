@@ -8,7 +8,11 @@ public sealed record LeaderJoinPlan(string Charter, string Leader, string Source
     string TargetLeader, string Book, string Transfers, ResidentMoveEvidence Actor, string SourceStock, string DestinationStock,
     IReadOnlyList<string> SourceRoster, IReadOnlyList<string> DestinationRoster, long Tick, bool PersonalConsent,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool SeparateSuccession = false,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool UnassignedSource = false);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] bool UnassignedSource = false)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public int ResidentProfile { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore] public int EffectiveResidentProfile => LeaderPreservationProfiles.Resolve(ResidentProfile);
+}
 public sealed record LeaderJoinReturn(string Successor, int? MedicalCare, long Tick);
 public sealed record LeaderSuccessionReturn(string Successor, long Tick);
 public sealed record LeaderSuccessionReceipt(string Successor, long Tick, bool FromNormalReturn);
@@ -28,6 +32,8 @@ public sealed class LeaderJoinExecution
     private void Time(long now) => Require(now >= (State.FinishedTick ?? State.CareCheckTick ?? State.ObservedTick ?? State.NativeReturn?.Tick ?? State.Succession?.Tick ?? State.SuccessionReturn?.Tick ?? State.Plan.Tick) && now <= int.MaxValue, "Invalid leader join clock.");
     private static void Validate(LeaderJoinPlan p)
     {
+        RuntimeCompat.NotNull(p); _ = p.EffectiveResidentProfile;
+        Require(p.ResidentProfile == 0 || p.SeparateSuccession, "New genetic leader joining requires separately journaled office and affiliation.");
         Require(p != null && Key(p.Charter) && Key(p.Leader) && Key(p.SourceFaction) && Key(p.TargetFaction) && Key(p.SourceCity) && Key(p.DestinationCity) && Key(p.TargetLeader) &&
             p.SourceFaction != p.TargetFaction && p.SourceCity != p.DestinationCity && p.TargetLeader != p.Leader && p.PersonalConsent && p.Tick is >= 0 and <= int.MaxValue &&
             p.Actor != null && p.Actor.Id == p.Leader && CityStockProof.Valid(p.Actor.Preserved) && Care(p.Actor.MedicalCare) &&
