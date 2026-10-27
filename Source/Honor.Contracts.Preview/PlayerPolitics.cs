@@ -426,6 +426,8 @@ public sealed class PlayerAllegianceWindow : Window
                     list.Label("FB_Entry".Translate(territories.FollowerLabel(entry.Charter), territories.OwnerLabel(entry.Observation.Owner),
                         (review.Followers.Moves.Contains(entry.Charter) ? "FB_Move" : "FB_Already").Translate()));
                 list.Label("PS_DebtsRetained".Translate());
+                if (review.Command == null && transition.Journal.Current?.FollowerReview != null || review.Command?.Action == AllegianceAction.JoinUnion && (review.Peace != null || review.Wars?.IncomingCharters != null))
+                    list.Label("AR_Source".Translate());
                 if (list.ButtonText((review.Command == null ? "PS_Resume" : "PS_Confirm").Translate()))
                 { if (review.Command == null) transition.Resume(review); else transition.Start(review); review = null; }
             }

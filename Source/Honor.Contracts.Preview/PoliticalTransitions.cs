@@ -135,7 +135,8 @@ public sealed class PoliticalTransitionLedger : GameComponent
             var current = Review(reviewed.Command.Action == AllegianceAction.JoinUnion, reviewed.Wars != null);
             if (current.Stamp != reviewed.Stamp) throw new ArgumentException("Review changed.");
             var next = AllegianceTransitionLedger.Restore(Journal.Export());
-            if (current.Peace != null) next.PreparePeace(Guid.NewGuid().ToString("N"), Politics.Model, current.Command, current.Followers, Territories.Ledger, current.Peace);
+            if (current.Peace != null || current.Wars?.IncomingCharters != null)
+                next.PrepareReviewedAdmission(Guid.NewGuid().ToString("N"), Politics.Model, current.Command, current.Followers, Territories.Ledger, current.Wars, current.Peace);
             else next.Prepare(Guid.NewGuid().ToString("N"), Politics.Model, current.Command, current.Followers, Territories.Ledger, current.Wars);
             var history = warHistory.ToList();
             if (Journal.Current?.Wars != null || Journal.Current?.Peace != null) history.Add(Journal.Export());
@@ -152,6 +153,7 @@ public sealed class PoliticalTransitionLedger : GameComponent
     }
     private void CheckRetainedSource()
     {
+        AdmissionFollowerReviews.Validate(Journal.Current);
         var before = PlayerAllegiance.Restore(Journal.Current.Before).State;
         var command = JsonSerializer.Deserialize<PlayerAllegianceSave>(Journal.Current.After).Commands.Last();
         AllegianceChangeSource.Validate(Charters.Book, before, command, Current.Game.GetComponent<TributePaymentLedger>().Ledger);

@@ -18,6 +18,7 @@ public sealed record AllegianceTransition(string Id, string Before, string After
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public UnionPeaceConsent Peace { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public UnionPeaceConsent[] PeaceReaffirmations { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public AdmissionFollowerReview FollowerReview { get; init; }
 }
 public sealed record AllegianceTransitionSave(int Version, AllegianceTransition Current);
 
@@ -195,6 +196,7 @@ public sealed partial class AllegianceTransitionLedger
             original.PreparedTick == current.PreparedTick && original.AllegianceTick == current.AllegianceTick && original.Followers.SequenceEqual(current.Followers) &&
             JsonSerializer.Serialize(original.Wars) == JsonSerializer.Serialize(current.Wars) &&
             JsonSerializer.Serialize(original.Peace) == JsonSerializer.Serialize(current.Peace) &&
+            original.FollowerReview == current.FollowerReview &&
             (original.PeaceReaffirmations ?? []).Select(p => JsonSerializer.Serialize(p)).SequenceEqual((current.PeaceReaffirmations ?? []).Take(original.PeaceReaffirmations?.Length ?? 0).Select(p => JsonSerializer.Serialize(p))) &&
             (original.LostFollowers ?? []).SequenceEqual((current.LostFollowers ?? []).Take(original.LostFollowers?.Length ?? 0)) &&
             (original.TownLosses ?? []).SequenceEqual((current.TownLosses ?? []).Take(original.TownLosses?.Length ?? 0)) &&
@@ -257,6 +259,7 @@ public sealed partial class AllegianceTransitionLedger
         }
         else Require(c.WarResults == null && c.WarReaffirmations == null, "War results require their original consent.");
         ValidatePeace(c, command, old.NativePlayer);
+        AdmissionFollowerReviews.Validate(c);
         Require(c.LostFollowers == null || applied && c.LostFollowers.Length is > 0 and <= PendingTownLossArchive.Capacity &&
             c.LostFollowers.All(l => l != null && Key(l.Transfer) && c.Followers.Contains(l.Charter) && l.Proof?.Length == 64 &&
                 l.Proof.All(x => x is >= '0' and <= '9' or >= 'A' and <= 'F') && l.ObservedTick >= c.AllegianceTick &&
