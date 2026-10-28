@@ -44,6 +44,7 @@ public sealed partial class LiveCharterLedger : GameComponent
         ExposeInvitations();
         ExposeFinalConsents();
         ExposeTownLosses();
+        ExposeReparentHistory();
         if (Scribe.mode != LoadSaveMode.PostLoadInit) return;
         bindings ??= [];
         try
@@ -53,6 +54,7 @@ public sealed partial class LiveCharterLedger : GameComponent
             ValidateNpcWorld();
             ValidateFinalConsents();
             ValidateTownLosses();
+            ValidateReparentHistory();
             if (bindings.Any(b => b == null || string.IsNullOrWhiteSpace(b.Identity)) ||
                 bindings.GroupBy(b => b.Identity, StringComparer.Ordinal).Any(g => g.Count() != 1) ||
                 Book.Entities.Any(e => bindings.All(b => b.Identity != e.Id)) || bindings.Count != Book.Entities.Count ||

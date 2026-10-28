@@ -14,6 +14,7 @@ public sealed record RecordedCharterTerms(string Liege, string Subject, decimal 
 public sealed record NpcCharterAuthority(string LiegeRepresentative, string SubjectRepresentative);
 public sealed record RecordedPoliticalLoss(string Id, string Proof);
 public sealed record CharterAmendmentLink(string Previous, string Proof);
+public sealed record CharterReparentLink(string Previous, string Proof);
 public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long OfferedTick, long ExpiresTick,
     RecordedCharterPhase Phase = RecordedCharterPhase.Offered, long? PlayerSignedTick = null,
     long? NpcSignedTick = null, long? PlayerReleaseTick = null, long? NpcReleaseTick = null,
@@ -26,6 +27,7 @@ public sealed record RecordedCharter(string Id, RecordedCharterTerms Terms, long
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public CharterAmendmentLink Amendment { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public RecordedLawfulExit LawfulExit { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public CharterReparentLink Reparent { get; init; }
 }
 public sealed record CharterBookSave(int Version, long LastTick, TerritoryIdentity[] Entities, RecordedCharter[] Charters);
 
@@ -259,6 +261,14 @@ public sealed class CharterBook
             Entity(c.Terms.Liege).Player != Entity(c.Terms.Subject).Player && CityStockProof.Valid(proof), "Invalid same-party amendment link.");
         charters[id] = c with { Amendment = new(previous, proof) };
     }
+    internal void BindReparent(string id, string previous, string proof)
+    {
+        var c = Charter(id); var old = Charter(previous);
+        Require(c.Phase == RecordedCharterPhase.Active && c.Reparent == null && old.Phase == RecordedCharterPhase.Released &&
+            old.Id != c.Id && c.Terms == old.Terms with { Liege = c.Terms.Liege } && c.Terms.Liege != old.Terms.Liege &&
+            !Entity(c.Terms.Subject).Player && CityStockProof.Valid(proof), "Invalid reparent history link.");
+        charters[id] = c with { Reparent = new(previous, proof) };
+    }
     public void ConsentNpcRelease(string id, string party, long now, IEnumerable<TerritoryObservation> observations)
     {
         var c = Charter(id);
@@ -410,6 +420,16 @@ public sealed class CharterBook
         }
         foreach (var c in book.charters.Values)
         {
+            if (c.Reparent != null)
+            {
+                Key(c.Reparent.Previous); var old = book.Charter(c.Reparent.Previous);
+                Require(old.Id != c.Id && CityStockProof.Valid(c.Reparent.Proof) && old.Phase == RecordedCharterPhase.Released &&
+                    c.Terms == old.Terms with { Liege = c.Terms.Liege } && c.Terms.Liege != old.Terms.Liege &&
+                    !book.Entity(c.Terms.Subject).Player && Math.Max(old.PlayerReleaseTick.Value, old.NpcReleaseTick.Value) <= c.OfferedTick,
+                    "Invalid saved reparent history link.");
+                var seen = new HashSet<string>(StringComparer.Ordinal) { c.Id }; var previous = old;
+                while (true) { Require(seen.Add(previous.Id), "Cyclic reparent history."); if (previous.Reparent == null) break; previous = book.Charter(previous.Reparent.Previous); }
+            }
             if (c.Amendment != null)
             {
                 Key(c.Amendment.Previous); var old = book.Charter(c.Amendment.Previous);

@@ -13,6 +13,18 @@ public sealed record LiveSubcharterReview(NpcSubcharterPlan Plan, string Stamp, 
 
 public sealed partial class LiveCharterLedger
 {
+    private string reparentSnapshot;
+    private NpcReparentArchive reparentHistory = new();
+    private void ExposeReparentHistory()
+    {
+        if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed && reparentHistory.Records.Count > 0) reparentSnapshot = reparentHistory.Export();
+        Scribe_Values.Look(ref reparentSnapshot, "honorNpcReparentHistoryV1");
+    }
+    private void ValidateReparentHistory()
+    {
+        if (reparentSnapshot != null) reparentHistory = NpcReparentArchive.Restore(reparentSnapshot);
+        reparentHistory.ValidateBook(Book);
+    }
     internal Faction SubcharterRepresentative(string party)
     {
         var binding = Binding(party);
@@ -34,6 +46,8 @@ public sealed partial class LiveCharterLedger
             transfers.Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared))
             throw new ArgumentException("Resolve coordinated, physical or unavailable journals first.");
         var old = Book.Charter(previous);
+        reparentHistory.ValidateBook(Book);
+        reparentHistory.ValidatePeers(transfers.Ledger, payments.Ledger);
         var authority = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
         var decision = NpcDecisionAuthority.Read(authority);
         var liege = parent == PlayerIdentity ? authority : SubcharterRepresentative(parent); var subject = SubcharterRepresentative(old.Terms.Subject);
@@ -46,7 +60,7 @@ public sealed partial class LiveCharterLedger
         var plan = NpcSubcharters.ReviewAuthorized(Book, previous, parent, created ?? Guid.NewGuid().ToString("N"), decision, now, observed);
         string stamp = JsonSerializer.Serialize(new { plan.Before, plan.After, plan.Tick, Transfers = transfers.Ledger.Export(), Payments = payments.Ledger.Export(),
             FinalConsents = finalConsents.Export(), Amendments = amendments.Export(), PlayerRenewals = playerRenewals.Export(),
-            TownLosses = townLosses.Export(), OwnershipReturns = ownershipReturns.Export(), Protection = protection.Ledger.Export(),
+            TownLosses = townLosses.Export(), OwnershipReturns = ownershipReturns.Export(), Protection = protection.Ledger.Export(), ReparentHistory = reparentHistory.Export(),
             Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer), Observed = observed });
         return new(plan, stamp, descendants.Length - 1, authority.Name, authority.leader.LabelShortCap) { Context = Current.Game };
     }
@@ -58,11 +72,21 @@ public sealed partial class LiveCharterLedger
             if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("NPC consent, graph or world changed.");
             var replacement = NpcSubcharters.CommitAuthorized(Book, fresh.Plan,
                 NpcDecisionAuthority.Read(Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority()), Find.TickManager.TicksGame, Observe());
+            var witness = new NpcReparentWitness(fresh.Plan.Previous, fresh.Plan.Parent, fresh.Plan.Created, fresh.Plan.Before,
+                fresh.Plan.Tick, fresh.Plan.Decision, Observe(), Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(),
+                Current.Game.GetComponent<TributePaymentLedger>().Ledger.Export());
+            var recorded = reparentHistory.Append(witness, Book);
+            recorded.Archive.ValidatePeers(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger,
+                Current.Game.GetComponent<TributePaymentLedger>().Ledger);
+            if (replacement.Export() != fresh.Plan.After) throw new ArgumentException("Current reparent result changed.");
+            replacement = recorded.Book;
             // Retained descendants and third-party obligations must remain paired with their original records.
             finalConsents.ValidateBook(replacement); amendments.ValidateBook(replacement); playerRenewals.ValidatePair(amendments, replacement);
             townLosses.ValidateBook(replacement); ownershipReturns.ValidatePair(townLosses, replacement);
             context.GetComponent<CharterProtectionLedger>().Ledger.ValidateBook(replacement);
-            Book = replacement; // Only one in-memory swap, after the entire replacement has been validated.
+            if (Current.Game != context || Current.ProgramState != ProgramState.Playing)
+                throw new ArgumentException("Current game changed before committing reparent history.");
+            Book = replacement; reparentHistory = recorded.Archive; // Both staged models change without native callbacks.
             Messages.Message("NS_Applied".Translate(), MessageTypeDefOf.NeutralEvent);
         });
     }
@@ -122,6 +146,8 @@ public sealed class NpcSubchartersWindow : Window
                 list.Label("NS_Tier".Translate(path.Count, string.Join(" → ", path.Select(ledger.Label))));
                 list.Label("NS_Link".Translate(ledger.Label(c.Terms.Liege), ledger.Label(c.Terms.Subject), ledger.PoliticalOwner(c.Terms.Subject)));
                 list.Label("NS_NativeFaction".Translate(ledger.CurrentNativeFaction(c.Terms.Subject)));
+                if (c.Reparent != null)
+                    list.Label("NS_PreviousLiege".Translate(ledger.Label(ledger.Book.Charter(c.Reparent.Previous).Terms.Liege)));
             }
         }
         height = list.CurHeight + 20; list.End(); Widgets.EndScrollView();

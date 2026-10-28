@@ -31,6 +31,17 @@ public sealed partial class LiveCharterLedger
     }
     public override void FinalizeInit()
     {
+        if (!RestoreFailed && reparentHistory.Records.Count > 0)
+        {
+            try
+            {
+                var transfers = context.GetComponent<TerritoryAdministrationLedger>(); var payments = context.GetComponent<TributePaymentLedger>();
+                if (transfers.RestoreFailed || payments.RestoreFailed) throw new ArgumentException("Original reparent peers unavailable.");
+                reparentHistory.ValidatePeers(transfers.Ledger, payments.Ledger);
+            }
+            catch (Exception e) when (e is ArgumentException or JsonException or InvalidOperationException)
+            { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Reparent peer history rejected; original data retained. " + e.GetType().Name); }
+        }
         ValidateOwnershipReturnClock();
         ValidatePlayerRenewalLineage();
         ValidateLawfulRestore();

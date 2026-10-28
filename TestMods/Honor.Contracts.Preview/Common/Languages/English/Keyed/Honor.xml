@@ -230,6 +230,7 @@
   <NS_Descendants>Unchanged descendant contracts retained: {0}.</NS_Descendants>
   <NS_Tier>Contract level {0}: {1}</NS_Tier>
   <NS_NativeFaction>Current game faction: {0}</NS_NativeFaction>
+  <NS_PreviousLiege>Previously recorded immediate liege: {0}</NS_PreviousLiege>
   <NS_Terms>Fixed tribute remains {0} value every {1} days. Existing payment history is not erased.</NS_Terms>
   <NS_Representative>Current NPC realm representative: {0} / {1}.</NS_Representative>
   <NS_Confirm>Confirm current counterpart consent and replacement</NS_Confirm>
