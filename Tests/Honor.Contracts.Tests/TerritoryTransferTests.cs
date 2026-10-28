@@ -39,7 +39,14 @@ internal static class TerritoryTransferTests
             source with { Exists = false }, source with { Player = true }, source with { HasMap = true }, source with { Visited = true },
             source with { Eligible = false }, source with { TargetEligible = false }, source with { TargetPlayer = true }, source with { PendingDelivery = true } };
         foreach (var observation in blocked) Reject(ledger, () => Prepare(observation), "every unsafe live observation rejected");
+        var journaled = new TerritoryTransferLedger();
+        journaled.PrepareJournaled("journaled", book, "bond", source, "liege", "liege", "union", TerritoryTransferPurpose.ActiveCharter, 3);
+        journaled = TerritoryTransferLedger.Restore(journaled.Export());
+        Check(journaled.Transfer("journaled").CityCallJournalV1, "new city call format survives prepared save");
+        journaled.Confirm("journaled", source with { Owner = "liege" }, 4);
+        Check(TerritoryTransferLedger.Restore(journaled.Export()).Transfer("journaled").CityCallJournalV1, "city call marker survives applied outcome");
         Prepare(source);
+        Check(!ledger.Export().Contains("CityCallJournalV1"), "legacy transfer JSON retains its original shape");
         Check(ledger.Transfer("move").Phase == TerritoryTransferPhase.Prepared, "intent is not applied ownership");
         Check(!ledger.VerifiedOwner("town", "old", "old") && !ledger.VerifiedOwner("town", "old", "liege"), "pending transfer blocks old and new consent observations");
         Check(book.Availability("town", [ledger.ObserveIdentity(Observations()[1], "old")]) == CharterAvailability.Ineligible, "pending execution blocks consent even before any owner change");

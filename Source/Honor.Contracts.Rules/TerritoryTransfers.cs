@@ -16,7 +16,11 @@ public sealed record TerritoryTransfer(string Id, string Territory, string Basel
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] int StockFormat = 0,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ReleasedRoot = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ResidentProof = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] TerritoryTransferDestruction Destruction = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] TerritoryTransferDestruction Destruction = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool CityCallJournalV1 { get; init; }
+}
 public sealed record TerritoryTransfersSave(int Version, long LastTick, TerritoryTransfer[] Transfers);
 
 /// <summary>Explicit ownership execution journal, separate from consent and the immutable original identity.</summary>
@@ -75,6 +79,14 @@ public sealed class TerritoryTransferLedger
         var result = new TerritoryTransfer(id, subject.Id, subject.NativeOwner, observed.Owner, target, charterId, purpose, now,
             StockProof: observed.StockProof, StockFormat: observed.StockFormat, ReleasedRoot: releasedRoot, ResidentProof: observed.ResidentProof);
         transfers.Add(result); LastTick = now; return result;
+    }
+    public TerritoryTransfer PrepareJournaled(string id, CharterBook book, string charterId, TerritoryTransferObservation observed,
+        string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration = null, string releasedRoot = null)
+    {
+        var prepared = Prepare(id, book, charterId, observed, target, verifiedAuthority, verifiedUnion, purpose, now, verifiedAdministration, releasedRoot);
+        var paired = prepared with { CityCallJournalV1 = true };
+        transfers[transfers.Count - 1] = paired;
+        return paired;
     }
     public void Confirm(string id, TerritoryTransferObservation actual, long now)
     {

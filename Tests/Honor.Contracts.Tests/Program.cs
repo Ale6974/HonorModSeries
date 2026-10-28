@@ -192,6 +192,7 @@ assertions += LawfulAdmissionHistoryTests.Run();
 assertions += LawfulFollowerMigrationTests.Run();
 assertions += ResidentCareJournalTests.Run();
 assertions += NpcReparentArchiveTests.Run();
+assertions += TerritoryCallGuardTests.Run();
 assertions += CharterAidGenerationTests.Run();
 assertions += PlayerCharterRenewalTests.Run();
 assertions += CharterReleaseTests.Run();
