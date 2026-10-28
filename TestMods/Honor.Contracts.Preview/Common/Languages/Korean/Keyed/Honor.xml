@@ -231,6 +231,7 @@
   <NS_Tier>계약 계층 {0}단계: {1}</NS_Tier>
   <NS_NativeFaction>현재 게임상 소속 세력: {0}</NS_NativeFaction>
   <NS_PreviousLiege>기록된 이전 직속 종주: {0}</NS_PreviousLiege>
+  <NS_PastPerformance>재배치 당시 {0}에 대한 플레이어 공납 이력 ({1}일):</NS_PastPerformance>
   <NS_Terms>고정 공납은 {1}일마다 가치 {0}을 유지합니다. 기존 납부 이력은 지우지 않습니다.</NS_Terms>
   <NS_Representative>현재 NPC 세력 대표: {0} / {1}.</NS_Representative>
   <NS_Confirm>현재 상대 동의와 계약 교체 확정</NS_Confirm>

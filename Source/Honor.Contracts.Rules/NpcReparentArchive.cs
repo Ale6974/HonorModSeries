@@ -7,6 +7,7 @@ public sealed record NpcReparentWitness(string Previous, string Parent, string C
     long Tick, NpcRealmDecisionEvidence Decision, TerritoryObservation[] Observations, string Transfers, string Payments);
 public sealed record NpcReparentRecord(NpcReparentWitness Witness, string Proof, string After);
 public sealed record NpcReparentSave(int Version, NpcReparentRecord[] Records);
+public sealed record NpcReparentPlayerPerformance(string Charter, string Liege, string Subject, long Tick, TributePerformance Performance);
 
 /// <summary>Bounded original ordinary-realm decisions for new subcharter replacements; no physical or personal transfer authority.</summary>
 public sealed class NpcReparentArchive
@@ -105,6 +106,18 @@ public sealed class NpcReparentArchive
                 if (!payments.Receipts.Any(r => r.Id == receipt.Id && JsonSerializer.Serialize(r) == JsonSerializer.Serialize(receipt)))
                     throw new ArgumentException("Original payment receipt changed.");
         }
+    }
+    /// <summary>Read the player's real same-counterparty payment performance as it stood at this recorded decision.</summary>
+    public NpcReparentPlayerPerformance PlayerPerformanceAt(string created)
+    {
+        var r = records.SingleOrDefault(x => x.Witness.Created == created) ?? throw new ArgumentException("No original reparent record.");
+        var book = CharterBook.Restore(r.Witness.Before); var payments = TributeLedger.Restore(r.Witness.Payments);
+        var active = book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active && book.Entity(c.Terms.Subject).Player).ToArray();
+        if (active.Length == 0) return null;
+        if (active.Length != 1) throw new ArgumentException("Ambiguous original player contract.");
+        var contract = active[0];
+        var result = TributePerformanceReview.ForPair(book, payments, contract.Terms.Liege, contract.Terms.Subject, r.Witness.Tick);
+        return new(contract.Id, contract.Terms.Liege, contract.Terms.Subject, r.Witness.Tick, result);
     }
     public string Export() => JsonSerializer.Serialize(new NpcReparentSave(1, records.ToArray()));
     public static NpcReparentArchive Restore(string json)

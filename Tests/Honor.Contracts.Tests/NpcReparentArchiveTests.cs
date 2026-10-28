@@ -49,9 +49,13 @@ internal static class NpcReparentArchiveTests
         withDebt.Offer("player-debt", new("liege", "player", 100, PoliticalWorld.Day, 0, TributeTransport.SubjectDelivery, 0), 0, PoliticalWorld.Day, debtObs);
         withDebt.Sign("player-debt", false, 0, debtObs); withDebt.Sign("player-debt", true, 0, debtObs);
         var debt = new TributeLedger(); debt.Enable(withDebt, "player-debt", 0);
-        var debtWitness = new NpcReparentWitness("bond-b", "a", "debt-a-b", withDebt.Export(), 1, authority, debtObs, transfers.Export(), debt.Export());
+        var debtWitness = new NpcReparentWitness("bond-b", "a", "debt-a-b", withDebt.Export(), PoliticalWorld.Day + 1, authority, debtObs, transfers.Export(), debt.Export());
         var debtResult = archive.Append(debtWitness, withDebt);
         debtResult.Archive.ValidatePeers(transfers, debt); Check(debt.Account("player-debt").StartedTick == 0);
+        var past = debtResult.Archive.PlayerPerformanceAt("debt-a-b");
+        Check(past.Charter == "player-debt" && past.Performance.Due == 1 && past.Performance.Overdue == 1 && past.Performance.OutstandingValue == 100);
+        Check(NpcReparentArchive.Restore(debtResult.Archive.Export()).PlayerPerformanceAt("debt-a-b") == past);
+        Check(result.Archive.PlayerPerformanceAt("a-b") == null);
         Reject(() => debtResult.Archive.ValidatePeers(transfers, new TributeLedger()));
         var moved = new TerritoryTransferLedger();
         foreach (var id in new[] { "a", "b" })

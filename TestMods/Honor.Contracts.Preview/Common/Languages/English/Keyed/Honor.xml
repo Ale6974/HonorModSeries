@@ -231,6 +231,7 @@
   <NS_Tier>Contract level {0}: {1}</NS_Tier>
   <NS_NativeFaction>Current game faction: {0}</NS_NativeFaction>
   <NS_PreviousLiege>Previously recorded immediate liege: {0}</NS_PreviousLiege>
+  <NS_PastPerformance>Player tribute history with {0} at the time of reparenting (day {1}):</NS_PastPerformance>
   <NS_Terms>Fixed tribute remains {0} value every {1} days. Existing payment history is not erased.</NS_Terms>
   <NS_Representative>Current NPC realm representative: {0} / {1}.</NS_Representative>
   <NS_Confirm>Confirm current counterpart consent and replacement</NS_Confirm>

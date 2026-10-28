@@ -15,6 +15,7 @@ public sealed partial class LiveCharterLedger
 {
     private string reparentSnapshot;
     private NpcReparentArchive reparentHistory = new();
+    private readonly Dictionary<string, NpcReparentPlayerPerformance> reparentPerformanceCache = [];
     private void ExposeReparentHistory()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed && reparentHistory.Records.Count > 0) reparentSnapshot = reparentHistory.Export();
@@ -24,6 +25,12 @@ public sealed partial class LiveCharterLedger
     {
         if (reparentSnapshot != null) reparentHistory = NpcReparentArchive.Restore(reparentSnapshot);
         reparentHistory.ValidateBook(Book);
+    }
+    internal NpcReparentPlayerPerformance ReparentPlayerPerformance(string created)
+    {
+        if (!reparentPerformanceCache.TryGetValue(created, out var result))
+        { result = reparentHistory.PlayerPerformanceAt(created); reparentPerformanceCache[created] = result; }
+        return result;
     }
     internal Faction SubcharterRepresentative(string party)
     {
@@ -147,7 +154,15 @@ public sealed class NpcSubchartersWindow : Window
                 list.Label("NS_Link".Translate(ledger.Label(c.Terms.Liege), ledger.Label(c.Terms.Subject), ledger.PoliticalOwner(c.Terms.Subject)));
                 list.Label("NS_NativeFaction".Translate(ledger.CurrentNativeFaction(c.Terms.Subject)));
                 if (c.Reparent != null)
+                {
                     list.Label("NS_PreviousLiege".Translate(ledger.Label(ledger.Book.Charter(c.Reparent.Previous).Terms.Liege)));
+                    var past = ledger.ReparentPlayerPerformance(c.Id);
+                    if (past != null)
+                    {
+                        list.Label("NS_PastPerformance".Translate(ledger.Label(past.Liege), (past.Tick / (double)PoliticalWorld.Day).ToString("0.##")));
+                        LiveCharterLedger.DrawPerformance(list, past.Performance);
+                    }
+                }
             }
         }
         height = list.CurHeight + 20; list.End(); Widgets.EndScrollView();
