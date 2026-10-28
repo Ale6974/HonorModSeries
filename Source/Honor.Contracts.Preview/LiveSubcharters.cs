@@ -29,7 +29,8 @@ public sealed partial class LiveCharterLedger
         if (Current.ProgramState != ProgramState.Playing || Current.Game == null) throw new NpcDecisionBlocked("ND_Unavailable");
         var transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>();
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
-        if (RestoreFailed || transfers.RestoreFailed || payments.RestoreFailed || Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges ||
+        var protection = Current.Game.GetComponent<CharterProtectionLedger>();
+        if (RestoreFailed || transfers.RestoreFailed || payments.RestoreFailed || protection.RestoreFailed || Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges ||
             transfers.Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared))
             throw new ArgumentException("Resolve coordinated, physical or unavailable journals first.");
         var old = Book.Charter(previous);
@@ -43,7 +44,9 @@ public sealed partial class LiveCharterLedger
             if (SubcharterRepresentative(c.Terms.Subject) != authority) throw new ArgumentException("Align every descendant's actual realm first.");
         var observed = Observe(); long now = Find.TickManager.TicksGame;
         var plan = NpcSubcharters.ReviewAuthorized(Book, previous, parent, created ?? Guid.NewGuid().ToString("N"), decision, now, observed);
-        string stamp = JsonSerializer.Serialize(new { plan.Before, plan.After, plan.Tick, Transfers = transfers.Ledger.Export(),
+        string stamp = JsonSerializer.Serialize(new { plan.Before, plan.After, plan.Tick, Transfers = transfers.Ledger.Export(), Payments = payments.Ledger.Export(),
+            FinalConsents = finalConsents.Export(), Amendments = amendments.Export(), PlayerRenewals = playerRenewals.Export(),
+            TownLosses = townLosses.Export(), OwnershipReturns = ownershipReturns.Export(), Protection = protection.Ledger.Export(),
             Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer), Observed = observed });
         return new(plan, stamp, descendants.Length - 1, authority.Name, authority.leader.LabelShortCap) { Context = Current.Game };
     }
@@ -55,6 +58,10 @@ public sealed partial class LiveCharterLedger
             if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("NPC consent, graph or world changed.");
             var replacement = NpcSubcharters.CommitAuthorized(Book, fresh.Plan,
                 NpcDecisionAuthority.Read(Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority()), Find.TickManager.TicksGame, Observe());
+            // Retained descendants and third-party obligations must remain paired with their original records.
+            finalConsents.ValidateBook(replacement); amendments.ValidateBook(replacement); playerRenewals.ValidatePair(amendments, replacement);
+            townLosses.ValidateBook(replacement); ownershipReturns.ValidatePair(townLosses, replacement);
+            context.GetComponent<CharterProtectionLedger>().Ledger.ValidateBook(replacement);
             Book = replacement; // Only one in-memory swap, after the entire replacement has been validated.
             Messages.Message("NS_Applied".Translate(), MessageTypeDefOf.NeutralEvent);
         });
