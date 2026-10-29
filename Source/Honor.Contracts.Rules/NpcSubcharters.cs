@@ -8,17 +8,30 @@ public sealed record NpcSubcharterPlan(string Previous, string Parent, string Cr
 
 public static class NpcSubcharters
 {
+    public static NpcSubcharterPlan ReviewWitness(CharterBook source, NpcReparentWitness w)
+    {
+        if (source == null || w == null || w.Before != source.Export() || w.Parties?.Any(p => p == null) == true || w.RetainedRealms?.Any(p => p == null) == true)
+            throw new ArgumentException("Original complete scoped reparent review required.");
+        if (w.Regimes == null) return w.Parties == null ? ReviewAuthorized(source, w.Previous, w.Parent, w.Created, w.Decision, w.Tick, w.Observations)
+            : ReviewWithParties(source, w.Previous, w.Parent, w.Created, w.Decision, w.Parties, w.Tick, w.Observations);
+        ScopedNpcReparentAuthority.Validate(w);
+        return w.Parties == null ? Review(source, w.Previous, w.Parent, w.Created, new(w.Decision.Representative, w.Decision.Representative), w.Tick, w.Observations) with { Decision = w.Decision }
+            : ReviewPartyCore(source, w.Previous, w.Parent, w.Created, w.Decision, w.Parties, w.Tick, w.Observations, true);
+    }
     public static NpcSubcharterPlan ReviewWithParties(CharterBook source, string previous, string parent, string created,
         NpcRealmDecisionEvidence root, IReadOnlyList<RetainedRealmConsent> parties, long now, IEnumerable<TerritoryObservation> observations)
+        => ReviewPartyCore(source, previous, parent, created, root, parties, now, observations, false);
+    private static NpcSubcharterPlan ReviewPartyCore(CharterBook source, string previous, string parent, string created,
+        NpcRealmDecisionEvidence root, IReadOnlyList<RetainedRealmConsent> parties, long now, IEnumerable<TerritoryObservation> observations, bool scoped)
     {
-        NpcRealmDecision.Consent(root); var old = source.Charter(previous);
+        if (!scoped) NpcRealmDecision.Consent(root); var old = source.Charter(previous);
         var expected = new[] { old.Terms.Subject, old.Terms.Liege, parent }.Where(p => !source.Entity(p).Player).Distinct(StringComparer.Ordinal).ToArray();
         if (parties == null || parties.Count != expected.Length || parties.Any(p => p == null) ||
             !new HashSet<string>(expected, StringComparer.Ordinal).SetEquals(parties.Select(p => p.Party)) || parties.Select(p => p.Party).Distinct().Count() != parties.Count)
             throw new ArgumentException("Exact old liege, subject and new parent decisions required.");
         foreach (var p in parties)
         {
-            NpcRealmDecision.Consent(p.Decision);
+            if (!scoped) NpcRealmDecision.Consent(p.Decision);
             if (p.Decision.Realm != p.ActualOwner || !p.ReciprocalPeace) throw new ArgumentException("Party owner and current peaceful decision differ.");
         }
         if (parties.Any(p => p.ActualOwner == root.Realm && p.Decision != root) || parties.GroupBy(p => p.ActualOwner, StringComparer.Ordinal).Any(g => g.Select(p => p.Decision).Distinct().Count() != 1))

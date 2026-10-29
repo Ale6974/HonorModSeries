@@ -8,7 +8,14 @@ public sealed record NpcTerminationWitness(string Root, string Before, long Tick
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public DeferredNpcClosure Deferred { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ScopedNpcContractDecision[] Regimes { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public NpcOwnershipContractSettlement[] OwnershipClaims { get; init; }
 }
+/// <summary>Previous known and current observed controllers settle this contract only; no territorial title or native call is certified.</summary>
+public sealed record NpcOwnershipContractSettlement(string Party, string PreviousKnownOwner, string ActualOwner,
+    NpcRealmDecisionEvidence PreviousClaimant, bool NoRecordedLoss);
 public sealed record NpcTerminationRecord(NpcTerminationWitness Witness, string Proof, string After);
 public sealed record NpcTerminationsSave(int Version, NpcTerminationRecord[] Records);
 
@@ -17,7 +24,9 @@ public sealed class NpcSubtreeTerminations
 {
     private readonly List<NpcTerminationRecord> records = [];
     private static NpcTerminationWitness Copy(NpcTerminationWitness w) => w with {
-        Observations = w.Observations.ToArray(), Parties = w.Parties.ToArray(), Children = w.Children.ToArray() };
+        Observations = w.Observations.ToArray(), Parties = w.Parties.ToArray(), Children = w.Children.ToArray(),
+        OwnershipClaims = w.OwnershipClaims?.ToArray(),
+        Regimes = w.Regimes?.Select(s => s == null ? null : s with { Ballots = s.Ballots?.ToArray() }).ToArray() };
     public IReadOnlyList<NpcTerminationRecord> Records => records.Select(r => r with { Witness = Copy(r.Witness) }).ToArray();
     private static NpcTerminationRecord Build(NpcTerminationWitness w)
     {
@@ -28,7 +37,6 @@ public sealed class NpcSubtreeTerminations
         if (w.Deferred != null && (string.IsNullOrWhiteSpace(w.Deferred.Request) || w.Deferred.Request.Length > 120 || !CityStockProof.Valid(w.Deferred.Proof)))
             throw new ArgumentException("Invalid original deferred request link.");
         var transfers = TerritoryTransferLedger.Restore(w.Transfers); var payments = TributeLedger.Restore(w.Payments);
-        NpcRealmDecision.Consent(w.Authority);
         if (root.NpcAuthority == null || root.Phase != RecordedCharterPhase.Active || !before.PlayerManaged(root) ||
             before.Entity(root.Terms.Liege).Player || before.Entity(root.Terms.Subject).Player ||
             w.Tick < before.LastTick || w.Tick < transfers.LastTick || w.Tick < payments.LastTick || w.Tick > int.MaxValue ||
@@ -40,6 +48,10 @@ public sealed class NpcSubtreeTerminations
             !new HashSet<string>(allIds, StringComparer.Ordinal).SetEquals(w.Observations.Select(o => o.Id)))
             throw new ArgumentException("Complete original observations required.");
         var children = before.Charters.Where(c => c.Phase == RecordedCharterPhase.Active && before.IsBelow(c.Terms.Subject, root.Terms.Subject)).Select(c => c.Terms.Subject).ToArray();
+        var claimed = new HashSet<string>(StringComparer.Ordinal);
+        var contractObservations = w.Observations.ToArray();
+        if (w.OwnershipClaims != null && (w.OwnershipClaims.Length is < 1 or > CharterBook.MaxEntities || w.OwnershipClaims.Any(c => c == null) ||
+            w.OwnershipClaims.Select(c => c.Party).Distinct().Count() != w.OwnershipClaims.Length)) throw new ArgumentException("Exact unique disputed owner scope required.");
         void Scope(RetainedRealmConsent[] actual, string[] expected)
         {
             if (actual.Length != expected.Length || actual.Any(p => p == null) || actual.Select(p => p.Party).Distinct().Count() != actual.Length ||
@@ -47,15 +59,27 @@ public sealed class NpcSubtreeTerminations
                 throw new ArgumentException("Every exact original party and descendant needs a separate current decision.");
             foreach (var p in actual)
             {
-                NpcRealmDecision.Consent(p.Decision);
-                if (!p.ReciprocalPeace || p.Decision.Realm != p.ActualOwner || !transfers.VerifiedOwner(p.Party, before.Entity(p.Party).NativeOwner, p.ActualOwner))
+                if (p.Decision == null || !p.ReciprocalPeace || p.Decision.Realm != p.ActualOwner)
                     throw new ArgumentException("Current peaceful ownership and original transfer provenance required.");
+                if (transfers.VerifiedOwner(p.Party, before.Entity(p.Party).NativeOwner, p.ActualOwner)) continue;
+                var claim = w.OwnershipClaims?.SingleOrDefault(c => c.Party == p.Party);
+                var baseline = before.Entity(p.Party).NativeOwner; int at = Array.FindIndex(contractObservations, o => o.Id == p.Party);
+                if (claim == null || !claim.NoRecordedLoss || claim.ActualOwner != p.ActualOwner || claim.PreviousClaimant?.Realm != claim.PreviousKnownOwner ||
+                    claim.PreviousKnownOwner == claim.ActualOwner || claim.PreviousKnownOwner != transfers.ExpectedOwner(p.Party, baseline) ||
+                    transfers.Transfers.Any(t => t.Territory == p.Party && t.Phase == TerritoryTransferPhase.Destroyed) || at < 0 ||
+                    !contractObservations[at].Exists || contractObservations[at].Player || contractObservations[at].Eligible || contractObservations[at].NativeOwner != claim.ActualOwner)
+                    throw new ArgumentException("Unwitnessed ownership needs both current claimants and exact live, non-loss original identity.");
+                // Only the isolated contract-termination review uses this local identity view. Original raw observations and baseline remain intact.
+                contractObservations[at] = contractObservations[at] with { NativeOwner = baseline, Eligible = true };
+                claimed.Add(p.Party);
             }
         }
         Scope(w.Parties, [root.Terms.Liege, root.Terms.Subject]); Scope(w.Children, children);
-        if (w.Parties.Concat(w.Children).Select(p => p.Decision).Append(w.Authority).GroupBy(d => d.Realm, StringComparer.Ordinal).Any(g => g.Distinct().Count() != 1))
+        if (w.OwnershipClaims != null && !claimed.SetEquals(w.OwnershipClaims.Select(c => c.Party))) throw new ArgumentException("Unused or omitted disputed ownership party.");
+        ScopedNpcTerminationAuthority.Validate(w);
+        if (w.Parties.Concat(w.Children).Select(p => p.Decision).Concat((w.OwnershipClaims ?? []).Select(c => c.PreviousClaimant)).Append(w.Authority).GroupBy(d => d.Realm, StringComparer.Ordinal).Any(g => g.Distinct().Count() != 1))
             throw new ArgumentException("A realm's current decisions disagree.");
-        var plan = SubtreeRelease.Review(before, w.Root, w.Tick, w.Observations);
+        var plan = SubtreeRelease.Review(before, w.Root, w.Tick, contractObservations);
         var after = CharterBook.Restore(plan.After);
         if (before.Charters.Where(c => c.Id != w.Root).Any(c => after.Charter(c.Id) != c)) throw new ArgumentException("Termination rewrote a third-party charter.");
         var proof = RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(w))));

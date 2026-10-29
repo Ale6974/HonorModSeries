@@ -7,7 +7,8 @@ using Verse;
 namespace Honor.Contracts.Preview;
 
 internal sealed record NativeOwnershipReturn(Game Context, Settlement City, Faction From, Faction To, string Root,
-    string Book, string Losses, long Tick, long Epoch, string Transfers, string Amendments);
+    string Book, string Losses, long Tick, long Epoch, string Transfers, string Amendments)
+{ internal string ScopeSnapshot { get; init; } }
 
 public sealed partial class LiveCharterLedger
 {
@@ -51,16 +52,17 @@ public sealed partial class LiveCharterLedger
         var p = townLosses.Records.SingleOrDefault(p => p.Territory == territory && p.Resolution == null &&
             p.Kind == TownLossKind.HostileNativeOwnershipChange && p.ScopeRoot == null && p.PriorScopes == null);
         if (p == null || p.CapturingOwner != city.Faction.GetUniqueLoadID() || p.OwnerAtLoss != target.GetUniqueLoadID() ||
-            townLosses.ScopeLosses(p.Root).Length != 1 || ownershipReturns.Records.Any(r => r.Root == p.Root) ||
+            ownershipReturns.Records.Any(r => r.Root == p.Root) ||
             ownershipReturns.Records.Count >= TownOwnershipReturns.Capacity || Binding(territory).Settlement != city) return null;
         var ledger = Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger;
         string transfers = p.OwnerAtLoss == p.BaselineOwner ? null : ledger.Export();
         string lineage = transfers != null && ledger.Transfers.LastOrDefault(t => t.Territory == territory && t.Phase == TerritoryTransferPhase.Applied)?.Charter != p.Root
             ? amendments.Export() : null;
+        string scopeSnapshot = townLosses.ScopeLosses(p.Root).Length > 1 ? townLosses.Export() : null;
         var trial = new TownOwnershipReturn(p.Root, p.Territory, p.CapturingOwner, p.OwnerAtLoss, TownOwnershipReturns.LossDigest(p),
-            Find.TickManager.TicksGame, Find.TickManager.TicksGame) { Transfers = transfers, Amendments = lineage };
+            Find.TickManager.TicksGame, Find.TickManager.TicksGame) { Transfers = transfers, Amendments = lineage, ScopeSnapshot = scopeSnapshot };
         ownershipReturns.Observe(trial, townLosses, Book); // Preflight exact lineage/capacity on a copy, not a native outcome.
-        return new(Current.Game, city, city.Faction, target, p.Root, Book.Export(), townLosses.Export(), Find.TickManager.TicksGame, ownershipAttemptEpoch, transfers, lineage);
+        return new(Current.Game, city, city.Faction, target, p.Root, Book.Export(), townLosses.Export(), Find.TickManager.TicksGame, ownershipAttemptEpoch, transfers, lineage) { ScopeSnapshot = scopeSnapshot };
     }
     internal void ObserveOwnershipReturn(Settlement city, NativeOwnershipReturn before)
     {
@@ -74,7 +76,7 @@ public sealed partial class LiveCharterLedger
         var p = townLosses.Record(before.Root);
         if (Binding(p.Territory).Settlement != city || p.Territory != "territory/" + city.GetUniqueLoadID()) return;
         ownershipReturns = ownershipReturns.Observe(new TownOwnershipReturn(p.Root, p.Territory, before.From.GetUniqueLoadID(), before.To.GetUniqueLoadID(),
-            TownOwnershipReturns.LossDigest(p), before.Tick, Find.TickManager.TicksGame) { Transfers = before.Transfers, Amendments = before.Amendments }, townLosses, Book);
+            TownOwnershipReturns.LossDigest(p), before.Tick, Find.TickManager.TicksGame) { Transfers = before.Transfers, Amendments = before.Amendments, ScopeSnapshot = before.ScopeSnapshot }, townLosses, Book);
         Messages.Message("OR_Observed".Translate(city.Label), MessageTypeDefOf.NeutralEvent);
     }
 }

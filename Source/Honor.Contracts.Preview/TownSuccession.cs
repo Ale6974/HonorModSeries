@@ -122,6 +122,7 @@ public sealed partial class LiveCharterLedger
                     Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), amendments.Export());
             ownershipReturns.ValidatePair(result.Archive, result.Book);
             ownershipReturns.ValidateAmendmentPair(amendments, result.Book);
+            deferredTerminations.ValidatePairs(terminationHistory, result.Archive, result.Book);
             Book = result.Book; townLosses = result.Archive;
             Messages.Message("LS_Completed".Translate(fresh.Plan.Replacements.Count), MessageTypeDefOf.NeutralEvent);
         }, resolvingLoss: true);

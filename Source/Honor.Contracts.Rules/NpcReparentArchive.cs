@@ -10,6 +10,8 @@ public sealed record NpcReparentWitness(string Previous, string Parent, string C
     public RetainedRealmConsent[] RetainedRealms { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public RetainedRealmConsent[] Parties { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ScopedNpcContractDecision[] Regimes { get; init; }
 }
 /// <summary>Current consent to retaining this exact child's existing contract, not city or realm transfer authority.</summary>
 public sealed record RetainedRealmConsent(string Party, string ActualOwner, NpcRealmDecisionEvidence Decision, bool ReciprocalPeace);
@@ -22,14 +24,16 @@ public sealed class NpcReparentArchive
 {
     private readonly List<NpcReparentRecord> records = [];
     public IReadOnlyList<NpcReparentRecord> Records => records.Select(r => r with {
-        Witness = r.Witness with { Observations = r.Witness.Observations.ToArray(), RetainedRealms = r.Witness.RetainedRealms?.ToArray(), Parties = r.Witness.Parties?.ToArray() } }).ToArray();
+        Witness = Clone(r.Witness) }).ToArray();
+    private static NpcReparentWitness Clone(NpcReparentWitness w) => w with { Observations = w.Observations.ToArray(), RetainedRealms = w.RetainedRealms?.ToArray(), Parties = w.Parties?.ToArray(),
+        Regimes = w.Regimes?.Select(d => d == null ? null : d with { Ballots = d.Ballots?.ToArray() }).ToArray() };
     private static string Hash(NpcReparentWitness w) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(w))));
     private static NpcReparentRecord Build(NpcReparentWitness w)
     {
         if (w == null || w.Observations == null || w.Observations.Length > CharterBook.MaxEntities || w.Observations.Any(x => x == null) ||
             w.Observations.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != w.Observations.Length)
             throw new ArgumentException("Complete unique original observations required.");
-        w = w with { Observations = w.Observations.ToArray(), RetainedRealms = w.RetainedRealms?.ToArray(), Parties = w.Parties?.ToArray() };
+        w = Clone(w);
         var before = CharterBook.Restore(w.Before);
         var transfers = TerritoryTransferLedger.Restore(w.Transfers); var payments = TributeLedger.Restore(w.Payments);
         if (transfers.LastTick > w.Tick || payments.LastTick > w.Tick || transfers.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) ||
@@ -60,7 +64,7 @@ public sealed class NpcReparentArchive
             if (!descendants.Contains(party) || retained == null || !retained.ReciprocalPeace || retained.ActualOwner == w.Decision?.Realm ||
                 retained.Decision?.Realm != retained.ActualOwner || !transfers.VerifiedOwner(party, entity.NativeOwner, retained.ActualOwner))
                 throw new ArgumentException("Original actual realm and transfer provenance required for each affected party.");
-            NpcRealmDecision.Consent(retained.Decision); foreign.Add(party);
+            if (w.Regimes == null) NpcRealmDecision.Consent(retained.Decision); foreign.Add(party);
         }
         if (w.RetainedRealms != null && (!foreign.SetEquals(w.RetainedRealms.Select(r => r.Party)) ||
             w.RetainedRealms.GroupBy(r => r.ActualOwner, StringComparer.Ordinal).Any(g => g.Select(r => r.Decision).Distinct().Count() != 1)))
@@ -68,8 +72,7 @@ public sealed class NpcReparentArchive
         var allDecisions = (w.RetainedRealms ?? []).Concat(w.Parties ?? []).Select(p => p.Decision).Append(w.Decision).ToArray();
         if (allDecisions.Any(d => d == null) || allDecisions.GroupBy(d => d.Realm, StringComparer.Ordinal).Any(g => g.Distinct().Count() != 1))
             throw new ArgumentException("Original realm decisions disagree across incoming and retained parties.");
-        var plan = w.Parties == null ? NpcSubcharters.ReviewAuthorized(before, w.Previous, w.Parent, w.Created, w.Decision, w.Tick, w.Observations)
-            : NpcSubcharters.ReviewWithParties(before, w.Previous, w.Parent, w.Created, w.Decision, w.Parties, w.Tick, w.Observations);
+        var plan = NpcSubcharters.ReviewWitness(before, w);
         var after = CharterBook.Restore(plan.After); var proof = Hash(w); after.BindReparent(w.Created, w.Previous, proof);
         return new(w, proof, after.Export());
     }

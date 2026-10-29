@@ -11,6 +11,14 @@ internal static class NpcDecisionAuthority
 {
     internal static NpcRealmDecisionEvidence Read(Faction faction)
     {
+        var evidence = Observe(faction);
+        try { NpcRealmDecision.Consent(evidence); }
+        catch (ArgumentException) { throw new NpcDecisionBlocked(evidence.Regime != NpcDecisionRegime.Ordinary || !evidence.IndependentAuthority ? "ND_Unsupported" : "ND_Unavailable"); }
+        return evidence;
+    }
+    // Observation is not consent. Nonordinary callers must validate their own exact action-specific mandate.
+    internal static NpcRealmDecisionEvidence Observe(Faction faction)
+    {
         if (Current.ProgramState != ProgramState.Playing || Current.Game == null || faction?.def == null || Find.FactionManager == null || Faction.OfPlayer == null)
             throw new NpcDecisionBlocked("ND_Unavailable");
         if (faction.GetType() != typeof(Faction) || faction.def.GetType() != typeof(FactionDef) || faction.leader != null && faction.leader.GetType() != typeof(Pawn))
@@ -31,8 +39,6 @@ internal static class NpcDecisionAuthority
             leader != null && factions.Count(f => f.leader == leader) == 1,
             faction.HasGoodwill && !faction.HostileTo(Faction.OfPlayer) && !Faction.OfPlayer.HostileTo(faction) && faction.GoodwillWith(Faction.OfPlayer) >= 50,
             !UnionWarCouncil.HasExternalProvider);
-        try { NpcRealmDecision.Consent(evidence); }
-        catch (ArgumentException) { throw new NpcDecisionBlocked(regime != NpcDecisionRegime.Ordinary || !evidence.IndependentAuthority ? "ND_Unsupported" : "ND_Unavailable"); }
         return evidence;
     }
 }

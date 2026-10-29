@@ -51,7 +51,7 @@ public sealed partial class LiveCharterLedger
         if (deferredTerminationStatePairsRequired ? deferredTerminations.Records.Count == 0 || !deferredTerminationStatePairs.SequenceEqual(deferredTerminations.Records.Select(DeferredNpcTerminations.Marker))
             : deferredTerminationStatePairs.Count != 0)
             throw new ArgumentException("Deferred phase/cancellation markers are missing or changed.");
-        deferredTerminations.ValidatePairs(terminationHistory);
+        deferredTerminations.ValidatePairs(terminationHistory, townLosses, Book);
     }
     private void FinalizeNpcTerminations()
     {
@@ -63,7 +63,7 @@ public sealed partial class LiveCharterLedger
                 deferredTerminations.Records.Any(r => r.Request.Tick > Find.TickManager.TicksGame || r.ClosedTick > Find.TickManager.TicksGame))
                 throw new ArgumentException("Original NPC termination clock or peers unavailable.");
             terminationHistory.ValidateBook(Book); terminationHistory.ValidatePeers(transfers.Ledger, payments.Ledger);
-            deferredTerminations.ValidatePairs(terminationHistory);
+            deferredTerminations.ValidatePairs(terminationHistory, townLosses, Book);
         }
         catch (Exception e) when (e is ArgumentException or JsonException or InvalidOperationException)
         { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] NPC termination source/peers rejected; raw records retained."); }
@@ -83,18 +83,30 @@ public sealed partial class LiveCharterLedger
             throw new ArgumentException("Select an active NPC-only incoming contract.");
         terminationHistory.ValidateBook(Book); terminationHistory.ValidatePeers(transfers.Ledger, payments.Ledger);
         reparentHistory.ValidateBook(Book); reparentHistory.ValidatePeers(transfers.Ledger, payments.Ledger);
-        var authority = context.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority(); var decision = NpcDecisionAuthority.Read(authority);
+        var authority = context.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority(); var decision = NpcDecisionAuthority.Observe(authority);
         var realms = new HashSet<Faction> { authority };
+        var claims = new List<NpcOwnershipContractSettlement>();
         RetainedRealmConsent Read(string party)
         {
             var actual = SubcharterRepresentative(party); realms.Add(actual);
-            if (!transfers.Ledger.VerifiedOwner(party, Book.Entity(party).NativeOwner, actual.GetUniqueLoadID())) throw new ArgumentException("Original actual ownership provenance unavailable.");
-            return new(party, actual.GetUniqueLoadID(), NpcDecisionAuthority.Read(actual), true);
+            if (!transfers.Ledger.VerifiedOwner(party, Book.Entity(party).NativeOwner, actual.GetUniqueLoadID()))
+            {
+                if (transfers.IndependentlyLostTerritory(party) || transfers.Ledger.Transfers.Any(t => t.Territory == party && t.Phase == TerritoryTransferPhase.Destroyed))
+                    throw new ArgumentException("Recorded losses require their own reconciliation; a current controller cannot waive them.");
+                string previous = transfers.Ledger.ExpectedOwner(party, Book.Entity(party).NativeOwner);
+                var claimant = Find.FactionManager.AllFactionsListForReading.SingleOrDefault(f => f.GetUniqueLoadID() == previous)
+                    ?? throw new ArgumentException("Previous known claimant is unavailable.");
+                realms.Add(claimant);
+                claims.Add(new(party, previous, actual.GetUniqueLoadID(), NpcDecisionAuthority.Observe(claimant), true));
+            }
+            return new(party, actual.GetUniqueLoadID(), NpcDecisionAuthority.Observe(actual), true);
         }
         var parties = new[] { Read(root.Terms.Liege), Read(root.Terms.Subject) };
         var children = SubtreeRelease.Members(Book, rootId).Where(id => id != rootId).Select(id => Read(Book.Charter(id).Terms.Subject)).ToArray();
         if (realms.Any(a => realms.Any(b => a != b && (a.HostileTo(b) || b.HostileTo(a))))) throw new ArgumentException("Affected realms must be reciprocally peaceful.");
-        var witness = new NpcTerminationWitness(rootId, Book.Export(), Find.TickManager.TicksGame, decision, Observe(), parties, children, transfers.Ledger.Export(), payments.Ledger.Export());
+        var witness = new NpcTerminationWitness(rootId, Book.Export(), Find.TickManager.TicksGame, decision, Observe(), parties, children, transfers.Ledger.Export(), payments.Ledger.Export()) {
+            OwnershipClaims = claims.Count == 0 ? null : claims.ToArray() };
+        witness = witness with { Regimes = NativeNpcContractAuthority.Review(witness, realms) };
         terminationHistory.Append(witness, Book); // Stage complete original terms/scope and enforce capacity before confirmation.
         var stamp = JsonSerializer.Serialize(new { witness, History = terminationHistory.Export(), Reparents = reparentHistory.Export(),
             FinalConsents = finalConsents.Export(), Amendments = amendments.Export(), PlayerRenewals = playerRenewals.Export(),
@@ -113,7 +125,10 @@ public sealed partial class LiveCharterLedger
                 if (deferredTerminations.Pending != requested) throw new ArgumentException("Original deferred request changed.");
                 deferredTerminations.RequireReady(Book, context.GetComponent<TerritoryAdministrationLedger>().Ledger, context.GetComponent<TributePaymentLedger>().Ledger, Find.TickManager.TicksGame);
             }
-            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("NT_Confirm".Translate(Label(Book.Charter(root).Terms.Subject), reviewed.Witness.Children.Length), () => Execute(() => {
+            var mandate = reviewed.Witness.Regimes == null ? "" : "\n" + string.Join("\n", reviewed.Witness.Regimes.Select(s => "NT_Mandate".Translate(s.Realm,
+                s.Regime == NpcDecisionRegime.Union ? "NT_Council".Translate(s.Ballots.Length) : "NT_Ruler".Translate(s.RoyalTitle), s.Representative).ToString()));
+            if (reviewed.Witness.OwnershipClaims != null) mandate += "\n" + string.Join("\n", reviewed.Witness.OwnershipClaims.Select(c => "NT_Claims".Translate(Label(c.Party), c.PreviousKnownOwner, c.ActualOwner).ToString()));
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("NT_Confirm".Translate(Label(Book.Charter(root).Terms.Subject), reviewed.Witness.Children.Length) + mandate, () => Execute(() => {
                 if (reviewed.Context != Current.Game) throw new ArgumentException("Review this current game first.");
                 var fresh = ReviewNpcTermination(root);
                 if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("Original NPC release review changed.");
@@ -122,7 +137,7 @@ public sealed partial class LiveCharterLedger
                 var witness = requested == null ? fresh.Witness : fresh.Witness with { Deferred = new(requested.Request.Id, requested.Proof) };
                 var next = terminationHistory.Append(witness, Book);
                 var requests = requested == null ? deferredTerminations : deferredTerminations.Close(fresh.Witness.Tick, next.Archive.Records.Last().Proof);
-                requests.ValidatePairs(next.Archive);
+                requests.ValidatePairs(next.Archive, townLosses, next.Book);
                 next.Archive.ValidatePeers(context.GetComponent<TerritoryAdministrationLedger>().Ledger, context.GetComponent<TributePaymentLedger>().Ledger);
                 reparentHistory.ValidateBook(next.Book); finalConsents.ValidateBook(next.Book); amendments.ValidateBook(next.Book); playerRenewals.ValidatePair(amendments, next.Book);
                 townLosses.ValidateBook(next.Book); ownershipReturns.ValidatePair(townLosses, next.Book); context.GetComponent<CharterProtectionLedger>().Ledger.ValidateBook(next.Book);
@@ -142,16 +157,20 @@ public sealed partial class LiveCharterLedger
             if (list.ButtonText("NT_OpenTransfers".Translate())) Find.WindowStack.Add(new FollowerTransfersWindow());
             if (list.ButtonText("NT_Resume".Translate())) BeginNpcTermination(pending.Request.Root, pending);
             if (list.ButtonText("NT_Cancel".Translate())) EditDeferred(() => deferredTerminations.Close(Find.TickManager.TicksGame));
+            if (townLosses.Records.Any(p => p.Root == pending.Request.Root) && list.ButtonText("NT_AcknowledgeLoss".Translate()))
+                EditDeferred(() => deferredTerminations.AcknowledgeLoss(townLosses, Book, Find.TickManager.TicksGame));
         }
         foreach (var record in terminationHistory.Records)
             list.Label("NT_Record".Translate(Label(Book.Charter(record.Witness.Root).Terms.Subject), record.Witness.Tick, record.Witness.Children.Length));
+        foreach (var record in deferredTerminations.Records.Where(r => r.Phase == 3))
+            list.Label("NT_LossRecord".Translate(Label(Book.Charter(record.Request.Root).Terms.Subject), record.ClosedTick.Value));
     }
     private void EditDeferred(Func<DeferredNpcTerminations> action)
     {
         try
         {
             if (Current.Game != context || Current.ProgramState != ProgramState.Playing || RestoreFailed) throw new ArgumentException("Current request context unavailable.");
-            var next = action(); next.ValidatePairs(terminationHistory);
+            var next = action(); next.ValidatePairs(terminationHistory, townLosses, Book);
             if (Current.Game != context) throw new ArgumentException("Game changed before saving request.");
             deferredTerminations = next;
         }

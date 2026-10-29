@@ -11,6 +11,7 @@ public sealed record TownOwnershipReturn(string Root, string Territory, string F
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string Transfers { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string Amendments { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string ScopeSnapshot { get; init; }
 }
 public sealed record TownOwnershipReturnSave(int Version, TownOwnershipReturn[] Records);
 
@@ -25,6 +26,21 @@ public sealed class TownOwnershipReturns
     private static string Hash<T>(T value) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(value))));
     public static string LossDigest(TownLossProof loss) => Hash(loss with { Resolution = null });
     public static string ReceiptDigest(TownOwnershipReturn r) => Hash(r with { InvalidatedTick = null, AttemptedOwner = null });
+    public static string ScopeDigest(string snapshot) => snapshot == null ? null : Hash(snapshot);
+    private static void ValidateScope(TownOwnershipReturn r, TownSuccessionArchive losses, CharterBook book, bool exact)
+    {
+        if (r.ScopeSnapshot == null)
+        { if (exact && losses.ScopeLosses(r.Root).Length != 1) throw new ArgumentException("Legacy return cannot expand to a later loss scope."); return; }
+        var original = TownSuccessionArchive.Restore(r.ScopeSnapshot); losses.ValidateBook(book);
+        if (original.Records.Any(p => !losses.Records.Any(c => c.Root == p.Root && LossDigest(c) == LossDigest(p) &&
+            (p.Resolution == null || JsonSerializer.Serialize(c.Resolution) == JsonSerializer.Serialize(p.Resolution)))))
+            throw new ArgumentException("Original full loss history or prior resolved rights changed.");
+        var scope = original.ScopeLosses(r.Root); var current = losses.ScopeLosses(r.Root);
+        if (scope.Length < 2 || scope.Any(p => p.Resolution != null || p.ObservedTick > r.OccurredTick) ||
+            scope.Any(p => !current.Any(c => c.Root == p.Root && LossDigest(c) == LossDigest(p))) ||
+            exact && !new HashSet<string>(scope.Select(p => p.Root), StringComparer.Ordinal).SetEquals(current.Select(p => p.Root)))
+            throw new ArgumentException("Original compound return scope changed or is incomplete.");
+    }
     private static void Validate(TownOwnershipReturn r)
     {
         if (r == null || !Key(r.Root) || !Key(r.Territory) || !Key(r.FromOwner) || !Key(r.ReturnedOwner) || r.FromOwner == r.ReturnedOwner ||
@@ -41,6 +57,7 @@ public sealed class TownOwnershipReturns
             r.ReturnedOwner != p.OwnerAtLoss || r.LossProof != LossDigest(p) || r.OccurredTick < p.ObservedTick ||
             book.Charter(p.Root).Phase != RecordedCharterPhase.TerritoryLost)
             throw new ArgumentException("Return must match one exact original hostile loss.");
+        ValidateScope(r, losses, book, false);
         if (p.OwnerAtLoss == p.BaselineOwner)
         {
             if (r.Transfers != null || r.Amendments != null) throw new ArgumentException("An unchanged baseline must retain its original return proof shape.");
@@ -90,7 +107,8 @@ public sealed class TownOwnershipReturns
     public TownOwnershipReturns Observe(TownOwnershipReturn r, TownSuccessionArchive losses, CharterBook book)
     {
         losses.ValidateBook(book); var p = Source(r, losses, book);
-        if (p.Resolution != null || losses.ScopeLosses(p.Root).Length != 1 || book.LastTick > r.OccurredTick ||
+        ValidateScope(r, losses, book, true);
+        if (p.Resolution != null || book.LastTick > r.OccurredTick ||
             r.InvalidatedTick.HasValue || records.ContainsKey(r.Root) || records.Count >= Capacity)
             throw new ArgumentException("Duplicate, resolved or unavailable ownership-return scope.");
         var copy = Restore(Export()); copy.records.Add(r.Root, r); copy.ValidatePair(losses, book);
@@ -112,7 +130,8 @@ public sealed class TownOwnershipReturns
     {
         var r = records.TryGetValue(root ?? "", out var found) ? found : throw new ArgumentException("No positive native ownership-return observation.");
         var p = Source(r, losses, book);
-        if (p.Resolution != null || losses.ScopeLosses(p.Root).Length != 1 || r.InvalidatedTick.HasValue || now < r.ObservedTick || now > int.MaxValue || territory != r.Territory || actualOwner != r.ReturnedOwner ||
+        ValidateScope(r, losses, book, true);
+        if (p.Resolution != null || r.InvalidatedTick.HasValue || now < r.ObservedTick || now > int.MaxValue || territory != r.Territory || actualOwner != r.ReturnedOwner ||
             r.Transfers != null && r.Transfers != currentTransfers || r.Amendments != null && r.Amendments != currentAmendments)
             throw new ArgumentException("The observed ownership return is unavailable, interrupted or changed.");
         return ReceiptDigest(r);
@@ -135,7 +154,7 @@ public sealed class TownOwnershipReturns
         var completed = losses.Commit(book, plan, now, actual);
         var saved = JsonSerializer.Deserialize<TownLossSave>(completed.Archive.Export());
         var linked = TownSuccessionArchive.Restore(JsonSerializer.Serialize(saved with { Records = saved.Records.Select(p => p.Root == plan.Root ?
-            p with { Resolution = p.Resolution with { OwnershipReturnProof = proof } } : p).ToArray() }));
+            p with { Resolution = p.Resolution with { OwnershipReturnProof = proof, OwnershipReturnScopeProof = ScopeDigest(records[plan.Root].ScopeSnapshot) } } : p).ToArray() }));
         linked.ValidateBook(completed.Book); ValidatePair(linked, completed.Book); return (completed.Book, linked);
     }
     public void ValidatePair(TownSuccessionArchive losses, CharterBook book)
@@ -144,8 +163,13 @@ public sealed class TownOwnershipReturns
         foreach (var r in records.Values)
         {
             var p = Source(r, losses, book);
-            if (p.Resolution?.OwnershipReturnProof != null && (r.InvalidatedTick.HasValue || p.Resolution.OwnershipReturnProof != ReceiptDigest(r) || p.Resolution.Tick < r.ObservedTick))
-                throw new ArgumentException("Succession differs from its exact observed return.");
+            if (p.Resolution?.OwnershipReturnProof != null)
+            {
+                ValidateScope(r, losses, book, true);
+                if (r.InvalidatedTick.HasValue || p.Resolution.OwnershipReturnProof != ReceiptDigest(r) || p.Resolution.Tick < r.ObservedTick ||
+                    p.Resolution.OwnershipReturnScopeProof != ScopeDigest(r.ScopeSnapshot))
+                    throw new ArgumentException("Succession differs from its exact observed return.");
+            }
         }
         foreach (var p in losses.Records.Where(p => p.Resolution?.OwnershipReturnProof != null))
             if (!records.TryGetValue(p.Root, out var r) || ReceiptDigest(r) != p.Resolution.OwnershipReturnProof)

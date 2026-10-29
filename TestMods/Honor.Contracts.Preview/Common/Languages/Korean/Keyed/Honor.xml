@@ -520,4 +520,12 @@
   <NT_Cancel>요청만 취소(계약 유지)</NT_Cancel>
   <NT_RequestBlocked>요청을 변경하지 못했습니다. 원 기록과 계약을 유지합니다.</NT_RequestBlocked>
   <NT_OpenTransfers>원 도시 이전 확인·복구 화면 열기</NT_OpenTransfers>
+  <NT_Mandate>세력 {0}: {1} / 현재 대표 {2}. 이번 정확한 계약 종료에만 적용하는 결정입니다.</NT_Mandate>
+  <NT_Council>종료 의결 정책 v1, 실제 도시 의석 {0}개</NT_Council>
+  <NT_Ruler>현 귀족 지도자 결정, 해당 세력 작위 {0}</NT_Ruler>
+  <NT_Claims>{0}: 이전 기록상 세력 {1} / 현재 점유 세력 {2}. 양측은 이번 계약 종료와 내부 권리 유지에만 수락합니다. 영토 소유권과 점령 정당성은 확정하지 않습니다.</NT_Claims>
+  <NS_Mandate>재배치 권한 {0}: {1} / 현재 대표 {2}. 해약·도시 이전에는 쓸 수 없는 이번 재배치 전용 결정입니다.</NS_Mandate>
+  <NS_Council>재배치 정책 v1, 실제 도시 의석 {0}개</NS_Council>
+  <NS_Ruler>현 귀족 지도자, 해당 세력 작위 {0}</NS_Ruler>
+<NT_AcknowledgeLoss>기록된 영지 소실 확인</NT_AcknowledgeLoss><NT_LossRecord>{0}: 시각 {1}의 영지 소실 기록으로 요청 종료. 합의 해약이나 새 수락이 아닙니다.</NT_LossRecord>
 </LanguageData>

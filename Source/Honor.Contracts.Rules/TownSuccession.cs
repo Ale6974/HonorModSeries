@@ -6,6 +6,7 @@ public sealed record TownSuccessionReceipt(string Parent, long Tick, NpcCharterA
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ScopeCompletion = null)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string OwnershipReturnProof { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string OwnershipReturnScopeProof { get; init; }
 }
 public enum TownLossKind { Destroyed, HostileNativeOwnershipChange }
 public sealed record TownLossProof(string Root, string Territory, string BaselineOwner, string OwnerAtLoss, string Label,
@@ -129,8 +130,12 @@ public sealed partial class TownSuccessionArchive
             var source = Source(proof); var expected = source.Charter(proof.Root) with { Phase = RecordedCharterPhase.TerritoryLost, TerritoryLostTick = proof.LossTick };
             if (current.Charter(proof.Root) != expected || (proof.ClosureTick ?? proof.ObservedTick) > current.LastTick) throw new ArgumentException("Historical town loss differs from book.");
             if (proof.Resolution == null) continue;
+            if (proof.Resolution.OwnershipReturnScopeProof != null && (proof.Resolution.OwnershipReturnProof == null ||
+                !CityStockProof.Valid(proof.Resolution.OwnershipReturnScopeProof) || proof.Resolution.ScopeCompletion != proof.Root || ScopeRecords(proof.Root).Length < 2))
+                throw new ArgumentException("Compound return needs its distinct original scope witness.");
             if (proof.Resolution.OwnershipReturnProof != null && (!CityStockProof.Valid(proof.Resolution.OwnershipReturnProof) ||
-                proof.Kind != TownLossKind.HostileNativeOwnershipChange || proof.ScopeRoot != null || proof.PriorScopes != null || ScopeRecords(proof.Root).Length != 1))
+                proof.Kind != TownLossKind.HostileNativeOwnershipChange || proof.ScopeRoot != null || proof.PriorScopes != null ||
+                proof.Resolution.OwnershipReturnScopeProof == null && ScopeRecords(proof.Root).Length != 1))
                 throw new ArgumentException("Ownership-return proof requires one isolated hostile-loss succession.");
             if (proof.Resolution.Tick < (proof.ClosureTick ?? proof.ObservedTick)) throw new ArgumentException("Succession cannot precede actual contractual loss closure.");
             if (proof.ScopeRoot != null || proof.Resolution.ScopeCompletion != null) { ValidateCascadeReceipt(current, proof); continue; }

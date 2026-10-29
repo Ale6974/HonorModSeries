@@ -520,4 +520,12 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <NT_Cancel>Cancel request only (keep contracts)</NT_Cancel>
   <NT_RequestBlocked>The request could not be changed. Original records and contracts are retained.</NT_RequestBlocked>
   <NT_OpenTransfers>Open original city transfer review/recovery</NT_OpenTransfers>
+  <NT_Mandate>Realm {0}: {1}; current representative {2}. This decision is only for this exact contract termination.</NT_Mandate>
+  <NT_Council>termination council policy v1, {0} actual city seats</NT_Council>
+  <NT_Ruler>current royal ruler mandate, own-realm title {0}</NT_Ruler>
+  <NT_Claims>{0}: previous known controller {1}, current observed controller {2}. Both accept this contract termination and retained internal rights only; territorial ownership and capture legitimacy remain unresolved.</NT_Claims>
+  <NS_Mandate>Reparent authority {0}: {1}; current representative {2}. This vote/mandate does not authorize termination or city transfer.</NS_Mandate>
+  <NS_Council>reparent policy v1 with {0} actual city seats</NS_Council>
+  <NS_Ruler>current titled ruler, own-realm title {0}</NS_Ruler>
+<NT_AcknowledgeLoss>Acknowledge recorded territorial loss</NT_AcknowledgeLoss><NT_LossRecord>{0}: request closed by recorded territorial loss at tick {1}; no mutual release or new consent.</NT_LossRecord>
 </LanguageData>

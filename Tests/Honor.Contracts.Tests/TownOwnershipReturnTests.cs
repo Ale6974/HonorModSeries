@@ -34,6 +34,23 @@ internal static class TownOwnershipReturnTests
         recorded.ValidatePair(extendedLosses, extendedBook);
         Reject(() => recorded.RequireActive("root", extendedLosses, extendedBook, "upper", "realm", 23),
             "later child losses preserve historical return evidence but cannot broaden isolated return authority");
+        var compoundWitness = witness with { OccurredTick = 23, ObservedTick = 24, ScopeSnapshot = extendedLosses.Export() };
+        var compound = new TownOwnershipReturns().Observe(compoundWitness, extendedLosses, extendedBook);
+        var compoundObservations = obs.Select(o => o.Id == "a" ? o with { Exists = false, Eligible = false } : o).ToArray();
+        var compoundProof = compound.RequireActive("root", extendedLosses, extendedBook, "upper", "realm", 24);
+        var compoundPlan = extendedLosses.Review("root", extendedBook, "compound", new("p", "current-ruler"), 24, compoundObservations);
+        var compoundDone = compound.CommitSuccession(extendedLosses, extendedBook, compoundPlan, 24, compoundObservations, compoundProof);
+        Check(compoundDone.Book.Charter("root").Phase == RecordedCharterPhase.TerritoryLost && compoundDone.Book.Charter("child-a").Phase == RecordedCharterPhase.TerritoryLost,
+            "compound return does not revive either lost original contract");
+        Check(compoundDone.Archive.Record("root").Resolution.OwnershipReturnScopeProof == TownOwnershipReturns.ScopeDigest(compoundWitness.ScopeSnapshot), "compound receipt pairs exact original scope");
+        Check(compoundPlan.Replacements.Count == 2 && compoundDone.Book.Charter(compoundPlan.Replacements["deep"]).Terms == book.Charter("deep").Terms with { Liege = "p" }, "surviving deep child skips positively lost parent without losing its terms");
+        TownOwnershipReturns.Restore(compound.Export()).ValidatePair(TownSuccessionArchive.Restore(compoundDone.Archive.Export()), CharterBook.Restore(compoundDone.Book.Export()));
+        Check(compoundDone.Archive.Records.All(p => p.Resolution != null), "full original compound scope reconnects together");
+        Reject(() => new TownOwnershipReturns().Observe(compoundWitness with { ScopeSnapshot = losses.Export() }, extendedLosses, extendedBook), "isolated snapshot cannot authorize a compound return");
+        Reject(() => new TownOwnershipReturns().Observe(compoundWitness with { OccurredTick = 21, ObservedTick = 24 }, extendedLosses, extendedBook), "scope cannot contain losses after native return");
+        Reject(() => new TownOwnershipReturns().ValidatePair(compoundDone.Archive, compoundDone.Book), "compound closure requires original native witness");
+        var missingScopeSave = System.Text.Json.JsonSerializer.Deserialize<TownLossSave>(compoundDone.Archive.Export());
+        Reject(() => compound.ValidatePair(TownSuccessionArchive.Restore(System.Text.Json.JsonSerializer.Serialize(missingScopeSave with { Records = missingScopeSave.Records.Select(p => p.Root == "root" ? p with { Resolution = p.Resolution with { OwnershipReturnScopeProof = null } } : p).ToArray() })), compoundDone.Book), "compound closure cannot lose its distinct scope marker");
         string proof = reloaded.RequireActive("root", losses, book, "upper", "realm", 21);
         Reject(() => returns.Observe(witness with { FromOwner = "foreign" }, losses, book), "return must start at actual recorded captor");
         Reject(() => returns.Observe(witness with { ReturnedOwner = "foreign" }, losses, book), "return must end at original actual baseline realm");

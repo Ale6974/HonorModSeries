@@ -154,6 +154,90 @@ internal static class MixedRealmReparentTests
         var changedPrefix = TerritoryTransferLedger.Restore(JsonSerializer.Serialize(pendingSave with { Transfers = pendingSave.Transfers.Select(t => t.Id == "pending-a" ? t with { CityCallJournalV1 = false } : t).ToArray() }));
         Reject(() => deferred.RequireReady(three.Book, changedPrefix, payments, now));
         Check(DeferredNpcTerminations.Restore(cancelled.Export()).Records.Single().Request == request);
+        NpcTerminationWitness RegimeWitness(NpcDecisionRegime regime)
+        {
+            var d = authority with { Regime = regime };
+            return termination with { Authority = d, Parties = termination.Parties.Select(p => p.ActualOwner == "realm" ? p with { Decision = d } : p).ToArray() };
+        }
+        var unionWitness = RegimeWitness(NpcDecisionRegime.Union);
+        var unionDecision = new ScopedNpcContractDecision("realm", "ruler", NpcDecisionRegime.Union, ScopedNpcTerminationAuthority.Scope(unionWitness), unionWitness.Tick, 1, 65,
+            new[] { new NpcTerminationBallot("seat-1", true), new NpcTerminationBallot("seat-2", true), new NpcTerminationBallot("seat-3", true) });
+        unionWitness = unionWitness with { Regimes = [unionDecision] };
+        var unionEnd = new NpcSubtreeTerminations().Append(unionWitness, three.Book);
+        Check(unionEnd.Book.Charter("e-a").Phase == RecordedCharterPhase.Released && unionEnd.Book.Charter("a-c") == three.Book.Charter("a-c"));
+        var unionRestored = NpcSubtreeTerminations.Restore(unionEnd.Archive.Export()); unionRestored.ValidateBook(unionEnd.Book); unionRestored.ValidatePeers(threeTransfers, payments);
+        Check(unionRestored.Records.Single().Witness.Regimes.Single().Ballots.Length == 3);
+        var unionRaw = unionRestored.Export(); unionRestored.Records[0].Witness.Regimes[0].Ballots[0] = new("wrong", false); Check(unionRestored.Export() == unionRaw);
+        Reject(() => NpcRealmDecision.Consent(unionWitness.Authority));
+        Reject(() => new NpcSubtreeTerminations().Append(unionWitness with { Regimes = null }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(unionWitness with { Regimes = [unionDecision with { Scope = new string('a', 64) }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(unionWitness with { Regimes = [unionDecision with { Tick = unionWitness.Tick - 1 }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(unionWitness with { Regimes = [unionDecision with { Representative = "substitute" }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(unionWitness with { Regimes = [unionDecision with { Ballots = [new("duplicate", true), new("duplicate", true)] }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(unionWitness with { Regimes = [unionDecision with { Ballots = [new("seat-1", false)] }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(unionWitness with { Regimes = [unionDecision with { RoyalTitle = "invented" }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(unionWitness with { Payments = new TributeLedger().Export() }, three.Book));
+        var royalWitness = RegimeWitness(NpcDecisionRegime.Royal);
+        var royalDecision = new ScopedNpcContractDecision("realm", "ruler", NpcDecisionRegime.Royal, ScopedNpcTerminationAuthority.Scope(royalWitness), royalWitness.Tick, 1, 65, [], "Stellarch", 60);
+        royalWitness = royalWitness with { Regimes = [royalDecision] };
+        var royalEnd = new NpcSubtreeTerminations().Append(royalWitness, three.Book);
+        NpcSubtreeTerminations.Restore(royalEnd.Archive.Export()).ValidateBook(royalEnd.Book); Check(royalEnd.Book.Charter("a-d") == three.Book.Charter("a-d"));
+        Reject(() => NpcRealmDecision.Consent(royalWitness.Authority));
+        Reject(() => new NpcSubtreeTerminations().Append(royalWitness with { Regimes = [royalDecision with { RoyalTitle = null }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(royalWitness with { Regimes = [royalDecision with { Seniority = 0 }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(royalWitness with { Regimes = [royalDecision with { Ballots = [new("fake-noble", true)] }] }, three.Book));
+        Check(!ended.Archive.Export().Contains("Regimes"));
+        var occupier = sourceDecision with { Realm = "unwitnessed-controller", Representative = "occupier-ruler" };
+        var claim = new NpcOwnershipContractSettlement("a", "foreign-a", occupier.Realm, sourceDecision, true);
+        var disputed = termination with {
+            Parties = termination.Parties.Select(p => p.Party == "a" ? p with { ActualOwner = occupier.Realm, Decision = occupier } : p).ToArray(),
+            Observations = termination.Observations.Select(o => o.Id == "a" ? o with { NativeOwner = occupier.Realm, Eligible = false } : o).ToArray(),
+            OwnershipClaims = [claim] };
+        var disputeEnd = new NpcSubtreeTerminations().Append(disputed, three.Book);
+        Check(disputeEnd.Book.Charter("e-a").Phase == RecordedCharterPhase.Released && disputeEnd.Book.Entity("a").NativeOwner == three.Book.Entity("a").NativeOwner);
+        Check(disputeEnd.Book.Charter("a-c") == three.Book.Charter("a-c") && disputeEnd.Book.Charter("debt") == three.Book.Charter("debt"));
+        Check(disputeEnd.Book.Availability("a", disputed.Observations) == CharterAvailability.OwnershipChanged && !threeTransfers.VerifiedOwner("a", "realm", occupier.Realm));
+        var disputeRestored = NpcSubtreeTerminations.Restore(disputeEnd.Archive.Export()); disputeRestored.ValidateBook(disputeEnd.Book); disputeRestored.ValidatePeers(threeTransfers, payments);
+        Check(disputeRestored.Records.Single().Witness.Observations.Single(o => o.Id == "a").NativeOwner == occupier.Realm);
+        var disputeRaw = disputeRestored.Export(); disputeRestored.Records[0].Witness.OwnershipClaims[0] = claim with { NoRecordedLoss = false }; Check(disputeRestored.Export() == disputeRaw);
+        Reject(() => new NpcSubtreeTerminations().Append(disputed with { OwnershipClaims = null }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(disputed with { OwnershipClaims = [claim with { PreviousKnownOwner = "invented" }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(disputed with { OwnershipClaims = [claim with { PreviousClaimant = null }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(disputed with { OwnershipClaims = [claim with { NoRecordedLoss = false }] }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(disputed with { Observations = disputed.Observations.Select(o => o.Id == "a" ? o with { Exists = false } : o).ToArray() }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(disputed with { Observations = disputed.Observations.Select(o => o.Id == "a" ? o with { Player = true } : o).ToArray() }, three.Book));
+        Reject(() => new NpcSubtreeTerminations().Append(termination with { OwnershipClaims = [claim] }, three.Book));
+        Check(!ended.Archive.Export().Contains("OwnershipClaims"));
+        var unionRoot = authority with { Regime = NpcDecisionRegime.Union };
+        var scopedReparent = incoming with { Decision = unionRoot, Parties = incoming.Parties.Select(p => p.ActualOwner == "realm" ? p with { Decision = unionRoot } : p).ToArray() };
+        var reparentCouncil = unionDecision with { Scope = ScopedNpcReparentAuthority.Scope(scopedReparent), Tick = scopedReparent.Tick };
+        scopedReparent = scopedReparent with { Regimes = [reparentCouncil] };
+        var councilReparent = archive.Append(scopedReparent, book);
+        Check(councilReparent.Book.Charter("cross-b-a").NpcAuthority == new NpcCharterAuthority("ruler", "actual-ruler-a") && councilReparent.Book.Charter("a-c") == book.Charter("a-c"));
+        NpcReparentArchive.Restore(councilReparent.Archive.Export()).ValidateBook(councilReparent.Book); Check(councilReparent.Archive.Records.Last().Witness.Regimes[0].Ballots.Length == 3);
+        Reject(() => archive.Append(scopedReparent with { Regimes = [unionDecision] }, book));
+        Reject(() => archive.Append(scopedReparent with { Created = "different-new-contract" }, book));
+        Reject(() => archive.Append(scopedReparent with { Regimes = null }, book));
+        var crownRoot = authority with { Regime = NpcDecisionRegime.Royal };
+        var crownReparent = incoming with { Decision = crownRoot, Parties = incoming.Parties.Select(p => p.ActualOwner == "realm" ? p with { Decision = crownRoot } : p).ToArray() };
+        crownReparent = crownReparent with { Regimes = [royalDecision with { Scope = ScopedNpcReparentAuthority.Scope(crownReparent), Tick = crownReparent.Tick }] };
+        var crowned = archive.Append(crownReparent, book); NpcReparentArchive.Restore(crowned.Archive.Export()).ValidateBook(crowned.Book);
+        Check(crowned.Book.Charter("a-d") == book.Charter("a-d") && crowned.Book.Charter("debt") == book.Charter("debt"));
+        Check(!archive.Export().Contains("Regimes"));
+        var requestLoss = new TownLossProof("e-a", "a", "realm", "foreign-a", "A", now + 1, now + 2, request.Book);
+        var lossArchive = new TownSuccessionArchive();
+        var lossBook = lossArchive.CloseForObservation(requestLoss); lossArchive = lossArchive.Observe(requestLoss, lossBook);
+        var acknowledged = deferred.AcknowledgeLoss(lossArchive, lossBook, now + 3);
+        acknowledged.ValidatePairs(new NpcSubtreeTerminations(), lossArchive, lossBook);
+        Check(acknowledged.Pending == null && acknowledged.Records.Single().Phase == 3 && lossBook.Charter("e-a").Phase == RecordedCharterPhase.TerritoryLost);
+        Check(lossBook.Charter("a-c") == three.Book.Charter("a-c") && lossBook.Charter("debt") == three.Book.Charter("debt"));
+        var reloadedLossRequest = DeferredNpcTerminations.Restore(acknowledged.Export());
+        reloadedLossRequest.ValidatePairs(new NpcSubtreeTerminations(), TownSuccessionArchive.Restore(lossArchive.Export()), CharterBook.Restore(lossBook.Export()));
+        Check(reloadedLossRequest.Export() == acknowledged.Export() && DeferredNpcTerminations.Marker(acknowledged.Records.Single()) != DeferredNpcTerminations.Marker(deferred.Pending));
+        Reject(() => acknowledged.ValidatePairs(new NpcSubtreeTerminations()));
+        Reject(() => acknowledged.ValidatePairs(new NpcSubtreeTerminations(), new TownSuccessionArchive(), lossBook));
+        Reject(() => deferred.AcknowledgeLoss(new TownSuccessionArchive(), three.Book, now + 3));
+        Check(!cancelled.Export().Contains("\"Loss\""));
         return n;
     }
 }
