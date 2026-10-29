@@ -11,12 +11,18 @@ public sealed record LiveTownSuccessionReview(TownSuccessionPlan Plan, string St
     public string OwnershipReturnProof { get; init; }
     public bool SeparateRealm { get; init; }
     public Dictionary<string, string> ReturnProofs { get; init; }
+    public TownSuccessionMandate Government { get; init; }
+    public HistoricalTownReturnReview Historical { get; init; }
 }
 
 public sealed partial class LiveCharterLedger
 {
     private string townLossSnapshot;
     private TownSuccessionArchive townLosses = new();
+    private TownSuccessionMandates townGovernments = new();
+    private string townGovernmentSnapshot;
+    private HistoricalTownReturnReconciliations townReturnReconciliations = new();
+    private string townReturnReconciliationSnapshot;
     internal IReadOnlyCollection<TownLossProof> TownLosses => townLosses.Records;
     internal bool TownLossReviewRoot(string id) => townLosses.IsReviewRoot(id);
     internal bool UnresolvedTownLosses => townLosses.HasUnresolved;
@@ -30,6 +36,10 @@ public sealed partial class LiveCharterLedger
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) townLossSnapshot = townLosses.Export();
         Scribe_Values.Look(ref townLossSnapshot, "honorUpperTownLossesV1");
+        if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed && townGovernments.Records.Count > 0) townGovernmentSnapshot = townGovernments.Export();
+        Scribe_Values.Look(ref townGovernmentSnapshot, "honorTownSuccessionGovernmentsV1");
+        if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed && townReturnReconciliations.Records.Count > 0) townReturnReconciliationSnapshot = townReturnReconciliations.Export();
+        Scribe_Values.Look(ref townReturnReconciliationSnapshot, "honorHistoricalTownReturnReconciliationsV1");
         ExposeOwnershipReturns();
     }
     private void ValidateTownLosses()
@@ -37,6 +47,10 @@ public sealed partial class LiveCharterLedger
         if (townLossSnapshot != null) townLosses = TownSuccessionArchive.Restore(townLossSnapshot);
         townLosses.ValidateBook(Book);
         ValidateOwnershipReturns();
+        if (townGovernmentSnapshot != null) townGovernments = TownSuccessionMandates.Restore(townGovernmentSnapshot);
+        townGovernments.ValidatePair(townLosses, Book);
+        if (townReturnReconciliationSnapshot != null) townReturnReconciliations = HistoricalTownReturnReconciliations.Restore(townReturnReconciliationSnapshot);
+        townReturnReconciliations.ValidatePair(townLosses, Book, ownershipReturns);
     }
     public LiveTownSuccessionReview ReviewTownSuccession(string root, string prefix = null)
     {
@@ -46,6 +60,7 @@ public sealed partial class LiveCharterLedger
         var proof = townLosses.Record(root);
         string returnProof = null;
         var returnProofs = new Dictionary<string, string>(StringComparer.Ordinal);
+        var actualOwners = new Dictionary<string, string>(StringComparer.Ordinal); bool historical = false;
         foreach (var loss in townLosses.ScopeLosses(root))
         {
             var lostCity = Binding(loss.Territory).Settlement;
@@ -58,10 +73,18 @@ public sealed partial class LiveCharterLedger
             {
                 if (lostCity == null || lostCity.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(lostCity))
                     throw new ArgumentException("The observed town is unavailable.");
+                actualOwners.Add(loss.Root, lostCity.Faction?.GetUniqueLoadID());
                 if (lostCity.Faction?.GetUniqueLoadID() != loss.CapturingOwner)
                 {
-                    var returned = ownershipReturns.RequireActiveWithLineage(loss.Root, townLosses, Book, "territory/" + lostCity.GetUniqueLoadID(),
-                        lostCity.Faction?.GetUniqueLoadID(), Find.TickManager.TicksGame, Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), amendments.Export());
+                    string returned;
+                    try { returned = ownershipReturns.RequireActiveWithLineage(loss.Root, townLosses, Book, "territory/" + lostCity.GetUniqueLoadID(),
+                        lostCity.Faction?.GetUniqueLoadID(), Find.TickManager.TicksGame, Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), amendments.Export()); }
+                    catch (ArgumentException)
+                    {
+                        returned = ownershipReturns.ReviewHistoricalFact(loss.Root, townLosses, Book, lostCity.Faction?.GetUniqueLoadID(), Find.TickManager.TicksGame,
+                            Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), amendments.Export());
+                        historical = true;
+                    }
                     returnProofs.Add(loss.Root, returned); if (loss.Root == root) returnProof = returned;
                 }
             }
@@ -72,13 +95,12 @@ public sealed partial class LiveCharterLedger
         var owners = Find.FactionManager.AllFactionsListForReading.Where(f => f != null && f.GetUniqueLoadID() == proof.OwnerAtLoss).Take(2).ToArray();
         if (owners.Length != 1) throw new ArgumentException("The recorded NPC realm must still have one exact registered identity.");
         var authority = owners[0];
-        var decision = NpcDecisionAuthority.Read(authority);
-        if (authority == null || authority.def == null || authority.IsPlayer || authority.def.defName == UnionPoliticsLedger.UnionDefName ||
-            authority.def.royalTitleTags?.Count > 0 ||
+        var decision = NpcDecisionAuthority.Observe(authority);
+        if (authority == null || authority.def == null || authority.IsPlayer ||
             authority.GetUniqueLoadID() != proof.OwnerAtLoss || authority.leader == null || authority.leader.Dead ||
             authority.leader.Destroyed || authority.leader.Downed || authority.leader.InMentalState || authority.leader.IsPrisoner || authority.leader.IsSlave ||
             authority.leader.Faction != authority || authority.GoodwillWith(Faction.OfPlayer) < 50)
-            throw new ArgumentException("Same surviving willing realm representative is required; collective union succession is not implemented.");
+            throw new ArgumentException("Same surviving willing realm representative is required.");
         bool playerParent = Book.Entity(original.Terms.Liege).Player;
         var higher = Binding(original.Terms.Liege);
         if (playerParent && (original.Terms.Liege != PlayerIdentity || !higher.PlayerGroup || higher.FactionGroup || higher.OriginalFaction != Faction.OfPlayer ||
@@ -86,11 +108,26 @@ public sealed partial class LiveCharterLedger
         var actualHigher = playerParent ? Faction.OfPlayer : SubcharterRepresentative(original.Terms.Liege);
         if (!playerParent && actualHigher != authority)
             throw new ArgumentException("The surviving higher liege is not represented by this realm.");
-        var consent = TownSuccessionAuthority.Review(decision, proof.OwnerAtLoss, original.Terms.Liege, playerParent, PlayerIdentity,
-            Faction.OfPlayer.GetUniqueLoadID(), actualHigher.GetUniqueLoadID());
+        var consent = decision.Regime == NpcDecisionRegime.Ordinary ? TownSuccessionAuthority.Review(decision, proof.OwnerAtLoss, original.Terms.Liege, playerParent, PlayerIdentity,
+            Faction.OfPlayer.GetUniqueLoadID(), actualHigher.GetUniqueLoadID()) : new NpcCharterAuthority(playerParent ? original.Terms.Liege : decision.Representative, decision.Representative);
         long now = Find.TickManager.TicksGame;
         var plan = townLosses.Review(root, Book, prefix ?? Guid.NewGuid().ToString("N"),
             consent, now, Observe());
+        TownSuccessionMandate government = null;
+        var currentDecision = new TownSuccessionMandate(plan, townLosses.Export(), Observe(), PlayerIdentity, Faction.OfPlayer.GetUniqueLoadID(), actualHigher.GetUniqueLoadID(), decision, null);
+        if (decision.Regime != NpcDecisionRegime.Ordinary)
+        {
+            government = currentDecision;
+            government = government with { Mandate = NativeNpcContractAuthority.ReviewSuccession(government, authority) };
+            TownSuccessionMandates.ValidateWitness(government);
+            currentDecision = government;
+        }
+        HistoricalTownReturnReview historicalReview = null;
+        if (historical)
+        {
+            historicalReview = new(currentDecision, ownershipReturns.Export(), Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), amendments.Export(), actualOwners, returnProofs);
+            HistoricalTownReturnReconciliations.Review(historicalReview);
+        }
         var current = plan.Descendants.Select(Book.Charter).ToArray();
         var actual = new List<object>();
         foreach (var c in current)
@@ -106,10 +143,12 @@ public sealed partial class LiveCharterLedger
             Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer),
             Higher = actualHigher.GetUniqueLoadID(), Consent = consent,
             Transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), Observations = Observe(),
-            OwnershipReturns = ownershipReturns.Export(), Amendments = amendments.Export(), ReturnProof = returnProof, ReturnProofs = returnProofs });
+            OwnershipReturns = ownershipReturns.Export(), Amendments = amendments.Export(), ReturnProof = returnProof, ReturnProofs = returnProofs, Government = government, GovernmentHistory = townGovernments.Export(), Historical = historicalReview, HistoricalHistory = townReturnReconciliations.Export() });
         return new(plan, stamp, authority.Name, authority.leader.LabelShortCap, Current.Game) {
             OwnershipReturnProof = returnProof,
             ReturnProofs = returnProofs,
+            Government = government,
+            Historical = historicalReview,
             SeparateRealm = authority != Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority() };
     }
     public void ApplyTownSuccession(LiveTownSuccessionReview reviewed)
@@ -122,7 +161,14 @@ public sealed partial class LiveCharterLedger
                 if (separator < 1) throw new ArgumentException("Invalid succession identity."); prefix = sample.Substring(0, separator); }
             var fresh = ReviewTownSuccession(reviewed.Plan.Root, prefix);
             if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("Succession authority or source changed.");
-            var result = fresh.ReturnProofs.Count == 0 ? townLosses.Commit(Book, fresh.Plan, Find.TickManager.TicksGame, Observe()) :
+            var reconciliations = townReturnReconciliations;
+            (CharterBook Book, TownSuccessionArchive Archive) result;
+            if (fresh.Historical != null)
+            {
+                var resolved = townReturnReconciliations.Execute(fresh.Historical, ownershipReturns, townLosses, Book);
+                result = (resolved.Book, resolved.Archive); reconciliations = resolved.History;
+            }
+            else result = fresh.ReturnProofs.Count == 0 ? townLosses.Commit(Book, fresh.Plan, Find.TickManager.TicksGame, Observe()) :
                 ownershipReturns.CommitSuccessionGroup(townLosses, Book, fresh.Plan, Find.TickManager.TicksGame, Observe(), fresh.ReturnProofs,
                     townLosses.ScopeLosses(fresh.Plan.Root).Where(p => p.Kind == TownLossKind.HostileNativeOwnershipChange).ToDictionary(p => p.Root,
                         p => Binding(p.Territory).Settlement?.Faction?.GetUniqueLoadID(), StringComparer.Ordinal),
@@ -130,8 +176,16 @@ public sealed partial class LiveCharterLedger
             ownershipReturns.ValidatePair(result.Archive, result.Book);
             ownershipReturns.ValidateAmendmentPair(amendments, result.Book);
             deferredTerminations.ValidatePairs(terminationHistory, result.Archive, result.Book);
+            var governments = townGovernments;
+            if (fresh.Government != null)
+            {
+                var linked = townGovernments.Attach(fresh.Government, result.Archive, result.Book);
+                governments = linked.History; result = (result.Book, linked.Archive);
+            }
+            governments.ValidatePair(result.Archive, result.Book);
+            reconciliations.ValidatePair(result.Archive, result.Book, ownershipReturns);
             if (ReviewTownSuccession(fresh.Plan.Root, prefix).Stamp != fresh.Stamp) throw new ArgumentException("Current complete loss scope or individual returns changed before assignment.");
-            Book = result.Book; townLosses = result.Archive;
+            Book = result.Book; townLosses = result.Archive; townGovernments = governments; townReturnReconciliations = reconciliations;
             Messages.Message("LS_Completed".Translate(fresh.Plan.Replacements.Count), MessageTypeDefOf.NeutralEvent);
         }, resolvingLoss: true);
     }
@@ -155,6 +209,7 @@ public sealed class TownSuccessionWindow : Window
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 24, height));
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, Mathf.Max(12000, height + 1000)));
         list.Label("LS_Warning".Translate());
+        list.Label("LS_CurrentAuthority".Translate());
         list.Label("ND_Limits".Translate());
         list.Label("HL_Limits".Translate());
         list.Label("OR_Limits".Translate());

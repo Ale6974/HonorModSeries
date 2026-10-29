@@ -39,6 +39,34 @@ internal static class TownOwnershipReturnTests
         var compoundObservations = obs.Select(o => o.Id == "a" ? o with { Exists = false, Eligible = false } : o).ToArray();
         var compoundProof = compound.RequireActive("root", extendedLosses, extendedBook, "upper", "realm", 24);
         var compoundPlan = extendedLosses.Review("root", extendedBook, "compound", new("p", "current-ruler"), 24, compoundObservations);
+        var currentDecision = new NpcRealmDecisionEvidence("realm", "current-ruler", NpcDecisionRegime.Ordinary, true, true, true, true, true, true);
+        var currentReview = new TownSuccessionMandate(compoundPlan, extendedLosses.Export(), compoundObservations, "p", "player", "player", currentDecision, null);
+        var historicalReview = new HistoricalTownReturnReview(currentReview, recorded.Export(), null, null,
+            new Dictionary<string, string> { ["root"] = "realm" }, new Dictionary<string, string> { ["root"] = TownOwnershipReturns.ReceiptDigest(witness) });
+        var reconciled = new HistoricalTownReturnReconciliations().Execute(historicalReview, recorded, extendedLosses, extendedBook);
+        Check(reconciled.Archive.Record("root").Resolution.HistoricalReturnProof != null && reconciled.Archive.Record("root").Resolution.OwnershipReturnProof == null,
+            "new current scope consent is separate from unchanged old isolated return permission");
+        Check(recorded.Export() == reloaded.Export() && reconciled.Book.Charter("root").Phase == RecordedCharterPhase.TerritoryLost, "historical reconciliation never rewrites old receipt or revives root");
+        HistoricalTownReturnReconciliations.Restore(reconciled.History.Export()).ValidatePair(TownSuccessionArchive.Restore(reconciled.Archive.Export()), CharterBook.Restore(reconciled.Book.Export()), TownOwnershipReturns.Restore(recorded.Export()));
+        Reject(() => new HistoricalTownReturnReconciliations().ValidatePair(reconciled.Archive, reconciled.Book, recorded), "new separate reconciliation must survive with its scope marker");
+        Reject(() => reconciled.History.ValidatePair(reconciled.Archive, reconciled.Book, new TownOwnershipReturns()), "old positive fact cannot disappear after new reconciliation");
+        Reject(() => HistoricalTownReturnReconciliations.Review(historicalReview with { Facts = new Dictionary<string, string>() }), "no owner-only reconstruction");
+        Reject(() => HistoricalTownReturnReconciliations.Review(historicalReview with { Current = currentReview with { Decision = currentDecision with { Willing = false } } }), "new current willingness remains mandatory");
+        Reject(() => HistoricalTownReturnReconciliations.Review(historicalReview with { Returns = recorded.Invalidate("root", 23, "other").Export() }), "intervening attempted ownership invalidates original fact");
+        Reject(() => recorded.RequireActive("root", extendedLosses, extendedBook, "upper", "realm", 24), "legacy permission API still cannot authorize expanded scope after new review");
+        foreach (var regime in new[] { NpcDecisionRegime.Union, NpcDecisionRegime.Royal })
+        {
+            var d = currentDecision with { Regime = regime };
+            var gov = currentReview with { Decision = d };
+            gov = gov with { Mandate = new(d.Realm, d.Representative, regime, TownSuccessionMandates.Scope(gov), gov.Plan.Tick, 1, 70,
+                regime == NpcDecisionRegime.Union ? [new("actual-seat", true)] : [], regime == NpcDecisionRegime.Royal ? "Stellarch" : null, regime == NpcDecisionRegime.Royal ? 60 : 0) };
+            var newReview = historicalReview with { Current = gov };
+            var resolved = new HistoricalTownReturnReconciliations().Execute(newReview, recorded, extendedLosses, extendedBook);
+            var govPair = new TownSuccessionMandates().Attach(gov, resolved.Archive, resolved.Book);
+            govPair.History.ValidatePair(govPair.Archive, resolved.Book); resolved.History.ValidatePair(govPair.Archive, resolved.Book, recorded);
+            Check(govPair.Archive.Record("root").Resolution.GovernmentProof != null && govPair.Archive.Record("root").Resolution.HistoricalReturnProof != null, "collective/royal exact government and historical fact reviews pair independently");
+            Reject(() => HistoricalTownReturnReconciliations.Review(newReview with { Current = gov with { Mandate = null } }), "collective/royal reconciliation cannot fall back to ordinary consent");
+        }
         var compoundDone = compound.CommitSuccession(extendedLosses, extendedBook, compoundPlan, 24, compoundObservations, compoundProof);
         Check(compoundDone.Book.Charter("root").Phase == RecordedCharterPhase.TerritoryLost && compoundDone.Book.Charter("child-a").Phase == RecordedCharterPhase.TerritoryLost,
             "compound return does not revive either lost original contract");

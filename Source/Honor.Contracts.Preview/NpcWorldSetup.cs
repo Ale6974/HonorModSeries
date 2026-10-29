@@ -43,6 +43,17 @@ public sealed partial class LiveCharterLedger
             { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Reparent peer history rejected; original data retained. " + e.GetType().Name); }
         }
         FinalizeNpcTerminations();
+        if (!RestoreFailed)
+        {
+            try
+            {
+                if (townGovernments.Records.Any(r => r.Witness.Plan.Tick > Find.TickManager.TicksGame) || townReturnReconciliations.Records.Any(r => r.Witness.Current.Plan.Tick > Find.TickManager.TicksGame))
+                    throw new ArgumentException("Future town resolution decision clock.");
+                townGovernments.ValidatePair(townLosses, Book); townReturnReconciliations.ValidatePair(townLosses, Book, ownershipReturns);
+            }
+            catch (Exception e) when (e is ArgumentException or JsonException or InvalidOperationException)
+            { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Town resolution decisions rejected; original snapshots retained. " + e.GetType().Name); }
+        }
         if (!RestoreFailed && initialMandates.Records.Count > 0)
         {
             try

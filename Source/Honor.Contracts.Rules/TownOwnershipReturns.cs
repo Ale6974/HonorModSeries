@@ -36,7 +36,7 @@ public sealed class TownOwnershipReturns
         if (original.Records.Any(p => !losses.Records.Any(c => c.Root == p.Root && LossDigest(c) == LossDigest(p) &&
             (p.Resolution == null || JsonSerializer.Serialize(c.Resolution) == JsonSerializer.Serialize(p.Resolution)))))
             throw new ArgumentException("Original full loss history or prior resolved rights changed.");
-        var scope = original.ScopeLosses(r.PeerScope ?? r.Root); var current = losses.ScopeLosses(r.PeerScope ?? r.Root);
+        var scope = original.ScopeLosses(r.PeerScope ?? r.Root); var current = exact ? losses.ScopeLosses(r.PeerScope ?? r.Root) : losses.Records.ToArray();
         if (scope.Length < 2 || scope.Any(p => p.Resolution != null || p.ObservedTick > r.OccurredTick) ||
             scope.Any(p => !current.Any(c => c.Root == p.Root && LossDigest(c) == LossDigest(p))) ||
             exact && !new HashSet<string>(scope.Select(p => p.Root), StringComparer.Ordinal).SetEquals(current.Select(p => p.Root)))
@@ -55,7 +55,7 @@ public sealed class TownOwnershipReturns
         Validate(r); var p = losses.Record(r.Root);
         bool peer = r.PeerScope != null;
         if (peer && (r.ScopeSnapshot == null ||
-            !losses.ScopeLosses(r.PeerScope).Any(c => c.Root == p.Root))) throw new ArgumentException("Exact original containing scope required for a child return.");
+            !TownSuccessionArchive.Restore(r.ScopeSnapshot).ScopeLosses(r.PeerScope).Any(c => c.Root == p.Root && LossDigest(c) == LossDigest(p)))) throw new ArgumentException("Exact original containing scope required for a child return.");
         if (p.Kind != TownLossKind.HostileNativeOwnershipChange || !peer && (p.ScopeRoot != null || p.ScopeOrdinal != null || p.PriorScopes != null) ||
             r.Territory != p.Territory || r.FromOwner != p.CapturingOwner ||
             r.ReturnedOwner != p.OwnerAtLoss || r.LossProof != LossDigest(p) || r.OccurredTick < p.ObservedTick ||
@@ -138,6 +138,16 @@ public sealed class TownOwnershipReturns
         if (p.Resolution != null || r.InvalidatedTick.HasValue || now < r.ObservedTick || now > int.MaxValue || territory != r.Territory || actualOwner != r.ReturnedOwner ||
             r.Transfers != null && r.Transfers != currentTransfers || r.Amendments != null && r.Amendments != currentAmendments)
             throw new ArgumentException("The observed ownership return is unavailable, interrupted or changed.");
+        return ReceiptDigest(r);
+    }
+    /// <summary>Original positive city fact only. Does NOT authorize a succession or expand its original scope.</summary>
+    public string ReviewHistoricalFact(string root, TownSuccessionArchive losses, CharterBook book, string actualOwner, long now, string transfers, string amendments)
+    {
+        var r = records.TryGetValue(root ?? "", out var found) ? found : throw new ArgumentException("Missing original positive return fact.");
+        var p = Source(r, losses, book);
+        if (p.Resolution != null || r.InvalidatedTick != null || now < r.ObservedTick || now > int.MaxValue || actualOwner != r.ReturnedOwner ||
+            r.Transfers != null && r.Transfers != transfers || r.Amendments != null && r.Amendments != amendments)
+            throw new ArgumentException("Original returned city fact is changed or unavailable.");
         return ReceiptDigest(r);
     }
     public (CharterBook Book, TownSuccessionArchive Archive) CommitSuccession(TownSuccessionArchive losses, CharterBook book,

@@ -232,5 +232,6 @@ assertions += AllegianceTransitionsTests.Run();
 assertions += ReleasedMigrationTests.Run();
 assertions += PersonalOathTests.Run();
 assertions += InitialCharterMandateTests.Run();
+assertions += TownSuccessionMandateTests.Run();
 assertions += MixedRealmReparentTests.Run();
 Console.WriteLine($"PASS: {assertions} contract assertions (three scopes, consent and conquest origins, deadlines, reciprocal duties, evidence reuse guards, quotas, binding cycles, validation).");

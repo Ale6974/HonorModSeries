@@ -110,6 +110,20 @@ internal static class TownLossMergeTests
         Reject(() => done.Archive.Observe(completedPriorProof, done.Book), "completed original receipts cannot be adopted and overwritten later");
         var capturedLower = Lose(seed.Book, new(), "z-first", 100, true);
         var capturedMerged = Lose(capturedLower.Book, capturedLower.Archive, "upper", 200, true);
+        var oldLowerLoss = capturedLower.Archive.Record("z-first");
+        var oldLowerReturn = new TownOwnershipReturn("z-first", "left", "captor", "realm", TownOwnershipReturns.LossDigest(oldLowerLoss), 150, 151);
+        var beforeMergeReturns = new TownOwnershipReturns().Observe(oldLowerReturn, capturedLower.Archive, capturedLower.Book);
+        beforeMergeReturns.ValidatePair(capturedMerged.Archive, capturedMerged.Book);
+        var obsoleteObs = seed.Obs.Select(o => o.Id == "upper" ? o with { NativeOwner = "captor", Eligible = false } : o).ToArray();
+        var obsoletePlan = capturedMerged.Archive.Review("upper", capturedMerged.Book, "old-lower-fact", new("p", "current"), 302, obsoleteObs);
+        var obsoleteDecision = new NpcRealmDecisionEvidence("realm", "current", NpcDecisionRegime.Ordinary, true, true, true, true, true, true);
+        var obsoleteReview = new HistoricalTownReturnReview(new(obsoletePlan, capturedMerged.Archive.Export(), obsoleteObs, "p", "player", "player", obsoleteDecision, null),
+            beforeMergeReturns.Export(), null, null, new Dictionary<string, string> { ["upper"] = "captor", ["z-first"] = "realm" },
+            new Dictionary<string, string> { ["z-first"] = TownOwnershipReturns.ReceiptDigest(oldLowerReturn) });
+        var obsoleteDone = new HistoricalTownReturnReconciliations().Execute(obsoleteReview, beforeMergeReturns, capturedMerged.Archive, capturedMerged.Book);
+        HistoricalTownReturnReconciliations.Restore(obsoleteDone.History.Export()).ValidatePair(TownSuccessionArchive.Restore(obsoleteDone.Archive.Export()), CharterBook.Restore(obsoleteDone.Book.Export()), beforeMergeReturns);
+        Check(obsoleteDone.Book.Root("g") == "p" && obsoleteDone.Archive.Record("upper").Resolution.HistoricalReturnProof != null, "pre-merge lower return retains its original fact while new whole-scope consent reconnects survivors");
+        Reject(() => beforeMergeReturns.RequireActive("z-first", capturedMerged.Archive, capturedMerged.Book, "left", "realm", 302), "old absorbed-head permission remains unavailable without separate reconciliation");
         var returnArchive = new TownOwnershipReturns();
         var returnProofs = new Dictionary<string, string>();
         foreach (string id in new[] { "upper", "z-first" })
