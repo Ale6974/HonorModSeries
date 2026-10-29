@@ -113,6 +113,23 @@ internal static class PersonalOathTests
             Reject(() => PersonalOathBook.Restore(System.Text.Json.JsonSerializer.Serialize(altered)));
         }
         Check(!released.Export().Contains("Mandate"));
+        foreach (var regime in new[] { NpcDecisionRegime.Union, NpcDecisionRegime.Royal })
+        {
+            var ownDecision = individual with { Policy = 3, RegisteredOrdinaryRealm = false, PersonalRegime = regime, RegisteredPersonalRealm = true };
+            var ownRelease = npc.Append(individualRelease with { PersonalRelease = ownDecision });
+            Check(ownRelease.Oaths.Single().EndedTick == 6 && ownRelease.Events.Last().Decision == null && ownRelease.Oaths.Single().Realm == "realm");
+            Check(PersonalOathBook.Restore(ownRelease.Export()).Export() == ownRelease.Export());
+            var emigrant = ownDecision with { Policy = 4, CurrentRealm = "other-realm" };
+            var emigrantRelease = npc.Append(individualRelease with { PersonalRelease = emigrant });
+            Check(PersonalOathBook.Restore(emigrantRelease.Export()).Events.Last().PersonalRelease.CurrentRealm == "other-realm");
+            Reject(() => npc.Append(individualRelease with { PersonalRelease = ownDecision with { RegisteredOrdinaryRealm = true } }));
+            Reject(() => npc.Append(individualRelease with { PersonalRelease = ownDecision with { PersonalRegime = NpcDecisionRegime.Unsupported } }));
+            Reject(() => npc.Append(individualRelease with { PersonalRelease = ownDecision with { RegisteredPersonalRealm = false } }));
+            Reject(() => npc.Append(individualRelease with { PersonalRelease = ownDecision with { Policy = 1 } }));
+            Reject(() => npc.Append(individualRelease with { PersonalRelease = emigrant with { CurrentRealm = "realm" } }));
+            Reject(() => npc.Append(individualRelease with { PersonalRelease = ownDecision with { Actor = "replacement-ruler" } }));
+        }
+        Check(!retired.Export().Contains("PersonalRegime") && !retired.Export().Contains("RegisteredPersonalRealm"));
         return n;
     }
 }

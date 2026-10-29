@@ -13,6 +13,8 @@ internal static class NativeNpcContractAuthority
         => Build(ScopedNpcReparentAuthority.Scope(witness), witness.Tick, actualRealms);
     internal static ScopedNpcContractDecision ReviewPersonal(PersonalOathBook book, PersonalOathEvent e, Faction realm)
         => Build(book.DecisionScope(e), e.Tick, [realm])?.Single();
+    internal static ScopedNpcContractDecision ReviewInitial(InitialCharterMandate r, Faction realm)
+        => Build(InitialCharterMandates.Scope(r), r.Tick, [realm])?.Single();
     private static ScopedNpcContractDecision[] Build(string scope, long tick, IEnumerable<Faction> actualRealms)
     {
         var decisions = new List<ScopedNpcContractDecision>();

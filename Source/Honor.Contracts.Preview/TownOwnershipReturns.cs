@@ -8,7 +8,7 @@ namespace Honor.Contracts.Preview;
 
 internal sealed record NativeOwnershipReturn(Game Context, Settlement City, Faction From, Faction To, string Root,
     string Book, string Losses, long Tick, long Epoch, string Transfers, string Amendments)
-{ internal string ScopeSnapshot { get; init; } }
+{ internal string ScopeSnapshot { get; init; } internal string PeerScope { get; init; } }
 
 public sealed partial class LiveCharterLedger
 {
@@ -50,7 +50,7 @@ public sealed partial class LiveCharterLedger
             !ExactReturnFaction(target) || !ExactReturnFaction(city.Faction) ||
             !target.HostileTo(city.Faction) || !city.Faction.HostileTo(target)) return null;
         var p = townLosses.Records.SingleOrDefault(p => p.Territory == territory && p.Resolution == null &&
-            p.Kind == TownLossKind.HostileNativeOwnershipChange && p.ScopeRoot == null && p.PriorScopes == null);
+            p.Kind == TownLossKind.HostileNativeOwnershipChange);
         if (p == null || p.CapturingOwner != city.Faction.GetUniqueLoadID() || p.OwnerAtLoss != target.GetUniqueLoadID() ||
             ownershipReturns.Records.Any(r => r.Root == p.Root) ||
             ownershipReturns.Records.Count >= TownOwnershipReturns.Capacity || Binding(territory).Settlement != city) return null;
@@ -58,11 +58,14 @@ public sealed partial class LiveCharterLedger
         string transfers = p.OwnerAtLoss == p.BaselineOwner ? null : ledger.Export();
         string lineage = transfers != null && ledger.Transfers.LastOrDefault(t => t.Territory == territory && t.Phase == TerritoryTransferPhase.Applied)?.Charter != p.Root
             ? amendments.Export() : null;
-        string scopeSnapshot = townLosses.ScopeLosses(p.Root).Length > 1 ? townLosses.Export() : null;
+        var heads = townLosses.Records.Where(h => townLosses.IsReviewRoot(h.Root) && townLosses.ScopeLosses(h.Root).Any(c => c.Root == p.Root)).Take(2).ToArray();
+        if (heads.Length != 1) return null;
+        string peerScope = p.ScopeRoot != null || p.PriorScopes != null || heads[0].Root != p.Root ? heads[0].Root : null;
+        string scopeSnapshot = townLosses.ScopeLosses(heads[0].Root).Length > 1 ? townLosses.Export() : null;
         var trial = new TownOwnershipReturn(p.Root, p.Territory, p.CapturingOwner, p.OwnerAtLoss, TownOwnershipReturns.LossDigest(p),
-            Find.TickManager.TicksGame, Find.TickManager.TicksGame) { Transfers = transfers, Amendments = lineage, ScopeSnapshot = scopeSnapshot };
+            Find.TickManager.TicksGame, Find.TickManager.TicksGame) { Transfers = transfers, Amendments = lineage, ScopeSnapshot = scopeSnapshot, PeerScope = peerScope };
         ownershipReturns.Observe(trial, townLosses, Book); // Preflight exact lineage/capacity on a copy, not a native outcome.
-        return new(Current.Game, city, city.Faction, target, p.Root, Book.Export(), townLosses.Export(), Find.TickManager.TicksGame, ownershipAttemptEpoch, transfers, lineage) { ScopeSnapshot = scopeSnapshot };
+        return new(Current.Game, city, city.Faction, target, p.Root, Book.Export(), townLosses.Export(), Find.TickManager.TicksGame, ownershipAttemptEpoch, transfers, lineage) { ScopeSnapshot = scopeSnapshot, PeerScope = peerScope };
     }
     internal void ObserveOwnershipReturn(Settlement city, NativeOwnershipReturn before)
     {
@@ -76,7 +79,7 @@ public sealed partial class LiveCharterLedger
         var p = townLosses.Record(before.Root);
         if (Binding(p.Territory).Settlement != city || p.Territory != "territory/" + city.GetUniqueLoadID()) return;
         ownershipReturns = ownershipReturns.Observe(new TownOwnershipReturn(p.Root, p.Territory, before.From.GetUniqueLoadID(), before.To.GetUniqueLoadID(),
-            TownOwnershipReturns.LossDigest(p), before.Tick, Find.TickManager.TicksGame) { Transfers = before.Transfers, Amendments = before.Amendments, ScopeSnapshot = before.ScopeSnapshot }, townLosses, Book);
+            TownOwnershipReturns.LossDigest(p), before.Tick, Find.TickManager.TicksGame) { Transfers = before.Transfers, Amendments = before.Amendments, ScopeSnapshot = before.ScopeSnapshot, PeerScope = before.PeerScope }, townLosses, Book);
         Messages.Message("OR_Observed".Translate(city.Label), MessageTypeDefOf.NeutralEvent);
     }
 }

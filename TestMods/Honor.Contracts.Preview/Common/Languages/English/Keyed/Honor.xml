@@ -529,4 +529,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <NS_Ruler>current titled ruler, own-realm title {0}</NS_Ruler>
 <NT_AcknowledgeLoss>Acknowledge recorded territorial loss</NT_AcknowledgeLoss><NT_LossRecord>{0}: request closed by recorded territorial loss at tick {1}; no mutual release or new consent.</NT_LossRecord>
 <PF_Mandates>Current titled rulers and union chairs need a separate decision for this personal pledge and its original history. City seats use the declared goodwill policy; this does not bind their realm, cities or armies.</PF_Mandates>
+<CO_Mandates>Union and royal accepted proposals and final signatures each require a separate current government decision. Former or emigrated persons may release only their own existing personal oath; no city or realm consent is implied.</CO_Mandates>
 </LanguageData>

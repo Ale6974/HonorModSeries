@@ -11,6 +11,10 @@ public sealed record PersonalReleaseDecision(string Actor, string Player, string
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public string CurrentRealm { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public NpcDecisionRegime PersonalRegime { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool RegisteredPersonalRealm { get; init; }
 }
 public sealed record PersonalOathEvent(PersonalOathAction Action, string Oath, string Actor, string Other, string Realm, long Tick,
     NpcRealmDecisionEvidence Decision = null)
@@ -71,8 +75,10 @@ public sealed class PersonalOathBook
             var d = e.PersonalRelease;
             if (e.Action != PersonalOathAction.MutualRelease || e.Decision != null || d.Actor != e.Other || d.Player != e.Actor ||
                 d.Realm != e.Realm || d.Tick != e.Tick ||
-                (d.Policy == 1 ? d.CurrentRealm != null : d.Policy != 2 || !Key(d.CurrentRealm) || d.CurrentRealm == e.Realm) ||
-                !d.RegisteredOrdinaryRealm || !d.OriginalActorCapable || !d.Willing || !d.Independent)
+                (d.Policy is 1 or 3 ? d.CurrentRealm != null : d.Policy is not (2 or 4) || !Key(d.CurrentRealm) || d.CurrentRealm == e.Realm) ||
+                (d.Policy is 1 or 2 ? !d.RegisteredOrdinaryRealm || d.PersonalRegime != NpcDecisionRegime.Ordinary || d.RegisteredPersonalRealm :
+                    d.RegisteredOrdinaryRealm || !d.RegisteredPersonalRealm || d.PersonalRegime is not (NpcDecisionRegime.Union or NpcDecisionRegime.Royal)) ||
+                !d.OriginalActorCapable || !d.Willing || !d.Independent)
                 throw new ArgumentException("Personal release does not bind this exact original person's own decision.");
         }
         else if (e.Action is not (PersonalOathAction.DesignateHeir or PersonalOathAction.DeathObserved))

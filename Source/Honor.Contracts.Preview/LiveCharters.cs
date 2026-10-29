@@ -29,7 +29,7 @@ public sealed partial class LiveCharterLedger : GameComponent
     private string snapshot;
     private List<TerritoryBinding> bindings = [];
     private CharterBook book = new();
-    public CharterBook Book { get => book; private set { terminationHistory?.ValidateBook(value); book = value; } }
+    public CharterBook Book { get => book; private set { terminationHistory?.ValidateBook(value); initialMandates?.ValidateBook(value); book = value; } }
     public bool RestoreFailed { get; private set; }
     private readonly Game context;
     public LiveCharterLedger(Game game) { context = game; }
@@ -201,9 +201,12 @@ public sealed partial class LiveCharterLedger : GameComponent
             string player = Register(copy, registry, null, true, false), npc = Register(copy, registry, settlement, false, playerSubject);
             string id = Guid.NewGuid().ToString("N"); long now = Find.TickManager.TicksGame;
             var source = playerSubject ? Current.Game.GetComponent<PoliticalTransitionLedger>().ReleasedMigrationSource(settlement.Faction) : null;
-            var result = CharterOffers.Propose(copy, id, player, npc, playerSubject, draft, settlement.Faction.GoodwillWith(Faction.OfPlayer), now,
-                ObserveForMigration(source, copy, registry), payments.Ledger);
-            Book = result.Book; bindings = registry;
+            var observed = ObserveForMigration(source, copy, registry);
+            var result = CharterOffers.Propose(copy, id, player, npc, playerSubject, draft, settlement.Faction.GoodwillWith(Faction.OfPlayer), now, observed, payments.Ledger);
+            var mandate = ReviewInitialMandate(copy, result, id, reviewedOwner, observed, payments.Ledger.Export(), now, false);
+            var history = mandate == null ? initialMandates : initialMandates.Append(mandate); history.ValidateBook(result.Book);
+            CheckInitialMandate(mandate, reviewedOwner, ObserveForMigration(source, copy, registry), payments.Ledger.Export());
+            Book = result.Book; bindings = registry; initialMandates = history;
             Messages.Message(result.Assessment.Accepted ? "HCL_NpcAgreed".Translate() :
                 "CO_Declined".Translate(CharterOfferWindow.Reason(result.Assessment)), result.Assessment.Accepted ? MessageTypeDefOf.NeutralEvent : MessageTypeDefOf.RejectInput);
         });
@@ -224,11 +227,15 @@ public sealed partial class LiveCharterLedger : GameComponent
         if (!result.Assessment.Accepted) throw new ArgumentException("NPC response changed.");
         if (representative == null || representative.Dead || representativeFaction.leader != representative || representative.Faction != representativeFaction ||
             CounterpartyFaction(id) != representativeFaction) throw new ArgumentException("Current representative changed before final consent.");
+        var observed = ObserveForMigration(source);
+        var mandate = ReviewInitialMandate(Book, result, id, representativeFaction, observed, payments.Ledger.Export(), Find.TickManager.TicksGame, true);
+        var history = mandate == null ? initialMandates : initialMandates.Append(mandate); history.ValidateBook(result.Book);
         var consent = finalConsents.Record(Book, result.Book, id, representativeFaction.GetUniqueLoadID(), representative.GetUniqueLoadID(),
             ConsentLabel(representativeFaction.Name, representativeFaction.GetUniqueLoadID()), ConsentLabel(representative.LabelShortCap.ToString(), representative.GetUniqueLoadID()),
             Find.TickManager.TicksGame);
-        finalConsents = consent;
-        Book = result.Book;
+        CheckInitialMandate(mandate, representativeFaction, ObserveForMigration(source), payments.Ledger.Export());
+        history.ValidateAcceptances(consent);
+        Book = result.Book; finalConsents = consent; initialMandates = history;
     });
     public void Decline(string id) => Execute(() => {
         if (Book.Charter(id).NpcAuthority != null) throw new ArgumentException("Player response cannot withdraw NPC-only offers.");

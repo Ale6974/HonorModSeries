@@ -52,6 +52,28 @@ internal static class TownOwnershipReturnTests
         var missingScopeSave = System.Text.Json.JsonSerializer.Deserialize<TownLossSave>(compoundDone.Archive.Export());
         Reject(() => compound.ValidatePair(TownSuccessionArchive.Restore(System.Text.Json.JsonSerializer.Serialize(missingScopeSave with { Records = missingScopeSave.Records.Select(p => p.Root == "root" ? p with { Resolution = p.Resolution with { OwnershipReturnScopeProof = null } } : p).ToArray() })), compoundDone.Book), "compound closure cannot lose its distinct scope marker");
         string proof = reloaded.RequireActive("root", losses, book, "upper", "realm", 21);
+        var hostileChild = childLoss with { Kind = TownLossKind.HostileNativeOwnershipChange, CapturingOwner = "child-captor" };
+        var hostileBook = losses.CloseForObservation(hostileChild); var hostileLosses = losses.Observe(hostileChild, hostileBook);
+        var childWitness = new TownOwnershipReturn("child-a", "a", "child-captor", "realm", TownOwnershipReturns.LossDigest(hostileChild), 23, 24)
+            { ScopeSnapshot = hostileLosses.Export(), PeerScope = "root" };
+        var childReturns = new TownOwnershipReturns().Observe(childWitness, hostileLosses, hostileBook);
+        var childProof = childReturns.RequireActive("child-a", hostileLosses, hostileBook, "a", "realm", 25);
+        var childObs = obs.Select(o => o.Id == "upper" ? o with { NativeOwner = "captor", Eligible = false } : o).ToArray();
+        var childPlan = hostileLosses.Review("root", hostileBook, "individual", new("p", "current-ruler"), 25, childObs);
+        var individualDone = childReturns.CommitSuccessionGroup(hostileLosses, hostileBook, childPlan, 25, childObs,
+            new Dictionary<string, string> { ["child-a"] = childProof }, new Dictionary<string, string> { ["root"] = "captor", ["child-a"] = "realm" }, null, null);
+        Check(individualDone.Archive.Record("child-a").Resolution.OwnershipReturnGroup == "root" && individualDone.Archive.Record("root").Resolution.OwnershipReturnProof == null, "individual child return is paired separately from still captured head");
+        Check(individualDone.Book.Charter("child-a").Phase == RecordedCharterPhase.TerritoryLost && individualDone.Book.Charter(childPlan.Replacements["deep"]).Terms == book.Charter("deep").Terms with { Liege = "p" }, "individual return reconnects survivors without reviving ended rights");
+        TownOwnershipReturns.Restore(childReturns.Export()).ValidatePair(TownSuccessionArchive.Restore(individualDone.Archive.Export()), CharterBook.Restore(individualDone.Book.Export()));
+        Reject(() => new TownOwnershipReturns().ValidatePair(individualDone.Archive, individualDone.Book), "individual return closure needs original receipt");
+        Reject(() => new TownOwnershipReturns().Observe(childWitness with { PeerScope = null }, hostileLosses, hostileBook), "child cannot impersonate isolated root return");
+        Reject(() => childReturns.CommitSuccessionGroup(hostileLosses, hostileBook, childPlan, 25, childObs, new Dictionary<string, string> { ["child-a"] = childProof }, new Dictionary<string, string> { ["child-a"] = "realm" }, null, null), "whole current hostile-owner scope required");
+        var bothReturns = childReturns.Observe(witness with { OccurredTick = 24, ObservedTick = 25, ScopeSnapshot = hostileLosses.Export() }, hostileLosses, hostileBook);
+        var rootProof = bothReturns.RequireActive("root", hostileLosses, hostileBook, "upper", "realm", 26);
+        var bothPlan = hostileLosses.Review("root", hostileBook, "both-individual", new("p", "current-ruler"), 26, obs);
+        var bothDone = bothReturns.CommitSuccessionGroup(hostileLosses, hostileBook, bothPlan, 26, obs,
+            new Dictionary<string, string> { ["root"] = rootProof, ["child-a"] = childProof }, new Dictionary<string, string> { ["root"] = "realm", ["child-a"] = "realm" }, null, null);
+        bothReturns.ValidatePair(bothDone.Archive, bothDone.Book); Check(bothDone.Archive.Records.All(r => r.Resolution.OwnershipReturnProof != null), "head and child consume independent original return receipts");
         Reject(() => returns.Observe(witness with { FromOwner = "foreign" }, losses, book), "return must start at actual recorded captor");
         Reject(() => returns.Observe(witness with { ReturnedOwner = "foreign" }, losses, book), "return must end at original actual baseline realm");
         Reject(() => returns.Observe(witness with { LossProof = new string('A', 64) }, losses, book), "original loss digest cannot be substituted");

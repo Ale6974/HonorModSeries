@@ -529,4 +529,5 @@
   <NS_Ruler>현 귀족 지도자, 해당 세력 작위 {0}</NS_Ruler>
 <NT_AcknowledgeLoss>기록된 영지 소실 확인</NT_AcknowledgeLoss><NT_LossRecord>{0}: 시각 {1}의 영지 소실 기록으로 요청 종료. 합의 해약이나 새 수락이 아닙니다.</NT_LossRecord>
 <PF_Mandates>작위 지도자와 연합 대표는 이 개인 서약과 원 이력에만 유효한 별도 결정이 필요합니다. 도시 표에는 명시된 우호도 정책을 적용하며, 세력·도시·군대 전체를 종속시키지 않습니다.</PF_Mandates>
+<CO_Mandates>연합·귀족 세력의 제안 수락과 최종 서명은 각각 별도의 현재 정부 결정이 필요합니다. 퇴임·이주 인물은 자신의 기존 개인 서약만 해약하며 도시나 세력의 동의를 대신하지 않습니다.</CO_Mandates>
 </LanguageData>

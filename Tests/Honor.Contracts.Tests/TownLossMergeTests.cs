@@ -108,6 +108,27 @@ internal static class TownLossMergeTests
         Bad(saved with { Records = saved.Records.Select(r => r.Root == "a-second" ? r with { ScopeRoot = "z-first", ScopeOrdinal = 1 } : r).ToArray() }, "independent scope cannot be retroactively rewritten as nested");
         var completedPriorProof = new TownLossProof("upper", "upper", "realm", "realm", "upper", 400, 400, done.Book.Export(), PriorScopes: new[] { "z-first" });
         Reject(() => done.Archive.Observe(completedPriorProof, done.Book), "completed original receipts cannot be adopted and overwritten later");
+        var capturedLower = Lose(seed.Book, new(), "z-first", 100, true);
+        var capturedMerged = Lose(capturedLower.Book, capturedLower.Archive, "upper", 200, true);
+        var returnArchive = new TownOwnershipReturns();
+        var returnProofs = new Dictionary<string, string>();
+        foreach (string id in new[] { "upper", "z-first" })
+        {
+            var loss = capturedMerged.Archive.Record(id);
+            var r = new TownOwnershipReturn(id, loss.Territory, "captor", "realm", TownOwnershipReturns.LossDigest(loss), 300, 301)
+                { PeerScope = "upper", ScopeSnapshot = capturedMerged.Archive.Export() };
+            returnArchive = returnArchive.Observe(r, capturedMerged.Archive, capturedMerged.Book);
+            returnProofs.Add(id, returnArchive.RequireActive(id, capturedMerged.Archive, capturedMerged.Book, loss.Territory, "realm", 302));
+        }
+        var returnedPlan = capturedMerged.Archive.Review("upper", capturedMerged.Book, "returned-merged", authority, 302, seed.Obs);
+        var returnedMerged = returnArchive.CommitSuccessionGroup(capturedMerged.Archive, capturedMerged.Book, returnedPlan, 302, seed.Obs,
+            returnProofs, new Dictionary<string, string> { ["upper"] = "realm", ["z-first"] = "realm" }, null, null);
+        Check(returnedMerged.Archive.Records.All(p => p.Resolution.OwnershipReturnGroup == "upper" && p.Resolution.OwnershipReturnProof != null), "merged head and absorbed prior head pair independent returns with exact containing scope");
+        Check(returnedMerged.Book.Charter("upper").Phase == RecordedCharterPhase.TerritoryLost && returnedMerged.Book.Charter("z-first").Phase == RecordedCharterPhase.TerritoryLost && returnedMerged.Book.Root("g") == "p", "merged returns preserve ended rights and reconnect original surviving grandchildren");
+        TownOwnershipReturns.Restore(returnArchive.Export()).ValidatePair(TownSuccessionArchive.Restore(returnedMerged.Archive.Export()), CharterBook.Restore(returnedMerged.Book.Export()));
+        Reject(() => new TownOwnershipReturns().ValidatePair(returnedMerged.Archive, returnedMerged.Book), "merged returned scope needs all original positive receipts");
+        Reject(() => returnArchive.CommitSuccessionGroup(capturedMerged.Archive, capturedMerged.Book, returnedPlan, 302, seed.Obs,
+            new Dictionary<string, string> { ["upper"] = returnProofs["upper"] }, new Dictionary<string, string> { ["upper"] = "realm", ["z-first"] = "realm" }, null, null), "no returned absorbed town is silently omitted");
         return count;
     }
 }

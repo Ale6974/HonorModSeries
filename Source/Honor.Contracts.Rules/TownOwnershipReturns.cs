@@ -12,6 +12,7 @@ public sealed record TownOwnershipReturn(string Root, string Territory, string F
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string Transfers { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string Amendments { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string ScopeSnapshot { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string PeerScope { get; init; }
 }
 public sealed record TownOwnershipReturnSave(int Version, TownOwnershipReturn[] Records);
 
@@ -35,7 +36,7 @@ public sealed class TownOwnershipReturns
         if (original.Records.Any(p => !losses.Records.Any(c => c.Root == p.Root && LossDigest(c) == LossDigest(p) &&
             (p.Resolution == null || JsonSerializer.Serialize(c.Resolution) == JsonSerializer.Serialize(p.Resolution)))))
             throw new ArgumentException("Original full loss history or prior resolved rights changed.");
-        var scope = original.ScopeLosses(r.Root); var current = losses.ScopeLosses(r.Root);
+        var scope = original.ScopeLosses(r.PeerScope ?? r.Root); var current = losses.ScopeLosses(r.PeerScope ?? r.Root);
         if (scope.Length < 2 || scope.Any(p => p.Resolution != null || p.ObservedTick > r.OccurredTick) ||
             scope.Any(p => !current.Any(c => c.Root == p.Root && LossDigest(c) == LossDigest(p))) ||
             exact && !new HashSet<string>(scope.Select(p => p.Root), StringComparer.Ordinal).SetEquals(current.Select(p => p.Root)))
@@ -52,7 +53,10 @@ public sealed class TownOwnershipReturns
     private static TownLossProof Source(TownOwnershipReturn r, TownSuccessionArchive losses, CharterBook book)
     {
         Validate(r); var p = losses.Record(r.Root);
-        if (p.Kind != TownLossKind.HostileNativeOwnershipChange || p.ScopeRoot != null || p.ScopeOrdinal != null || p.PriorScopes != null ||
+        bool peer = r.PeerScope != null;
+        if (peer && (r.ScopeSnapshot == null ||
+            !losses.ScopeLosses(r.PeerScope).Any(c => c.Root == p.Root))) throw new ArgumentException("Exact original containing scope required for a child return.");
+        if (p.Kind != TownLossKind.HostileNativeOwnershipChange || !peer && (p.ScopeRoot != null || p.ScopeOrdinal != null || p.PriorScopes != null) ||
             r.Territory != p.Territory || r.FromOwner != p.CapturingOwner ||
             r.ReturnedOwner != p.OwnerAtLoss || r.LossProof != LossDigest(p) || r.OccurredTick < p.ObservedTick ||
             book.Charter(p.Root).Phase != RecordedCharterPhase.TerritoryLost)
@@ -167,13 +171,35 @@ public sealed class TownOwnershipReturns
             {
                 ValidateScope(r, losses, book, true);
                 if (r.InvalidatedTick.HasValue || p.Resolution.OwnershipReturnProof != ReceiptDigest(r) || p.Resolution.Tick < r.ObservedTick ||
-                    p.Resolution.OwnershipReturnScopeProof != ScopeDigest(r.ScopeSnapshot))
+                    p.Resolution.OwnershipReturnScopeProof != ScopeDigest(r.ScopeSnapshot) || p.Resolution.OwnershipReturnGroup != r.PeerScope)
                     throw new ArgumentException("Succession differs from its exact observed return.");
             }
         }
         foreach (var p in losses.Records.Where(p => p.Resolution?.OwnershipReturnProof != null))
             if (!records.TryGetValue(p.Root, out var r) || ReceiptDigest(r) != p.Resolution.OwnershipReturnProof)
                 throw new ArgumentException("Returned-ownership succession requires its original positive native witness.");
+    }
+    public (CharterBook Book, TownSuccessionArchive Archive) CommitSuccessionGroup(TownSuccessionArchive losses, CharterBook book,
+        TownSuccessionPlan plan, long now, TerritoryObservation[] observations, IReadOnlyDictionary<string, string> proofs,
+        IReadOnlyDictionary<string, string> actualOwners, string transfers, string amendments)
+    {
+        var scope = losses.ScopeLosses(plan.Root);
+        if (proofs == null || proofs.Count == 0 || actualOwners == null || proofs.Keys.Any(id => !scope.Any(p => p.Root == id && p.Kind == TownLossKind.HostileNativeOwnershipChange)) ||
+            !new HashSet<string>(scope.Where(p => p.Kind == TownLossKind.HostileNativeOwnershipChange).Select(p => p.Root), StringComparer.Ordinal).SetEquals(actualOwners.Keys))
+            throw new ArgumentException("Exact returned members of this original scope required.");
+        foreach (var p in scope.Where(p => p.Kind == TownLossKind.HostileNativeOwnershipChange))
+        {
+            if (!actualOwners.TryGetValue(p.Root, out string owner)) throw new ArgumentException("Missing actual hostile-loss town owner.");
+            if (owner == p.CapturingOwner) { if (proofs.ContainsKey(p.Root)) throw new ArgumentException("No return proof is consumed for a still captured town."); continue; }
+            if (!proofs.TryGetValue(p.Root, out string proof) || RequireActiveWithLineage(p.Root, losses, book, p.Territory, owner, now, transfers, amendments) != proof)
+                throw new ArgumentException("Every individually returned city requires its own positive native receipt.");
+        }
+        if (proofs.Keys.Any(id => !actualOwners.ContainsKey(id))) throw new ArgumentException("Unused returned city evidence.");
+        var completed = losses.Commit(book, plan, now, observations);
+        var saved = JsonSerializer.Deserialize<TownLossSave>(completed.Archive.Export());
+        var paired = TownSuccessionArchive.Restore(JsonSerializer.Serialize(saved with { Records = saved.Records.Select(p => proofs.TryGetValue(p.Root, out var proof) ?
+            p with { Resolution = p.Resolution with { OwnershipReturnProof = proof, OwnershipReturnScopeProof = ScopeDigest(records[p.Root].ScopeSnapshot), OwnershipReturnGroup = records[p.Root].PeerScope } } : p).ToArray() }));
+        paired.ValidateBook(completed.Book); ValidatePair(paired, completed.Book); return (completed.Book, paired);
     }
     public void ValidateAmendmentPair(CharterAmendments current, CharterBook book)
     {

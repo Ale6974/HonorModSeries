@@ -78,6 +78,8 @@ public sealed class PersonalFealtyLedger : GameComponent
             if (current != e.Decision || System.Text.Json.JsonSerializer.Serialize(mandate) != System.Text.Json.JsonSerializer.Serialize(e.Mandate))
                 throw new ArgumentException("Personal mandate changed before commit.");
         }
+        if (e.PersonalRelease != null && ReadPersonalRelease(second, first, realm) != e.PersonalRelease)
+            throw new ArgumentException("Original person's current release decision changed before commit.");
         references = rows; Book = next;
     }
     private static void Validate(PersonalOathBook book, List<PersonalOathReference> rows)
@@ -156,17 +158,21 @@ public sealed class PersonalFealtyLedger : GameComponent
         Context(); var factions = Find.FactionManager.AllFactionsListForReading; var realm = npc.Faction;
         if (realm == null) throw new ArgumentException("Original person has no current native realm.");
         bool migrated = realm != originalRealm;
-        var decision = new PersonalReleaseDecision(npc.GetUniqueLoadID(), player.GetUniqueLoadID(), originalRealm.GetUniqueLoadID(), Find.TickManager.TicksGame, migrated ? 2 : 1,
+        var regime = realm.def?.defName == UnionPoliticsLedger.UnionDefName ? NpcDecisionRegime.Union : realm.def?.royalTitleTags?.Count > 0 ? NpcDecisionRegime.Royal : NpcDecisionRegime.Ordinary;
+        bool registered =
             realm.GetType() == typeof(Faction) && realm.def?.GetType() == typeof(FactionDef) && factions.Contains(realm) &&
             factions.Count(f => f.GetUniqueLoadID() == realm.GetUniqueLoadID()) == 1 && !realm.IsPlayer && !realm.Hidden && !realm.temporary &&
-            !realm.defeated && !realm.def.permanentEnemy && realm.def.humanlikeFaction && realm.def.royalTitleTags?.Count is not > 0 && realm.def.defName != UnionPoliticsLedger.UnionDefName,
+            !realm.defeated && !realm.def.permanentEnemy && realm.def.humanlikeFaction;
+        bool ordinary = regime == NpcDecisionRegime.Ordinary;
+        var decision = new PersonalReleaseDecision(npc.GetUniqueLoadID(), player.GetUniqueLoadID(), originalRealm.GetUniqueLoadID(), Find.TickManager.TicksGame, ordinary ? migrated ? 2 : 1 : migrated ? 4 : 3,
+            registered && ordinary,
             npc.GetType() == typeof(Pawn) && npc.Faction == realm && !npc.Dead && !npc.Destroyed && !npc.Downed && npc.Awake() &&
             !npc.InMentalState && !npc.IsPrisoner && !npc.IsSlave && npc.HostFaction == null && !npc.HasExtraHomeFaction() && !npc.HasExtraMiniFaction() && npc.GetExtraHostFaction() == null &&
             npc.ageTracker != null && npc.ageTracker.AgeBiologicalYears >= 18 && PawnsFinder.AllMapsWorldAndTemporary_AliveOrDead.Count(p => p == npc) == 1 &&
             (migrated || factions.All(f => f.leader != npc)) && Find.QuestManager != null && !Find.QuestManager.IsReservedByAnyQuest(npc) && !Find.QuestManager.IsReservedByAnyQuest(realm),
             realm.HasGoodwill && !realm.HostileTo(Faction.OfPlayer) && !Faction.OfPlayer.HostileTo(realm) && realm.GoodwillWith(Faction.OfPlayer) >= 50,
-            !UnionWarCouncil.HasExternalProvider) { CurrentRealm = migrated ? realm.GetUniqueLoadID() : null };
-        if (!decision.RegisteredOrdinaryRealm || !decision.OriginalActorCapable || !decision.Willing || !decision.Independent || npc.Faction != realm || !Subject(player)) throw new ArgumentException("Original person's own release decision is unavailable or changed during review.");
+            !UnionWarCouncil.HasExternalProvider) { CurrentRealm = migrated ? realm.GetUniqueLoadID() : null, PersonalRegime = regime, RegisteredPersonalRealm = registered && !ordinary };
+        if (!(decision.RegisteredOrdinaryRealm || decision.RegisteredPersonalRealm) || !decision.OriginalActorCapable || !decision.Willing || !decision.Independent || npc.Faction != realm || !Subject(player)) throw new ArgumentException("Original person's own release decision is unavailable or changed during review.");
         return decision;
     }
     internal void Succeed(string id, bool subjectSide)
@@ -266,7 +272,7 @@ internal sealed class PersonalFealtyWindow : Window
         var ledger = game.GetComponent<PersonalFealtyLedger>();
         var area = new Rect(0, 0, rect.width, rect.height - 45);
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 20, height));
-        var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 24, 20000)); list.Label("PF_Scope".Translate()); list.Label("PF_Mandates".Translate());
+        var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 24, 20000)); list.Label("PF_Scope".Translate()); list.Label("PF_Mandates".Translate()); list.Label("CO_Mandates".Translate());
         if (ledger.RestoreFailed) list.Label("PF_Blocked".Translate());
         else
         {

@@ -43,6 +43,16 @@ public sealed partial class LiveCharterLedger
             { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Reparent peer history rejected; original data retained. " + e.GetType().Name); }
         }
         FinalizeNpcTerminations();
+        if (!RestoreFailed && initialMandates.Records.Count > 0)
+        {
+            try
+            {
+                if (initialMandates.Records.Any(r => r.Tick > Find.TickManager.TicksGame)) throw new ArgumentException("Future initial charter authority clock.");
+                initialMandates.ValidateBook(Book); initialMandates.ValidateAcceptances(finalConsents);
+            }
+            catch (Exception e) when (e is ArgumentException or JsonException or InvalidOperationException)
+            { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Initial charter authority history rejected; original data retained. " + e.GetType().Name); }
+        }
         ValidateOwnershipReturnClock();
         ValidatePlayerRenewalLineage();
         ValidateLawfulRestore();

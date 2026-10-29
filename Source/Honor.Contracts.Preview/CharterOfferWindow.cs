@@ -49,6 +49,7 @@ public sealed class CharterOfferWindow : Window
         list.Label("CO_Title".Translate());
         list.Label((playerSubject ? "CO_PlayerSubject" : "CO_PlayerLiege").Translate());
         list.Label("CO_Draft".Translate());
+        list.Label("CO_Mandates".Translate());
         list.Label("CO_Value".Translate(value)); list.TextFieldNumeric(ref value, ref valueBuffer, 1, 10000); value = Mathf.Clamp(value, 1, 10000);
         list.Label("CO_Interval".Translate(interval)); list.TextFieldNumeric(ref interval, ref intervalBuffer, 1, 60); interval = Mathf.Clamp(interval, 1, 60);
         list.Label("CO_Grace".Translate(grace)); list.TextFieldNumeric(ref grace, ref graceBuffer, 0, 30); grace = Mathf.Clamp(grace, 0, 30);
