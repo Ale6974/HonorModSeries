@@ -40,7 +40,13 @@ public sealed class PersonalFealtyLedger : GameComponent
         PawnsFinder.AllMapsWorldAndTemporary_AliveOrDead.Count(x => x == p) == 1 && Find.QuestManager != null && !Find.QuestManager.IsReservedByAnyQuest(p);
     internal IEnumerable<Pawn> Candidates() => Find.Maps.SelectMany(m => m.mapPawns.FreeColonistsSpawned).Where(Subject).Distinct().ToArray();
     internal IEnumerable<Faction> Realms() => Find.FactionManager.AllFactionsListForReading.Where(f => {
-        try { NpcDecisionAuthority.Read(f); return true; } catch (ArgumentException) { return false; }
+        try {
+            var d = NpcDecisionAuthority.Observe(f);
+            var e = new PersonalOathEvent(PersonalOathAction.Swear, "review-only", "review-player", d.Representative, d.Realm, Find.TickManager.TicksGame, d);
+            var mandate = NativeNpcContractAuthority.ReviewPersonal(Book, e, f);
+            Book.ValidateDecision(e with { Mandate = mandate });
+            return true;
+        } catch (ArgumentException) { return false; }
     }).ToArray();
     private static void Reference(Pawn p, List<PersonalOathReference> rows)
     {
@@ -49,7 +55,9 @@ public sealed class PersonalFealtyLedger : GameComponent
     }
     private void Commit(PersonalOathEvent e, Pawn first, Pawn second, Faction realm, Faction currentRealm = null)
     {
-        Context(); var next = Book.Append(e); var rows = references.ToList();
+        Context();
+        if (e.Decision != null) e = e with { Mandate = NativeNpcContractAuthority.ReviewPersonal(Book, e, realm) };
+        var next = Book.Append(e); var rows = references.ToList();
         if (first != null) Reference(first, rows);
         if (second != null) Reference(second, rows);
         var existing = rows.SingleOrDefault(r => r.Id == realm.GetUniqueLoadID());
@@ -62,7 +70,15 @@ public sealed class PersonalFealtyLedger : GameComponent
             if (actual == null) rows.Add(new() { Id = currentRealm.GetUniqueLoadID(), Realm = currentRealm });
             else if (actual.Realm != currentRealm) throw new ArgumentException("Current personal realm identity changed.");
         }
-        Validate(next, rows); Context(); references = rows; Book = next;
+        Validate(next, rows); Context();
+        if (e.Decision != null)
+        {
+            var current = NpcDecisionAuthority.Observe(realm);
+            var mandate = NativeNpcContractAuthority.ReviewPersonal(Book, e with { Decision = current }, realm);
+            if (current != e.Decision || System.Text.Json.JsonSerializer.Serialize(mandate) != System.Text.Json.JsonSerializer.Serialize(e.Mandate))
+                throw new ArgumentException("Personal mandate changed before commit.");
+        }
+        references = rows; Book = next;
     }
     private static void Validate(PersonalOathBook book, List<PersonalOathReference> rows)
     {
@@ -99,7 +115,7 @@ public sealed class PersonalFealtyLedger : GameComponent
     internal void Swear(Pawn subject, Faction realm, Pawn expectedLeader)
     {
         Context(); if (!Subject(subject)) throw new ArgumentException("Subject cannot presently swear.");
-        var decision = NpcDecisionAuthority.Read(realm);
+        var decision = NpcDecisionAuthority.Observe(realm);
         if (realm.leader != expectedLeader || decision.Representative != expectedLeader.GetUniqueLoadID()) throw new ArgumentException("Ruler changed since review.");
         Commit(new(PersonalOathAction.Swear, Guid.NewGuid().ToString("N"), subject.GetUniqueLoadID(), expectedLeader.GetUniqueLoadID(), realm.GetUniqueLoadID(), Find.TickManager.TicksGame, decision), subject, expectedLeader, realm);
     }
@@ -113,7 +129,7 @@ public sealed class PersonalFealtyLedger : GameComponent
     internal void AcceptVassal(Pawn playerLiege, Faction realm, Pawn expectedSubject)
     {
         Context(); if (!Subject(playerLiege)) throw new ArgumentException("Player liege cannot presently accept.");
-        var decision = NpcDecisionAuthority.Read(realm);
+        var decision = NpcDecisionAuthority.Observe(realm);
         if (realm.leader != expectedSubject || decision.Representative != expectedSubject.GetUniqueLoadID()) throw new ArgumentException("NPC subject changed after review.");
         Commit(new PersonalOathEvent(PersonalOathAction.Swear, Guid.NewGuid().ToString("N"), expectedSubject.GetUniqueLoadID(), playerLiege.GetUniqueLoadID(), realm.GetUniqueLoadID(), Find.TickManager.TicksGame, decision) { PlayerLiege = true }, expectedSubject, playerLiege, realm);
     }
@@ -124,7 +140,7 @@ public sealed class PersonalFealtyLedger : GameComponent
         if (player != expectedPlayer || !Subject(player)) throw new ArgumentException("Current player party cannot release.");
         if (realm.leader == npc && npc.Faction == realm)
         {
-            var decision = NpcDecisionAuthority.Read(realm);
+            var decision = NpcDecisionAuthority.Observe(realm);
             if (decision.Representative != npc.GetUniqueLoadID()) throw new ArgumentException("Current bilateral personal release consent unavailable.");
             Commit(new PersonalOathEvent(PersonalOathAction.MutualRelease, id, player.GetUniqueLoadID(), npc.GetUniqueLoadID(), s.Realm, Find.TickManager.TicksGame, decision) { PlayerLiege = s.PlayerLiege }, player, npc, realm);
         }
@@ -156,7 +172,7 @@ public sealed class PersonalFealtyLedger : GameComponent
     internal void Succeed(string id, bool subjectSide)
     {
         Context(); ObserveDeaths(id); var s = Book.Oaths.Single(x => x.Id == id); var realm = Realm(s.Realm);
-        var decision = NpcDecisionAuthority.Read(realm); Pawn old, next;
+        var decision = NpcDecisionAuthority.Observe(realm); Pawn old, next;
         bool playerSide = subjectSide != s.PlayerLiege;
         if (playerSide)
         {
@@ -250,7 +266,7 @@ internal sealed class PersonalFealtyWindow : Window
         var ledger = game.GetComponent<PersonalFealtyLedger>();
         var area = new Rect(0, 0, rect.width, rect.height - 45);
         Widgets.BeginScrollView(area, ref scroll, new Rect(0, 0, area.width - 20, height));
-        var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 24, 20000)); list.Label("PF_Scope".Translate());
+        var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 24, 20000)); list.Label("PF_Scope".Translate()); list.Label("PF_Mandates".Translate());
         if (ledger.RestoreFailed) list.Label("PF_Blocked".Translate());
         else
         {

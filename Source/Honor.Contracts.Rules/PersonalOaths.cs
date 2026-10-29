@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text;
 
 namespace Honor.Contracts.Rules;
 
@@ -20,6 +21,8 @@ public sealed record PersonalOathEvent(PersonalOathAction Action, string Oath, s
     public bool DeathWitnessV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public PersonalReleaseDecision PersonalRelease { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ScopedNpcContractDecision Mandate { get; init; }
 }
 public sealed record PersonalOathState(string Id, string OriginalSubject, string OriginalLiege, string Subject, string Liege, string Realm, string Heir)
 {
@@ -36,7 +39,16 @@ public sealed class PersonalOathBook
     private readonly List<PersonalOathEvent> events = [];
     private readonly Dictionary<string, PersonalOathState> states = new(StringComparer.Ordinal);
     public IReadOnlyList<PersonalOathState> Oaths => states.Values.ToArray();
-    public IReadOnlyList<PersonalOathEvent> Events => events.ToArray();
+    private static PersonalOathEvent Copy(PersonalOathEvent e) => e with { Mandate = e.Mandate == null ? null : e.Mandate with { Ballots = e.Mandate.Ballots?.ToArray() } };
+    public IReadOnlyList<PersonalOathEvent> Events => events.Select(Copy).ToArray();
+    public string DecisionScope(PersonalOathEvent e) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new {
+        Action = "PersonalOath/v1", Before = Export(), Event = e with { Mandate = null }
+    }))));
+    public void ValidateDecision(PersonalOathEvent e)
+    {
+        if (e.Mandate == null) NpcRealmDecision.Consent(e.Decision);
+        else ScopedNpcTerminationAuthority.ValidateDecisions([e.Decision], [e.Mandate], DecisionScope(e), e.Tick);
+    }
     private static bool Key(string s) => !string.IsNullOrWhiteSpace(s) && s.Length <= 120 && !s.Any(char.IsControl);
     public PersonalOathBook Append(PersonalOathEvent e)
     {
@@ -51,6 +63,9 @@ public sealed class PersonalOathBook
             throw new ArgumentException("Invalid personal oath event.");
         if (e.DeathWitnessV1 && e.Action is not (PersonalOathAction.SubjectSuccession or PersonalOathAction.LiegeSuccession))
             throw new ArgumentException("A death witness marker belongs only to succession.");
+        if (e.Mandate != null && (e.PersonalRelease != null || e.Decision == null || e.Decision.Regime == NpcDecisionRegime.Ordinary ||
+            e.Action is PersonalOathAction.DesignateHeir or PersonalOathAction.DeathObserved))
+            throw new ArgumentException("Personal mandate belongs only to this current nonordinary office decision.");
         if (e.PersonalRelease != null)
         {
             var d = e.PersonalRelease;
@@ -62,7 +77,7 @@ public sealed class PersonalOathBook
         }
         else if (e.Action is not (PersonalOathAction.DesignateHeir or PersonalOathAction.DeathObserved))
         {
-            NpcRealmDecision.Consent(e.Decision);
+            ValidateDecision(e);
             string representative;
             if (e.Action == PersonalOathAction.Swear) representative = e.PlayerLiege ? e.Actor : e.Other;
             else
@@ -119,7 +134,7 @@ public sealed class PersonalOathBook
                 actor = next.Liege;
             }
         }
-        events.Add(e);
+        events.Add(Copy(e));
     }
     public string Export() => JsonSerializer.Serialize(new PersonalOathSave(1, events.ToArray()));
     public static PersonalOathBook Restore(string json)

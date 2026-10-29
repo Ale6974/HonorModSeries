@@ -88,6 +88,31 @@ internal static class PersonalOathTests
         Reject(() => npc.Append(individualRelease with { PersonalRelease = migratedDecision with { CurrentRealm = "realm" } }));
         Reject(() => npc.Append(individualRelease with { PersonalRelease = individual with { CurrentRealm = "foreign" } }));
         Reject(() => npc.Append(individualRelease with { PersonalRelease = migratedDecision with { RegisteredOrdinaryRealm = false } }));
+        foreach (var regime in new[] { NpcDecisionRegime.Union, NpcDecisionRegime.Royal })
+        {
+            var personal = new PersonalOathBook();
+            PersonalOathEvent WithMandate(PersonalOathEvent e)
+            {
+                var d = e.Decision with { Regime = regime }; e = e with { Decision = d };
+                return e with { Mandate = new ScopedNpcContractDecision(d.Realm, d.Representative, regime, personal.DecisionScope(e), e.Tick, 1, 70,
+                    regime == NpcDecisionRegime.Union ? [new("actual-city", true)] : [], regime == NpcDecisionRegime.Royal ? "Stellarch" : null, regime == NpcDecisionRegime.Royal ? 60 : 0) };
+            }
+            var swear = WithMandate(new(PersonalOathAction.Swear, "scoped", "player", "lord", "realm", 1, Decision("lord")));
+            personal = personal.Append(swear); Check(personal.Oaths.Single().OriginalLiege == "lord");
+            var raw = personal.Export(); if (personal.Events[0].Mandate.Ballots.Length > 0) personal.Events[0].Mandate.Ballots[0] = new("tampered", false); Check(personal.Export() == raw);
+            personal = personal.Append(new(PersonalOathAction.DeathObserved, "scoped", "lord", "player", "realm", 2));
+            var succession = WithMandate(new PersonalOathEvent(PersonalOathAction.LiegeSuccession, "scoped", "lord", "newlord", "realm", 3, Decision("newlord")) { DeathWitnessV1 = true });
+            personal = personal.Append(succession); Check(personal.Oaths.Single().Liege == "newlord" && personal.Oaths.Single().OriginalLiege == "lord");
+            var release = WithMandate(new(PersonalOathAction.MutualRelease, "scoped", "player", "newlord", "realm", 4, Decision("newlord")));
+            Reject(() => personal.Append(release with { Mandate = swear.Mandate }));
+            Reject(() => personal.Append(release with { Mandate = null }));
+            Reject(() => personal.Append(release with { Other = "substitute" }));
+            personal = personal.Append(release); Check(personal.Oaths.Single().EndedTick == 4);
+            Check(PersonalOathBook.Restore(personal.Export()).Export() == personal.Export());
+            var altered = new PersonalOathSave(1, personal.Events.Select(e => e.Action == PersonalOathAction.DeathObserved ? e with { Tick = 1 } : e).ToArray());
+            Reject(() => PersonalOathBook.Restore(System.Text.Json.JsonSerializer.Serialize(altered)));
+        }
+        Check(!released.Export().Contains("Mandate"));
         return n;
     }
 }
