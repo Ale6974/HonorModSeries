@@ -42,6 +42,7 @@ public sealed partial class LiveCharterLedger
             catch (Exception e) when (e is ArgumentException or JsonException or InvalidOperationException)
             { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Reparent peer history rejected; original data retained. " + e.GetType().Name); }
         }
+        FinalizeNpcTerminations();
         ValidateOwnershipReturnClock();
         ValidatePlayerRenewalLineage();
         ValidateLawfulRestore();

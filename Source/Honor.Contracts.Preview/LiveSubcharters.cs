@@ -174,6 +174,11 @@ public sealed class NpcSubchartersWindow : Window
                 catch (NpcDecisionBlocked e) { review = null; Messages.Message(e.Key.Translate(), MessageTypeDefOf.RejectInput); }
                 catch (ArgumentException) { review = null; Messages.Message("NS_Rejected".Translate(), MessageTypeDefOf.RejectInput); }
             }
+            if (previous != null && ledger.Book.Charter(previous).NpcAuthority != null && list.ButtonText("NT_Request".Translate()))
+                ledger.RequestNpcTermination(previous);
+            if (previous != null && ledger.Book.Charter(previous).NpcAuthority != null && list.ButtonText("NT_Queue".Translate()))
+                ledger.QueueNpcTermination(previous);
+            ledger.DrawNpcTerminations(list);
             if (review != null)
             {
                 var terms = ledger.Book.Charter(review.Plan.Previous).Terms;

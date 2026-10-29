@@ -102,6 +102,58 @@ internal static class MixedRealmReparentTests
         var threeRestored = NpcReparentArchive.Restore(three.Archive.Export()); threeRestored.ValidateBook(CharterBook.Restore(three.Book.Export())); threeRestored.ValidatePeers(threeTransfers, payments);
         Check(threeRestored.Records.Last().Witness.Parties.Length == 3 && threeRestored.Records.Count == 4);
         Reject(() => cross.Archive.Append(threeWitness with { Parties = threeParties.Where(p => p.Party != "b").ToArray() }, cross.Book));
+        var termination = new NpcTerminationWitness("e-a", three.Book.Export(), ++now, authority,
+            three.Book.Entities.Select(e => new TerritoryObservation(e.Id, e.NativeOwner, true, e.Player, true)).ToArray(),
+            threeParties.Where(p => p.Party != "b").ToArray(), retained, threeTransfers.Export(), payments.Export());
+        var terminations = new NpcSubtreeTerminations(); var ended = terminations.Append(termination, three.Book);
+        Check(three.Book.Charter("e-a").Phase == RecordedCharterPhase.Active && ended.Book.Charter("e-a").Phase == RecordedCharterPhase.Released);
+        Check(ended.Book.Charter("a-c") == three.Book.Charter("a-c") && ended.Book.Charter("a-d") == three.Book.Charter("a-d"));
+        Check(ended.Book.HierarchyPath("c").SequenceEqual(new[] { "a", "c" }) && ended.Book.Charter("debt") == three.Book.Charter("debt"));
+        three.Archive.ValidateBook(ended.Book);
+        var termRestored = NpcSubtreeTerminations.Restore(ended.Archive.Export()); termRestored.ValidateBook(CharterBook.Restore(ended.Book.Export())); termRestored.ValidatePeers(threeTransfers, payments);
+        Check(termRestored.Records.Single().Witness.Children.Length == 2 && payments.Bill("debt", 1).RequiredValue == 100);
+        var termRaw = termRestored.Export(); termRestored.Records[0].Witness.Children[0] = retained[1]; Check(termRestored.Export() == termRaw);
+        Reject(() => terminations.Append(termination with { Children = retained.Take(1).ToArray() }, three.Book));
+        Reject(() => terminations.Append(termination with { Parties = termination.Parties.Take(1).ToArray() }, three.Book));
+        Reject(() => terminations.Append(termination with { Transfers = transfers.Export() }, three.Book));
+        Reject(() => terminations.Append(termination with { Parties = termination.Parties.Select(p => p with { ReciprocalPeace = false }).ToArray() }, three.Book));
+        Reject(() => terminations.Append(termination with { Before = book.Export() }, three.Book));
+        Reject(() => ended.Archive.Append(termination, ended.Book));
+        Reject(() => termRestored.ValidatePeers(threeTransfers, new TributeLedger()));
+        Reject(() => NpcSubtreeTerminations.Restore(termRaw.Replace("\"Proof\":\"", "\"Proof\":\"0")));
+        var newer = CharterBook.Restore(ended.Book.Export());
+        var newerObs = newer.Entities.Select(e => new TerritoryObservation(e.Id, e.NativeOwner, true, e.Player, true)).ToArray();
+        newer.Offer("new-a", Terms("player", "a"), ++now, PoliticalWorld.Day, newerObs); newer.Sign("new-a", true, now, newerObs); newer.Sign("new-a", false, now, newerObs);
+        termRestored.ValidateBook(newer); Check(newer.Charter("e-a").Phase == RecordedCharterPhase.Released && newer.Charter("new-a").Phase == RecordedCharterPhase.Active);
+        var pendingTransfers = TerritoryTransferLedger.Restore(threeTransfers.Export());
+        var pendingSource = new TerritoryTransferObservation("a", "foreign-a", 3);
+        pendingTransfers.PrepareJournaled("pending-a", three.Book, "e-a", pendingSource, "pending-target", "pending-target", null, TerritoryTransferPurpose.ActiveCharter, ++now);
+        var request = new DeferredNpcRequest("request-a", "e-a", three.Book.Export(), pendingTransfers.Export(), payments.Export(), now);
+        var deferred = new DeferredNpcTerminations().Queue(request);
+        Check(three.Book.Charter("e-a").Phase == RecordedCharterPhase.Active && deferred.Pending.Proof.Length == 64);
+        Reject(() => deferred.RequireReady(three.Book, pendingTransfers, payments, now));
+        Reject(() => deferred.Queue(request with { Id = "duplicate" }));
+        pendingTransfers.Confirm("pending-a", pendingSource with { Owner = "pending-target" }, ++now);
+        deferred = DeferredNpcTerminations.Restore(deferred.Export()); deferred.RequireReady(three.Book, pendingTransfers, payments, now); Check(deferred.Pending != null);
+        var completedWitness = termination with { Tick = now, Transfers = pendingTransfers.Export(), Deferred = new(request.Id, deferred.Pending.Proof),
+            Parties = termination.Parties.Select(p => p.Party == "a" ? p with { ActualOwner = "pending-target", Decision = sourceDecision with { Realm = "pending-target", Representative = "new-target-ruler" } } : p).ToArray() };
+        var completedTermination = new NpcSubtreeTerminations().Append(completedWitness, three.Book);
+        var completedRequest = deferred.Close(now, completedTermination.Archive.Records.Single().Proof);
+        completedRequest.ValidatePairs(completedTermination.Archive);
+        DeferredNpcTerminations.Restore(completedRequest.Export()).ValidatePairs(NpcSubtreeTerminations.Restore(completedTermination.Archive.Export())); Check(completedRequest.Pending == null && completedRequest.Records.Single().Phase == 1);
+        Reject(() => completedRequest.ValidatePairs(new NpcSubtreeTerminations()));
+        Reject(() => new DeferredNpcTerminations().ValidatePairs(completedTermination.Archive));
+        var cancelled = deferred.Close(now); cancelled.ValidatePairs(new NpcSubtreeTerminations()); Check(cancelled.Pending == null && cancelled.Records.Single().Phase == 2 && three.Book.Charter("e-a").Phase == RecordedCharterPhase.Active);
+        Check(DeferredNpcTerminations.Marker(cancelled.Records.Single()) != DeferredNpcTerminations.Marker(deferred.Pending));
+        Check(DeferredNpcTerminations.Marker(completedRequest.Records.Single()) != DeferredNpcTerminations.Marker(cancelled.Records.Single()));
+        Reject(() => cancelled.Close(now));
+        var differentBook = CharterBook.Restore(three.Book.Export()); differentBook.Register(new("unrelated", "realm", false), now);
+        Reject(() => deferred.RequireReady(differentBook, pendingTransfers, payments, now));
+        Reject(() => deferred.RequireReady(three.Book, pendingTransfers, new TributeLedger(), now));
+        var pendingSave = JsonSerializer.Deserialize<TerritoryTransfersSave>(pendingTransfers.Export());
+        var changedPrefix = TerritoryTransferLedger.Restore(JsonSerializer.Serialize(pendingSave with { Transfers = pendingSave.Transfers.Select(t => t.Id == "pending-a" ? t with { CityCallJournalV1 = false } : t).ToArray() }));
+        Reject(() => deferred.RequireReady(three.Book, changedPrefix, payments, now));
+        Check(DeferredNpcTerminations.Restore(cancelled.Export()).Records.Single().Request == request);
         return n;
     }
 }

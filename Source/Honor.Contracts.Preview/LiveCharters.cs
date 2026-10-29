@@ -28,7 +28,8 @@ public sealed partial class LiveCharterLedger : GameComponent
 {
     private string snapshot;
     private List<TerritoryBinding> bindings = [];
-    public CharterBook Book { get; private set; } = new();
+    private CharterBook book = new();
+    public CharterBook Book { get => book; private set { terminationHistory?.ValidateBook(value); book = value; } }
     public bool RestoreFailed { get; private set; }
     private readonly Game context;
     public LiveCharterLedger(Game game) { context = game; }
@@ -45,6 +46,7 @@ public sealed partial class LiveCharterLedger : GameComponent
         ExposeFinalConsents();
         ExposeTownLosses();
         ExposeReparentHistory();
+        ExposeNpcTerminations();
         if (Scribe.mode != LoadSaveMode.PostLoadInit) return;
         bindings ??= [];
         try
@@ -55,6 +57,7 @@ public sealed partial class LiveCharterLedger : GameComponent
             ValidateFinalConsents();
             ValidateTownLosses();
             ValidateReparentHistory();
+            ValidateNpcTerminations();
             if (bindings.Any(b => b == null || string.IsNullOrWhiteSpace(b.Identity)) ||
                 bindings.GroupBy(b => b.Identity, StringComparer.Ordinal).Any(g => g.Count() != 1) ||
                 Book.Entities.Any(e => bindings.All(b => b.Identity != e.Id)) || bindings.Count != Book.Entities.Count ||
@@ -172,7 +175,7 @@ public sealed partial class LiveCharterLedger : GameComponent
         if (resolvingLoss ? transition.BlocksApartFromTownLosses : transition.BlocksChanges)
         { Messages.Message((UnresolvedTownLosses ? "LS_Freeze" : "PS_Pending").Translate(), MessageTypeDefOf.RejectInput); return false; }
         if (RestoreFailed) return false;
-        try { action(); return true; }
+        try { terminationHistory.ValidateBook(Book); action(); return true; }
         catch (NpcDecisionBlocked e) { Messages.Message(e.Key.Translate(), MessageTypeDefOf.RejectInput); return false; }
         catch (ArgumentException) { Messages.Message("HCL_Unavailable".Translate(), MessageTypeDefOf.RejectInput); return false; }
     }

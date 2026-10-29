@@ -510,4 +510,14 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <PF_Action5>Observed death</PF_Action5>
   <NS_RetainedRealm>Retain {0} unchanged: actual realm {1}, current consenting representative {2}. This is no city transfer.</NS_RetainedRealm>
   <NS_IncomingParty>Current incoming-party consent: {0}, actual realm {1}, representative {2}. Original terms and previous signatures remain recorded.</NS_IncomingParty>
+  <NT_Request>Mutually end this NPC incoming contract…</NT_Request>
+  <NT_Confirm>End the incoming contract for {0}, preserving {1} internal contracts and all historical debts? Exact current NPC parties must accept. Cities, residents, stocks and native factions remain unchanged. This does not declare independence or arrange union admission.</NT_Confirm>
+  <NT_Applied>NPC incoming contract mutually ended; internal rights and original history retained.</NT_Applied>
+  <NT_Record>Recorded mutual termination: {0}, tick {1}; {2} internal contracts preserved.</NT_Record>
+  <NT_Queue>Save a termination request for later recovery</NT_Queue>
+  <NT_Queued>Unexecuted termination request: {0}, tick {1}. No NPC consent or release recorded.</NT_Queued>
+  <NT_Resume>Resolve original custody, then review current consent</NT_Resume>
+  <NT_Cancel>Cancel request only (keep contracts)</NT_Cancel>
+  <NT_RequestBlocked>The request could not be changed. Original records and contracts are retained.</NT_RequestBlocked>
+  <NT_OpenTransfers>Open original city transfer review/recovery</NT_OpenTransfers>
 </LanguageData>
