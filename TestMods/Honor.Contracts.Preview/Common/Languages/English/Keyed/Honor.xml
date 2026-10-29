@@ -483,4 +483,20 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <LX_Review>Review lawful independence</LX_Review>
   <LX_Confirm>Exercise the recorded right and join {0}? The original charter ends without a fabricated NPC release; existing tribute debts remain. The initial path requires all vassal towns to be in the original realm, mutual nonhostility between the old realm and the union, no unresolved transfers, and current union consent without an additional war declaration. Every town must have no saved residents and pass stock and source-base checks. Pending town losses remain unsupported.</LX_Confirm>
   <LX_Unavailable>Lawful independence is unavailable for this scope. The initial path requires the unchanged original charter and refusal, all vassal towns in the original realm, mutual nonhostility, no unresolved transfers, and current union consent without an additional declaration. Every town must have no saved residents and pass stock and source-base checks. Pending town losses remain unsupported.</LX_Unavailable>
+  <PF_Open>Personal fealty</PF_Open>
+  <PF_Scope>Personal allegiance between a colonist and an ordinary NPC ruler. Maximum four levels. No city transfer or pawn faction change. Territorial debts and performance remain in their original accounts. Personal tribute, service and protection missions are not implemented yet.</PF_Scope>
+  <PF_Swear>Swear to an eligible ruler…</PF_Swear>
+  <PF_Confirm>{0} swears personal fealty to {1}. Requires current ordinary NPC acceptance (goodwill 50+, mutual nonhostility). Confirm?</PF_Confirm>
+  <PF_Heir>Designate personal heir…</PF_Heir>
+  <PF_HeirConfirm>Designate {0} as heir? Previous designations remain in history.</PF_HeirConfirm>
+  <PF_State>Vassal: {0}; liege: {1}; heir: {2}</PF_State>
+  <PF_SubjectSuccession>Inherit after the vassal's death</PF_SubjectSuccession>
+  <PF_LiegeSuccession>Recognize the deceased liege's actual successor</PF_LiegeSuccession>
+  <PF_Recovery>Recheck original actors, designated heir and current ordinary NPC authority, then append succession to this same pledge. Missing evidence suspends the action.</PF_Recovery>
+  <PF_Blocked>Original actors, eligibility, current authority or saved history could not be verified. Original records are retained.</PF_Blocked>
+  <PF_Event>{0} — tick {1}: {2} → {3}</PF_Event>
+  <PF_Action0>Sworn</PF_Action0>
+  <PF_Action1>Heir designated</PF_Action1>
+  <PF_Action2>Vassal succession</PF_Action2>
+  <PF_Action3>Liege succession</PF_Action3>
 </LanguageData>

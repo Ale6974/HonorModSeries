@@ -483,4 +483,20 @@
   <LX_Review>정당한 독립 검토</LX_Review>
   <LX_Confirm>기록된 권리를 행사하고 {0}에 가입하시겠습니까? 종주의 해약 서명을 만들지 않고 원 계약을 종료하며 기존 공납 채무는 유지합니다. 초기 경로는 하위 영지 전체가 원 종주 세력에 있고 그 세력과 연합이 서로 적대하지 않으며, 미완료 이전이 없고 현재 연합이 추가 선전포고 없이 수락하는 경우에 가능합니다. 모든 도시는 저장 주민이 없어야 하며 재고와 원 세력의 정착지 보존 검사를 통과해야 합니다. 진행 중 영지 소실 정리는 아직 지원하지 않습니다.</LX_Confirm>
   <LX_Unavailable>이 범위에서는 정당한 독립을 진행할 수 없습니다. 초기 경로는 변경되지 않은 원 계약·거부 기록, 원 종주 세력 소속 하위 영지, 양 세력의 비적대, 미완료 이전 없음, 추가 선전포고 없이 가능한 현재 연합의 수락과 각 도시에 저장 주민이 없어야 하며 재고·정착지 보존 검사가 필요합니다.</LX_Unavailable>
+  <PF_Open>개인 봉신 서약</PF_Open>
+  <PF_Scope>주민과 일반 NPC 지도자 사이의 개인 충성 서약입니다. 최대 4단계이며 도시 이전이나 주민의 세력 소속 변경은 없습니다. 영지 채무·실적은 원 계정에 유지됩니다. 개인 서약의 공납·복무·보호 임무 집행은 아직 구현되지 않았습니다.</PF_Scope>
+  <PF_Swear>수락 가능한 지도자에게 서약…</PF_Swear>
+  <PF_Confirm>{0}이(가) {1}에게 개인 봉신 서약을 합니다. 현재 일반 지도자의 수락(우호도 50 이상·상호 비적대)이 필요합니다. 확정할까요?</PF_Confirm>
+  <PF_Heir>개인 서약 후계 지정…</PF_Heir>
+  <PF_HeirConfirm>{0}을(를) 후계자로 지정할까요? 이전 지정 이력은 유지됩니다.</PF_HeirConfirm>
+  <PF_State>봉신: {0} / 주군: {1} / 지정 후계: {2}</PF_State>
+  <PF_SubjectSuccession>봉신 사망 후 지정 후계 승계</PF_SubjectSuccession>
+  <PF_LiegeSuccession>사망한 주군의 실제 후임 승인</PF_LiegeSuccession>
+  <PF_Recovery>원 인물·지정 기록·현재 일반 NPC 권한을 다시 확인하고 같은 서약에 승계를 추가합니다. 근거가 없으면 보류합니다.</PF_Recovery>
+  <PF_Blocked>원 인물·자격·현재 결정권자 또는 저장 이력을 확인하지 못했습니다. 원 기록을 유지합니다.</PF_Blocked>
+  <PF_Event>{0} — 시각 {1}: {2} → {3}</PF_Event>
+  <PF_Action0>서약 성립</PF_Action0>
+  <PF_Action1>후계 지정</PF_Action1>
+  <PF_Action2>봉신 승계</PF_Action2>
+  <PF_Action3>주군 승계</PF_Action3>
 </LanguageData>

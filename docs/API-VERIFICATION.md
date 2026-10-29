@@ -499,3 +499,6 @@ Version.txt의 1.7.4985 rev1269를 다시 확인하고 설치 DLL의 `Verse.Map`
 ## 구원 조건부 봉신 제안 규칙 (2026-10-24)
 
 이번 RescuePledge 변경도 엔진 독립 코드만 사용합니다. 기존에 확인한 Quest/QuestPart API에 새 게임 바인딩을 추가하지 않았고, 바닐라가 지방 대표의 봉신 약속·일부 영지 독립·세력 분할을 자동 지원한다고 가정하지 않습니다. 실제 보호 퀘스트·NPC 방어 AI·지도·대표 권한·소속 변경은 후속 단계에서 설치 DLL로 검증해야 합니다. 조건부 약속의 상태 검사 결과는 실제 게임에서 미션을 수령/완료했다는 증거가 아닙니다.
+## 2026-10-29 — 개인 봉신 서약 0.3.67
+
+설치 Version.txt는 1.7.4990 rev1069이다. 새 세력 변경/사망/후임 생성 API는 호출하지 않는다. 기존에 사용하던 Pawn.GetGizmos postfix, GameComponent.ExposeData/GameComponentTick, Scribe_References/Values/Collections와 실제 Faction.leader, Pawn.Dead, PawnsFinder 및 NpcDecisionAuthority 조회를 재사용한다. 성인 기준은 기존 Core의 AgeBiologicalYears >=18을 사용한다. 같은 Game의 원 인물·현재 일반 지도자 수락·native 후임 관측 후 모드의 개인 서약 장부만 복사본에서 교체한다. 1.6은 고정 reference/net472, 1.7은 설치 DLL/net10에 대해 별도 컴파일한다. NPC 정책 수락은 native 개인 봉신 계약 API라는 뜻이 아니다. 개인 서약의 별도 물리 의무 실행과 일반 소속 복구는 이 변경의 범위가 아니다.
