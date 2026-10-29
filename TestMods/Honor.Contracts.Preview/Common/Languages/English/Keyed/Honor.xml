@@ -499,4 +499,13 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <PF_Action1>Heir designated</PF_Action1>
   <PF_Action2>Vassal succession</PF_Action2>
   <PF_Action3>Liege succession</PF_Action3>
+  <PF_AcceptVassal>Accept a personal NPC vassal…</PF_AcceptVassal>
+  <PF_AcceptConfirm>{0} offers personal fealty to {1} under the current ordinary NPC acceptance policy. This binds these people, not the NPC faction or its cities. Confirm?</PF_AcceptConfirm>
+  <PF_PlayerSuccession>Apply the designated player heir's succession</PF_PlayerSuccession>
+  <PF_NpcSuccession>Recognize the actual current NPC successor</PF_NpcSuccession>
+  <PF_Release>Request mutual release</PF_Release>
+  <PF_ReleaseConfirm>End this personal pledge with the current NPC party's acceptance? Preserve its full history and every other personal or territorial contract and account.</PF_ReleaseConfirm>
+  <PF_Ended>Mutually released at tick {0}</PF_Ended>
+  <PF_Action4>Mutual release</PF_Action4>
+  <PF_Action5>Observed death</PF_Action5>
 </LanguageData>

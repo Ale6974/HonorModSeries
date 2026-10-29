@@ -499,4 +499,13 @@
   <PF_Action1>후계 지정</PF_Action1>
   <PF_Action2>봉신 승계</PF_Action2>
   <PF_Action3>주군 승계</PF_Action3>
+  <PF_AcceptVassal>개인 NPC 봉신 수락…</PF_AcceptVassal>
+  <PF_AcceptConfirm>{0}이(가) 현재 일반 NPC 수락 정책에 따라 {1}에게 개인 봉신 서약을 제안합니다. 인물 사이의 서약이며 NPC 세력이나 도시 전체를 종속시키지 않습니다. 확정할까요?</PF_AcceptConfirm>
+  <PF_PlayerSuccession>플레이어 지정 후계 승계 적용</PF_PlayerSuccession>
+  <PF_NpcSuccession>실제 현재 NPC 후임 승인</PF_NpcSuccession>
+  <PF_Release>합의 해약 요청</PF_Release>
+  <PF_ReleaseConfirm>현재 NPC 당사자의 수락을 받아 이 개인 서약을 종료할까요? 전체 이력과 다른 개인·영지 계약 및 계정은 유지합니다.</PF_ReleaseConfirm>
+  <PF_Ended>시각 {0}에 합의 해약</PF_Ended>
+  <PF_Action4>합의 해약</PF_Action4>
+  <PF_Action5>원 인물 사망 확인</PF_Action5>
 </LanguageData>

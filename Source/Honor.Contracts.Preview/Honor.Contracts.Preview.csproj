@@ -1,5 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <Import Project="../Honor.Module.props" />
-  <PropertyGroup><OutputPath>../../TestMods/Honor.Contracts.Preview/$(RimWorldVersion)/Assemblies/</OutputPath><Version>0.3.67</Version></PropertyGroup>
+  <PropertyGroup><OutputPath>../../TestMods/Honor.Contracts.Preview/$(RimWorldVersion)/Assemblies/</OutputPath><Version>0.3.68</Version></PropertyGroup>
   <ItemGroup><ProjectReference Include="../Honor.Contracts.Rules/Honor.Contracts.Rules.csproj" /></ItemGroup>
 </Project>
