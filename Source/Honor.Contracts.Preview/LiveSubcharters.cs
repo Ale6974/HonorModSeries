@@ -9,6 +9,8 @@ namespace Honor.Contracts.Preview;
 public sealed record LiveSubcharterReview(NpcSubcharterPlan Plan, string Stamp, int RetainedDescendants, string Realm, string Representative)
 {
     [System.Text.Json.Serialization.JsonIgnore] public Game Context { get; init; }
+    public RetainedRealmConsent[] RetainedRealms { get; init; }
+    public RetainedRealmConsent[] Parties { get; init; }
 }
 
 public sealed partial class LiveCharterLedger
@@ -45,7 +47,7 @@ public sealed partial class LiveCharterLedger
     }
     public LiveSubcharterReview ReviewSubcharter(string previous, string parent, string created = null)
     {
-        if (Current.ProgramState != ProgramState.Playing || Current.Game == null) throw new NpcDecisionBlocked("ND_Unavailable");
+        if (Current.ProgramState != ProgramState.Playing || Current.Game != context) throw new NpcDecisionBlocked("ND_Unavailable");
         var transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>();
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         var protection = Current.Game.GetComponent<CharterProtectionLedger>();
@@ -57,19 +59,49 @@ public sealed partial class LiveCharterLedger
         reparentHistory.ValidatePeers(transfers.Ledger, payments.Ledger);
         var authority = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
         var decision = NpcDecisionAuthority.Read(authority);
-        var liege = parent == PlayerIdentity ? authority : SubcharterRepresentative(parent); var subject = SubcharterRepresentative(old.Terms.Subject);
-        if (liege != authority || subject != authority || !Book.Entity(old.Terms.Liege).Player && SubcharterRepresentative(old.Terms.Liege) != authority)
-            throw new ArgumentException("All affected authorities must already belong to the same current player realm.");
+        var liege = parent == PlayerIdentity ? authority : SubcharterRepresentative(parent);
+        if (liege != authority) throw new ArgumentException("New parent must belong to the current player realm.");
+        var partyDecisions = new List<RetainedRealmConsent>();
+        var observedRealms = new HashSet<Faction> { authority };
+        foreach (var party in new[] { old.Terms.Subject, old.Terms.Liege, parent }.Distinct(StringComparer.Ordinal).Where(p => !Book.Entity(p).Player))
+        {
+            var actual = SubcharterRepresentative(party);
+            observedRealms.Add(actual);
+            if (actual.HostileTo(authority) || authority.HostileTo(actual) || !transfers.Ledger.VerifiedOwner(party, Book.Entity(party).NativeOwner, actual.GetUniqueLoadID()))
+                throw new ArgumentException("Incoming parties need original ownership provenance and current reciprocal peace.");
+            partyDecisions.Add(new(party, actual.GetUniqueLoadID(), NpcDecisionAuthority.Read(actual), true));
+        }
+        var parties = partyDecisions.Any(p => p.ActualOwner != authority.GetUniqueLoadID()) ? partyDecisions.ToArray() : null;
         var descendants = Book.PlayerFollowers().Where(c => c.Terms.Subject == old.Terms.Subject || Book.IsBelow(c.Terms.Subject, old.Terms.Subject)).ToArray();
+        var retained = new List<RetainedRealmConsent>();
         foreach (var c in descendants)
-            if (SubcharterRepresentative(c.Terms.Subject) != authority) throw new ArgumentException("Align every descendant's actual realm first.");
+        {
+            var actual = SubcharterRepresentative(c.Terms.Subject);
+            observedRealms.Add(actual);
+            if (c.Terms.Subject == old.Terms.Subject) continue; // Exact incoming consent is paired above, never counted as a retained child.
+            if (actual == authority) continue;
+            if (actual.HostileTo(authority) || authority.HostileTo(actual) ||
+                !transfers.Ledger.VerifiedOwner(c.Terms.Subject, Book.Entity(c.Terms.Subject).NativeOwner, actual.GetUniqueLoadID()))
+                throw new ArgumentException("Original completed transfer and reciprocal peace required for a retained foreign descendant.");
+            retained.Add(new(c.Terms.Subject, actual.GetUniqueLoadID(), NpcDecisionAuthority.Read(actual), true));
+        }
+        if (observedRealms.Any(a => observedRealms.Any(b => a != b && (a.HostileTo(b) || b.HostileTo(a)))))
+            throw new ArgumentException("Every affected current realm must be reciprocally peaceful; wartime reparenting needs separate authority.");
         var observed = Observe(); long now = Find.TickManager.TicksGame;
-        var plan = NpcSubcharters.ReviewAuthorized(Book, previous, parent, created ?? Guid.NewGuid().ToString("N"), decision, now, observed);
+        created ??= Guid.NewGuid().ToString("N");
+        var plan = parties == null ? NpcSubcharters.ReviewAuthorized(Book, previous, parent, created, decision, now, observed)
+            : NpcSubcharters.ReviewWithParties(Book, previous, parent, created, decision, parties, now, observed);
         string stamp = JsonSerializer.Serialize(new { plan.Before, plan.After, plan.Tick, Transfers = transfers.Ledger.Export(), Payments = payments.Ledger.Export(),
             FinalConsents = finalConsents.Export(), Amendments = amendments.Export(), PlayerRenewals = playerRenewals.Export(),
             TownLosses = townLosses.Export(), OwnershipReturns = ownershipReturns.Export(), Protection = protection.Ledger.Export(), ReparentHistory = reparentHistory.Export(),
-            Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer), Observed = observed });
-        return new(plan, stamp, descendants.Length - 1, authority.Name, authority.leader.LabelShortCap) { Context = Current.Game };
+            Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer), Observed = observed,
+            RetainedRealms = retained.Count == 0 ? null : retained.ToArray(), Parties = parties });
+        // Validate complete provenance/third-party terms and archive capacity before offering this confirmation.
+        var witness = new NpcReparentWitness(plan.Previous, plan.Parent, plan.Created, plan.Before, now, decision, observed,
+            transfers.Ledger.Export(), payments.Ledger.Export()) { RetainedRealms = retained.Count == 0 ? null : retained.ToArray(), Parties = parties };
+        reparentHistory.Append(witness, Book);
+        if (Current.Game != context || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Game changed during current realm review.");
+        return new(plan, stamp, descendants.Length - 1, authority.Name, authority.leader.LabelShortCap) { Context = Current.Game, RetainedRealms = witness.RetainedRealms, Parties = parties };
     }
     public void ApplySubcharter(LiveSubcharterReview reviewed)
     {
@@ -77,11 +109,13 @@ public sealed partial class LiveCharterLedger
             if (reviewed == null || reviewed.Context != Current.Game) throw new ArgumentException("Review this current game first.");
             var fresh = ReviewSubcharter(reviewed.Plan.Previous, reviewed.Plan.Parent, reviewed.Plan.Created);
             if (fresh.Stamp != reviewed.Stamp) throw new ArgumentException("NPC consent, graph or world changed.");
-            var replacement = NpcSubcharters.CommitAuthorized(Book, fresh.Plan,
-                NpcDecisionAuthority.Read(Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority()), Find.TickManager.TicksGame, Observe());
+            var currentDecision = NpcDecisionAuthority.Read(Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority());
+            var replacement = fresh.Parties == null ? NpcSubcharters.CommitAuthorized(Book, fresh.Plan,
+                currentDecision, Find.TickManager.TicksGame, Observe()) : NpcSubcharters.CommitWithParties(Book, fresh.Plan,
+                currentDecision, fresh.Parties, Find.TickManager.TicksGame, Observe());
             var witness = new NpcReparentWitness(fresh.Plan.Previous, fresh.Plan.Parent, fresh.Plan.Created, fresh.Plan.Before,
                 fresh.Plan.Tick, fresh.Plan.Decision, Observe(), Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(),
-                Current.Game.GetComponent<TributePaymentLedger>().Ledger.Export());
+                Current.Game.GetComponent<TributePaymentLedger>().Ledger.Export()) { RetainedRealms = fresh.RetainedRealms?.ToArray(), Parties = fresh.Parties?.ToArray() };
             var recorded = reparentHistory.Append(witness, Book);
             recorded.Archive.ValidatePeers(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger,
                 Current.Game.GetComponent<TributePaymentLedger>().Ledger);
@@ -91,6 +125,8 @@ public sealed partial class LiveCharterLedger
             finalConsents.ValidateBook(replacement); amendments.ValidateBook(replacement); playerRenewals.ValidatePair(amendments, replacement);
             townLosses.ValidateBook(replacement); ownershipReturns.ValidatePair(townLosses, replacement);
             context.GetComponent<CharterProtectionLedger>().Ledger.ValidateBook(replacement);
+            if (ReviewSubcharter(fresh.Plan.Previous, fresh.Plan.Parent, fresh.Plan.Created).Stamp != fresh.Stamp)
+                throw new ArgumentException("Current party decisions or retained scope changed before atomic assignment.");
             if (Current.Game != context || Current.ProgramState != ProgramState.Playing)
                 throw new ArgumentException("Current game changed before committing reparent history.");
             Book = replacement; reparentHistory = recorded.Archive; // Both staged models change without native callbacks.
@@ -144,6 +180,12 @@ public sealed class NpcSubchartersWindow : Window
                 list.Label("NS_Plan".Translate(ledger.Label(terms.Subject), ledger.Label(terms.Liege), ledger.Label(review.Plan.Parent)));
                 list.Label("NS_Descendants".Translate(review.RetainedDescendants));
                 list.Label("NS_Representative".Translate(review.Realm, review.Representative));
+                if (review.RetainedRealms != null)
+                    foreach (var retained in review.RetainedRealms)
+                        list.Label("NS_RetainedRealm".Translate(ledger.Label(retained.Party), retained.ActualOwner, retained.Decision.Representative));
+                if (review.Parties != null)
+                    foreach (var party in review.Parties)
+                        list.Label("NS_IncomingParty".Translate(ledger.Label(party.Party), party.ActualOwner, party.Decision.Representative));
                 list.Label("NS_Terms".Translate(terms.TributeValue.ToString("0.##"), (terms.IntervalTicks / (double)PoliticalWorld.Day).ToString("0.##")));
                 if (list.ButtonText("NS_Confirm".Translate())) { ledger.ApplySubcharter(review); review = null; }
             }

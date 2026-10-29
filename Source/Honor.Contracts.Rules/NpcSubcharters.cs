@@ -8,6 +8,34 @@ public sealed record NpcSubcharterPlan(string Previous, string Parent, string Cr
 
 public static class NpcSubcharters
 {
+    public static NpcSubcharterPlan ReviewWithParties(CharterBook source, string previous, string parent, string created,
+        NpcRealmDecisionEvidence root, IReadOnlyList<RetainedRealmConsent> parties, long now, IEnumerable<TerritoryObservation> observations)
+    {
+        NpcRealmDecision.Consent(root); var old = source.Charter(previous);
+        var expected = new[] { old.Terms.Subject, old.Terms.Liege, parent }.Where(p => !source.Entity(p).Player).Distinct(StringComparer.Ordinal).ToArray();
+        if (parties == null || parties.Count != expected.Length || parties.Any(p => p == null) ||
+            !new HashSet<string>(expected, StringComparer.Ordinal).SetEquals(parties.Select(p => p.Party)) || parties.Select(p => p.Party).Distinct().Count() != parties.Count)
+            throw new ArgumentException("Exact old liege, subject and new parent decisions required.");
+        foreach (var p in parties)
+        {
+            NpcRealmDecision.Consent(p.Decision);
+            if (p.Decision.Realm != p.ActualOwner || !p.ReciprocalPeace) throw new ArgumentException("Party owner and current peaceful decision differ.");
+        }
+        if (parties.Any(p => p.ActualOwner == root.Realm && p.Decision != root) || parties.GroupBy(p => p.ActualOwner, StringComparer.Ordinal).Any(g => g.Select(p => p.Decision).Distinct().Count() != 1))
+            throw new ArgumentException("A realm cannot present inconsistent current representatives.");
+        var parentDecision = source.Entity(parent).Player ? root : parties.Single(p => p.Party == parent).Decision;
+        if (parentDecision != root) throw new ArgumentException("New parent must belong to the player's actual current ordinary authority.");
+        var subject = parties.Single(p => p.Party == old.Terms.Subject).Decision;
+        return Review(source, previous, parent, created, new(root.Representative, subject.Representative), now, observations) with { Decision = root };
+    }
+    public static CharterBook CommitWithParties(CharterBook current, NpcSubcharterPlan plan, NpcRealmDecisionEvidence root,
+        IReadOnlyList<RetainedRealmConsent> parties, long now, IEnumerable<TerritoryObservation> observations)
+    {
+        if (plan == null || plan.Tick != now || current.Export() != plan.Before || plan.Decision != root) throw new ArgumentException("Current party decision review expired.");
+        var fresh = ReviewWithParties(current, plan.Previous, plan.Parent, plan.Created, root, parties, now, observations);
+        if (fresh.Authority != plan.Authority || fresh.After != plan.After) throw new ArgumentException("Actual incoming party consent changed.");
+        return CharterBook.Restore(fresh.After);
+    }
     public static NpcSubcharterPlan ReviewAuthorized(CharterBook source, string previous, string parent, string created,
         NpcRealmDecisionEvidence current, long now, IEnumerable<TerritoryObservation> observations)
         => Review(source, previous, parent, created, NpcRealmDecision.Consent(current), now, observations) with { Decision = current };

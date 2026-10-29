@@ -1,5 +1,9 @@
 # 1.7 API·런타임 검증 기록
 
+## 0.3.69 multi-owner subcharters — 2026-10-29
+
+Installed Version.txt is still1.7.4990 rev1069. No new native method or Harmony hook is introduced. Reuse existing actual Settlement/Faction bindings, NpcDecisionAuthority ordinary current ruler/quest/provider policy, Faction.HostileTo and existing territory transfer provenance. Every affected current realm is pairwise reciprocally nonhostile; new parent stays at current PlayerPolitics.TerritoryAuthority. A separate recorded current decision accepts only that party's specific reparent or retained original child contract, not a realm/asset handoff. Preserve native player control, all source/stock/resident/last-base guards, medical state and old native call results because this operation has no ownership/pawn/item/diplomacy writes. Original completed transfers justify observed identity only and are never replayed. New optional data is restored by the existing live charter Scribe/archive/FinalizeInit peer path.1.6 remains reference1.6.4871/net472;1.7 compiles against installed net10 DLLs.
+
 ## 0.3.68 personal succession/release — 2026-10-29
 
 Installed Version.txt remains1.7.4990 rev1069. No new native API or Harmony target is added: reuse original Pawn/Faction references, Pawn.Dead, Pawn.GetGizmos, current Faction.leader/registration/goodwill, quest reservations and existing Scribe/GameComponent callbacks. Native NPC successor selection is observed, never invoked by this feature. A positive original-Pawn death observation is persisted separately before deferred succession; absence alone grants no death proof. Missing historical Pawn references may remain null with original IDs/history retained, and new marked recovery also rejects a known living/resurrected matching actor. This is a mod-owned succession decision, not native ownership repair.

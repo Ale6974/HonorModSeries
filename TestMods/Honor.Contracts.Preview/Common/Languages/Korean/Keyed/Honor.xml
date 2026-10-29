@@ -508,4 +508,6 @@
   <PF_Ended>시각 {0}에 합의 해약</PF_Ended>
   <PF_Action4>합의 해약</PF_Action4>
   <PF_Action5>원 인물 사망 확인</PF_Action5>
+  <NS_RetainedRealm>{0}의 기존 계약·도시 유지: 실제 세력 {1}, 현재 수락 대표 {2}. 도시 이전 동의가 아닙니다.</NS_RetainedRealm>
+  <NS_IncomingParty>현재 당사자 수락: {0} / 실제 세력 {1} / 대표 {2}. 원 조건과 이전 서명은 이력에 유지됩니다.</NS_IncomingParty>
 </LanguageData>

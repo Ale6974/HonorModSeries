@@ -4,7 +4,15 @@ using System.Text.Json;
 namespace Honor.Contracts.Rules;
 
 public sealed record NpcReparentWitness(string Previous, string Parent, string Created, string Before,
-    long Tick, NpcRealmDecisionEvidence Decision, TerritoryObservation[] Observations, string Transfers, string Payments);
+    long Tick, NpcRealmDecisionEvidence Decision, TerritoryObservation[] Observations, string Transfers, string Payments)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public RetainedRealmConsent[] RetainedRealms { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public RetainedRealmConsent[] Parties { get; init; }
+}
+/// <summary>Current consent to retaining this exact child's existing contract, not city or realm transfer authority.</summary>
+public sealed record RetainedRealmConsent(string Party, string ActualOwner, NpcRealmDecisionEvidence Decision, bool ReciprocalPeace);
 public sealed record NpcReparentRecord(NpcReparentWitness Witness, string Proof, string After);
 public sealed record NpcReparentSave(int Version, NpcReparentRecord[] Records);
 public sealed record NpcReparentPlayerPerformance(string Charter, string Liege, string Subject, long Tick, TributePerformance Performance);
@@ -14,14 +22,14 @@ public sealed class NpcReparentArchive
 {
     private readonly List<NpcReparentRecord> records = [];
     public IReadOnlyList<NpcReparentRecord> Records => records.Select(r => r with {
-        Witness = r.Witness with { Observations = r.Witness.Observations.ToArray() } }).ToArray();
+        Witness = r.Witness with { Observations = r.Witness.Observations.ToArray(), RetainedRealms = r.Witness.RetainedRealms?.ToArray(), Parties = r.Witness.Parties?.ToArray() } }).ToArray();
     private static string Hash(NpcReparentWitness w) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(w))));
     private static NpcReparentRecord Build(NpcReparentWitness w)
     {
         if (w == null || w.Observations == null || w.Observations.Length > CharterBook.MaxEntities || w.Observations.Any(x => x == null) ||
             w.Observations.Select(x => x.Id).Distinct(StringComparer.Ordinal).Count() != w.Observations.Length)
             throw new ArgumentException("Complete unique original observations required.");
-        w = w with { Observations = w.Observations.ToArray() };
+        w = w with { Observations = w.Observations.ToArray(), RetainedRealms = w.RetainedRealms?.ToArray(), Parties = w.Parties?.ToArray() };
         var before = CharterBook.Restore(w.Before);
         var transfers = TerritoryTransferLedger.Restore(w.Transfers); var payments = TributeLedger.Restore(w.Payments);
         if (transfers.LastTick > w.Tick || payments.LastTick > w.Tick || transfers.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) ||
@@ -29,15 +37,39 @@ public sealed class NpcReparentArchive
         if (w.Observations.Length != before.Entities.Count || before.Entities.Any(e => !w.Observations.Any(o => o.Id == e.Id)))
             throw new ArgumentException("Original observation set changed.");
         var original = before.Charter(w.Previous);
-        var affected = before.PlayerFollowers().Where(c => c.Terms.Subject == original.Terms.Subject || before.IsBelow(c.Terms.Subject, original.Terms.Subject))
-            .Select(c => c.Terms.Subject).Append(w.Parent).Append(original.Terms.Liege).Distinct(StringComparer.Ordinal);
+        var endpoints = new[] { original.Terms.Subject, original.Terms.Liege, w.Parent }.Distinct(StringComparer.Ordinal).ToArray();
+        if (w.Parties != null && (w.Parties.Length is < 1 or > 3 || w.Parties.Any(p => p == null) ||
+            w.Parties.Select(p => p.Party).Distinct(StringComparer.Ordinal).Count() != w.Parties.Length)) throw new ArgumentException("Invalid incoming party decision scope.");
+        var descendants = before.PlayerFollowers().Where(c => before.IsBelow(c.Terms.Subject, original.Terms.Subject)).Select(c => c.Terms.Subject).ToArray();
+        var affected = descendants.Append(original.Terms.Subject).Append(w.Parent).Append(original.Terms.Liege).Distinct(StringComparer.Ordinal);
+        var foreign = new HashSet<string>(StringComparer.Ordinal);
+        if (w.RetainedRealms != null && (w.RetainedRealms.Length is < 1 or > CharterBook.MaxEntities || w.RetainedRealms.Any(r => r == null) ||
+            w.RetainedRealms.Select(r => r.Party).Distinct(StringComparer.Ordinal).Count() != w.RetainedRealms.Length))
+            throw new ArgumentException("Retained realm consent must contain exact unique affected descendants.");
         foreach (string party in affected)
         {
             var entity = before.Entity(party);
-            if (!entity.Player && !transfers.VerifiedOwner(party, entity.NativeOwner, w.Decision?.Realm))
+            if (endpoints.Contains(party) && w.Parties != null && !entity.Player)
+            {
+                var p = w.Parties.SingleOrDefault(p => p.Party == party);
+                if (p == null || !transfers.VerifiedOwner(party, entity.NativeOwner, p.ActualOwner)) throw new ArgumentException("Incoming party actual ownership provenance changed.");
+                continue;
+            }
+            if (entity.Player || transfers.VerifiedOwner(party, entity.NativeOwner, w.Decision?.Realm)) continue;
+            var retained = w.RetainedRealms?.SingleOrDefault(r => r.Party == party);
+            if (!descendants.Contains(party) || retained == null || !retained.ReciprocalPeace || retained.ActualOwner == w.Decision?.Realm ||
+                retained.Decision?.Realm != retained.ActualOwner || !transfers.VerifiedOwner(party, entity.NativeOwner, retained.ActualOwner))
                 throw new ArgumentException("Original actual realm and transfer provenance required for each affected party.");
+            NpcRealmDecision.Consent(retained.Decision); foreign.Add(party);
         }
-        var plan = NpcSubcharters.ReviewAuthorized(before, w.Previous, w.Parent, w.Created, w.Decision, w.Tick, w.Observations);
+        if (w.RetainedRealms != null && (!foreign.SetEquals(w.RetainedRealms.Select(r => r.Party)) ||
+            w.RetainedRealms.GroupBy(r => r.ActualOwner, StringComparer.Ordinal).Any(g => g.Select(r => r.Decision).Distinct().Count() != 1)))
+            throw new ArgumentException("Retained realm decision scope or representative changed.");
+        var allDecisions = (w.RetainedRealms ?? []).Concat(w.Parties ?? []).Select(p => p.Decision).Append(w.Decision).ToArray();
+        if (allDecisions.Any(d => d == null) || allDecisions.GroupBy(d => d.Realm, StringComparer.Ordinal).Any(g => g.Distinct().Count() != 1))
+            throw new ArgumentException("Original realm decisions disagree across incoming and retained parties.");
+        var plan = w.Parties == null ? NpcSubcharters.ReviewAuthorized(before, w.Previous, w.Parent, w.Created, w.Decision, w.Tick, w.Observations)
+            : NpcSubcharters.ReviewWithParties(before, w.Previous, w.Parent, w.Created, w.Decision, w.Parties, w.Tick, w.Observations);
         var after = CharterBook.Restore(plan.After); var proof = Hash(w); after.BindReparent(w.Created, w.Previous, proof);
         return new(w, proof, after.Export());
     }

@@ -508,4 +508,6 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <PF_Ended>Mutually released at tick {0}</PF_Ended>
   <PF_Action4>Mutual release</PF_Action4>
   <PF_Action5>Observed death</PF_Action5>
+  <NS_RetainedRealm>Retain {0} unchanged: actual realm {1}, current consenting representative {2}. This is no city transfer.</NS_RetainedRealm>
+  <NS_IncomingParty>Current incoming-party consent: {0}, actual realm {1}, representative {2}. Original terms and previous signatures remain recorded.</NS_IncomingParty>
 </LanguageData>
