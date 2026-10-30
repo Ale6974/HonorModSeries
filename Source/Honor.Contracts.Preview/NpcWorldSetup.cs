@@ -43,6 +43,7 @@ public sealed partial class LiveCharterLedger
             { RestoreFailed = true; Log.Error("[Honor.Contracts.Preview] Reparent peer history rejected; original data retained. " + e.GetType().Name); }
         }
         FinalizeNpcTerminations();
+        FinalizeScopedReleases();
         if (!RestoreFailed)
         {
             try

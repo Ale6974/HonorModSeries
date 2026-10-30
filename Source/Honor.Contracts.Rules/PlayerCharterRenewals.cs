@@ -21,8 +21,7 @@ public sealed class PlayerCharterRenewals
         var w = amendment.Witness; var before = CharterBook.Restore(w.Book); var after = CharterBook.Restore(amendment.After); var old = before.Charter(w.Previous);
         var payments = w.Payments == null ? throw new ArgumentException("Current player tribute evidence required.") : TributeLedger.Restore(w.Payments);
         var transfers = TerritoryTransferLedger.Restore(w.Transfers);
-        var replay = CharterAmendments.Review(before, transfers, payments, w.Previous, w.Next, w.Draft, w.Decision, w.Goodwill, w.Tick,
-            before.Entities.Select(e => new TerritoryObservation(e.Id, e.NativeOwner, true, e.Player, true)));
+        var replay = CharterAmendments.Replay(w);
         if (replay != amendment || !before.Entity(old.Terms.Subject).Player || actual.State.Mode != PlayerAllegianceMode.Vassal || actual.State.Suspended ||
             actual.State.Contract != old.Id || actual.State.Authority != w.Decision.Realm || before.Entity(old.Terms.Subject).NativeOwner != actual.NativePlayer ||
             before.RecordedPoliticalOwner(old.Terms.Subject) != actual.State.Authority || journal.Pending)

@@ -9,8 +9,24 @@ public static class CharterReleases
     public static CharterReleaseReview Review(CharterBook book, TributeLedger payments, TerritoryTransferLedger transfers,
         string id, NpcRealmDecisionEvidence decision, long now, IEnumerable<TerritoryObservation> observations)
     {
+        NpcRealmDecision.Consent(decision);
+        return Core(book, payments, transfers, id, decision, now, observations);
+    }
+    public static CharterReleaseReview ReviewGovernment(ScopedCharterReleaseWitness w)
+    {
+        if (w?.Decision == null || w.Decision.Regime is not (NpcDecisionRegime.Union or NpcDecisionRegime.Royal) || w.GovernmentDecision == null)
+            throw new ArgumentException("Exact scoped release authority required.");
+        ScopedNpcTerminationAuthority.ValidateDecisions([w.Decision], [System.Text.Json.JsonSerializer.Deserialize<ScopedNpcContractDecision>(w.GovernmentDecision)], ScopedCharterReleases.Scope(w), w.Tick);
+        var before = CharterBook.Restore(w.Book); var observed = System.Text.Json.JsonSerializer.Deserialize<TerritoryObservation[]>(w.Observations);
+        if (observed == null || observed.Any(o => o == null) || observed.Length != before.Entities.Count || observed.Select(o => o.Id).Distinct().Count() != before.Entities.Count ||
+            !new HashSet<string>(before.Entities.Select(e => e.Id), StringComparer.Ordinal).SetEquals(observed.Select(o => o.Id))) throw new ArgumentException("Complete original release observations required.");
+        return Core(before, TributeLedger.Restore(w.Payments), TerritoryTransferLedger.Restore(w.Transfers), w.Charter, w.Decision, w.Tick, observed);
+    }
+    private static CharterReleaseReview Core(CharterBook book, TributeLedger payments, TerritoryTransferLedger transfers,
+        string id, NpcRealmDecisionEvidence decision, long now, IEnumerable<TerritoryObservation> observations)
+    {
         RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(payments); RuntimeCompat.NotNull(transfers);
-        RuntimeCompat.NotNull(observations); NpcRealmDecision.Consent(decision);
+        RuntimeCompat.NotNull(observations);
         var c = book.Charter(id); var subject = book.Entity(c.Terms.Subject); var liege = book.Entity(c.Terms.Liege);
         var npc = subject.Player ? liege : subject;
         if (subject.Player == liege.Player || c.NpcAuthority != null || c.Phase != RecordedCharterPhase.Active || c.NpcReleaseTick.HasValue ||

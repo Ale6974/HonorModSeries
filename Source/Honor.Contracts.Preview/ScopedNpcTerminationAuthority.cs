@@ -7,6 +7,10 @@ namespace Honor.Contracts.Preview;
 
 internal static class NativeNpcContractAuthority
 {
+    internal static ScopedNpcContractDecision ReviewRelease(ScopedCharterReleaseWitness w, Faction realm)
+        => Build(ScopedCharterReleases.Scope(w), w.Tick, [realm])?.Single();
+    internal static ScopedNpcContractDecision ReviewAmendment(CharterAmendmentWitness w, Faction realm)
+        => Build(CharterAmendments.GovernmentScope(w), w.Tick, [realm])?.Single();
     internal static ScopedNpcContractDecision[] Review(NpcTerminationWitness witness, IEnumerable<Faction> actualRealms)
         => Build(ScopedNpcTerminationAuthority.Scope(witness), witness.Tick, actualRealms);
     internal static ScopedNpcContractDecision[] ReviewReparent(NpcReparentWitness witness, IEnumerable<Faction> actualRealms)

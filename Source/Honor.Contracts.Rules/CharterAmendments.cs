@@ -7,6 +7,9 @@ public sealed record CharterAmendmentWitness(string Previous, string Next, long 
     CharterOfferDraft Draft, NpcRealmDecisionEvidence Decision, int Goodwill)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string Payments { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string ScopeObservations { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string GovernmentDecision { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string ScopePayments { get; init; }
 }
 public sealed record CharterAmendmentPlan(CharterAmendmentWitness Witness, string Proof, string Prepared, string After);
 public sealed record CharterAmendmentSave(int Version, CharterAmendmentPlan[] Records);
@@ -19,12 +22,37 @@ public sealed class CharterAmendments
     public IReadOnlyCollection<CharterAmendmentPlan> Records => records.Values.ToArray();
     private static bool Key(string s) => !string.IsNullOrWhiteSpace(s) && s.Length <= 120 && !s.Any(char.IsControl);
     private static string Hash(CharterAmendmentWitness w) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(w))));
+    public static string GovernmentScope(CharterAmendmentWitness w) => Hash(w with { GovernmentDecision = null });
+    public static CharterAmendmentPlan Replay(CharterAmendmentWitness w)
+    {
+        var b = CharterBook.Restore(w.Book);
+        return Build(w, w.ScopeObservations == null ? b.Entities.Select(e => new TerritoryObservation(e.Id, e.NativeOwner, true, e.Player, true)) : JsonSerializer.Deserialize<TerritoryObservation[]>(w.ScopeObservations));
+    }
     private static CharterAmendmentPlan Build(CharterAmendmentWitness w, IEnumerable<TerritoryObservation> observed)
     {
         if (w == null || !Key(w.Previous) || !Key(w.Next) || w.Next == w.Previous || w.Tick < 0 || w.Tick > int.MaxValue || w.Draft == null)
             throw new ArgumentException("Invalid amendment witness.");
-        NpcRealmDecision.Consent(w.Decision);
+        if (w.GovernmentDecision == null)
+        { if (w.ScopeObservations != null || w.ScopePayments != null) throw new ArgumentException("Unpaired amendment observations."); NpcRealmDecision.Consent(w.Decision); }
+        else
+        {
+            if (w.Decision == null || w.Decision.Regime is not (NpcDecisionRegime.Union or NpcDecisionRegime.Royal) || w.ScopeObservations == null || w.ScopePayments == null)
+                throw new ArgumentException("Exact nonordinary amendment authority required.");
+            var scopedPayments = TributeLedger.Restore(w.ScopePayments);
+            if (scopedPayments.LastTick > w.Tick || scopedPayments.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) || w.Payments != null && w.ScopePayments != w.Payments)
+                throw new ArgumentException("Exact resolved current payment scope required.");
+            var mandate = JsonSerializer.Deserialize<ScopedNpcContractDecision>(w.GovernmentDecision);
+            ScopedNpcTerminationAuthority.ValidateDecisions([w.Decision], [mandate], GovernmentScope(w), w.Tick);
+            if (mandate.Goodwill != w.Goodwill) throw new ArgumentException("Amendment economic response must use the same recorded current goodwill.");
+            if (JsonSerializer.Serialize(observed.ToArray()) != w.ScopeObservations) throw new ArgumentException("Original scoped observations changed.");
+        }
         var book = CharterBook.Restore(w.Book); var transfers = TerritoryTransferLedger.Restore(w.Transfers); var old = book.Charter(w.Previous);
+        if (w.ScopeObservations != null)
+        {
+            var all = observed.ToArray();
+            if (all.Any(o => o == null) || all.Length != book.Entities.Count || all.Select(o => o.Id).Distinct().Count() != book.Entities.Count ||
+                !new HashSet<string>(book.Entities.Select(e => e.Id), StringComparer.Ordinal).SetEquals(all.Select(o => o.Id))) throw new ArgumentException("Complete scoped amendment observations required.");
+        }
         bool playerSubject = book.Entity(old.Terms.Subject).Player;
         var npc = book.Entity(playerSubject ? old.Terms.Liege : old.Terms.Subject);
         bool accepted;
@@ -69,7 +97,10 @@ public sealed class CharterAmendments
         TributeLedger payments, NpcRealmDecisionEvidence decision, int goodwill, long now, IEnumerable<TerritoryObservation> observations)
     {
         RuntimeCompat.NotNull(plan);
-        var fresh = Review(book, transfers, payments, plan.Witness.Previous, plan.Witness.Next, plan.Witness.Draft, decision, goodwill, now, observations);
+        if (payments.LastTick > now || payments.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared)) throw new ArgumentException("Resolve current tribute custody first.");
+        var fresh = plan.Witness.GovernmentDecision == null ? Review(book, transfers, payments, plan.Witness.Previous, plan.Witness.Next, plan.Witness.Draft, decision, goodwill, now, observations) :
+            Build(plan.Witness with { Book = book.Export(), Transfers = transfers.Export(), Decision = decision, Goodwill = goodwill, Tick = now,
+                Payments = book.Entity(book.Charter(plan.Witness.Previous).Terms.Subject).Player ? payments.Export() : null, ScopeObservations = JsonSerializer.Serialize(observations.ToArray()), ScopePayments = payments.Export() }, observations);
         if (fresh != plan || records.ContainsKey(plan.Witness.Next) || records.Values.Any(r => r.Witness.Previous == plan.Witness.Previous) || records.Count >= Capacity)
             throw new ArgumentException("Stale, duplicate or full amendment review.");
         var after = CharterBook.Restore(fresh.After); var copy = Restore(Export()); copy.records.Add(fresh.Witness.Next, fresh); copy.ValidateBook(after);
@@ -103,8 +134,7 @@ public sealed class CharterAmendments
         foreach (var p in saved.Records)
         {
             if (p?.Witness == null) throw new ArgumentException("Missing amendment witness.");
-            var before = CharterBook.Restore(p.Witness.Book);
-            var expected = Build(p.Witness, before.Entities.Select(e => new TerritoryObservation(e.Id, e.NativeOwner, true, e.Player, true)));
+            var expected = Replay(p.Witness);
             if (p != expected || result.records.ContainsKey(p.Witness.Next) || result.records.Values.Any(r => r.Witness.Previous == p.Witness.Previous))
                 throw new ArgumentException("Invalid or duplicate amendment history.");
             result.records.Add(p.Witness.Next, p);

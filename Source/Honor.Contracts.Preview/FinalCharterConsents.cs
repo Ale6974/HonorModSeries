@@ -21,6 +21,7 @@ public sealed partial class LiveCharterLedger
         Scribe_Values.Look(ref initialMandateSnapshot, "honorInitialCharterMandatesV1");
         Scribe_Collections.Look(ref initialMandatePairs, "honorInitialCharterMandatePairsV1", LookMode.Value);
         ExposeAmendments();
+        ExposeScopedReleases();
     }
     private void ValidateFinalConsents()
     {
@@ -32,6 +33,7 @@ public sealed partial class LiveCharterLedger
         initialMandates.ValidateBook(Book);
         initialMandates.ValidateAcceptances(finalConsents);
         ValidateAmendments();
+        ValidateScopedReleases();
     }
     private InitialCharterMandate ReviewInitialMandate(CharterBook before, CharterOfferResult result, string id, Faction realm,
         TerritoryObservation[] observations, string payments, long now, bool final)

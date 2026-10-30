@@ -531,4 +531,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
 <PF_Mandates>Current titled rulers and union chairs need a separate decision for this personal pledge and its original history. City seats use the declared goodwill policy; this does not bind their realm, cities or armies.</PF_Mandates>
 <CO_Mandates>Union and royal accepted proposals and final signatures each require a separate current government decision. Former or emigrated persons may release only their own existing personal oath; no city or realm consent is implied.</CO_Mandates>
 <LS_CurrentAuthority>Succession requires current authority for this entire recorded scope. An obsolete return receipt records only its original city fact: a separate current reconciliation must approve the expanded contract scope. Ended contracts stay ended.</LS_CurrentAuthority>
+<CR_ScopedAuthority>Release and renegotiation require a separate current decision from the relevant government. Existing obligations and original signatures remain in history; this agreement does not move cities or people.</CR_ScopedAuthority>
 </LanguageData>

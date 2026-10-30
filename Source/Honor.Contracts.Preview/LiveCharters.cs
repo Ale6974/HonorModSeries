@@ -29,7 +29,7 @@ public sealed partial class LiveCharterLedger : GameComponent
     private string snapshot;
     private List<TerritoryBinding> bindings = [];
     private CharterBook book = new();
-    public CharterBook Book { get => book; private set { terminationHistory?.ValidateBook(value); initialMandates?.ValidateBook(value); book = value; } }
+    public CharterBook Book { get => book; private set { terminationHistory?.ValidateBook(value); initialMandates?.ValidateBook(value); scopedReleases?.ValidateBook(value); book = value; } }
     public bool RestoreFailed { get; private set; }
     private readonly Game context;
     public LiveCharterLedger(Game game) { context = game; }
@@ -245,7 +245,7 @@ public sealed partial class LiveCharterLedger : GameComponent
     {
         Execute(() => {
             var review = ReviewRelease(id); var game = context;
-            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("CR_Confirm".Translate(review.Owner.Name, review.Leader.LabelShortCap), () => Execute(() => {
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("CR_Confirm".Translate(review.Owner.Name, review.Leader.LabelShortCap) + "\n\n" + "CR_ScopedAuthority".Translate(), () => Execute(() => {
                 if (game != Current.Game) throw new ArgumentException("Review the current game.");
                 var fresh = ReviewRelease(id);
                 if (fresh != review) throw new ArgumentException("Release authority, terms or custody changed.");
@@ -253,12 +253,15 @@ public sealed partial class LiveCharterLedger : GameComponent
                 finalConsents.ValidateBook(next); amendments.ValidateBook(next); playerRenewals.ValidatePair(amendments, next);
                 townLosses.ValidateBook(next); ownershipReturns.ValidatePair(townLosses, next);
                 context.GetComponent<CharterProtectionLedger>().Ledger.ValidateBook(next);
+                var history = fresh.Government == null ? scopedReleases : scopedReleases.Append(System.Text.Json.JsonSerializer.Deserialize<ScopedCharterReleaseWitness>(fresh.Government), next, payments);
+                history.ValidatePeers(context.GetComponent<TerritoryAdministrationLedger>().Ledger, payments);
+                if (ReviewRelease(id) != fresh) throw new ArgumentException("Complete current release authority changed before assignment.");
                 // Both models are validated before either assignment; no native callbacks or physical goods writes.
-                Book = next; context.GetComponent<TributePaymentLedger>().CommitCharterRelease(payments);
+                Book = next; context.GetComponent<TributePaymentLedger>().CommitCharterRelease(payments); scopedReleases = history;
             })));
         });
     }
-    private (CharterReleaseReview Plan, Faction Owner, Pawn Leader) ReviewRelease(string id)
+    private (CharterReleaseReview Plan, Faction Owner, Pawn Leader, string Government) ReviewRelease(string id)
     {
         var payments = context.GetComponent<TributePaymentLedger>(); var towns = context.GetComponent<TerritoryAdministrationLedger>();
         if (payments.RestoreFailed || towns.RestoreFailed || context.GetComponent<PlayerPoliticsLedger>().RestoreFailed ||
@@ -266,9 +269,13 @@ public sealed partial class LiveCharterLedger : GameComponent
             throw new ArgumentException("Current political or payment records unavailable.");
         var c = Book.Charter(id); var binding = Binding(Book.Entity(c.Terms.Subject).Player ? c.Terms.Liege : c.Terms.Subject);
         var owner = binding.FactionGroup ? binding.OriginalFaction : binding.Settlement?.Faction;
-        var decision = NpcDecisionAuthority.Read(owner);
-        var plan = CharterReleases.Review(Book, payments.Ledger, towns.Ledger, id, decision, Find.TickManager.TicksGame, Observe());
-        return (plan, owner, owner.leader);
+        var decision = NpcDecisionAuthority.Observe(owner);
+        if (decision.Regime == NpcDecisionRegime.Ordinary)
+            return (CharterReleases.Review(Book, payments.Ledger, towns.Ledger, id, decision, Find.TickManager.TicksGame, Observe()), owner, owner.leader, null);
+        var witness = new ScopedCharterReleaseWitness(id, Find.TickManager.TicksGame, Book.Export(), payments.Ledger.Export(), towns.Ledger.Export(),
+            System.Text.Json.JsonSerializer.Serialize(Observe()), decision, null);
+        witness = witness with { GovernmentDecision = System.Text.Json.JsonSerializer.Serialize(NativeNpcContractAuthority.ReviewRelease(witness, owner)) };
+        return (CharterReleases.ReviewGovernment(witness), owner, owner.leader, System.Text.Json.JsonSerializer.Serialize(witness));
     }
 }
 

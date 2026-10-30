@@ -47,9 +47,18 @@ public sealed partial class LiveCharterLedger
         var binding = Binding(subject ? old.Terms.Liege : old.Terms.Subject); var town = binding.Settlement;
         if (binding.PlayerGroup || (!subject || !binding.FactionGroup) && (town == null || town.GetType() != typeof(Settlement) || town.Destroyed ||
             !Find.WorldObjects.AllWorldObjects.Contains(town) || town.Faction == null)) throw new ArgumentException("Review the actual current NPC party.");
-        var owner = binding.FactionGroup ? binding.OriginalFaction : town.Faction; var decision = NpcDecisionAuthority.Read(owner);
-        var plan = CharterAmendments.Review(Book, towns.Ledger, payments.Ledger, id, next ?? Guid.NewGuid().ToString("N"), draft,
+        var owner = binding.FactionGroup ? binding.OriginalFaction : town.Faction; var decision = NpcDecisionAuthority.Observe(owner);
+        next ??= Guid.NewGuid().ToString("N");
+        CharterAmendmentPlan plan;
+        if (decision.Regime == NpcDecisionRegime.Ordinary) plan = CharterAmendments.Review(Book, towns.Ledger, payments.Ledger, id, next, draft,
             decision, owner.GoodwillWith(Faction.OfPlayer), Find.TickManager.TicksGame, Observe());
+        else
+        {
+            var witness = new CharterAmendmentWitness(id, next, Find.TickManager.TicksGame, Book.Export(), towns.Ledger.Export(), draft, decision, owner.GoodwillWith(Faction.OfPlayer)) {
+                Payments = subject ? payments.Ledger.Export() : null, ScopeObservations = JsonSerializer.Serialize(Observe()), ScopePayments = payments.Ledger.Export() };
+            witness = witness with { GovernmentDecision = JsonSerializer.Serialize(NativeNpcContractAuthority.ReviewAmendment(witness, owner)) };
+            plan = CharterAmendments.Replay(witness);
+        }
         var player = ReviewPlayerRenewal(plan, owner);
         if (player != null) _ = game.GetComponent<PoliticalTransitionLedger>().StageCharterRenewal(player);
         string stamp = JsonSerializer.Serialize(new { Plan = plan, Player = player, RenewalArchive = playerRenewals.Export(), Audit = finalConsents.Export(), Amendments = amendments.Export(),
@@ -63,7 +72,7 @@ public sealed partial class LiveCharterLedger
         if (fresh.Stamp != reviewed.Stamp || fresh.Owner != reviewed.Owner || fresh.Representative != reviewed.Representative)
             throw new ArgumentException("Current terms, authority or evidence changed.");
         var payments = Current.Game.GetComponent<TributePaymentLedger>(); var towns = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-        var result = amendments.Commit(fresh.Plan, Book, towns.Ledger, payments.Ledger, NpcDecisionAuthority.Read(fresh.Owner),
+        var result = amendments.Commit(fresh.Plan, Book, towns.Ledger, payments.Ledger, NpcDecisionAuthority.Observe(fresh.Owner),
             fresh.Owner.GoodwillWith(Faction.OfPlayer), Find.TickManager.TicksGame, Observe());
         var audit = finalConsents.Record(CharterBook.Restore(fresh.Plan.Prepared), result.Book, w.Next,
             fresh.Owner.GetUniqueLoadID(), fresh.Representative.GetUniqueLoadID(), ConsentLabel(fresh.Owner.Name, fresh.Owner.GetUniqueLoadID()),
@@ -83,6 +92,7 @@ public sealed partial class LiveCharterLedger
         var currentOwner = currentBinding.FactionGroup ? currentBinding.OriginalFaction : currentBinding.Settlement?.Faction;
         if (fresh.Owner.leader != fresh.Representative || fresh.Representative.Faction != fresh.Owner || currentOwner != fresh.Owner)
             throw new ArgumentException("Representative or actual owner changed before commit.");
+        if (ReviewAmendment(w.Previous, w.Draft, w.Next).Stamp != fresh.Stamp) throw new ArgumentException("Current complete amendment consent changed before assignment.");
         // All paired books, history and political models have been staged; assignments invoke no native callbacks.
         Book = result.Book; amendments = result.Archive; finalConsents = audit; playerRenewals = renewalArchive;
         if (polity != null)
@@ -124,6 +134,7 @@ public sealed class CharterAmendmentWindow : Window
         var list = new Listing_Standard(); list.Begin(new Rect(0, 0, area.width - 28, 8000));
         bool playerSubject = ledger.Book.Entity(old.Terms.Subject).Player;
         list.Label((playerSubject ? "CN_PlayerTitle" : "CN_Title").Translate()); list.Label((playerSubject ? "CN_PlayerLimits" : "CN_Limits").Translate());
+        list.Label("CR_ScopedAuthority".Translate());
         CharterOfferWindow.DrawTerms(list, old.Terms);
         list.Label("CO_Value".Translate(value)); list.TextFieldNumeric(ref value, ref valueText, 1, 10000); value = Mathf.Clamp(value, 1, 10000);
         list.Label("CO_Interval".Translate(interval)); list.TextFieldNumeric(ref interval, ref intervalText, 1, 60); interval = Mathf.Clamp(interval, 1, 60);
