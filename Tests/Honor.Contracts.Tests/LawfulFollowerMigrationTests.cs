@@ -34,9 +34,51 @@ internal static class LawfulFollowerMigrationTests
         var residentPlan = FollowerTransfers.Review(after, physical, [new("child", actualTown with { HasInhabitants = true, ResidentProof = new string('A', 64) }), new("deep", actualDeep)], "union", now);
         var residentPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], residentPlan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulFollowerAdmission("resident", politics, command, residentPlan, physical, closure, residentPeace), "saved residents require independently journaled medical reset evidence");
+        var residentSet = ResidentMoveSet.Capture([new("pawn-a", Hash("preserved-a"), 4), new("pawn-b", Hash("preserved-b"), null)]);
+        var residentTown = actualTown with { HasInhabitants = true, ResidentProof = residentSet.Proof };
+        var liveResidentPlan = FollowerTransfers.Review(after, physical, [new("child", residentTown), new("deep", actualDeep)], "union", now);
+        var liveResidentPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], liveResidentPlan.Moves);
+        var census = ResidentTransferCensus.Prepare("town", "realm", "union", 7, residentSet);
+        var residentJournal = new AllegianceTransitionLedger();
+        residentJournal.PrepareLawfulResidentAdmission("residents", politics, command, liveResidentPlan, physical, closure, liveResidentPeace, [new("child", census)]);
+        Check(residentJournal.Current.LawfulResidents != null && AllegianceTransitionLedger.Restore(residentJournal.Export()).Export() == residentJournal.Export(), "original residents and medical census survive full political save/restore");
+        Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("missing", politics, command, liveResidentPlan, physical, closure, liveResidentPeace, []), "missing original resident town cannot be admitted");
+        Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("wrong", politics, command, liveResidentPlan, physical, closure, liveResidentPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "foreign", 7, residentSet))]), "original census destination cannot differ from council admission");
+        Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("profile", politics, command, liveResidentPlan, physical, closure, liveResidentPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 6, residentSet))]), "new legal mode requires exact complete medical preservation profile");
+        Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("duplicate", politics, command, liveResidentPlan, physical, closure, liveResidentPeace,
+            [new("child", census), new("child", census)]), "original town cannot be duplicated");
+        var duplicatePlan = FollowerTransfers.Review(after, physical, [new("child", residentTown), new("deep", actualDeep with { HasInhabitants = true, ResidentProof = residentSet.Proof })], "union", now);
+        var duplicatePeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], duplicatePlan.Moves);
+        Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("shared", politics, command, duplicatePlan, physical, closure, duplicatePeace,
+            [new("child", census), new("deep", ResidentTransferCensus.Prepare("town2", "realm", "union", 7, residentSet))]), "a pawn cannot be assigned to two independently reviewed follower towns");
+        var changedCare = ResidentMoveSet.Capture([new("pawn-a", Hash("preserved-a"), 1), new("pawn-b", Hash("preserved-b"), null)]);
+        Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("care", politics, command, liveResidentPlan, physical, closure, liveResidentPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 7, changedCare))]), "original medical settings cannot be replaced while preserving prior council review");
+        var residentSave = JsonSerializer.Deserialize<AllegianceTransitionSave>(residentJournal.Export());
+        Reject(() => AllegianceTransitionLedger.Restore(JsonSerializer.Serialize(residentSave with { Current = residentSave.Current with { LawfulResidents = null } })), "new resident authority cannot masquerade as legacy empty-town mode");
+        var residentPlayer = PlayerAllegiance.Restore(politics.Export()); residentPlayer.Apply(command); residentJournal.ConfirmAllegiance(residentPlayer, now);
+        var residentPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        residentPhysical.Prepare("resident-move", after, "child", residentTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(residentJournal.Current, residentPhysical);
+        LawfulAdmissions.ValidateArchive([residentJournal.Export()], after, afterPayments, protection);
+        var residentPhysicalSave = JsonSerializer.Deserialize<TerritoryTransfersSave>(residentPhysical.Export());
+        var wrongResidents = TerritoryTransferLedger.Restore(JsonSerializer.Serialize(residentPhysicalSave with { Transfers = [residentPhysicalSave.Transfers[0] with { ResidentProof = Hash("other-residents") }] }));
+        Reject(() => LawfulAdmissions.ValidateCurrentPhysical(residentJournal.Current, wrongResidents), "prepared custody cannot swap original resident evidence");
+        residentPhysical.Confirm("resident-move", residentTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(residentJournal.Current, residentPhysical);
+        residentPhysical.Prepare("resident-deep", after, "deep", actualDeep with { SourceSettlements = 2 }, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        residentPhysical.Confirm("resident-deep", actualDeep with { Owner = "union", SourceSettlements = 2 }, now);
+        var residentFinal = FollowerTransfers.Review(after, residentPhysical, [new("child", residentTown with { Owner = "union", SourceSettlements = 2 }), new("deep", actualDeep with { Owner = "union", SourceSettlements = 2 })], "union", now);
+        residentJournal.ReaffirmPeace(liveResidentPeace, now); residentJournal.Complete(residentPlayer, residentFinal, now);
+        LawfulAdmissions.ValidateArchive([AllegianceTransitionLedger.Restore(residentJournal.Export()).Export()], after, afterPayments, protection);
+        Check(residentJournal.Current.Phase == AllegianceTransitionPhase.Completed && residentJournal.Current.LawfulResidents == residentSave.Current.LawfulResidents && afterPayments.Account("c").ClosedTick == now,
+            "actual resident migration completion retains original census, full descendant scope and debt cutoff across restore");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);
+        Check(!journal.Export().Contains("LawfulResidents"), "legacy empty-town mode preserves omitted null bytes");
         Check(journal.Current.LawfulFollowerMigration && journal.Current.Followers.SequenceEqual(["child", "deep"]) && plan.Moves.SequenceEqual(["child", "deep"]), "original complete direct and deeper followers bind the new mode");
         var player = PlayerAllegiance.Restore(politics.Export()); player.Apply(command); journal.ConfirmAllegiance(player, now);
         LawfulAdmissions.ValidateArchive([journal.Export()], after, afterPayments, protection);

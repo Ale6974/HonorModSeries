@@ -3,7 +3,9 @@ using System.Text.Json;
 
 namespace Honor.Contracts.Rules;
 
-/// <summary>No current NPC followers: original physical history stays intact; no town migration is authorized.</summary>
+public sealed record LawfulResidentScope(string Charter, string Census);
+
+/// <summary>Original lawful closure and explicit complete follower scope; legacy empty-town modes never gain resident authority.</summary>
 public static class LawfulAdmissions
 {
     private static void Require(bool ok, string why) { if (!ok) throw new ArgumentException(why); }
@@ -13,7 +15,7 @@ public static class LawfulAdmissions
     {
         if (c?.LawfulExit == null)
         {
-            if (c?.LawfulHistoricalTransfers == true || c?.LawfulFollowerMigration == true) throw new ArgumentException("Lawful modes need their original lawful exit.");
+            if (c?.LawfulHistoricalTransfers == true || c?.LawfulFollowerMigration == true || c?.LawfulResidents != null) throw new ArgumentException("Lawful modes need their original lawful exit.");
             return;
         }
         var p = LawfulExitPreparation.Restore(c.LawfulExit);
@@ -23,11 +25,31 @@ public static class LawfulAdmissions
         Require(c.Before == p.BeforePolitics && c.PreparedTick == p.Tick && c.Peace != null && c.Peace.Accepted && c.Wars == null && c.Feudal == null &&
             c.LostFollowers == null && c.TownLosses == null && scope != null && scope.Book == p.AfterBook && scope.Ledger == p.BeforeTransfers &&
             (c.LawfulFollowerMigration ? before.State.Authority != scope.Target && scope.Entries.Length > 0 &&
-                scope.Entries.All(e => e.Observation.Owner == before.State.Authority && !e.Observation.HasInhabitants && e.Observation.ResidentProof == null) : scope.Entries.Length == 0) &&
+                scope.Entries.All(e => e.Observation.Owner == before.State.Authority && (c.LawfulResidents != null || !e.Observation.HasInhabitants && e.Observation.ResidentProof == null)) : scope.Entries.Length == 0) &&
             c.TransferBaseline == Hash(p.BeforeTransfers) && !physical.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared) &&
             (c.LawfulHistoricalTransfers ? physical.Transfers.Count > 0 : physical.Transfers.Count == 0) &&
             c.Phase != AllegianceTransitionPhase.Cancelled,
             "Lawful admission requires exact original closure, council and complete explicitly scoped physical evidence.");
+        if (c.LawfulResidents != null) ValidateResidents(c, scope);
+    }
+    private static void ValidateResidents(AllegianceTransition c, AdmissionFollowerSource scope)
+    {
+        Require(c.LawfulFollowerMigration && c.LawfulResidents.Length <= 4000000, "Bounded original resident migration scope required.");
+        var rows = JsonSerializer.Deserialize<LawfulResidentScope[]>(c.LawfulResidents);
+        var entries = scope.Entries.Where(e => e.Observation.HasInhabitants).ToArray();
+        Require(rows != null && rows.Length > 0 && rows.Length == entries.Length && rows.All(r => r != null) && rows.Select(r => r.Charter).Distinct().Count() == rows.Length,
+            "Exact complete original resident-town scope required.");
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var row in rows)
+        {
+            var entry = entries.SingleOrDefault(e => e.Charter == row.Charter);
+            Require(entry != null, "Unreviewed resident town.");
+            var census = ResidentTransferCensus.Restore(row.Census); var residents = ResidentMoveSet.Restore(census.Residents);
+            Require(census.Town == entry.Observation.Territory && census.Source == entry.Observation.Owner && census.Target == scope.Target && census.Profile == 7 && residents.Proof == entry.Observation.ResidentProof,
+                "Original resident town, medical profile or authority changed.");
+            foreach (var r in residents.Residents) Require(ids.Add(r.Id), "Resident shared by original follower towns.");
+        }
+        Require(scope.Entries.All(e => e.Observation.HasInhabitants == (e.Observation.ResidentProof != null)), "Missing original resident preservation evidence.");
     }
     public static void ValidatePair(AllegianceTransition c, CharterBook book, TributeLedger payments, CharterProtection protection)
     {
@@ -113,13 +135,16 @@ public sealed partial class AllegianceTransitionLedger
     public void PrepareLawfulFollowerAdmission(string id, PlayerAllegiance actual, AllegianceCommand command, FollowerTransferPlan followers,
         TerritoryTransferLedger transfers, LawfulExitPreparation closure, UnionPeaceConsent peace)
         => PrepareLawfulAdmissionCore(id, actual, command, followers, transfers, closure, peace, transfers.Transfers.Count > 0, true);
+    public void PrepareLawfulResidentAdmission(string id, PlayerAllegiance actual, AllegianceCommand command, FollowerTransferPlan followers,
+        TerritoryTransferLedger transfers, LawfulExitPreparation closure, UnionPeaceConsent peace, IReadOnlyList<LawfulResidentScope> residents)
+        => PrepareLawfulAdmissionCore(id, actual, command, followers, transfers, closure, peace, transfers.Transfers.Count > 0, true, JsonSerializer.Serialize(residents));
     private void PrepareLawfulAdmissionCore(string id, PlayerAllegiance actual, AllegianceCommand command, FollowerTransferPlan followers,
-        TerritoryTransferLedger transfers, LawfulExitPreparation closure, UnionPeaceConsent peace, bool history, bool migrate = false)
+        TerritoryTransferLedger transfers, LawfulExitPreparation closure, UnionPeaceConsent peace, bool history, bool migrate = false, string residents = null)
     {
         if (actual.Export() != closure.BeforePolitics || (migrate ? followers.Entries.Count == 0 : followers.Entries.Count != 0) || transfers.Export() != closure.BeforeTransfers)
             throw new ArgumentException("Original player/physical scope changed.");
         var next = Restore(Export()); next.PreparePeace(id, actual, command, followers, transfers, peace);
-        next.Current = next.Current with { LawfulExit = closure.Export(), LawfulHistoricalTransfers = history, LawfulFollowerMigration = migrate };
+        next.Current = next.Current with { LawfulExit = closure.Export(), LawfulHistoricalTransfers = history, LawfulFollowerMigration = migrate, LawfulResidents = residents };
         next.Current = next.Current with { FollowerReview = AdmissionFollowerReviews.Capture(next.Current, followers) };
         LawfulAdmissions.ValidateIntent(next.Current);
         if (next.Export().Length > 7000000) throw new ArgumentException("Paired lawful-admission journal capacity.");

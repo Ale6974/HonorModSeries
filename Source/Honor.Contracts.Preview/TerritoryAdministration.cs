@@ -203,6 +203,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             var residents = c.Observation.HasInhabitants ? ResidentExecution.Capture(c.City) : null;
             if (residents?.Set().Proof != c.Observation.ResidentProof) throw new ArgumentException("Resident preflight changed.");
             if (residents != null) residents.PrepareCareJournal(c.City.Faction, c.Target, c.City);
+            CheckLawfulResidentPreparation(c.Charter.Id, residents);
             Ledger.PrepareJournaled(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
                 c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
                 c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
@@ -211,6 +212,11 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 ResidentCensusProof = residents == null ? null : ResidentTransferCensus.Restore(residents.Census).Proof, CityCallV1 = true };
             references.Add(reference);
             if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
+            if (transition.Journal.Pending && transition.Journal.Current?.LawfulResidents != null)
+            {
+                transition.VerifyPeace();
+                if (residents != null) ResidentExecution.Verify(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
+            }
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before city ownership call.");
             TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
             reference.CityCallStarted = true;
@@ -334,6 +340,11 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 {
                     ValidateResidentRecovery(item, reference);
                     ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
+                    if (political.Journal.Pending && political.Journal.Current?.LawfulResidents != null)
+                    {
+                        political.VerifyLawfulPhysicalRecovery();
+                        ResidentExecution.Verify(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
+                    }
                     if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed during resident recovery.");
                     if (reference.City.Faction == reference.From)
                     {

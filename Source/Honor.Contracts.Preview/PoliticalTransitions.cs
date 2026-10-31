@@ -169,6 +169,7 @@ public sealed partial class PoliticalTransitionLedger : GameComponent
         {
             LawfulAdmissions.ValidatePair(Journal.Current, Charters.Book, Current.Game.GetComponent<TributePaymentLedger>().Ledger, Current.Game.GetComponent<CharterProtectionLedger>().Ledger);
             LawfulAdmissions.ValidateCurrentPhysical(Journal.Current, Territories.Ledger);
+            Territories.ValidateLawfulResidentExecution(Journal.Current, true);
             if (!Journal.MatchesSurvivingFollowers(Charters.Book.PlayerFollowers().Select(c => c.Id)))
                 throw new ArgumentException("Original complete follower scope changed.");
             if (Journal.Current.LawfulFollowerMigration)
@@ -191,6 +192,7 @@ public sealed partial class PoliticalTransitionLedger : GameComponent
         if (Current.Game != context || !Journal.Pending || Journal.Current?.LawfulFollowerMigration != true || Executing)
             throw new ArgumentException("Explicit current-game recovery outside native political execution required.");
         CheckRetainedSource();
+        if (Journal.Current.LawfulResidents != null) VerifyPeace();
     }
     private void SameFollowers(FollowerTransferPlan plan)
     {
