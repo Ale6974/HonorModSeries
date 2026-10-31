@@ -24,6 +24,7 @@ public sealed class ResidentExecutionRecord : IExposable
     public bool CareJournalV1;
     public string Census;
     public List<string> AuthorityJournal;
+    public List<ResidentAreaRecord> AreaRecords;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Snapshot, "preservationV1"); Scribe_Values.Look(ref Started, "started");
@@ -35,9 +36,10 @@ public sealed class ResidentExecutionRecord : IExposable
         Scribe_Values.Look(ref CareJournalV1, "residentCareJournalEnabledV1", false);
         Scribe_Values.Look(ref Census, "residentCensusV1");
         Scribe_Collections.Look(ref AuthorityJournal, "residentAuthorityJournalV1", LookMode.Value);
+        Scribe_Collections.Look(ref AreaRecords, "residentOriginalAreaReferencesV1", LookMode.Deep);
         if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; Prisoners ??= []; }
     }
-    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
+    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
     public void PrepareCareJournal(Faction source, Faction target)
     {
         if (Started || CareJournalV1 || CareJournal != null || source == null || target == null) throw new ArgumentException("New resident preparation required.");
@@ -87,7 +89,7 @@ internal static class ResidentExecution
         if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || p.RaceProps.body == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || p.Spawned || !p.IsWorldPawn() ||
             p.holdingOwner != null || p.Faction == null || p.Faction.IsPlayer ||
             (profile < 4 || !p.IsPrisoner) && (p.HostFaction != null || p.IsPrisoner) || p.IsSlave ||
-            (!retainedLeader && PawnUtility.IsFactionLeader(p)) || p.InMentalState || p.Downed && (profile != 8 || p.IsPrisoner || retainedLeader) || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
+            (!retainedLeader && PawnUtility.IsFactionLeader(p)) || p.InMentalState || p.Downed && (profile < 8 || p.IsPrisoner || retainedLeader) || profile == 9 && p.IsPrisoner || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
             p.GetLord() != null || profile < 3 && p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
             p.HasExtraHomeFaction() || p.HasExtraMiniFaction() || p.GetExtraHostFaction() != null || p.questTags?.Count > 0 ||
             (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || profile < 7 && (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
@@ -104,11 +106,13 @@ internal static class ResidentExecution
             throw new ArgumentException("Unsupported resident status or pending surgery.");
         if (p.IsPrisoner) ResidentPrisoners.Eligible(p, profile);
         if (p.playerSettings != null && (Areas == null || Areas.IsStatic || Areas.FieldType != typeof(Dictionary<Map, Area>) ||
-            Areas.GetValue(p.playerSettings) is not IDictionary areas || areas.Count != 0 || p.playerSettings.Master != null))
+            Areas.GetValue(p.playerSettings) is not IDictionary areas || profile != 9 && areas.Count != 0 || p.playerSettings.Master != null))
             throw new ArgumentException("Unsupported persistent resident restrictions.");
     }
     internal static ResidentMoveActual Read(Pawn p, int profile = 1, ResidentSurgeryRecord surgery = null, ResidentPrisonerRecord prisoner = null)
         => ReadInternal(p, profile, surgery, prisoner, false);
+    private static ResidentMoveActual ReadWithAreas(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, ResidentAreaRecord area, bool capture = false)
+        => ReadInternal(p, profile, surgery, prisoner, false, area, capture);
     internal static ResidentMoveActual ReadRetainedLeader(Pawn p)
         => ReadRetainedLeader(p, 5);
     internal static ResidentMoveActual ReadRetainedLeader(Pawn p, int profile)
@@ -127,9 +131,9 @@ internal static class ResidentExecution
         => ReadJoiningLeader(p, profile, null);
     internal static ResidentMoveActual ReadJoiningLeader(Pawn p, int profile, ResidentSurgeryRecord surgery)
         => profile is 5 or 7 ? ReadInternal(p, profile, surgery, null, true) : throw new ArgumentException("Unsupported joining leader profile.");
-    private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader)
+    private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader, ResidentAreaRecord area = null, bool captureAreas = false)
     {
-        if (profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7 or 8)) throw new ArgumentException("Unknown resident profile.");
+        if (profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9)) throw new ArgumentException("Unknown resident profile.");
         Eligible(p, profile, retainedLeader); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
@@ -146,7 +150,16 @@ internal static class ResidentExecution
         preserved = ResidentMoveProfiles.Compose(preserved, profile >= 2 ? ResidentSurgery.Proof(p, surgery) : null, Math.Min(profile, 7),
             profile >= 3 ? ResidentIdeology.Proof(p) : null, profile >= 4 ? ResidentPrisoners.Proof(p, prisoner, profile) : null,
             profile >= 7 ? ResidentGenes.Proof(p) : null);
-        if (profile == 8) preserved = Mobility(p, preserved, baseline.Status);
+        if (profile >= 8) preserved = Mobility(p, preserved, baseline.Status);
+        if (profile == 9)
+        {
+            if (area != null)
+            {
+                if (area.Previous == null && captureAreas) area.Previous = preserved;
+                else if (area.Previous != preserved) throw new ResidentMoveBlocked("RE_AreasUnavailable");
+            }
+            preserved = ResidentMoveProfiles.BindAreas(preserved, ResidentAreaRecords.Proof(p, area));
+        }
         // Faction in the shared move planner denotes the changing authority; prisoner affiliation is separately proof-bound.
         return new(baseline.Id, profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
     }
@@ -157,16 +170,17 @@ internal static class ResidentExecution
         foreach (var pawn in pawns) Eligible(pawn, profile);
         var surgery = profile >= 2 ? pawns.Select(ResidentSurgery.Capture).ToList() : [];
         var prisoners = profile >= 4 ? pawns.Where(ResidentPrisoners.IsPrisoner).Select(p => ResidentPrisoners.Capture(p, profile)).ToList() : [];
+        var areaRecords = profile == 9 ? pawns.Select(ResidentAreaRecords.Capture).ToList() : null;
         SurgeryOrderSet.ValidateDistinctOwners(surgery.Select(s => s.Set()));
-        var rows = pawns.Select((p, i) => Read(p, profile, profile >= 2 ? surgery[i] : null, prisoners.SingleOrDefault(r => r.Pawn == p))).ToArray();
+        var rows = pawns.Select((p, i) => ReadWithAreas(p, profile, profile >= 2 ? surgery[i] : null, prisoners.SingleOrDefault(r => r.Pawn == p), areaRecords?[i], true)).ToArray();
         if (rows.Any(r => r.Faction != city.Faction.GetUniqueLoadID())) throw new ArgumentException("Resident source faction mismatch.");
         var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
         CheckLocations(city, set);
-        return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners };
+        return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners, AreaRecords = areaRecords };
     }
     // Explicit new clinical format; legacy Capture/Read/profile7 bytes and restrictions remain unchanged.
     internal static ResidentExecutionRecord CaptureForTransfer(Settlement city)
-        => Capture(city, city?.previouslyGeneratedInhabitants?.Any(p => p?.Downed == true) == true ? 8 : 7);
+        => Capture(city, city?.previouslyGeneratedInhabitants?.Any(ResidentAreaRecords.HasRestrictions) == true ? 9 : city?.previouslyGeneratedInhabitants?.Any(p => p?.Downed == true) == true ? 8 : 7);
     internal static string Proof(Settlement city, int profile = 7, Faction target = null)
     {
         try
@@ -196,6 +210,13 @@ internal static class ResidentExecution
             record.Pawns.Any(p => p == null) || !record.Pawns.Select(p => p.GetUniqueLoadID()).SequenceEqual(record.Set().Residents.Select(r => r.Id)))
             throw new ArgumentException("Resident execution reference registry mismatch.");
         CheckTown(city);
+        ValidateAreas(record, false);
+        if (record.Profile == 9)
+            for (int i = 0; i < record.Pawns.Count; i++)
+            {
+                if (record.AreaRecords[i].Pawn != record.Pawns[i]) throw new ArgumentException("Original area record belongs to another pawn reference.");
+                ResidentAreaRecords.References(record.AreaRecords[i], record.Pawns[i].GetUniqueLoadID());
+            }
         if (record.Surgery == null || (record.Profile == 1 ? record.Surgery.Count != 0 : record.Surgery.Count != record.Pawns.Count) ||
             record.Surgery.Where((s, i) => s == null || s.LoadFailed || s.Pawn != record.Pawns[i] || s.Detached == null || !record.Started && s.Detached.Count != 0).Any())
             throw new ArgumentException("Surgical custody registry mismatch.");
@@ -235,10 +256,29 @@ internal static class ResidentExecution
     }
     internal static void ValidateCensus(ResidentExecutionRecord record, string expected, string town, string source, string target, bool complete = false)
     {
+        ValidateAreas(record, complete);
         if (record.Census == null)
-        { if (expected != null || record.AuthorityJournal != null || record.Profile == 8) throw new ArgumentException("Missing original resident census."); return; }
+        { if (expected != null || record.AuthorityJournal != null || record.Profile >= 8) throw new ArgumentException("Missing original resident census."); return; }
         if (expected == null || !record.CareJournalV1) throw new ArgumentException("Resident census has no transfer/medical peer.");
         ResidentTransferCensus.Check(record.Census, expected, town, source, target, record.Profile, record.Set(), record.AuthorityJournal, record.CareJournal, record.Started, complete);
+    }
+    private static void ValidateAreas(ResidentExecutionRecord record, bool complete)
+    {
+        if (record.Profile != 9) { if (record.AreaRecords != null) throw new ArgumentException("Area evidence cannot backfill a legacy resident profile."); return; }
+        var set = record.Set();
+        if (record.AreaRecords == null || record.AreaRecords.Count != set.Residents.Count) throw new ArgumentException("Missing original area scope.");
+        if (record.AuthorityJournal != null && record.AuthorityJournal.Count != set.Residents.Count) throw new ArgumentException("Incomplete original area/call scope.");
+        for (int i = 0; i < set.Residents.Count; i++)
+        {
+            var r = record.AreaRecords[i]; var state = ResidentAreas.Restore(r?.Journal);
+            if (state.Id != set.Residents[i].Id || ResidentMoveProfiles.BindAreas(r.Previous, ResidentAreas.Proof(r.Journal)) != set.Residents[i].Preserved ||
+                !record.Started && state.Started || complete && !state.Consumed) throw new ArgumentException("Original resident/area evidence changed or incomplete.");
+            if (record.AuthorityJournal != null)
+            {
+                var call = ResidentTransferCensus.Call(record.AuthorityJournal[i]);
+                if (state.Started != call.Started || state.Returned && !call.Returned) throw new ArgumentException("Unpaired original area/call facts.");
+            }
+        }
     }
     internal static void Apply(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
     {
@@ -248,7 +288,7 @@ internal static class ResidentExecution
         EnsureRetention();
         ValidateReferences(record, city, proof);
         ValidateCareJournal(record, source, target);
-        if (record.Profile == 8 && record.Census == null) throw new ArgumentException("Clinical resident execution requires original independent call and medical evidence.");
+        if (record.Profile >= 8 && record.Census == null) throw new ArgumentException("Clinical resident execution requires original independent call and medical evidence.");
         if (record.Census != null)
         {
             ValidateCensus(record, ResidentTransferCensus.Restore(record.Census).Proof, "territory/" + city.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID());
@@ -266,7 +306,8 @@ internal static class ResidentExecution
             var p = record.Pawns[i];
             var surgery = record.Profile >= 2 ? record.Surgery[i] : null;
             var prisoner = record.Prisoners.SingleOrDefault(r => r.Pawn == p);
-            var action = set.ActionFor(Read(p, record.Profile, surgery, prisoner), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
+            var area = record.Profile == 9 ? record.AreaRecords[i] : null;
+            var action = set.ActionFor(ReadWithAreas(p, record.Profile, surgery, prisoner, area), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
             var care = !record.CareJournalV1 ? null : ResidentCareJournal.Restore(record.CareJournal[i]);
             if (care != null && action == ResidentMoveAction.ChangeFaction && care.State.Started)
                 throw new ArgumentException("Never replay an uncertain resident authority call.");
@@ -277,6 +318,7 @@ internal static class ResidentExecution
                 throw new ArgumentException("Current game changed before resident authority change; original intent retained.");
             if (action == ResidentMoveAction.ChangeFaction)
             {
+                string areaStart = area == null ? null : ResidentAreas.Begin(area.Journal, ResidentAreaRecords.Entries(p));
                 if (care != null)
                 {
                     if (record.Census == null) care.Begin(source.GetUniqueLoadID(), set.Residents[i].MedicalCare);
@@ -284,6 +326,7 @@ internal static class ResidentExecution
                     string call = record.Census == null ? null : ResidentTransferCensus.Begin(record.AuthorityJournal[i]);
                     record.CareJournal[i] = care.Export(); if (call != null) record.AuthorityJournal[i] = call;
                 }
+                if (area != null) area.Journal = areaStart;
                 if (prisoner != null) ResidentPrisoners.ChangeHost(prisoner, source, target, record.Profile);
                 else p.SetFaction(target);
                 if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
@@ -294,8 +337,9 @@ internal static class ResidentExecution
                 throw new ArgumentException("Native resident authority did not reach the target.");
             if (record.Census != null && care != null && action == ResidentMoveAction.ChangeFaction)
             { care.RecordReturn(target.GetUniqueLoadID(), p.playerSettings == null ? null : (int)p.playerSettings.medCare); record.CareJournal[i] = care.Export(); }
+            if (area != null && action == ResidentMoveAction.ChangeFaction) ResidentAreaRecords.Returned(area);
             // Restore recorded care/orders and separately verified custody resets only; never repair health, gear, social state or unexplained ownership.
-            var actual = Read(p, record.Profile, surgery, prisoner);
+            var actual = ReadWithAreas(p, record.Profile, surgery, prisoner, area);
             var before = set.Residents[i];
             if (actual.Preserved != before.Preserved || actual.MedicalCare.HasValue != before.MedicalCare.HasValue)
                 throw new ArgumentException("Native resident preservation mismatch; original intent retained.");
@@ -313,6 +357,9 @@ internal static class ResidentExecution
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
                 throw new ArgumentException("Current game changed during resident restoration; original intent retained.");
             if (surgery != null) ResidentSurgery.Restore(surgery);
+            if (area != null && (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing))
+                throw new ArgumentException("Current game changed before original area restoration.");
+            if (area != null) ResidentAreaRecords.Restore(area);
         }
         if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
             throw new ArgumentException("Current game changed before resident verification; original intent retained.");
@@ -330,7 +377,7 @@ internal static class ResidentExecution
         if (record.Surgery.Any(s => s.Detached.Count != 0)) throw new ArgumentException("Cannot complete with detached orders.");
     }
     private static ResidentMoveActual[] ReadAll(ResidentExecutionRecord record) => record.Pawns.Select((p, i) =>
-        Read(p, record.Profile, record.Profile >= 2 ? record.Surgery[i] : null, record.Prisoners.SingleOrDefault(r => r.Pawn == p))).ToArray();
+        ReadWithAreas(p, record.Profile, record.Profile >= 2 ? record.Surgery[i] : null, record.Prisoners.SingleOrDefault(r => r.Pawn == p), record.Profile == 9 ? record.AreaRecords[i] : null)).ToArray();
     internal static void EnsureRetention()
     {
         if (GcMethod == null || GcMethod.ReturnType != typeof(string) || Harmony.GetPatchInfo(GcMethod)?.Owners.Contains("honor.series.contracts.preview") != true)
@@ -347,7 +394,9 @@ internal static class ResidentExecution
             throw new ArgumentException("Never discard detached surgical originals.");
         if (record.Prisoners == null || record.Prisoners.Any(r => r == null || r.ResetSnapshot != null))
             throw new ArgumentException("Never discard an unfinished native custody reset.");
+        if (record.AreaRecords?.Any(r => r.Maps == null || r.Areas == null) == true) throw new ArgumentException("Malformed retained original area references.");
         record.Pawns.Clear(); record.Surgery.Clear(); record.Prisoners.Clear();
+        if (record.AreaRecords != null) foreach (var area in record.AreaRecords) { area.Pawn = null; area.Maps.Clear(); area.Areas.Clear(); }
     }
 }
 

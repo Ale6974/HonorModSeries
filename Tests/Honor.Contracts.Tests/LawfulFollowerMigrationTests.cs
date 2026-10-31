@@ -85,6 +85,18 @@ internal static class LawfulFollowerMigrationTests
         var clinicalRestored = AllegianceTransitionLedger.Restore(clinicalJournal.Export());
         Check(clinicalRestored.Export() == clinicalJournal.Export() && JsonSerializer.Deserialize<LawfulResidentScope[]>(clinicalRestored.Current.LawfulResidents).Length == 1,
             "new clinical profile binds original patient/medical evidence to complete lawful scope and survives political restore");
+        var originalAreas = ResidentAreas.Prepare("restricted", [new("map-original", "area-original")]);
+        var restrictedSet = ResidentMoveSet.Capture([new("restricted", ResidentMoveProfiles.BindAreas(Hash("clinical-original"), ResidentAreas.Proof(originalAreas)), 4)]);
+        var restrictedTown = actualTown with { HasInhabitants = true, ResidentProof = restrictedSet.Proof };
+        var restrictedPlan = FollowerTransfers.Review(after, physical, [new("child", restrictedTown), new("deep", actualDeep)], "union", now);
+        var restrictedPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], restrictedPlan.Moves);
+        var restrictedJournal = new AllegianceTransitionLedger();
+        restrictedJournal.PrepareLawfulResidentAdmission("restricted", politics, command, restrictedPlan, physical, closure, restrictedPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 9, restrictedSet))]);
+        Check(AllegianceTransitionLedger.Restore(restrictedJournal.Export()).Export() == restrictedJournal.Export(), "area-bound original clinical census survives lawful admission save/restore");
+        var changedAreas = ResidentMoveSet.Capture([new("restricted", ResidentMoveProfiles.BindAreas(Hash("clinical-original"), ResidentAreas.Proof(ResidentAreas.Prepare("restricted", [new("map-new", "area-new")]))), 4)]);
+        Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("new-areas", politics, command, restrictedPlan, physical, closure, restrictedPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 9, changedAreas))]), "new map/area rights cannot replace original resident restrictions in prior consent");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);

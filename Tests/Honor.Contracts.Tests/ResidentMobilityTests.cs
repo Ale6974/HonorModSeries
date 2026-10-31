@@ -26,7 +26,7 @@ internal static class ResidentMobilityTests
         var medical = new List<string> { care.Export() };
         ResidentTransferCensus.Check(census, original.Proof, "town", "source", "target", 8, set, calls, medical, false);
         Reject(() => ResidentTransferCensus.Check(census, original.Proof, "town", "source", "target", 7, set, calls, medical, false));
-        Reject(() => ResidentTransferCensus.Prepare("town", "source", "target", 9, set));
+        Reject(() => ResidentTransferCensus.Prepare("town", "source", "target", 10, set));
         care.Begin("source", 4); medical[0] = care.Export(); calls[0] = ResidentTransferCensus.Begin(calls[0]);
         Reject(() => ResidentTransferCensus.RequireRecoverable(calls, medical));
         calls[0] = ResidentTransferCensus.Returned(calls[0]);

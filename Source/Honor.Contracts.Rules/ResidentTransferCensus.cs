@@ -27,7 +27,7 @@ public static class ResidentTransferCensus
     }
     private static ResidentCensusState Validate(ResidentCensusState s)
     {
-        if (s == null || !Key(s.Town) || !Key(s.Source) || !Key(s.Target) || s.Source == s.Target || s.Profile is < 1 or > 8 || s.Proof != Hash(s))
+        if (s == null || !Key(s.Town) || !Key(s.Source) || !Key(s.Target) || s.Source == s.Target || s.Profile is < 1 or > 9 || s.Proof != Hash(s))
             throw new ArgumentException("Invalid original resident census.");
         _ = ResidentMoveSet.Restore(s.Residents); return s;
     }

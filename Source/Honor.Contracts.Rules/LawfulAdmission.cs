@@ -45,7 +45,7 @@ public static class LawfulAdmissions
             var entry = entries.SingleOrDefault(e => e.Charter == row.Charter);
             Require(entry != null, "Unreviewed resident town.");
             var census = ResidentTransferCensus.Restore(row.Census); var residents = ResidentMoveSet.Restore(census.Residents);
-            Require(census.Town == entry.Observation.Territory && census.Source == entry.Observation.Owner && census.Target == scope.Target && census.Profile is 7 or 8 && residents.Proof == entry.Observation.ResidentProof,
+            Require(census.Town == entry.Observation.Territory && census.Source == entry.Observation.Owner && census.Target == scope.Target && census.Profile is 7 or 8 or 9 && residents.Proof == entry.Observation.ResidentProof,
                 "Original resident town, medical profile or authority changed.");
             foreach (var r in residents.Residents) Require(ids.Add(r.Id), "Resident shared by original follower towns.");
         }
