@@ -2,7 +2,7 @@ using System.Text.Json;
 
 namespace Honor.Contracts.Rules;
 
-/// <summary>Unconnected groundwork: the caller must prove RecordReturn is invoked inside the original normal native call.
+/// <summary>The caller must prove RecordReturn is invoked inside the original normal native call.
 /// This journal alone never proves a native return or grants authority to start a transfer.</summary>
 public sealed record ResidentCareState(string Id, string Source, string Target, int? OriginalCare, bool Started,
     bool Returned, int? ReturnedCare, bool Consumed);

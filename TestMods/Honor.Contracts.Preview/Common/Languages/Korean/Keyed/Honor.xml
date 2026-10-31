@@ -533,4 +533,5 @@
 <LS_CurrentAuthority>후계 복구에는 기록된 전체 범위에 대한 현재 권한이 필요합니다. 옛 반환 증거는 원 도시의 반환 사실만 기록합니다. 확대된 계약 범위는 별도의 현재 정리 결정을 받아야 하며 끝난 원 계약은 부활하지 않습니다.</LS_CurrentAuthority>
 <CR_ScopedAuthority>해약과 재협상에는 해당 정부의 별도 현재 결정이 필요합니다. 기존 의무와 원 서명은 이력에 남으며, 이 합의로 도시나 주민을 이전하지 않습니다.</CR_ScopedAuthority>
 <LS_Individual>승계 계약 {0}건은 각각 현재 당사자의 대표가 서명합니다. 아래 당사자들은 그대로 남는 원 하위 계약과 기존 의무의 보존에도 동의합니다.</LS_Individual>
+<RE_CensusProgress>주민 기록 {0}명: 미시작 {1}, 호출 불확실 {2}, 의료 확인·복구 대기 {3}, 검증 완료 {4}.</RE_CensusProgress><RE_CensusUnavailable>원 주민 명부 또는 호출·의료 기록이 일치하지 않습니다. 원본 참조를 보존합니다.</RE_CensusUnavailable>
 </LanguageData>

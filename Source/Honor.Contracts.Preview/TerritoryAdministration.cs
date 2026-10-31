@@ -13,6 +13,7 @@ public sealed class TerritoryTransferReference : IExposable
     public Faction From, Target;
     public ResidentExecutionRecord Residents;
     public bool ResidentCareJournalRequired;
+    public string ResidentCensusProof;
     public bool CityCallV1, CityCallStarted, CityCallReturned;
     public void ExposeData()
     {
@@ -20,6 +21,7 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_References.Look(ref From, "from"); Scribe_References.Look(ref Target, "target");
         Scribe_Deep.Look(ref Residents, "residentExecution");
         Scribe_Values.Look(ref ResidentCareJournalRequired, "residentCareJournalRequiredV1", false);
+        Scribe_Values.Look(ref ResidentCensusProof, "residentCensusProofV1");
         Scribe_Values.Look(ref CityCallV1, "cityCallV1", false);
         Scribe_Values.Look(ref CityCallStarted, "cityCallStartedV1", false);
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
@@ -41,6 +43,20 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     private string AdministrationId => Current.Game.GetComponent<RealmAdministrationLedger>().OwnedFaction?.GetUniqueLoadID();
     internal bool ReservesResident(Pawn pawn) => references?.Any(r => r?.Residents?.Pawns?.Contains(pawn) == true &&
         (RestoreFailed || r.Residents.Started || Ledger.Transfers.Any(t => t.Id == r.Id && t.Phase == TerritoryTransferPhase.Prepared))) == true;
+    internal string ResidentProgress(string id)
+    {
+        var r = references.SingleOrDefault(entry => entry.Id == id); if (r?.Residents?.Census == null) return null;
+        try
+        {
+            var t = Ledger.Transfer(id); var residents = r.Residents;
+            ResidentExecution.ValidateCensus(residents, r.ResidentCensusProof, t.Territory, t.FromOwner, t.TargetOwner);
+            var calls = residents.AuthorityJournal.Select(ResidentTransferCensus.Call).ToArray();
+            var care = residents.CareJournal.Select(s => ResidentCareJournal.Restore(s).State).ToArray();
+            return "RE_CensusProgress".Translate(calls.Length, calls.Count(c => !c.Started), calls.Count(c => c.Started && !c.Returned),
+                calls.Where((c, i) => c.Returned && !care[i].Consumed).Count(), calls.Where((c, i) => c.Returned && care[i].Consumed).Count());
+        }
+        catch (Exception e) when (e is ArgumentException or System.Text.Json.JsonException or InvalidOperationException) { return "RE_CensusUnavailable".Translate(); }
+    }
     public override void ExposeData()
     {
         if (Scribe.mode == LoadSaveMode.Saving && !RestoreFailed) snapshot = Ledger.Export();
@@ -84,7 +100,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     reference.From != null && reference.From.GetUniqueLoadID() != t.FromOwner ||
                     reference.Target != null && (reference.Target.GetUniqueLoadID() != t.TargetOwner || reference.Target.IsPlayer) ||
                     (t.ResidentProof == null) != (reference.Residents == null) ||
-                    reference.ResidentCareJournalRequired != (reference.Residents?.CareJournalV1 == true) ||
+                    reference.ResidentCareJournalRequired != (reference.Residents?.CareJournalV1 == true) || reference.ResidentCensusProof != null && reference.Residents == null ||
                     reference.Residents != null && reference.Residents.Set().Proof != t.ResidentProof ||
                     t.ReleasedRoot != null && (!Current.Game.GetComponent<SubtreeExitLedger>().Proves(t) || reference.Target != null && reference.Target.def.defName != UnionPoliticsLedger.UnionDefName) ||
                     t.Purpose == TerritoryTransferPurpose.ReleasedToUnion && t.ReleasedRoot == null && (charter.Phase != RecordedCharterPhase.Released ||
@@ -94,6 +110,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     throw new ArgumentException("Execution history/source mismatch.");
                 if (reference.Residents != null)
                 {
+                    ResidentExecution.ValidateCensus(reference.Residents, reference.ResidentCensusProof, t.Territory, t.FromOwner, t.TargetOwner, t.Phase == TerritoryTransferPhase.Applied);
                     if (t.Phase == TerritoryTransferPhase.Prepared)
                     {
                         ResidentExecution.ValidateReferences(reference.Residents, reference.City, t.ResidentProof);
@@ -185,12 +202,13 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             var c = Context(reviewed.Charter, target); string id = Guid.NewGuid().ToString("N");
             var residents = c.Observation.HasInhabitants ? ResidentExecution.Capture(c.City) : null;
             if (residents?.Set().Proof != c.Observation.ResidentProof) throw new ArgumentException("Resident preflight changed.");
-            if (residents != null) residents.PrepareCareJournal(c.City.Faction, c.Target);
+            if (residents != null) residents.PrepareCareJournal(c.City.Faction, c.Target, c.City);
             Ledger.PrepareJournaled(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
                 c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
                 c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
                 Current.Game.GetComponent<SubtreeExitLedger>().Scope(c.Charter.Id));
-            var reference = new TerritoryTransferReference { Id = id, City = c.City, From = c.City.Faction, Target = c.Target, Residents = residents, ResidentCareJournalRequired = residents != null, CityCallV1 = true };
+            var reference = new TerritoryTransferReference { Id = id, City = c.City, From = c.City.Faction, Target = c.Target, Residents = residents, ResidentCareJournalRequired = residents != null,
+                ResidentCensusProof = residents == null ? null : ResidentTransferCensus.Restore(residents.Census).Proof, CityCallV1 = true };
             references.Add(reference);
             if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before city ownership call.");
@@ -294,6 +312,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
             if (reference.ResidentCareJournalRequired != (reference.Residents?.CareJournalV1 == true))
                 throw new ArgumentException("Resident care execution marker is not paired with its transfer reference.");
+            if (reference.ResidentCensusProof != null && reference.Residents == null) throw new ArgumentException("Original resident census reference missing.");
             if (reference.City == null || reference.City.Faction == null || "territory/" + reference.City.GetUniqueLoadID() != item.Territory ||
                 reference.From == null || reference.From.GetUniqueLoadID() != item.FromOwner || reference.Target == null ||
                 reference.Target.GetUniqueLoadID() != item.TargetOwner || reference.Target.IsPlayer)
@@ -301,6 +320,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             var actual = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents?.Profile ?? 3);
             if (reference.Residents != null)
             {
+                ResidentExecution.ValidateCensus(reference.Residents, reference.ResidentCensusProof, item.Territory, item.FromOwner, item.TargetOwner);
                 if (reference.ResidentCareJournalRequired) ResidentExecution.ValidateCareJournal(reference.Residents, reference.From, reference.Target);
                 if (item.Phase != TerritoryTransferPhase.Prepared || reference.Residents.Set().Proof != item.ResidentProof ||
                     reference.City.Faction != reference.From && reference.City.Faction != reference.Target)
@@ -425,6 +445,7 @@ public sealed class FollowerTransfersWindow : Window
             foreach (var pending in ledger.Ledger.Transfers.Where(t => t.Phase == TerritoryTransferPhase.Prepared).ToArray())
             {
                 list.Label("FB_Pending".Translate(ledger.FollowerLabel(pending.Charter)));
+                var progress = ledger.ResidentProgress(pending.Id); if (progress != null) list.Label(progress);
                 if (list.ButtonText("CT_Recover".Translate())) { ledger.Recover(pending.Id); review = null; }
             }
         }
@@ -471,6 +492,7 @@ public sealed class TerritoryAdministrationWindow : Window
             foreach (var item in ledger.Ledger.Transfers.Where(t => t.Charter == charter).ToArray())
             {
                 list.Label("CT_Record".Translate(ledger.OwnerLabel(item.FromOwner), ledger.OwnerLabel(item.TargetOwner), ("CT_" + item.Phase).Translate()));
+                var progress = ledger.ResidentProgress(item.Id); if (progress != null) list.Label(progress);
                 if (item.Phase == TerritoryTransferPhase.Prepared && list.ButtonText("CT_Recover".Translate())) ledger.Recover(item.Id);
             }
         }

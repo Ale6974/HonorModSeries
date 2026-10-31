@@ -22,6 +22,8 @@ public sealed class ResidentExecutionRecord : IExposable
     // Null identifies the original legacy execution format; never backfill an interrupted old call.
     public List<string> CareJournal;
     public bool CareJournalV1;
+    public string Census;
+    public List<string> AuthorityJournal;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Snapshot, "preservationV1"); Scribe_Values.Look(ref Started, "started");
@@ -31,6 +33,8 @@ public sealed class ResidentExecutionRecord : IExposable
         Scribe_Collections.Look(ref Prisoners, "prisonerCustody", LookMode.Deep);
         Scribe_Collections.Look(ref CareJournal, "residentCareJournalV1", LookMode.Value);
         Scribe_Values.Look(ref CareJournalV1, "residentCareJournalEnabledV1", false);
+        Scribe_Values.Look(ref Census, "residentCensusV1");
+        Scribe_Collections.Look(ref AuthorityJournal, "residentAuthorityJournalV1", LookMode.Value);
         if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; Prisoners ??= []; }
     }
     public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 or 7 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
@@ -39,6 +43,17 @@ public sealed class ResidentExecutionRecord : IExposable
         if (Started || CareJournalV1 || CareJournal != null || source == null || target == null) throw new ArgumentException("New resident preparation required.");
         CareJournal = Set().Residents.Select(r => ResidentCareJournal.Prepare(r.Id, source.GetUniqueLoadID(), target.GetUniqueLoadID(), r.MedicalCare).Export()).ToList();
         CareJournalV1 = true;
+    }
+    public void PrepareCareJournal(Faction source, Faction target, Settlement city)
+    {
+        if (Census != null || AuthorityJournal != null || city?.Faction != source) throw new ArgumentException("Original resident town required.");
+        ResidentExecution.ValidateReferences(this, city, Set().Proof);
+        if (Current.Game == null || Pawns.Any(p => Current.Game.GetComponent<TerritoryAdministrationLedger>().ReservesResident(p) ||
+            Current.Game.GetComponent<LeaderJoinLedger>().ReservesResident(p) || Current.Game.GetComponent<LeaderRelocationLedger>().ReservesResident(p)))
+            throw new ArgumentException("Resident is already reserved by another original execution.");
+        string census = ResidentTransferCensus.Prepare("territory/" + city.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID(), Profile, Set());
+        var calls = Set().Residents.Select(r => JsonSerializer.Serialize(new ResidentAuthorityState(r.Id))).ToList();
+        PrepareCareJournal(source, target); Census = census; AuthorityJournal = calls;
     }
 }
 
@@ -134,6 +149,7 @@ internal static class ResidentExecution
         var rows = pawns.Select((p, i) => Read(p, profile, profile >= 2 ? surgery[i] : null, prisoners.SingleOrDefault(r => r.Pawn == p))).ToArray();
         if (rows.Any(r => r.Faction != city.Faction.GetUniqueLoadID())) throw new ArgumentException("Resident source faction mismatch.");
         var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
+        CheckLocations(city, set);
         return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners };
     }
     internal static string Proof(Settlement city, int profile = 7, Faction target = null)
@@ -178,6 +194,14 @@ internal static class ResidentExecution
         if (city.previouslyGeneratedInhabitants.Count != record.Pawns.Count ||
             city.previouslyGeneratedInhabitants.Distinct().Count() != record.Pawns.Count || !record.Pawns.All(city.previouslyGeneratedInhabitants.Contains))
             throw new ArgumentException("Actual saved resident set changed.");
+        CheckLocations(city, record.Set());
+    }
+    private static void CheckLocations(Settlement city, ResidentMoveSet set)
+    {
+        var ids = new HashSet<string>(set.Residents.Select(r => r.Id), StringComparer.Ordinal);
+        var locations = Find.WorldObjects.AllWorldObjects.OfType<Settlement>().SelectMany(t => (t.previouslyGeneratedInhabitants ?? new List<Pawn>())
+            .Where(p => p != null && ids.Contains(p.GetUniqueLoadID())).Select(p => new ResidentLocation("territory/" + t.GetUniqueLoadID(), p.GetUniqueLoadID()))).ToArray();
+        ResidentTransferCensus.RequireUniqueLocations("territory/" + city.GetUniqueLoadID(), ids, locations);
     }
     internal static void ValidateCareJournal(ResidentExecutionRecord record, Faction source, Faction target)
     {
@@ -194,6 +218,13 @@ internal static class ResidentExecution
                 throw new ArgumentException("Resident care journal does not match original transfer.");
         }
     }
+    internal static void ValidateCensus(ResidentExecutionRecord record, string expected, string town, string source, string target, bool complete = false)
+    {
+        if (record.Census == null)
+        { if (expected != null || record.AuthorityJournal != null) throw new ArgumentException("Missing original resident census."); return; }
+        if (expected == null || !record.CareJournalV1) throw new ArgumentException("Resident census has no transfer/medical peer.");
+        ResidentTransferCensus.Check(record.Census, expected, town, source, target, record.Profile, record.Set(), record.AuthorityJournal, record.CareJournal, record.Started, complete);
+    }
     internal static void Apply(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
     {
         var executionGame = Current.Game;
@@ -202,6 +233,11 @@ internal static class ResidentExecution
         EnsureRetention();
         ValidateReferences(record, city, proof);
         ValidateCareJournal(record, source, target);
+        if (record.Census != null)
+        {
+            ValidateCensus(record, ResidentTransferCensus.Restore(record.Census).Proof, "territory/" + city.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID());
+            ResidentTransferCensus.RequireRecoverable(record.AuthorityJournal, record.CareJournal);
+        }
         var set = record.Set(); var rows = ReadAll(record);
         set.Review(rows, source.GetUniqueLoadID(), target.GetUniqueLoadID(), record.Started);
         foreach (var prisoner in record.Prisoners) ResidentPrisoners.NeedsRestore(prisoner, source, target, record.Profile);
@@ -225,14 +261,23 @@ internal static class ResidentExecution
                 throw new ArgumentException("Current game changed before resident authority change; original intent retained.");
             if (action == ResidentMoveAction.ChangeFaction)
             {
-                if (care != null) { care.Begin(source.GetUniqueLoadID(), set.Residents[i].MedicalCare); record.CareJournal[i] = care.Export(); }
+                if (care != null)
+                {
+                    if (record.Census == null) care.Begin(source.GetUniqueLoadID(), set.Residents[i].MedicalCare);
+                    else care.Begin(record.Profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction?.GetUniqueLoadID(), p.playerSettings == null ? null : (int)p.playerSettings.medCare);
+                    string call = record.Census == null ? null : ResidentTransferCensus.Begin(record.AuthorityJournal[i]);
+                    record.CareJournal[i] = care.Export(); if (call != null) record.AuthorityJournal[i] = call;
+                }
                 if (prisoner != null) ResidentPrisoners.ChangeHost(prisoner, source, target, record.Profile);
                 else p.SetFaction(target);
                 if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
                     throw new ArgumentException("Current game changed during resident authority change; original intent retained.");
+                if (record.Census != null) record.AuthorityJournal[i] = ResidentTransferCensus.Returned(record.AuthorityJournal[i]);
             }
             if ((record.Profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction?.GetUniqueLoadID()) != target.GetUniqueLoadID())
                 throw new ArgumentException("Native resident authority did not reach the target.");
+            if (record.Census != null && care != null && action == ResidentMoveAction.ChangeFaction)
+            { care.RecordReturn(target.GetUniqueLoadID(), p.playerSettings == null ? null : (int)p.playerSettings.medCare); record.CareJournal[i] = care.Export(); }
             // Restore recorded care/orders and separately verified custody resets only; never repair health, gear, social state or unexplained ownership.
             var actual = Read(p, record.Profile, surgery, prisoner);
             var before = set.Residents[i];
@@ -240,7 +285,7 @@ internal static class ResidentExecution
                 throw new ArgumentException("Native resident preservation mismatch; original intent retained.");
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
                 throw new ArgumentException("Current game changed before resident restoration; original intent retained.");
-            if (care != null && action == ResidentMoveAction.ChangeFaction)
+            if (record.Census == null && care != null && action == ResidentMoveAction.ChangeFaction)
             { care.RecordReturn(target.GetUniqueLoadID(), actual.MedicalCare); record.CareJournal[i] = care.Export(); }
             if (care == null)
             { if (before.MedicalCare.HasValue) p.playerSettings.medCare = (MedicalCareCategory)before.MedicalCare.Value; }
@@ -255,11 +300,14 @@ internal static class ResidentExecution
         }
         if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
             throw new ArgumentException("Current game changed before resident verification; original intent retained.");
+        ValidateReferences(record, city, proof);
         set.VerifyDestination(ReadAll(record), source.GetUniqueLoadID(), target.GetUniqueLoadID());
         if (record.Surgery.Any(s => s.Detached.Count != 0)) throw new ArgumentException("Surgical orders remain detached.");
+        if (record.Census != null) ValidateCensus(record, ResidentTransferCensus.Restore(record.Census).Proof, "territory/" + city.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
     }
     internal static void Verify(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
     {
+        if (record.Census != null) ValidateCensus(record, ResidentTransferCensus.Restore(record.Census).Proof, "territory/" + city.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
         ValidateReferences(record, city, proof);
         record.Set().VerifyDestination(ReadAll(record), source.GetUniqueLoadID(), target.GetUniqueLoadID());
         if (record.Prisoners.Any(r => ResidentPrisoners.NeedsRestore(r, source, target, record.Profile))) throw new ArgumentException("Prisoner progress not yet restored.");
@@ -274,6 +322,11 @@ internal static class ResidentExecution
     }
     internal static void ReleaseReferences(ResidentExecutionRecord record)
     {
+        if (record.Census != null)
+        {
+            var c = ResidentTransferCensus.Restore(record.Census);
+            ValidateCensus(record, c.Proof, c.Town, c.Source, c.Target, record.Started);
+        }
         if (record.Surgery == null || record.Surgery.Any(s => s == null || s.Detached == null || s.Detached.Count != 0))
             throw new ArgumentException("Never discard detached surgical originals.");
         if (record.Prisoners == null || record.Prisoners.Any(r => r == null || r.ResetSnapshot != null))
