@@ -5,6 +5,7 @@ namespace Honor.Contracts.Rules;
 public sealed record TownSuccessionReceipt(string Parent, long Tick, NpcCharterAuthority Authority, Dictionary<string, string> Replacements,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ScopeCompletion = null)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string PartyAuthorities { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string OwnershipReturnProof { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string OwnershipReturnScopeProof { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string OwnershipReturnGroup { get; init; }
@@ -25,7 +26,10 @@ public sealed record TownLossProof(string Root, string Territory, string Baselin
 public sealed record TownSuccessionPlan(string Root, string Before, string After, long Tick, string Parent,
     NpcCharterAuthority Authority, Dictionary<string, string> Replacements, string[] Descendants,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string ScopePrefix = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string[] ScopeRoots = null);
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] string[] ScopeRoots = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string PartyAuthorities { get; init; }
+}
 public sealed record TownLossSave(int Version, TownLossProof[] Records);
 
 /// <summary>Verified native town loss followed by explicit same-realm contractual succession; no native ownership output.</summary>
@@ -83,26 +87,41 @@ public sealed partial class TownSuccessionArchive
     }
     public TownSuccessionPlan Review(string rootId, CharterBook current, string prefix, NpcCharterAuthority authority,
         long now, IEnumerable<TerritoryObservation> observations)
+        => ReviewCore(rootId, current, prefix, authority, now, observations, null);
+    public TownSuccessionPlan ReviewWithParties(string rootId, CharterBook current, string prefix, NpcCharterAuthority authority,
+        long now, IEnumerable<TerritoryObservation> observations, string parties)
+        => ReviewCore(rootId, current, prefix, authority, now, observations, parties ?? throw new ArgumentException("Explicit individual parties required."));
+    private static Dictionary<string, NpcCharterAuthority> PartyMap(string json, IEnumerable<string> keys)
+    {
+        if (json == null) return null;
+        var map = JsonSerializer.Deserialize<Dictionary<string, NpcCharterAuthority>>(json);
+        if (map == null || map.Count > CharterBook.MaxCharters || !new HashSet<string>(keys, StringComparer.Ordinal).SetEquals(map.Keys) ||
+            map.Values.Any(a => a == null || !Key(a.LiegeRepresentative) || !Key(a.SubjectRepresentative))) throw new ArgumentException("Exact individual successor signatures required.");
+        return map;
+    }
+    private TownSuccessionPlan ReviewCore(string rootId, CharterBook current, string prefix, NpcCharterAuthority authority,
+        long now, IEnumerable<TerritoryObservation> observations, string parties)
     {
         var proof = Record(rootId); var source = Source(proof); RuntimeCompat.NotNull(authority); RuntimeCompat.NotNull(observations);
         ValidateBook(current);
         if (proof.Resolution != null || !Key(prefix) || prefix.Length > 90 || now < current.LastTick || now < proof.ObservedTick || now > int.MaxValue)
             throw new ArgumentException("Already resolved loss or invalid succession review.");
         if (!IsReviewRoot(rootId)) throw new ArgumentException("Review the current upper loss and every retained prior scope together.");
-        if (ScopeRecords(rootId).Length > 1) return ReviewCascade(proof, current, prefix, authority, now, observations.ToArray());
+        if (ScopeRecords(rootId).Length > 1) return ReviewCascade(proof, current, prefix, authority, now, observations.ToArray(), parties);
         var original = Descendants(source, proof.Territory); var actual = Descendants(current, proof.Territory);
         if (!original.SequenceEqual(actual) || original.Any(c => c.PlayerReleaseTick.HasValue || c.NpcReleaseTick.HasValue))
             throw new ArgumentException("The original full subtree must remain unchanged and not awaiting release.");
-        var parties = new HashSet<string>(original.Select(c => c.Terms.Subject), StringComparer.Ordinal) { proof.Territory };
-        if (current.Charters.Any(c => current.Phase(c, now) == RecordedCharterPhase.Offered && (parties.Contains(c.Terms.Subject) || parties.Contains(c.Terms.Liege))))
+        var scopeParties = new HashSet<string>(original.Select(c => c.Terms.Subject), StringComparer.Ordinal) { proof.Territory };
+        if (current.Charters.Any(c => current.Phase(c, now) == RecordedCharterPhase.Offered && (scopeParties.Contains(c.Terms.Subject) || scopeParties.Contains(c.Terms.Liege))))
             throw new ArgumentException("Resolve pending subtree proposals before succession.");
         var parent = source.Charter(proof.Root).Terms.Liege;
         var replacements = original.Where(c => c.Terms.Liege == proof.Territory).Select((c, i) => (Old: c.Id, New: prefix + "/" + i))
             .ToDictionary(p => p.Old, p => p.New, StringComparer.Ordinal);
-        var copy = CharterBook.Restore(current.Export()); copy.ReplaceLostChildren(rootId, replacements, parent, authority, now, observations.ToArray());
+        var map = PartyMap(parties, replacements.Keys);
+        var copy = CharterBook.Restore(current.Export()); copy.ReplaceLostChildren(rootId, replacements, parent, authority, now, observations.ToArray(), parties: map);
         // Revalidate all successor/history links only after the full atomic replacement has been assembled.
         copy = CharterBook.Restore(copy.Export());
-        return new(rootId, current.Export(), copy.Export(), now, parent, authority, replacements, original.Select(c => c.Id).ToArray());
+        return new TownSuccessionPlan(rootId, current.Export(), copy.Export(), now, parent, authority, replacements, original.Select(c => c.Id).ToArray()) { PartyAuthorities = parties };
     }
     public (CharterBook Book, TownSuccessionArchive Archive) Commit(CharterBook current, TownSuccessionPlan plan, long now,
         IEnumerable<TerritoryObservation> observations)
@@ -113,14 +132,14 @@ public sealed partial class TownSuccessionArchive
         string prefix = plan.ScopePrefix;
         if (prefix == null) { string sample = plan.Replacements.Values.First(); int separator = sample.LastIndexOf('/');
             if (separator < 1) throw new ArgumentException("Invalid replacement namespace."); prefix = sample.Substring(0, separator); }
-        var fresh = Review(plan.Root, current, prefix, plan.Authority, now, observations);
+        var fresh = ReviewCore(plan.Root, current, prefix, plan.Authority, now, observations, plan.PartyAuthorities);
         if (fresh.After != plan.After || fresh.Parent != plan.Parent || plan.Descendants == null || !fresh.Descendants.SequenceEqual(plan.Descendants) ||
             !SameIds(fresh.ScopeRoots, plan.ScopeRoots) || fresh.ScopePrefix != plan.ScopePrefix ||
             fresh.Replacements.Count != plan.Replacements.Count || fresh.Replacements.Any(p => !plan.Replacements.TryGetValue(p.Key, out var next) || next != p.Value))
             throw new ArgumentException("Altered succession plan.");
         var book = CharterBook.Restore(fresh.After); var archive = Restore(Export()); var proof = archive.Record(plan.Root);
         if (fresh.ScopeRoots != null) archive.CommitCascadeReceipts(book, fresh);
-        else archive.records[plan.Root] = proof with { Resolution = new(plan.Parent, now, plan.Authority, new(plan.Replacements, StringComparer.Ordinal)) };
+        else archive.records[plan.Root] = proof with { Resolution = new(plan.Parent, now, plan.Authority, new(plan.Replacements, StringComparer.Ordinal)) { PartyAuthorities = plan.PartyAuthorities } };
         archive.ValidateBook(book);
         if (archive.Export().Length > 32000000) throw new ArgumentException("Town succession receipt byte capacity.");
         return (book, archive);
@@ -153,13 +172,14 @@ public sealed partial class TownSuccessionArchive
             if (r.Authority == null || !Key(r.Authority.LiegeRepresentative) || !Key(r.Authority.SubjectRepresentative) || r.Tick < (proof.ClosureTick ?? proof.ObservedTick) ||
                 r.Tick > current.LastTick || r.Parent != expected.Terms.Liege || r.Replacements == null || children.Length != r.Replacements.Count ||
                 r.Replacements.Values.Distinct(StringComparer.Ordinal).Count() != children.Length) throw new ArgumentException("Invalid historical succession scope.");
+            var parties = PartyMap(r.PartyAuthorities, r.Replacements.Keys);
             foreach (var child in children)
             {
                 if (!r.Replacements.TryGetValue(child.Id, out string next)) throw new ArgumentException("Missing successor contract.");
                 var old = current.Charter(child.Id); var created = current.Charter(next);
                 if (old != child with { Phase = RecordedCharterPhase.Replaced, Replacement = new(proof.Root, next, r.Tick) } ||
                     created.Terms != child.Terms with { Liege = r.Parent } || created.Replaces != child.Id || created.PlayerSignedTick != r.Tick || created.NpcSignedTick != r.Tick ||
-                    !current.Entity(r.Parent).Player && created.NpcAuthority != r.Authority) throw new ArgumentException("Succession history altered.");
+                    !current.Entity(r.Parent).Player && created.NpcAuthority != (parties == null ? r.Authority : parties[child.Id])) throw new ArgumentException("Succession history altered.");
             }
         }
         foreach (var c in current.Charters.Where(c => c.Replacement != null))

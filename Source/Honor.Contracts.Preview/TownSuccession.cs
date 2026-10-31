@@ -13,6 +13,7 @@ public sealed record LiveTownSuccessionReview(TownSuccessionPlan Plan, string St
     public Dictionary<string, string> ReturnProofs { get; init; }
     public TownSuccessionMandate Government { get; init; }
     public HistoricalTownReturnReview Historical { get; init; }
+    public string[] IndividualLabels { get; init; }
 }
 
 public sealed partial class LiveCharterLedger
@@ -54,7 +55,10 @@ public sealed partial class LiveCharterLedger
     }
     public LiveTownSuccessionReview ReviewTownSuccession(string root, string prefix = null)
     {
+        if (Current.Game != context || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Review the current original game.");
         if (!LossChangesAvailable()) throw new ArgumentException("Resolve unavailable or pending political/payment records.");
+        var custody = context.GetComponent<TerritoryAdministrationLedger>();
+        if (custody.RestoreFailed || custody.Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared)) throw new ArgumentException("Resolve original physical custody before contractual succession.");
         if (Current.Game.GetComponent<PlayerPoliticsLedger>().RestoreFailed || Current.Game.GetComponent<RealmAdministrationLedger>().RestoreFailed ||
             Current.Game.GetComponent<UnionPoliticsLedger>().RestoreFailed) throw new ArgumentException("Current player political records are unavailable.");
         var proof = townLosses.Record(root);
@@ -95,7 +99,10 @@ public sealed partial class LiveCharterLedger
         var owners = Find.FactionManager.AllFactionsListForReading.Where(f => f != null && f.GetUniqueLoadID() == proof.OwnerAtLoss).Take(2).ToArray();
         if (owners.Length != 1) throw new ArgumentException("The recorded NPC realm must still have one exact registered identity.");
         var authority = owners[0];
+        var reviewedRuler = authority.leader;
+        string realmLabel = authority.Name, rulerLabel = reviewedRuler?.LabelShortCap.ToString();
         var decision = NpcDecisionAuthority.Observe(authority);
+        if (reviewedRuler == null || authority.leader != reviewedRuler || decision.Representative != reviewedRuler.GetUniqueLoadID()) throw new ArgumentException("Ruler changed while preparing review labels.");
         if (authority == null || authority.def == null || authority.IsPlayer ||
             authority.GetUniqueLoadID() != proof.OwnerAtLoss || authority.leader == null || authority.leader.Dead ||
             authority.leader.Destroyed || authority.leader.Downed || authority.leader.InMentalState || authority.leader.IsPrisoner || authority.leader.IsSlave ||
@@ -106,49 +113,62 @@ public sealed partial class LiveCharterLedger
         if (playerParent && (original.Terms.Liege != PlayerIdentity || !higher.PlayerGroup || higher.FactionGroup || higher.OriginalFaction != Faction.OfPlayer ||
             Book.Entity(original.Terms.Liege).NativeOwner != Faction.OfPlayer.GetUniqueLoadID())) throw new ArgumentException("Verify the actual original player higher party.");
         var actualHigher = playerParent ? Faction.OfPlayer : SubcharterRepresentative(original.Terms.Liege);
-        if (!playerParent && actualHigher != authority)
-            throw new ArgumentException("The surviving higher liege is not represented by this realm.");
-        var consent = decision.Regime == NpcDecisionRegime.Ordinary ? TownSuccessionAuthority.Review(decision, proof.OwnerAtLoss, original.Terms.Liege, playerParent, PlayerIdentity,
+        bool mixed = !playerParent && actualHigher != authority;
+        var consent = decision.Regime == NpcDecisionRegime.Ordinary && !mixed ? TownSuccessionAuthority.Review(decision, proof.OwnerAtLoss, original.Terms.Liege, playerParent, PlayerIdentity,
             Faction.OfPlayer.GetUniqueLoadID(), actualHigher.GetUniqueLoadID()) : new NpcCharterAuthority(playerParent ? original.Terms.Liege : decision.Representative, decision.Representative);
+        if (mixed) consent = new(actualHigher.leader.GetUniqueLoadID(), decision.Representative);
         long now = Find.TickManager.TicksGame;
         var plan = townLosses.Review(root, Book, prefix ?? Guid.NewGuid().ToString("N"),
             consent, now, Observe());
+        var current = plan.Descendants.Select(Book.Charter).ToArray();
+        var actual = new List<object>();
+        var parties = new List<RetainedRealmConsent>(); var realms = new HashSet<Faction> { authority }; var labels = new List<string>();
+        foreach (var party in current.Select(c => c.Terms.Subject).Concat(playerParent ? Array.Empty<string>() : new[] { original.Terms.Liege }).Distinct(StringComparer.Ordinal))
+        {
+            var owner = SubcharterRepresentative(party); mixed |= owner != authority; realms.Add(owner);
+            var binding = Binding(party); var entity = Book.Entity(party);
+            var transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>();
+            if (transfers.RestoreFailed || !transfers.Ledger.VerifiedOwner(entity.Id, entity.NativeOwner, binding.Settlement.Faction.GetUniqueLoadID()))
+                throw new ArgumentException("Unverified native survivor ownership.");
+            parties.Add(new(party, owner.GetUniqueLoadID(), NpcDecisionAuthority.Observe(owner), true));
+            labels.Add(Label(party) + " / " + owner.Name + " / " + owner.leader.LabelShortCap);
+            actual.Add(new { Party = party, Town = binding.Settlement.GetUniqueLoadID(), Owner = owner.GetUniqueLoadID() });
+        }
+        if (realms.Any(a => realms.Any(b => a != b && (a.HostileTo(b) || b.HostileTo(a))))) throw new ArgumentException("Every affected actual realm must be reciprocally peaceful.");
+        if (mixed)
+        {
+            string map = TownSuccessionMandates.IndividualAuthorities(plan, parties.ToArray());
+            string actualPrefix = plan.ScopePrefix ?? plan.Replacements.Values.First().Substring(0, plan.Replacements.Values.First().LastIndexOf('/'));
+            plan = townLosses.ReviewWithParties(root, Book, actualPrefix, consent, now, Observe(), map);
+        }
         TownSuccessionMandate government = null;
         var currentDecision = new TownSuccessionMandate(plan, townLosses.Export(), Observe(), PlayerIdentity, Faction.OfPlayer.GetUniqueLoadID(), actualHigher.GetUniqueLoadID(), decision, null);
-        if (decision.Regime != NpcDecisionRegime.Ordinary)
+        if (mixed)
         {
-            government = currentDecision;
-            government = government with { Mandate = NativeNpcContractAuthority.ReviewSuccession(government, authority) };
-            TownSuccessionMandates.ValidateWitness(government);
-            currentDecision = government;
+            currentDecision = currentDecision with { Parties = JsonSerializer.Serialize(parties.ToArray()), Transfers = context.GetComponent<TerritoryAdministrationLedger>().Ledger.Export() };
+            var mandates = NativeNpcContractAuthority.ReviewSuccessionParties(currentDecision, realms) ?? [];
+            var others = mandates.Where(d => d.Realm != decision.Realm).ToArray();
+            government = currentDecision with { Mandate = mandates.SingleOrDefault(d => d.Realm == decision.Realm), Governments = others.Length == 0 ? null : JsonSerializer.Serialize(others) };
         }
+        else if (decision.Regime != NpcDecisionRegime.Ordinary) government = currentDecision with { Mandate = NativeNpcContractAuthority.ReviewSuccession(currentDecision, authority) };
+        if (government != null) { TownSuccessionMandates.ValidateWitness(government); currentDecision = government; }
         HistoricalTownReturnReview historicalReview = null;
         if (historical)
         {
             historicalReview = new(currentDecision, ownershipReturns.Export(), Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), amendments.Export(), actualOwners, returnProofs);
             HistoricalTownReturnReconciliations.Review(historicalReview);
         }
-        var current = plan.Descendants.Select(Book.Charter).ToArray();
-        var actual = new List<object>();
-        foreach (var c in current)
-        {
-            if (SubcharterRepresentative(c.Terms.Subject) != authority) throw new ArgumentException("Every survivor must remain in the same actual realm.");
-            var binding = Binding(c.Terms.Subject); var entity = Book.Entity(c.Terms.Subject);
-            var transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>();
-            if (transfers.RestoreFailed || !transfers.Ledger.VerifiedOwner(entity.Id, entity.NativeOwner, binding.Settlement.Faction.GetUniqueLoadID()))
-                throw new ArgumentException("Unverified native survivor ownership.");
-            actual.Add(new { c.Id, Town = binding.Settlement.GetUniqueLoadID(), Owner = binding.Settlement.Faction.GetUniqueLoadID() });
-        }
         string stamp = JsonSerializer.Serialize(new { Plan = plan, Archive = townLosses.Export(), Actual = actual,
             Authority = authority.GetUniqueLoadID(), Leader = authority.leader.GetUniqueLoadID(), Goodwill = authority.GoodwillWith(Faction.OfPlayer),
             Higher = actualHigher.GetUniqueLoadID(), Consent = consent,
             Transfers = Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Export(), Observations = Observe(),
             OwnershipReturns = ownershipReturns.Export(), Amendments = amendments.Export(), ReturnProof = returnProof, ReturnProofs = returnProofs, Government = government, GovernmentHistory = townGovernments.Export(), Historical = historicalReview, HistoricalHistory = townReturnReconciliations.Export() });
-        return new(plan, stamp, authority.Name, authority.leader.LabelShortCap, Current.Game) {
+        return new(plan, stamp, realmLabel, rulerLabel, context) {
             OwnershipReturnProof = returnProof,
             ReturnProofs = returnProofs,
             Government = government,
             Historical = historicalReview,
+            IndividualLabels = mixed ? labels.ToArray() : null,
             SeparateRealm = authority != Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority() };
     }
     public void ApplyTownSuccession(LiveTownSuccessionReview reviewed)
@@ -185,6 +205,8 @@ public sealed partial class LiveCharterLedger
             governments.ValidatePair(result.Archive, result.Book);
             reconciliations.ValidatePair(result.Archive, result.Book, ownershipReturns);
             if (ReviewTownSuccession(fresh.Plan.Root, prefix).Stamp != fresh.Stamp) throw new ArgumentException("Current complete loss scope or individual returns changed before assignment.");
+            if (Current.Game != context || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Game changed before resolution assignment.");
+            if (Book.Export() != fresh.Plan.Before) throw new ArgumentException("Original live book changed before resolution assignment.");
             Book = result.Book; townLosses = result.Archive; townGovernments = governments; townReturnReconciliations = reconciliations;
             Messages.Message("LS_Completed".Translate(fresh.Plan.Replacements.Count), MessageTypeDefOf.NeutralEvent);
         }, resolvingLoss: true);
@@ -238,6 +260,11 @@ public sealed class TownSuccessionWindow : Window
                     foreach (string id in review.Plan.ScopeRoots) list.Label("LC_Loss".Translate(ledger.TownLosses.Single(r => r.Root == id).Label));
                 }
                 list.Label("LS_Plan".Translate(review.Realm, review.Representative, ledger.Label(review.Plan.Parent), review.Plan.Replacements.Count, review.Plan.Descendants.Length));
+                if (review.IndividualLabels != null)
+                {
+                    list.Label("LS_Individual".Translate(review.Plan.Replacements.Count));
+                    foreach (string label in review.IndividualLabels) list.Label(label);
+                }
                 if (review.SeparateRealm) list.Label("LS_SeparateRealm".Translate());
                 if (review.OwnershipReturnProof != null) list.Label("OR_Review".Translate());
                 foreach (var p in review.Plan.Replacements) list.Label(ledger.Label(ledger.Book.Charter(p.Key).Terms.Subject));

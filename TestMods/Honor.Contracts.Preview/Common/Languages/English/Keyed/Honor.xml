@@ -532,4 +532,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
 <CO_Mandates>Union and royal accepted proposals and final signatures each require a separate current government decision. Former or emigrated persons may release only their own existing personal oath; no city or realm consent is implied.</CO_Mandates>
 <LS_CurrentAuthority>Succession requires current authority for this entire recorded scope. An obsolete return receipt records only its original city fact: a separate current reconciliation must approve the expanded contract scope. Ended contracts stay ended.</LS_CurrentAuthority>
 <CR_ScopedAuthority>Release and renegotiation require a separate current decision from the relevant government. Existing obligations and original signatures remain in history; this agreement does not move cities or people.</CR_ScopedAuthority>
+<LS_Individual>The {0} successor contracts use the representatives of their own current parties. Every listed party also accepts preservation of the original remaining contracts and obligations.</LS_Individual>
 </LanguageData>

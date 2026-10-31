@@ -324,7 +324,7 @@ public sealed class CharterBook
         charters[id] = c with { Phase = RecordedCharterPhase.TerritoryLost, TerritoryLostTick = lossTick }; LastTick = now;
     }
     internal void ReplaceLostChildren(string lostRoot, IReadOnlyDictionary<string, string> replacements, string parent,
-        NpcCharterAuthority authority, long now, IEnumerable<TerritoryObservation> observations, string[] skippedRoots = null)
+        NpcCharterAuthority authority, long now, IEnumerable<TerritoryObservation> observations, string[] skippedRoots = null, IReadOnlyDictionary<string, NpcCharterAuthority> parties = null)
     {
         Time(now); var root = Charter(lostRoot); RuntimeCompat.NotNull(authority);
         string expectedParent = ReplacementParent(lostRoot, skippedRoots, now);
@@ -338,6 +338,7 @@ public sealed class CharterBook
         foreach (var c in children.OrderBy(c => c.Id, StringComparer.Ordinal))
         {
             string next = replacements[c.Id];
+            var signed = parties == null ? authority : parties.TryGetValue(c.Id, out var actual) && actual != null ? actual : throw new ArgumentException("Missing individual replacement authority.");
             if (Entity(parent).Player)
             {
                 Offer(next, c.Terms with { Liege = parent }, now, PoliticalWorld.Day * 3, observations);
@@ -345,9 +346,9 @@ public sealed class CharterBook
             }
             else
             {
-                OfferNpc(next, c.Terms with { Liege = parent }, authority, now, PoliticalWorld.Day * 3, observations);
-                SignNpc(next, parent, authority.LiegeRepresentative, now, observations);
-                SignNpc(next, c.Terms.Subject, authority.SubjectRepresentative, now, observations);
+                OfferNpc(next, c.Terms with { Liege = parent }, signed, now, PoliticalWorld.Day * 3, observations);
+                SignNpc(next, parent, signed.LiegeRepresentative, now, observations);
+                SignNpc(next, c.Terms.Subject, signed.SubjectRepresentative, now, observations);
             }
             charters[next] = Charter(next) with { Replaces = c.Id };
         }
