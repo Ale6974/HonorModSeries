@@ -127,7 +127,7 @@ public sealed partial class TerritoryAdministrationLedger
         {
             var city = Charters.Binding(e.Observation.Territory).Settlement;
             var target = Find.FactionManager.AllFactionsListForReading.Single(f => f.GetUniqueLoadID() == original.Target);
-            var record = ResidentExecution.Capture(city); record.PrepareCareJournal(city.Faction, target, city);
+            var record = ResidentExecution.CaptureForTransfer(city); record.PrepareCareJournal(city.Faction, target, city);
             if (record.Set().Proof != e.Observation.ResidentProof) throw new ArgumentException("Original complete resident review changed.");
             rows.Add(new(e.Charter, record.Census));
         }
@@ -165,7 +165,7 @@ public sealed partial class TerritoryAdministrationLedger
             if (!pending) continue;
             if (rows.Any(t => t.Phase is TerritoryTransferPhase.Prepared or TerritoryTransferPhase.Applied)) continue;
             var city = Charters.Binding(census.Town).Settlement;
-            var fresh = ResidentExecution.Capture(city);
+            var fresh = ResidentExecution.Capture(city, census.Profile);
             if (city.Faction?.GetUniqueLoadID() != census.Source || fresh.Profile != census.Profile || fresh.Set().Export() != census.Residents)
                 throw new ArgumentException("Unstarted lawful resident scope changed; do not silently rebase original medical evidence.");
         }

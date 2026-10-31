@@ -75,6 +75,16 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateArchive([AllegianceTransitionLedger.Restore(residentJournal.Export()).Export()], after, afterPayments, protection);
         Check(residentJournal.Current.Phase == AllegianceTransitionPhase.Completed && residentJournal.Current.LawfulResidents == residentSave.Current.LawfulResidents && afterPayments.Account("c").ClosedTick == now,
             "actual resident migration completion retains original census, full descendant scope and debt cutoff across restore");
+        var clinicalSet = ResidentMoveSet.Capture([new("patient", ResidentMoveProfiles.BindMobility(Hash("original-health-gear-needs"), Hash("original-status"), true), 4)]);
+        var clinicalTown = actualTown with { HasInhabitants = true, ResidentProof = clinicalSet.Proof };
+        var clinicalPlan = FollowerTransfers.Review(after, physical, [new("child", clinicalTown), new("deep", actualDeep)], "union", now);
+        var clinicalPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], clinicalPlan.Moves);
+        var clinicalJournal = new AllegianceTransitionLedger();
+        clinicalJournal.PrepareLawfulResidentAdmission("clinical", politics, command, clinicalPlan, physical, closure, clinicalPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 8, clinicalSet))]);
+        var clinicalRestored = AllegianceTransitionLedger.Restore(clinicalJournal.Export());
+        Check(clinicalRestored.Export() == clinicalJournal.Export() && JsonSerializer.Deserialize<LawfulResidentScope[]>(clinicalRestored.Current.LawfulResidents).Length == 1,
+            "new clinical profile binds original patient/medical evidence to complete lawful scope and survives political restore");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);

@@ -200,7 +200,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             var current = ReviewForTarget(reviewed.Charter, target);
             if (current.Stamp != reviewed.Stamp) throw new ArgumentException("Reviewed state changed.");
             var c = Context(reviewed.Charter, target); string id = Guid.NewGuid().ToString("N");
-            var residents = c.Observation.HasInhabitants ? ResidentExecution.Capture(c.City) : null;
+            var residents = c.Observation.HasInhabitants ? ResidentExecution.CaptureForTransfer(c.City) : null;
             if (residents?.Set().Proof != c.Observation.ResidentProof) throw new ArgumentException("Resident preflight changed.");
             if (residents != null) residents.PrepareCareJournal(c.City.Faction, c.Target, c.City);
             CheckLawfulResidentPreparation(c.Charter.Id, residents);

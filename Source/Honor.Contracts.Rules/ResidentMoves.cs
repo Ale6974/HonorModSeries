@@ -10,6 +10,11 @@ public enum ResidentMoveAction { ChangeFaction, RestoreMedicalCare, Verify }
 
 public static class ResidentMoveProfiles
 {
+    public static string BindMobility(string previous, string status, bool downed)
+    {
+        if (!CityStockProof.Valid(previous) || !CityStockProof.Valid(status)) throw new ArgumentException("Complete original clinical/mobility evidence required.");
+        return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Profile = 8, Previous = previous, Status = status, Downed = downed }))));
+    }
     public static string Compose(string legacy, string surgery, int profile, string ideology = null, string custody = null)
         => Compose(legacy, surgery, profile, ideology, custody, null);
     public static string Compose(string legacy, string surgery, int profile, string ideology, string custody, string genetics)
