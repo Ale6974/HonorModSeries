@@ -46,8 +46,17 @@ internal static class StorageMapEvidence
             throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
         return new(shelf.GetUniqueLoadID(), configuration, cells.Select(map.cellIndices.CellToIndex).OrderBy(i => i).ToArray(), contents.Select(t => t.GetUniqueLoadID()).OrderBy(id => id, StringComparer.Ordinal).ToArray());
     }
-    private static string Configuration(StorageSettings settings, IStoreSettingsParent owner, string label, CompStyleable style)
+    internal static string Configuration(StorageSettings settings, IStoreSettingsParent owner, string label, CompStyleable style)
     {
+        foreach (var method in new[] {
+            AccessTools.PropertyGetter(typeof(StorageSettings), nameof(StorageSettings.Priority)),
+            AccessTools.PropertyGetter(typeof(ThingFilter), nameof(ThingFilter.AllowedThingDefs)),
+            AccessTools.PropertyGetter(typeof(ThingFilter), nameof(ThingFilter.AllowedHitPointsPercents)),
+            AccessTools.PropertyGetter(typeof(ThingFilter), nameof(ThingFilter.AllowedQualityLevels)),
+            AccessTools.PropertyGetter(typeof(ThingFilter), nameof(ThingFilter.AllowedMentalBreakChance)),
+            AccessTools.PropertyGetter(typeof(ThingFilter), nameof(ThingFilter.OnlySpecialFilters)),
+            AccessTools.Method(typeof(ThingFilter), nameof(ThingFilter.Allows), [typeof(SpecialThingFilterDef)]) })
+            if (method == null || Harmony.GetPatchInfo(method)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
         var precept = style?.SourcePrecept;
         if (settings?.GetType() != typeof(StorageSettings) || settings.owner != owner || settings.filter?.GetType() != typeof(ThingFilter)) throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
         var filter = settings.filter;

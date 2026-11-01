@@ -7,11 +7,13 @@ public sealed record NeutralMapThing(string Id, string Def, string Stuff, int Co
 public sealed record NeutralMapHeld(string Holder, int Slot, NeutralMapThing Item);
 public sealed record NeutralMapStorage(string Id, string Configuration, int[] Cells, string[] Contents);
 public sealed record NeutralMapStorageGroup(string Id, string Configuration, string[] Members);
+public sealed record NeutralMapStockpile(string Id, string Configuration, int[] Cells, string[] Contents);
 public sealed record LoadedMapScope(string Town, string Map, int Width, int Height, string Grid, string Stock, int StockFormat, NeutralMapThing[] Things, string Proof)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapHeld[] Held { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorage[] Storage { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorageGroup[] Groups { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStockpile[] Stockpiles { get; init; }
 }
 
 /// <summary>Original neutral, pawn-free map custody. No actor, property or map-write authority.</summary>
@@ -52,6 +54,15 @@ public static class LoadedMapPreservation
         var rows = groups.Take(1001).ToArray();
         if (rows.Any(r => r == null)) throw new ArgumentException("Missing original storage group.");
         var s = before with { Groups = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
+        s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
+    public static string CaptureStockpiles(string original, IEnumerable<NeutralMapStockpile> stockpiles)
+    {
+        var before = Restore(original);
+        if (before.Stockpiles != null || stockpiles == null) throw new ArgumentException("Fresh original stockpile scope required.");
+        var rows = stockpiles.Take(1001).ToArray();
+        if (rows.Any(r => r == null)) throw new ArgumentException("Missing original stockpile.");
+        var s = before with { Stockpiles = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
         s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
     public static LoadedMapScope Restore(string json)
@@ -108,6 +119,25 @@ public static class LoadedMapPreservation
                 s.Groups.SelectMany(g => g.Members).Distinct().Count() != s.Groups.Sum(g => g.Members.Length))
                 throw new ArgumentException("Missing, foreign or duplicated original storage group membership.");
         }
+        if (s.Stockpiles != null)
+        {
+            if (s.Stockpiles.Length is < 1 or > 1000 || s.Stockpiles.Any(r => r == null || !Key(r.Id) || !CityStockProof.Valid(r.Configuration) || r.Cells == null || r.Cells.Length is < 1 or > 10000 ||
+                r.Cells.Any(c => c < 0 || c >= s.Width * s.Height) || !r.Cells.SequenceEqual(r.Cells.Distinct().OrderBy(c => c)) || r.Contents == null || r.Contents.Length > 10000 ||
+                r.Contents.Any(id => !Key(id)) || !r.Contents.SequenceEqual(r.Contents.Distinct().OrderBy(id => id, StringComparer.Ordinal))) ||
+                s.Stockpiles.Sum(r => r.Cells.Length) > 100000 || !s.Stockpiles.Select(r => r.Id).SequenceEqual(s.Stockpiles.Select(r => r.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal)))
+                throw new ArgumentException("Invalid original stockpile scope.");
+            var cells = new HashSet<int>((s.Storage ?? []).SelectMany(r => r.Cells));
+            var goods = new HashSet<string>((s.Storage ?? []).SelectMany(r => r.Contents), StringComparer.Ordinal);
+            foreach (var pile in s.Stockpiles)
+            {
+                if (pile.Cells.Any(c => !cells.Add(c))) throw new ArgumentException("Original stockpile overlaps storage custody.");
+                foreach (string id in pile.Contents)
+                {
+                    var item = s.Things.SingleOrDefault(t => t.Id == id);
+                    if (item == null || !pile.Cells.Contains(item.Cell) || !goods.Add(id)) throw new ArgumentException("Missing, outside or duplicated original stockpile goods.");
+                }
+            }
+        }
         return s;
     }
     public static void Pair(string json, string town, string proof)
@@ -116,7 +146,7 @@ public static class LoadedMapPreservation
     }
     public static int Format(string json)
     {
-        var s = Restore(json); return s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
+        var s = Restore(json); return s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
     }
     public static void Pair(string json, string town, string proof, int format)
     {

@@ -2,6 +2,18 @@
 
 최종 검사: .local/m2-084-build16.log와 build17.log의 양 타깃 전체 빌드 통과, 최종1.6 규칙 재검사 finalrules16.log와1.7은 각각 Honor20,093/Contracts5,199, 영한543개 문구, 컴파일 경고/오류0. 형식6 Prepared/Applied/Cancelled·변경 설정·누락/중복/범위 밖 멤버·옛 형식 확대 거부·원 멤버 순서·주민 보유 정당한 독립의 원 그룹/물리 journal roundtrip 검사 포함. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.84.zip SHA256CB92960E8DD4A03A74031C56BA598A3E726919BA947AA5A7330097614DF11DB3. 기존 로컬 Preview 백업 .local/contracts-preview-3b0431f3ae69440cba0ebe8e3d361655 후 설치,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-084-install.log). Preview Steam 게시 없음.
 
+## 0.3.85 — M2 부분 구현: 원 저장 구역 보존 이전
+
+최종 검사: .local/m2-085-build16.log/build17.log 양 타깃 전체 빌드 통과,각 Honor20,093/Contracts5,226개 검사·영한545개 문구 일치·컴파일 경고/오류0. StockpileMapTests는 원 설정/칸/물품·Prepared/Applied/Cancelled 복원·옛 형식 확대 거부·변경/중첩/누락/중복 증거 보류·원 공유 선반과의 조합을 검사하며,LawfulFollowerMigrationTests는 원 주민/census/공유 그룹/저장 구역을 동일 법적·물리 journal로 묶어 복원한다. 설치1.7 Zone_Stockpile/Zone/ZoneManager 및 기존 SlotGroup 저장·읽기 코드를 확인했고,1.6은 고정 참조/net472와 실행 전 shape/patch 검사 경로다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.85.zip SHA25601ED6DF9C369FF2C5AAFDD06C3ED77772146A44F3EE3B1396DFCE378D942663C. 백업 .local/contracts-preview-c73e9b7f78ac4409b4fa118c22675f2e 후 로컬 설치 완료,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-085-install.log). Preview Steam 게시 없음.
+
+새 지도 형식7과 null-omitted Stockpiles 기록을 실제 로딩 도시 이전·정당한 독립의 전체 주민 동반 검토·Scribe·명시적 중단 복구에 연결했다. 원 등록된 Zone_Stockpile 참조를 Map/Thing/공유 그룹 원 참조와 함께 보존하고 원 설정·우선순위·이름·기본 이름·색·숨김 상태·칸 집합·저장 물품을 대조한다. 구역과 물품을 별도 deep-save·복제·재생성하거나 구역 등록/칸/필터/운반을 변경하지 않는다.
+
+설치1.7의 Zone.Cells는 원 칸 목록을 Shuffle하는 getter다. 그 호출을 피하고 원 저장 backing list를 읽으며, native가 순서를 섞을 수 있는 칸 목록은 집합으로 canonicalize한다. ZoneManager의 전체 원 등록 목록과 ZoneAt 조회 grid를 양방향으로 대조하고 재구축하지 않는다. 공용 설정 읽기는 기존 선반과 같은 정확한 StorageSettings/ThingFilter owner와 저장 필드 증거를 사용한다. 저장 구역끼리 또는 선반 칸과의 중첩·누락/교체/중복/다른 지도·미지원 구역/구성원·변경 설정/물품은 원 기록을 유지하며 보류한다. 이번 범위의 모든 등록 구역은 정확한 기본 stockpile이어야 하며 재배 구역 등 다른 구역은 아직 지원하지 않는다.
+
+기존3~6/null JSON bytes·strict generic Prepare·원 주민 임상/의료/수술/영역·도시 호출 정상 반환·재고/계약/채무/물리/전체 후손 기록을 보존한다. 미완료 원 구역 참조도 저장/복구하고, 정상 반환 없는 시작 호출은 목적 소속만 보고 완료하거나 다시 호출하지 않는다. 완료 기록은 원 문서를 유지하며 추가 참조만 해제한다. 영한 검토 화면에 저장 구역 수와 지원 범위를 표시한다.
+
+M2 전체는 미완료다. 지도 위 주민·소유 건물·재배/커스텀 구역·임의 보관함·복잡 작업과 폭넓은 중단 조합이 남아 있다. M1 10/10·M2 0/18·전체10/100,1단계 잔여31.5%/8묶음 및2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6을 유지한다. 자동 예약과 Preview Steam 게시를 재개하지 않는다.
+
 ## 0.3.83 — M2 부분 구현: 독립 중립 선반의 설정·보관 칸·물품 보존
 
 ## 0.3.84 — M2 부분 구현: 중립 선반의 공유 저장 그룹 보존

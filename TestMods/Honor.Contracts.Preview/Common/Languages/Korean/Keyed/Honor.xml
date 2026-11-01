@@ -542,4 +542,6 @@
   <RE_StorageMapReview>중립 선반 {0}개의 원 필터·우선순위·스타일·칸·물품을 보존합니다. 그룹이나 필터를 바꾸거나 물품을 운반하지 않습니다.</RE_StorageMapReview>
   <RE_StorageMapUnavailable>원 선반 설정·칸·물품을 확인할 수 없습니다. 미확인 그룹·설정 변경·미지원 내용물은 보류하며 원 기록을 유지합니다.</RE_StorageMapUnavailable>
   <RE_StorageGroupsReview>원 공유 저장 그룹 {0}개의 전체 선반 구성원과 공용 필터·우선순위·이름을 보존합니다. 원 그룹과 선반은 그대로 유지합니다.</RE_StorageGroupsReview>
+  <RE_StockpileMapReview>원 저장 구역 {0}개의 필터·우선순위·이름·표시 상태·칸·물품을 보존합니다. 원 구역 등록을 유지하며 재생성하거나 물품을 운반하지 않습니다.</RE_StockpileMapReview>
+  <RE_StockpileMapUnavailable>원 저장 구역 등록·설정·칸·물품을 확인할 수 없습니다. 변경·중첩·미지원 구역은 원 기록을 유지하고 보류합니다.</RE_StockpileMapUnavailable>
 </LanguageData>

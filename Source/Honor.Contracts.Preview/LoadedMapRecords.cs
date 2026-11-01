@@ -13,11 +13,13 @@ public sealed class LoadedMapRecord : IExposable
     public Map Map;
     public List<Thing> Things = [];
     public List<StorageGroup> Groups;
+    public List<Zone> Stockpiles;
     public string Snapshot;
     public void ExposeData()
     {
         Scribe_References.Look(ref Map, "originalMap"); Scribe_Collections.Look(ref Things, "originalMapThings", LookMode.Reference);
         Scribe_Collections.Look(ref Groups, "originalStorageGroups", LookMode.Reference);
+        Scribe_Collections.Look(ref Stockpiles, "originalStockpileZones", LookMode.Reference);
         Scribe_Values.Look(ref Snapshot, "originalNeutralMapV1");
     }
 }
@@ -92,6 +94,7 @@ internal static class LoadedMapRecords
             groups.Any(g => !g.members.Cast<Building_Storage>().OrderBy(s => s.GetUniqueLoadID(), StringComparer.Ordinal).SequenceEqual(
                 things.OfType<Building_Storage>().Where(s => s.storageGroup == g).OrderBy(s => s.GetUniqueLoadID(), StringComparer.Ordinal)))))
             throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
+        var stockpiles = StockpileMapEvidence.Capture(map);
         // Validate known holders BEFORE the native recursive pawn query can visit any ship/provider/unknown component.
         var holders = new List<IThingHolder>(); map.GetChildHolders(holders);
         if (holders.Any(h => h is not MinifiedThing m || m.GetType() != typeof(MinifiedThing) || !things.Contains(m))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
@@ -106,8 +109,10 @@ internal static class LoadedMapRecords
             : LoadedMapPreservation.CapturePacked("territory/" + city.GetUniqueLoadID(), map.GetUniqueLoadID(), map.Size.x, map.Size.z, gridProof, stock, format, evidence, held);
         if (storage.Count > 0) snapshot = LoadedMapPreservation.CaptureStorage(snapshot, storage);
         if (groups.Length > 0) snapshot = LoadedMapPreservation.CaptureGroups(snapshot, groupEvidence);
+        if (stockpiles.References.Count > 0) snapshot = LoadedMapPreservation.CaptureStockpiles(snapshot, stockpiles.Evidence);
         return new() { Map = map, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
-            Groups = groups.Length == 0 ? null : groups.OrderBy(g => g.GetUniqueLoadID(), StringComparer.Ordinal).ToList(), Snapshot = snapshot };
+            Groups = groups.Length == 0 ? null : groups.OrderBy(g => g.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
+            Stockpiles = stockpiles.References.Count == 0 ? null : stockpiles.References, Snapshot = snapshot };
     }
     internal static void Verify(Settlement city, LoadedMapRecord original)
     {
@@ -115,10 +120,11 @@ internal static class LoadedMapRecords
         var fresh = Capture(city);
         if (fresh.Snapshot != original.Snapshot || !fresh.Things.SequenceEqual(original.Things)) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         if (fresh.Groups == null ? original.Groups != null : original.Groups == null || !fresh.Groups.SequenceEqual(original.Groups)) throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
+        if (fresh.Stockpiles == null ? original.Stockpiles != null : original.Stockpiles == null || !fresh.Stockpiles.SequenceEqual(original.Stockpiles)) throw new ResidentMoveBlocked("RE_StockpileMapUnavailable");
     }
     internal static void VerifyScope(Settlement city, string scope)
     {
         if (Capture(city).Snapshot != scope) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
     }
-    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); }
+    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); }
 }

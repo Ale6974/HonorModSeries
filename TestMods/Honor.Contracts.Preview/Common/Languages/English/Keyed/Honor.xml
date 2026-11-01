@@ -542,4 +542,6 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <RE_StorageMapReview>Preserve {0} neutral shelves with original filters, priority, style, slot cells and goods. Nothing is regrouped, refiltered or hauled.</RE_StorageMapReview>
   <RE_StorageMapUnavailable>Original shelf settings, cells or stored goods cannot be verified. Unverified groups, changed settings and unsupported contents remain deferred; keep the original records.</RE_StorageMapUnavailable>
   <RE_StorageGroupsReview>Preserve {0} original shared storage groups, their complete shelf membership and shared filters, priority and name. Original groups and members remain in place.</RE_StorageGroupsReview>
+  <RE_StockpileMapReview>Preserve {0} original stockpiles with their filters, priority, name, display state, cells and goods. Original zones stay registered; nothing is rebuilt or hauled.</RE_StockpileMapReview>
+  <RE_StockpileMapUnavailable>Original stockpile registration, settings, cells or goods cannot be verified. Changed, overlapping or unsupported zones remain deferred; keep the original records.</RE_StockpileMapUnavailable>
 </LanguageData>

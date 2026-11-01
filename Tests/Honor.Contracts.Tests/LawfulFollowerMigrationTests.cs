@@ -157,6 +157,20 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(groupJournal.Current, TerritoryTransferLedger.Restore(groupPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(groupJournal.Export()).Current, "child") == groupScope && groupPhysical.Transfer("group-city").StockFormat == 6,
             "original shared group configuration, membership, cells, goods and resident scope remain paired through lawful physical save/restore");
+        string pileScope = LoadedMapPreservation.CaptureStockpiles(groupScope, [new("zone", Hash("stockpile-original-settings"), [2], [])]);
+        var pileTown = loadedTown with { LoadedMap = pileScope, StockFormat = 7, StockProof = LoadedMapPreservation.Restore(pileScope).Proof };
+        var pilePlan = FollowerTransfers.Review(after, physical, [new("child", pileTown), new("deep", actualDeep)], "union", now);
+        var pilePeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], pilePlan.Moves);
+        var pileJournal = new AllegianceTransitionLedger();
+        pileJournal.PrepareLawfulResidentAdmission("pile", politics, command, pilePlan, physical, closure, pilePeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 9, restrictedSet))]);
+        var pilePhysical = TerritoryTransferLedger.Restore(physical.Export());
+        pilePhysical.PrepareLoadedJournaled("pile-city", after, "child", pileTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(pileJournal.Current, pilePhysical);
+        pilePhysical.Confirm("pile-city", pileTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(pileJournal.Current, TerritoryTransferLedger.Restore(pilePhysical.Export()));
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(pileJournal.Export()).Current, "child") == pileScope && pilePhysical.Transfer("pile-city").StockFormat == 7,
+            "original stockpile, shelf group, cells, goods and resident scope remain paired through lawful physical save/restore");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);
