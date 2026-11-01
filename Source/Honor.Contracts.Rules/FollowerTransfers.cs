@@ -35,7 +35,9 @@ public static class FollowerTransfers
                 throw new ArgumentException("Follower is missing, changed owner or is ineligible.");
             if (o.Owner == target) continue; // A visited city already at the destination needs no ownership change.
             string id = "follower-review-" + Guid.NewGuid().ToString("N");
-            copy.Prepare(id, book, entry.Charter, o with { SourceSettlements = counts[o.Owner] }, target, target, null,
+            if (o.LoadedMap != null) copy.PrepareLoaded(id, book, entry.Charter, o with { SourceSettlements = counts[o.Owner] }, target, target, null,
+                TerritoryTransferPurpose.ActiveCharter, now, verifiedAdministration);
+            else copy.Prepare(id, book, entry.Charter, o with { SourceSettlements = counts[o.Owner] }, target, target, null,
                 TerritoryTransferPurpose.ActiveCharter, now, verifiedAdministration);
             copy.Confirm(id, o with { Owner = target }, now);
             counts[o.Owner]--; moves.Add(entry.Charter);

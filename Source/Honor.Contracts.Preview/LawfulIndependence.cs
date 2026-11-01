@@ -139,6 +139,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (intent?.LawfulResidents == null || !Current.Game.GetComponent<PoliticalTransitionLedger>().Journal.Pending) return;
         var expected = JsonSerializer.Deserialize<LawfulResidentScope[]>(intent.LawfulResidents).SingleOrDefault(r => r.Charter == charter);
         if (expected?.Census != residents?.Census) throw new ArgumentException("Resident execution differs from original lawful admission scope.");
+        if (residents != null && residents.LoadedMapScope != LawfulAdmissions.OriginalMap(intent, charter)) throw new ArgumentException("Original lawful resident map scope changed.");
     }
     internal void ValidateLawfulResidentExecution(AllegianceTransition intent, bool pending)
     {
@@ -161,11 +162,12 @@ public sealed partial class TerritoryAdministrationLedger
                     row.Phase == TerritoryTransferPhase.Applied && (!reference.CityCallStarted || !reference.CityCallReturned))
                     throw new ArgumentException("Missing original lawful resident execution/call evidence.");
                 ResidentExecution.ValidateCensus(reference.Residents, census.Proof, row.Territory, row.FromOwner, row.TargetOwner, row.Phase == TerritoryTransferPhase.Applied);
+                ValidateMapReference(row, reference, pending && row.Phase == TerritoryTransferPhase.Prepared);
             }
             if (!pending) continue;
             if (rows.Any(t => t.Phase is TerritoryTransferPhase.Prepared or TerritoryTransferPhase.Applied)) continue;
             var city = Charters.Binding(census.Town).Settlement;
-            var fresh = ResidentExecution.Capture(city, census.Profile);
+            var fresh = ResidentExecution.CaptureScoped(city, census.Profile, LawfulAdmissions.OriginalMap(intent, scope.Charter));
             if (city.Faction?.GetUniqueLoadID() != census.Source || fresh.Profile != census.Profile || fresh.Set().Export() != census.Residents)
                 throw new ArgumentException("Unstarted lawful resident scope changed; do not silently rebase original medical evidence.");
         }

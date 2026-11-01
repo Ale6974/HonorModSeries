@@ -14,6 +14,7 @@ public sealed class TerritoryTransferReference : IExposable
     public ResidentExecutionRecord Residents;
     public bool ResidentCareJournalRequired;
     public string ResidentCensusProof;
+    public LoadedMapRecord LoadedMap;
     public bool CityCallV1, CityCallStarted, CityCallReturned;
     public void ExposeData()
     {
@@ -22,13 +23,17 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Deep.Look(ref Residents, "residentExecution");
         Scribe_Values.Look(ref ResidentCareJournalRequired, "residentCareJournalRequiredV1", false);
         Scribe_Values.Look(ref ResidentCensusProof, "residentCensusProofV1");
+        Scribe_Deep.Look(ref LoadedMap, "originalNeutralLoadedMapV1");
         Scribe_Values.Look(ref CityCallV1, "cityCallV1", false);
         Scribe_Values.Look(ref CityCallStarted, "cityCallStartedV1", false);
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
     }
 }
 public sealed record TerritoryAdministrationReview(string Charter, string City, string From, string Target,
-    TerritoryTransferPurpose Purpose, string Stamp, string TargetIdentity, int Residents = 0);
+    TerritoryTransferPurpose Purpose, string Stamp, string TargetIdentity, int Residents = 0)
+{
+    public int? LoadedThings { get; init; }
+}
 
 /// <summary>Optional actual NPC city ownership execution. Never assigns a city to the native player faction.</summary>
 public sealed partial class TerritoryAdministrationLedger : GameComponent
@@ -88,6 +93,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 var binding = Charters.Binding(t.Territory); var reference = references.Single(r => r.Id == t.Id);
                 if (t.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
                 TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
+                ValidateMapReference(t, reference, t.Phase == TerritoryTransferPhase.Prepared);
                 if (reference.CityCallV1 && reference.CityCallStarted && reference.Residents != null && !reference.Residents.Started)
                     throw new ArgumentException("City call cannot precede its recorded resident execution.");
                 if (t.Phase == TerritoryTransferPhase.Applied)
@@ -118,6 +124,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     }
                     else ResidentExecution.ReleaseReferences(reference.Residents);
                 }
+                if (t.Phase != TerritoryTransferPhase.Prepared && reference.LoadedMap != null) LoadedMapRecords.Release(reference.LoadedMap);
             }
             pendingTownLosses.ValidatePair(Charters.Book, Ledger);
             politicalTownLosses.ValidatePair(Charters.Book, Ledger);
@@ -133,6 +140,25 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     internal string OwnerLabel(string id) => Find.FactionManager.AllFactionsListForReading.FirstOrDefault(f => f.GetUniqueLoadID() == id)?.Name
         ?? "CT_Missing".Translate();
     private static Settlement[] Cities() => Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Where(s => !s.Destroyed).ToArray();
+    private static void ValidateMapReference(TerritoryTransfer t, TerritoryTransferReference r, bool current)
+    {
+        if (t.LoadedMap == null)
+        {
+            if (r.LoadedMap != null || r.Residents?.LoadedMapScope != null) throw new ArgumentException("Loaded custody cannot backfill an old transfer.");
+            return;
+        }
+        LoadedMapPreservation.Pair(t.LoadedMap, t.Territory, t.StockProof);
+        if (r.LoadedMap?.Snapshot != t.LoadedMap || r.Residents != null && r.Residents.LoadedMapScope != t.LoadedMap || !r.CityCallV1 ||
+            t.Phase == TerritoryTransferPhase.Applied && (!r.CityCallStarted || !r.CityCallReturned) ||
+            t.Phase == TerritoryTransferPhase.Cancelled && (r.CityCallStarted || r.CityCallReturned))
+            throw new ArgumentException("Unpaired original map/call/resident custody.");
+        if (current)
+        {
+            if (r.From == null || r.Target == null || !Find.FactionManager.AllFactionsListForReading.Contains(r.From) || !Find.FactionManager.AllFactionsListForReading.Contains(r.Target) ||
+                r.From.HostileTo(r.Target) || r.Target.HostileTo(r.From)) throw new ArgumentException("Neutral-map transfer requires current reciprocal peace.");
+            LoadedMapRecords.Verify(r.City, r.LoadedMap);
+        }
+    }
     private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
         !faction.defeated && faction.HasGoodwill && faction.def.humanlikeFaction && !faction.def.permanentEnemy &&
         !(faction.def.royalTitleTags?.Count > 0) && (!faction.HostileTo(Faction.OfPlayer) || faction.GetUniqueLoadID() == releasedSource);
@@ -140,12 +166,13 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     {
         var all = Cities(); bool exists = city != null && all.Contains(city); var owner = exists ? city.Faction : null;
         int format = 0;
-        string proof = exists ? CityStockPreservation.Capture(city, out format) : null;
+        string loaded = null;
+        string proof = exists ? CityStockPreservation.Capture(city, out format, out loaded) : null;
         string residentProof = exists && city.previouslyGeneratedInhabitants?.Count > 0 ? ResidentExecution.Proof(city, residentProfile, target) : null;
         return new(territory, owner?.GetUniqueLoadID(), all.Count(s => s.Faction == owner), exists, owner?.IsPlayer == true,
             exists && city.HasMap, !exists || proof == null || city.EverVisited,
             exists && city.def.canHaveFaction && Eligible(owner, releasedSource), Eligible(target), target?.IsPlayer == true,
-            HasInhabitants: !exists || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count > 0, StockProof: proof, StockFormat: format, ResidentProof: residentProof);
+            HasInhabitants: !exists || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count > 0, StockProof: proof, StockFormat: format, ResidentProof: residentProof) { LoadedMap = loaded };
     }
     private (RecordedCharter Charter, Settlement City, Faction Target, TerritoryTransferObservation Observation, TerritoryTransferPurpose Purpose) Context(string id, Faction proposed = null)
     {
@@ -162,6 +189,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         string releasedSource = Current.Game.GetComponent<PoliticalTransitionLedger>().ReleasedMigrationSource(target);
         Charters.Book.ValidateCurrent(id, Charters.ObserveForMigration(releasedSource));
         var observed = Observe(binding.Settlement, binding.Identity, target, releasedSource);
+        if (observed.HasMap && (observed.LoadedMap == null || binding.Settlement.Faction.HostileTo(target) || target.HostileTo(binding.Settlement.Faction)))
+        { Messages.Message("RE_LoadedMapUnavailable".Translate(), MessageTypeDefOf.RejectInput); throw new ArgumentException("Unsupported loaded map or wartime scope."); }
         if (observed.Owner != target.GetUniqueLoadID() && observed.HasInhabitants && observed.ResidentProof == null)
         {
             Messages.Message("SX_CityBlocked".Translate(binding.Settlement.Label, ResidentExecution.BlockReasonKey(binding.Settlement, target).Translate()), MessageTypeDefOf.RejectInput);
@@ -173,13 +202,17 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     private TerritoryAdministrationReview ReviewForTarget(string id, Faction target)
     {
         var c = Context(id, target); var clone = TerritoryTransferLedger.Restore(Ledger.Export());
-        clone.Prepare("review-" + Guid.NewGuid().ToString("N"), Charters.Book, id, c.Observation, c.Target.GetUniqueLoadID(),
+        if (c.Observation.LoadedMap != null) clone.PrepareLoaded("review-" + Guid.NewGuid().ToString("N"), Charters.Book, id, c.Observation, c.Target.GetUniqueLoadID(),
+            c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
+            c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
+            Current.Game.GetComponent<SubtreeExitLedger>().Scope(id));
+        else clone.Prepare("review-" + Guid.NewGuid().ToString("N"), Charters.Book, id, c.Observation, c.Target.GetUniqueLoadID(),
             c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
             c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
             Current.Game.GetComponent<SubtreeExitLedger>().Scope(id));
         return new(id, c.City.Label, c.City.Faction.Name, c.Target.Name, c.Purpose,
             string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose, c.Observation.StockProof, c.Observation.ResidentProof),
-            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0);
+            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = c.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(c.Observation.LoadedMap).Things.Length };
     }
     public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true)
     {
@@ -202,14 +235,20 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             var c = Context(reviewed.Charter, target); string id = Guid.NewGuid().ToString("N");
             var residents = c.Observation.HasInhabitants ? ResidentExecution.CaptureForTransfer(c.City) : null;
             if (residents?.Set().Proof != c.Observation.ResidentProof) throw new ArgumentException("Resident preflight changed.");
+            var loaded = c.Observation.LoadedMap == null ? null : LoadedMapRecords.Capture(c.City);
+            if (loaded?.Snapshot != c.Observation.LoadedMap || residents != null && residents.LoadedMapScope != c.Observation.LoadedMap) throw new ArgumentException("Original loaded map changed.");
             if (residents != null) residents.PrepareCareJournal(c.City.Faction, c.Target, c.City);
             CheckLawfulResidentPreparation(c.Charter.Id, residents);
-            Ledger.PrepareJournaled(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
+            if (loaded != null) Ledger.PrepareLoadedJournaled(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
+                c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
+                c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
+                Current.Game.GetComponent<SubtreeExitLedger>().Scope(c.Charter.Id));
+            else Ledger.PrepareJournaled(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
                 c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
                 c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
                 Current.Game.GetComponent<SubtreeExitLedger>().Scope(c.Charter.Id));
             var reference = new TerritoryTransferReference { Id = id, City = c.City, From = c.City.Faction, Target = c.Target, Residents = residents, ResidentCareJournalRequired = residents != null,
-                ResidentCensusProof = residents == null ? null : ResidentTransferCensus.Restore(residents.Census).Proof, CityCallV1 = true };
+                ResidentCensusProof = residents == null ? null : ResidentTransferCensus.Restore(residents.Census).Proof, CityCallV1 = true, LoadedMap = loaded };
             references.Add(reference);
             if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
             if (transition.Journal.Pending && transition.Journal.Current?.LawfulResidents != null)
@@ -218,15 +257,21 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 if (residents != null) ResidentExecution.Verify(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
             }
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before city ownership call.");
+            if (loaded != null) ValidateMapReference(Ledger.Transfer(id), reference, true);
+            if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before preserved map call.");
             TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
             reference.CityCallStarted = true;
             c.City.SetFaction(c.Target);
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed during city ownership call; intent retained.");
             reference.CityCallReturned = true;
             CityStockPreservation.InvalidateMaterial(c.City);
+            if (loaded != null) ValidateMapReference(Ledger.Transfer(id), reference, true);
             if (residents != null) ResidentExecution.Verify(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
-            Ledger.Confirm(id, Observe(c.City, c.Charter.Terms.Subject, c.Target), Find.TickManager.TicksGame);
+            var finalObservation = Observe(c.City, c.Charter.Terms.Subject, c.Target);
+            if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Original game changed before final territory confirmation.");
+            Ledger.Confirm(id, finalObservation, Find.TickManager.TicksGame);
             if (residents != null) ResidentExecution.ReleaseReferences(residents);
+            if (loaded != null) LoadedMapRecords.Release(loaded);
             if (notify) Messages.Message("CT_Applied".Translate(), MessageTypeDefOf.NeutralEvent);
             return true;
         }
@@ -314,6 +359,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (political.Journal.Pending && political.Journal.Current?.LawfulFollowerMigration == true)
                 political.VerifyLawfulPhysicalRecovery();
             var item = Ledger.Transfer(id); var reference = references.Single(r => r.Id == id);
+            ValidateMapReference(item, reference, true);
+            if (reference.LoadedMap != null && reference.CityCallStarted && !reference.CityCallReturned) throw new ArgumentException("Unknown loaded-map call; never replay or infer normal return.");
             if (item.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
             TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
             if (reference.ResidentCareJournalRequired != (reference.Residents?.CareJournalV1 == true))
@@ -346,6 +393,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                         ResidentExecution.Verify(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
                     }
                     if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed during resident recovery.");
+                    if (reference.LoadedMap != null) LoadedMapRecords.Verify(reference.City, reference.LoadedMap);
+                    if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before loaded map recovery.");
                     if (reference.City.Faction == reference.From)
                     {
                         TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
@@ -357,14 +406,19 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     else TerritoryCallGuard.RequireStartedForTarget(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
                     if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed during city recovery; intent retained.");
                     CityStockPreservation.InvalidateMaterial(reference.City);
+                    if (reference.LoadedMap != null) LoadedMapRecords.Verify(reference.City, reference.LoadedMap);
                     ResidentExecution.Verify(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
-                    Ledger.Confirm(id, Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents.Profile), Find.TickManager.TicksGame);
+                    var finalObservation = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents.Profile);
+                    if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Original game changed before recovered territory confirmation.");
+                    Ledger.Confirm(id, finalObservation, Find.TickManager.TicksGame);
                 }
                 ResidentExecution.ReleaseReferences(reference.Residents);
+                if (reference.LoadedMap != null) LoadedMapRecords.Release(reference.LoadedMap);
                 return;
             }
             if (reference.City.Faction == reference.From)
             {
+                if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Original game changed before cancellation.");
                 TerritoryCallGuard.RequireVerifiedUnmoved(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
                 Ledger.CancelUnmoved(id, actual, Find.TickManager.TicksGame);
             }
@@ -373,8 +427,10 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 if (reference.City.Faction != reference.Target) throw new ArgumentException("Unrelated current owner.");
                 TerritoryCallGuard.RequireStartedForTarget(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
                 CityStockPreservation.InvalidateMaterial(reference.City);
+                if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Original game changed before confirmation.");
                 Ledger.Confirm(id, actual, Find.TickManager.TicksGame);
             }
+            if (reference.LoadedMap != null) LoadedMapRecords.Release(reference.LoadedMap);
         }
         catch (Exception e)
         { Log.Warning("[Honor.Contracts.Preview] Territory recovery incomplete; original resident/stock intent retained. " + e.GetType().Name); if (Current.Game == executionGame) { Reject(); Find.TickManager.Pause(); } }
@@ -413,7 +469,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (Charters.Book.Charters.Any(c => Charters.Book.Phase(c, Find.TickManager.TicksGame) == RecordedCharterPhase.Offered && c.Terms.Subject == item.Territory))
             throw new ArgumentException("Competing current city offer.");
         var stock = Observe(reference.City, item.Territory, destination, releasedSource);
-        if (stock.HasMap || !stock.Exists || stock.StockFormat != item.StockFormat || stock.StockProof != item.StockProof ||
+        if ((stock.HasMap && item.LoadedMap == null) || stock.LoadedMap != item.LoadedMap || !stock.Exists || stock.StockFormat != item.StockFormat || stock.StockProof != item.StockProof ||
             stock.StockProof == null && stock.Visited || stock.Owner == item.FromOwner && stock.SourceSettlements < 2 && item.FromOwner != AdministrationId)
             throw new ArgumentException("Original stock/map/source-base preservation changed.");
     }
@@ -497,6 +553,7 @@ public sealed class TerritoryAdministrationWindow : Window
             {
                 list.Label("CT_Proposal".Translate(review.City, review.From, review.Target));
                 if (review.Residents > 0) list.Label("RE_Review".Translate(review.Residents));
+                if (review.LoadedThings.HasValue) list.Label("RE_LoadedMapReview".Translate(review.LoadedThings.Value));
                 list.Label((review.Purpose == TerritoryTransferPurpose.ActiveCharter ? "CT_Active" : "CT_Released").Translate());
                 if (list.ButtonText("CT_Confirm".Translate())) { ledger.Apply(review); review = null; }
             }

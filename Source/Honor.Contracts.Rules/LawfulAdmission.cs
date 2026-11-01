@@ -8,6 +8,12 @@ public sealed record LawfulResidentScope(string Charter, string Census);
 /// <summary>Original lawful closure and explicit complete follower scope; legacy empty-town modes never gain resident authority.</summary>
 public static class LawfulAdmissions
 {
+    public static string OriginalMap(AllegianceTransition c, string charter)
+    {
+        ValidateIntent(c);
+        var scope = JsonSerializer.Deserialize<AdmissionFollowerSource>(c.FollowerReview.Original);
+        return scope.Entries.Single(e => e.Charter == charter).Observation.LoadedMap;
+    }
     private static void Require(bool ok, string why) { if (!ok) throw new ArgumentException(why); }
     private static string Json<T>(T x) => JsonSerializer.Serialize(x);
     private static string Hash(string x) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(x)));
@@ -99,7 +105,7 @@ public static class LawfulAdmissions
             Require(entry != null && row.Territory == entry.Observation.Territory && row.BaselineOwner == book.Entity(row.Territory).NativeOwner &&
                 row.FromOwner == entry.Observation.Owner && row.TargetOwner == command.Authority && row.Purpose == TerritoryTransferPurpose.ActiveCharter &&
                 row.ReleasedRoot == null && row.PreparedTick >= c.PreparedTick && row.Phase != TerritoryTransferPhase.Destroyed &&
-                row.StockProof == entry.Observation.StockProof && row.StockFormat == entry.Observation.StockFormat && row.ResidentProof == entry.Observation.ResidentProof,
+                row.StockProof == entry.Observation.StockProof && row.StockFormat == entry.Observation.StockFormat && row.ResidentProof == entry.Observation.ResidentProof && row.LoadedMap == entry.Observation.LoadedMap,
                 "Only the original follower's exact reviewed source, destination and preservation evidence may be appended.");
         }
     }

@@ -40,9 +40,19 @@ internal static class CityStockPreservation
     private static CityStockItem Item(Thing thing) => new(thing.GetUniqueLoadID(), thing.def.defName, thing.Stuff?.defName, thing.stackCount, thing.HitPoints,
         thing.TryGetQuality(out var quality) ? (int)quality : null);
     internal static string Capture(Settlement city, out int format)
+        => Capture(city, out format, out _);
+    internal static string Capture(Settlement city, out int format, out string loaded)
+    {
+        loaded = null;
+        if (city?.HasMap != true) return CaptureUnloadedStock(city, out format);
+        format = 0;
+        try { loaded = LoadedMapRecords.Capture(city).Snapshot; format = 3; return LoadedMapPreservation.Restore(loaded).Proof; }
+        catch (ArgumentException) { return null; }
+    }
+    internal static string CaptureUnloadedStock(Settlement city, out int format)
     {
         format = 0;
-        if (city == null || city.GetType() != typeof(Settlement) || city.HasMap || city.previouslyGeneratedInhabitants == null ||
+        if (city == null || city.GetType() != typeof(Settlement) || city.previouslyGeneratedInhabitants == null ||
             city.trader?.GetType() != typeof(Settlement_TraderTracker) ||
             city.trader.settlement != city || MaterialCache == null || MaterialCache.IsStatic || MaterialCache.FieldType != typeof(Material)) return null;
         // Goods/StockListForReading can generate stock. This accessor only returns the current container (or null).
@@ -83,6 +93,16 @@ internal static class CityStockPreservation
         if (animals.Count == 0) return CityStockProof.Capture(city.EverVisited, stock != null, city.trader.NextRestockTick, goods);
         format = 1;
         return CityStockProof.CaptureAnimals(city.EverVisited, stock != null, city.trader.NextRestockTick, goods, animals);
+    }
+    internal static string CaptureLoadedStock(Settlement city, out int format)
+    {
+        format = 0;
+        if (city?.trader?.GetType() != typeof(Settlement_TraderTracker) || city.trader.settlement != city) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        var getter = AccessTools.Method(typeof(Settlement_TraderTracker), nameof(Settlement_TraderTracker.GetDirectlyHeldThings), []);
+        var clock = AccessTools.PropertyGetter(typeof(Settlement_TraderTracker), nameof(Settlement_TraderTracker.NextRestockTick));
+        if (getter == null || clock == null || Harmony.GetPatchInfo(getter)?.Owners.Any() == true || Harmony.GetPatchInfo(clock)?.Owners.Any() == true)
+            throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        return CaptureUnloadedStock(city, out format); // Existing exact visited/container/clock evidence, including null stock with native clock -1.
     }
     // Shared by the read-only audit and execution guard, without generating or enumerating nested stock.
     internal static string StockExclusion(Thing thing)

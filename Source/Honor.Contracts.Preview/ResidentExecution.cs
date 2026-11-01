@@ -25,6 +25,7 @@ public sealed class ResidentExecutionRecord : IExposable
     public string Census;
     public List<string> AuthorityJournal;
     public List<ResidentAreaRecord> AreaRecords;
+    public string LoadedMapScope;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Snapshot, "preservationV1"); Scribe_Values.Look(ref Started, "started");
@@ -37,6 +38,7 @@ public sealed class ResidentExecutionRecord : IExposable
         Scribe_Values.Look(ref Census, "residentCensusV1");
         Scribe_Collections.Look(ref AuthorityJournal, "residentAuthorityJournalV1", LookMode.Value);
         Scribe_Collections.Look(ref AreaRecords, "residentOriginalAreaReferencesV1", LookMode.Deep);
+        Scribe_Values.Look(ref LoadedMapScope, "residentOriginalNeutralMapV1");
         if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; Prisoners ??= []; }
     }
     public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
@@ -76,11 +78,14 @@ internal static class ResidentExecution
         return ResidentMoveProfiles.BindMobility(previous, status, p.Downed);
     }
     internal static void CheckTown(Settlement city)
+        => CheckTown(city, null);
+    private static void CheckTown(Settlement city, string loaded)
     {
-        if (city == null || city.GetType() != typeof(Settlement) || city.Destroyed || city.HasMap || city.Faction == null || city.Faction.IsPlayer ||
+        if (city == null || city.GetType() != typeof(Settlement) || city.Destroyed || city.HasMap && loaded == null || city.Faction == null || city.Faction.IsPlayer ||
             !Find.WorldObjects.AllWorldObjects.Contains(city) || city.previouslyGeneratedInhabitants == null ||
             city.previouslyGeneratedInhabitants.Count is < 1 or > ResidentMoveSet.Capacity)
             throw new ArgumentException("Unavailable resident town.");
+        if (loaded != null) LoadedMapRecords.VerifyScope(city, loaded);
     }
     private static void Eligible(Pawn p, int profile, bool retainedLeader = false)
     {
@@ -164,9 +169,11 @@ internal static class ResidentExecution
         return new(baseline.Id, profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
     }
     internal static ResidentExecutionRecord Capture(Settlement city, int profile = 7)
+        => CaptureCore(city, profile, null);
+    private static ResidentExecutionRecord CaptureCore(Settlement city, int profile, string loaded)
     {
         EnsureRetention();
-        CheckTown(city); var pawns = city.previouslyGeneratedInhabitants.OrderBy(p => p?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
+        CheckTown(city, loaded); var pawns = city.previouslyGeneratedInhabitants.OrderBy(p => p?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         foreach (var pawn in pawns) Eligible(pawn, profile);
         var surgery = profile >= 2 ? pawns.Select(ResidentSurgery.Capture).ToList() : [];
         var prisoners = profile >= 4 ? pawns.Where(ResidentPrisoners.IsPrisoner).Select(p => ResidentPrisoners.Capture(p, profile)).ToList() : [];
@@ -176,16 +183,18 @@ internal static class ResidentExecution
         if (rows.Any(r => r.Faction != city.Faction.GetUniqueLoadID())) throw new ArgumentException("Resident source faction mismatch.");
         var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
         CheckLocations(city, set);
-        return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners, AreaRecords = areaRecords };
+        return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners, AreaRecords = areaRecords, LoadedMapScope = loaded };
     }
     // Explicit new clinical format; legacy Capture/Read/profile7 bytes and restrictions remain unchanged.
     internal static ResidentExecutionRecord CaptureForTransfer(Settlement city)
-        => Capture(city, city?.previouslyGeneratedInhabitants?.Any(ResidentAreaRecords.HasRestrictions) == true ? 9 : city?.previouslyGeneratedInhabitants?.Any(p => p?.Downed == true) == true ? 8 : 7);
+        => CaptureCore(city, city?.previouslyGeneratedInhabitants?.Any(ResidentAreaRecords.HasRestrictions) == true ? 9 : city?.previouslyGeneratedInhabitants?.Any(p => p?.Downed == true) == true ? 8 : 7,
+            city?.HasMap == true ? LoadedMapRecords.Capture(city).Snapshot : null);
+    internal static ResidentExecutionRecord CaptureScoped(Settlement city, int profile, string loaded) => CaptureCore(city, profile, loaded);
     internal static string Proof(Settlement city, int profile = 7, Faction target = null)
     {
         try
         {
-            var record = profile == 7 ? CaptureForTransfer(city) : Capture(city, profile);
+            var record = profile == 7 ? CaptureForTransfer(city) : CaptureCore(city, profile, city?.HasMap == true ? LoadedMapRecords.Capture(city).Snapshot : null);
             if (target != null && target != city.Faction)
                 foreach (var prisoner in record.Prisoners) ResidentPrisoners.NeedsRestore(prisoner, city.Faction, target, profile);
             return record.Set().Proof;
@@ -209,7 +218,7 @@ internal static class ResidentExecution
         if (record == null || record.Pawns == null || record.Set().Proof != proof || record.Pawns.Count != record.Set().Residents.Count ||
             record.Pawns.Any(p => p == null) || !record.Pawns.Select(p => p.GetUniqueLoadID()).SequenceEqual(record.Set().Residents.Select(r => r.Id)))
             throw new ArgumentException("Resident execution reference registry mismatch.");
-        CheckTown(city);
+        CheckTown(city, record.LoadedMapScope);
         ValidateAreas(record, false);
         if (record.Profile == 9)
             for (int i = 0; i < record.Pawns.Count; i++)
