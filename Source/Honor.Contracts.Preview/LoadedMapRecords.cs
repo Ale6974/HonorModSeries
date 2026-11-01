@@ -14,12 +14,14 @@ public sealed class LoadedMapRecord : IExposable
     public List<Thing> Things = [];
     public List<StorageGroup> Groups;
     public List<Zone> Stockpiles;
+    public List<Zone> Growing;
     public string Snapshot;
     public void ExposeData()
     {
         Scribe_References.Look(ref Map, "originalMap"); Scribe_Collections.Look(ref Things, "originalMapThings", LookMode.Reference);
         Scribe_Collections.Look(ref Groups, "originalStorageGroups", LookMode.Reference);
         Scribe_Collections.Look(ref Stockpiles, "originalStockpileZones", LookMode.Reference);
+        Scribe_Collections.Look(ref Growing, "originalGrowingZones", LookMode.Reference);
         Scribe_Values.Look(ref Snapshot, "originalNeutralMapV1");
     }
 }
@@ -109,10 +111,12 @@ internal static class LoadedMapRecords
             : LoadedMapPreservation.CapturePacked("territory/" + city.GetUniqueLoadID(), map.GetUniqueLoadID(), map.Size.x, map.Size.z, gridProof, stock, format, evidence, held);
         if (storage.Count > 0) snapshot = LoadedMapPreservation.CaptureStorage(snapshot, storage);
         if (groups.Length > 0) snapshot = LoadedMapPreservation.CaptureGroups(snapshot, groupEvidence);
-        if (stockpiles.References.Count > 0) snapshot = LoadedMapPreservation.CaptureStockpiles(snapshot, stockpiles.Evidence);
+        if (stockpiles.Evidence.Length > 0) snapshot = LoadedMapPreservation.CaptureStockpiles(snapshot, stockpiles.Evidence);
+        if (stockpiles.Growing.Length > 0) snapshot = LoadedMapPreservation.CaptureGrowing(snapshot, stockpiles.Growing);
         return new() { Map = map, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
             Groups = groups.Length == 0 ? null : groups.OrderBy(g => g.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
-            Stockpiles = stockpiles.References.Count == 0 ? null : stockpiles.References, Snapshot = snapshot };
+            Stockpiles = stockpiles.Evidence.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Stockpile)).ToList(),
+            Growing = stockpiles.Growing.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Growing)).ToList(), Snapshot = snapshot };
     }
     internal static void Verify(Settlement city, LoadedMapRecord original)
     {
@@ -121,10 +125,11 @@ internal static class LoadedMapRecords
         if (fresh.Snapshot != original.Snapshot || !fresh.Things.SequenceEqual(original.Things)) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         if (fresh.Groups == null ? original.Groups != null : original.Groups == null || !fresh.Groups.SequenceEqual(original.Groups)) throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
         if (fresh.Stockpiles == null ? original.Stockpiles != null : original.Stockpiles == null || !fresh.Stockpiles.SequenceEqual(original.Stockpiles)) throw new ResidentMoveBlocked("RE_StockpileMapUnavailable");
+        if (fresh.Growing == null ? original.Growing != null : original.Growing == null || !fresh.Growing.SequenceEqual(original.Growing)) throw new ResidentMoveBlocked("RE_GrowingMapUnavailable");
     }
     internal static void VerifyScope(Settlement city, string scope)
     {
         if (Capture(city).Snapshot != scope) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
     }
-    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); }
+    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); r.Growing?.Clear(); }
 }

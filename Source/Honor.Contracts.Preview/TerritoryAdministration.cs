@@ -37,6 +37,7 @@ public sealed record TerritoryAdministrationReview(string Charter, string City, 
     public int StorageShelves { get; init; }
     public int StorageGroups { get; init; }
     public int Stockpiles { get; init; }
+    public int GrowingZones { get; init; }
 }
 
 /// <summary>Optional actual NPC city ownership execution. Never assigns a city to the native player faction.</summary>
@@ -217,7 +218,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         var mapScope = c.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(c.Observation.LoadedMap);
         return new(id, c.City.Label, c.City.Faction.Name, c.Target.Name, c.Purpose,
             string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose, c.Observation.StockProof, c.Observation.ResidentProof),
-            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = mapScope == null ? null : mapScope.Things.Length + (mapScope.Held?.Length ?? 0), PackedThings = mapScope?.Held?.Length ?? 0, StorageShelves = mapScope?.Storage?.Length ?? 0, StorageGroups = mapScope?.Groups?.Length ?? 0, Stockpiles = mapScope?.Stockpiles?.Length ?? 0 };
+            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = mapScope == null ? null : mapScope.Things.Length + (mapScope.Held?.Length ?? 0), PackedThings = mapScope?.Held?.Length ?? 0, StorageShelves = mapScope?.Storage?.Length ?? 0, StorageGroups = mapScope?.Groups?.Length ?? 0, Stockpiles = mapScope?.Stockpiles?.Length ?? 0, GrowingZones = mapScope?.Growing?.Length ?? 0 };
     }
     public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true)
     {
@@ -563,6 +564,7 @@ public sealed class TerritoryAdministrationWindow : Window
                 if (review.StorageShelves > 0) list.Label("RE_StorageMapReview".Translate(review.StorageShelves));
                 if (review.StorageGroups > 0) list.Label("RE_StorageGroupsReview".Translate(review.StorageGroups));
                 if (review.Stockpiles > 0) list.Label("RE_StockpileMapReview".Translate(review.Stockpiles));
+                if (review.GrowingZones > 0) list.Label("RE_GrowingMapReview".Translate(review.GrowingZones));
                 list.Label((review.Purpose == TerritoryTransferPurpose.ActiveCharter ? "CT_Active" : "CT_Released").Translate());
                 if (list.ButtonText("CT_Confirm".Translate())) { ledger.Apply(review); review = null; }
             }

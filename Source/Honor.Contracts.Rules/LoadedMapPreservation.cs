@@ -8,12 +8,14 @@ public sealed record NeutralMapHeld(string Holder, int Slot, NeutralMapThing Ite
 public sealed record NeutralMapStorage(string Id, string Configuration, int[] Cells, string[] Contents);
 public sealed record NeutralMapStorageGroup(string Id, string Configuration, string[] Members);
 public sealed record NeutralMapStockpile(string Id, string Configuration, int[] Cells, string[] Contents);
+public sealed record NeutralMapGrowing(string Id, string Configuration, int[] Cells);
 public sealed record LoadedMapScope(string Town, string Map, int Width, int Height, string Grid, string Stock, int StockFormat, NeutralMapThing[] Things, string Proof)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapHeld[] Held { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorage[] Storage { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorageGroup[] Groups { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStockpile[] Stockpiles { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapGrowing[] Growing { get; init; }
 }
 
 /// <summary>Original neutral, pawn-free map custody. No actor, property or map-write authority.</summary>
@@ -63,6 +65,15 @@ public static class LoadedMapPreservation
         var rows = stockpiles.Take(1001).ToArray();
         if (rows.Any(r => r == null)) throw new ArgumentException("Missing original stockpile.");
         var s = before with { Stockpiles = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
+        s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
+    public static string CaptureGrowing(string original, IEnumerable<NeutralMapGrowing> growing)
+    {
+        var before = Restore(original);
+        if (before.Growing != null || growing == null) throw new ArgumentException("Fresh original growing scope required.");
+        var rows = growing.Take(1001).ToArray();
+        if (rows.Any(r => r == null)) throw new ArgumentException("Missing original growing zone.");
+        var s = before with { Growing = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
         s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
     public static LoadedMapScope Restore(string json)
@@ -138,6 +149,16 @@ public static class LoadedMapPreservation
                 }
             }
         }
+        if (s.Growing != null)
+        {
+            if (s.Growing.Length is < 1 or > 1000 || s.Growing.Any(r => r == null || !Key(r.Id) || !CityStockProof.Valid(r.Configuration) || r.Cells == null || r.Cells.Length is < 1 or > 10000 ||
+                r.Cells.Any(c => c < 0 || c >= s.Width * s.Height) || !r.Cells.SequenceEqual(r.Cells.Distinct().OrderBy(c => c))) ||
+                s.Growing.Sum(r => r.Cells.Length) + (s.Stockpiles ?? []).Sum(r => r.Cells.Length) > 100000 ||
+                !s.Growing.Select(r => r.Id).SequenceEqual(s.Growing.Select(r => r.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal)) ||
+                s.Growing.Any(r => (s.Stockpiles ?? []).Any(p => p.Id == r.Id))) throw new ArgumentException("Invalid original growing scope.");
+            var occupied = new HashSet<int>((s.Storage ?? []).SelectMany(r => r.Cells).Concat((s.Stockpiles ?? []).SelectMany(r => r.Cells)));
+            if (s.Growing.SelectMany(r => r.Cells).Any(c => !occupied.Add(c))) throw new ArgumentException("Original growing zone overlaps storage or another zone.");
+        }
         return s;
     }
     public static void Pair(string json, string town, string proof)
@@ -146,7 +167,7 @@ public static class LoadedMapPreservation
     }
     public static int Format(string json)
     {
-        var s = Restore(json); return s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
+        var s = Restore(json); return s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
     }
     public static void Pair(string json, string town, string proof, int format)
     {

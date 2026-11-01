@@ -1,5 +1,17 @@
 # 1단계 예약 개발 인수인계 — 0.3.63 / 2026-10-27
 
+## 0.3.86 — M2 부분 구현: 원 재배 구역과 혼합 구역 보존
+
+최종 검사: .local/m2-086-build16.log/build17.log 양 타깃 전체 빌드 통과,각 Honor20,093/Contracts5,244개 검사·영한547개 문구 일치·컴파일 경고/오류0. 원 재배/저장/공유 선반 조합,형식8 Prepared/Applied/Cancelled 저장 복원,변경 설정·중복/중첩/밖 칸·옛 형식 확대 거부 및 주민 동반 정당한 독립의 원 scope/물리 journal 검사를 포함한다. 설치1.7 Zone_Growing.ExposeData/PlantDefToGrow와 기존 Zone/ZoneManager의 저장/읽기 경계를 확인했다(.local/m2-086-growing.cs);1.6은 고정 참조/net472와 실제 경로의 필드/타입/패치 검사다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.86.zip SHA256058763453CFC51AD53357E635681E62AE52E1A48F2D89A28098511AB62376216. 백업 .local/contracts-preview-552b600697f0406e883444024b20fdfa 후 로컬 설치 완료,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-086-install.log). Preview Steam 게시 없음. 다음 실제 미완료는 지도 위 주민/소유 건물/임의 보관함/커스텀 구역과 복합 상태의 안전한 이전 경로다.
+
+2026-11-02. 새 지도 형식8의 null-omitted Growing 기록으로 원 재배 구역을 저장 구역·공유 선반·원 주민/의료 기록과 함께 실제 도시 이전·정당한 독립 전체 후손 검토·저장/명시적 중단 복구에 연결했다. 원 Zone_Growing 참조만 별도 Scribe하며 원 작물 설정(null 포함)·파종/수확 허용·이름/기본 이름·색/숨김·칸 집합과 실제 ZoneManager 등록/조회 grid를 대조한다. 작물 선택·파종·수확·구역 생성/삭제/재등록·칸/필터/지도 수정은 하지 않는다.
+
+설치1.7의 PlantDefToGrow getter는 null일 때 작물을 자동 선택하며 오염/Cells 조회도 실행한다. 원 private plantDefToGrow 저장 필드의 정확한 타입과 등록된 Def 참조를 읽고 getter/setter/작물 초기화를 호출하지 않는다. Zone.Cells Shuffle도 피한다. 기본 저장/재배 구역만 허용하고 양쪽 칸·선반·구역 ID 중첩/누락/교체·설정 변화·커스텀 구역은 원본을 유지하며 보류한다. 칸 집합은 순서를 섞는 native 동작과 구별해 canonicalize하고 원 구역/물체 참조를 유지한다.
+
+기존3~7/null bytes와 허용 범위는 확장하지 않는다. 같은 원 city-call 시작/정상 반환·주민 census/임상/의료/영역/수술·재고/계약/채무·물리/후손 journal에 형식8을 짝지으며, 미확인 시작 호출은 반복하거나 목적 소속만 보고 완료하지 않는다. 원 미완료 참조는 복구까지 유지하고 양의 완료 이력은 문서를 보존하며 추가 참조만 해제한다. 영한 구역 수/보류 안내를 추가했다.
+
+M2 전체는 미완료다. 지도 위 주민·소유 건물·커스텀 구역·임의 보관함·복잡 작업/중단 조합이 남았다. M1 10/10,M2 0/18,전체10/100,1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6은 유지한다. 자동 예약/Preview Steam 게시 없음.
+
 ## 0.3.85 — M2 부분 구현: 원 저장 구역 보존 이전
 
 최종 검사: .local/m2-085-build16.log/build17.log 양 타깃 전체 빌드 통과,각 Honor20,093/Contracts5,226개 검사·영한545개 문구 일치·컴파일 경고/오류0. StockpileMapTests는 원 설정/칸/물품·Prepared/Applied/Cancelled 복원·옛 형식 확대 거부·변경/중첩/누락/중복 증거 보류·원 공유 선반과의 조합을 검사하며,LawfulFollowerMigrationTests는 원 주민/census/공유 그룹/저장 구역을 동일 법적·물리 journal로 묶어 복원한다. 설치1.7 Zone_Stockpile/Zone/ZoneManager 및 기존 SlotGroup 저장·읽기 코드를 확인했고,1.6은 고정 참조/net472와 실행 전 shape/patch 검사 경로다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.85.zip SHA25601ED6DF9C369FF2C5AAFDD06C3ED77772146A44F3EE3B1396DFCE378D942663C. 백업 .local/contracts-preview-c73e9b7f78ac4409b4fa118c22675f2e 후 로컬 설치 완료,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-085-install.log). Preview Steam 게시 없음.

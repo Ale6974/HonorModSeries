@@ -56,6 +56,32 @@ internal static class StockpileMapTests
         string combined = LoadedMapPreservation.CaptureStockpiles(shelfBase, [pile]);
         Check(LoadedMapPreservation.Restore(combined).Groups[0].Members.SequenceEqual(["shelf"]));
         Reject(() => LoadedMapPreservation.CaptureStockpiles(shelfBase, [pile with { Cells = [0, 1, 2] }]));
+        var crop = new NeutralMapGrowing("crop", new string('F', 64), [3, 4]);
+        string withCrop = LoadedMapPreservation.CaptureGrowing(combined, [crop]);
+        Check(LoadedMapPreservation.Format(withCrop) == 8 && !combined.Contains("Growing"));
+        Check(LoadedMapPreservation.Restore(withCrop).Stockpiles[0].Id == "zone");
+        Reject(() => LoadedMapPreservation.CaptureGrowing(withCrop, [crop]));
+        Reject(() => LoadedMapPreservation.CaptureGrowing(combined, []));
+        Reject(() => LoadedMapPreservation.CaptureGrowing(combined, [crop with { Cells = [] }]));
+        Reject(() => LoadedMapPreservation.CaptureGrowing(combined, [crop with { Cells = [3, 3] }]));
+        Reject(() => LoadedMapPreservation.CaptureGrowing(combined, [crop with { Cells = [4, 3] }]));
+        Reject(() => LoadedMapPreservation.CaptureGrowing(combined, [crop with { Cells = [400] }]));
+        Reject(() => LoadedMapPreservation.CaptureGrowing(combined, [crop with { Cells = [0] }]));
+        Reject(() => LoadedMapPreservation.CaptureGrowing(combined, [crop with { Cells = [2] }]));
+        Reject(() => LoadedMapPreservation.CaptureGrowing(combined, [crop with { Id = "zone" }]));
+        Reject(() => LoadedMapPreservation.CaptureGrowing(combined, [crop, crop with { Id = "other" }]));
+        var cropObservation = observation with { LoadedMap = withCrop, StockFormat = 8, StockProof = LoadedMapPreservation.Restore(withCrop).Proof };
+        var cropLedger = new TerritoryTransferLedger();
+        cropLedger.PrepareLoadedJournaled("crop", book, "bond", cropObservation, "target", "target", null, TerritoryTransferPurpose.ActiveCharter, 3);
+        cropLedger = TerritoryTransferLedger.Restore(cropLedger.Export()); string cropPending = cropLedger.Export();
+        string alteredCrop = LoadedMapPreservation.CaptureGrowing(combined, [crop with { Configuration = new string('A', 64) }]);
+        Reject(() => cropLedger.Confirm("crop", cropObservation with { Owner = "target", LoadedMap = alteredCrop, StockProof = LoadedMapPreservation.Restore(alteredCrop).Proof }, 4));
+        Check(cropLedger.Export() == cropPending);
+        cropLedger.Confirm("crop", cropObservation with { Owner = "target" }, 4);
+        Check(TerritoryTransferLedger.Restore(cropLedger.Export()).Transfer("crop").LoadedMap == withCrop);
+        var cancelledCrop = TerritoryTransferLedger.Restore(cropPending); cancelledCrop.CancelUnmoved("crop", cropObservation, 4);
+        Check(cancelledCrop.Transfer("crop").Phase == TerritoryTransferPhase.Cancelled);
+        Reject(() => LoadedMapPreservation.Pair(withCrop, "town", LoadedMapPreservation.Restore(withCrop).Proof, 7));
         return n;
     }
 }
