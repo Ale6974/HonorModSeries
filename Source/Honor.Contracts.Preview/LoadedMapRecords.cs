@@ -12,10 +12,12 @@ public sealed class LoadedMapRecord : IExposable
 {
     public Map Map;
     public List<Thing> Things = [];
+    public List<StorageGroup> Groups;
     public string Snapshot;
     public void ExposeData()
     {
         Scribe_References.Look(ref Map, "originalMap"); Scribe_Collections.Look(ref Things, "originalMapThings", LookMode.Reference);
+        Scribe_Collections.Look(ref Groups, "originalStorageGroups", LookMode.Reference);
         Scribe_Values.Look(ref Snapshot, "originalNeutralMapV1");
     }
 }
@@ -79,11 +81,17 @@ internal static class LoadedMapRecords
             // Validate the entire child chain before quality helpers can inspect a package's InnerThing.
             if (container != null) Collect(container[0], t.GetUniqueLoadID(), depth + 1);
             var row = Evidence(t, map, parent != null); references.Add(t);
-            if (t.GetType() == typeof(Building_Storage)) storage.Add(StorageMapEvidence.Capture((Building_Storage)t, map));
+            if (t.GetType() == typeof(Building_Storage)) storage.Add(StorageMapEvidence.Capture((Building_Storage)t, map, grouped: true));
             if (parent != null) held.Add(new(parent, 0, row));
             return row;
         }
         var evidence = things.Select(t => Collect(t, null, 0)).ToArray();
+        var groups = things.OfType<Building_Storage>().Select(s => s.storageGroup).Where(g => g != null).Distinct().ToArray();
+        var groupEvidence = groups.Select(g => StorageMapEvidence.CaptureGroup(g, map, things)).ToArray();
+        if (groups.Length > 0 && (map.storageGroups.StorageGroupsForReading.Count != groups.Length ||
+            groups.Any(g => !g.members.Cast<Building_Storage>().OrderBy(s => s.GetUniqueLoadID(), StringComparer.Ordinal).SequenceEqual(
+                things.OfType<Building_Storage>().Where(s => s.storageGroup == g).OrderBy(s => s.GetUniqueLoadID(), StringComparer.Ordinal)))))
+            throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
         // Validate known holders BEFORE the native recursive pawn query can visit any ship/provider/unknown component.
         var holders = new List<IThingHolder>(); map.GetChildHolders(holders);
         if (holders.Any(h => h is not MinifiedThing m || m.GetType() != typeof(MinifiedThing) || !things.Contains(m))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
@@ -97,17 +105,20 @@ internal static class LoadedMapRecords
         string snapshot = held.Count == 0 ? LoadedMapPreservation.Capture("territory/" + city.GetUniqueLoadID(), map.GetUniqueLoadID(), map.Size.x, map.Size.z, gridProof, stock, format, evidence)
             : LoadedMapPreservation.CapturePacked("territory/" + city.GetUniqueLoadID(), map.GetUniqueLoadID(), map.Size.x, map.Size.z, gridProof, stock, format, evidence, held);
         if (storage.Count > 0) snapshot = LoadedMapPreservation.CaptureStorage(snapshot, storage);
-        return new() { Map = map, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(), Snapshot = snapshot };
+        if (groups.Length > 0) snapshot = LoadedMapPreservation.CaptureGroups(snapshot, groupEvidence);
+        return new() { Map = map, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
+            Groups = groups.Length == 0 ? null : groups.OrderBy(g => g.GetUniqueLoadID(), StringComparer.Ordinal).ToList(), Snapshot = snapshot };
     }
     internal static void Verify(Settlement city, LoadedMapRecord original)
     {
         if (original == null || original.Map != city.Map || original.Things == null) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         var fresh = Capture(city);
         if (fresh.Snapshot != original.Snapshot || !fresh.Things.SequenceEqual(original.Things)) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        if (fresh.Groups == null ? original.Groups != null : original.Groups == null || !fresh.Groups.SequenceEqual(original.Groups)) throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
     }
     internal static void VerifyScope(Settlement city, string scope)
     {
         if (Capture(city).Snapshot != scope) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
     }
-    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); }
+    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); }
 }

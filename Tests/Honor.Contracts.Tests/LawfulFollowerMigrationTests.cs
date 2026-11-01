@@ -143,6 +143,20 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(shelfJournal.Current, TerritoryTransferLedger.Restore(shelfPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(shelfJournal.Export()).Current, "child") == shelfScope && shelfPhysical.Transfer("shelf-city").StockFormat == 5,
             "original shelf configuration, cells, goods and resident scope remain paired through lawful physical save/restore");
+        string groupScope = LoadedMapPreservation.CaptureGroups(shelfScope, [new("group", Hash("shared-priority-filter-label"), ["shelf"])]);
+        var groupTown = loadedTown with { LoadedMap = groupScope, StockFormat = 6, StockProof = LoadedMapPreservation.Restore(groupScope).Proof };
+        var groupPlan = FollowerTransfers.Review(after, physical, [new("child", groupTown), new("deep", actualDeep)], "union", now);
+        var groupPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], groupPlan.Moves);
+        var groupJournal = new AllegianceTransitionLedger();
+        groupJournal.PrepareLawfulResidentAdmission("group", politics, command, groupPlan, physical, closure, groupPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 9, restrictedSet))]);
+        var groupPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        groupPhysical.PrepareLoadedJournaled("group-city", after, "child", groupTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(groupJournal.Current, groupPhysical);
+        groupPhysical.Confirm("group-city", groupTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(groupJournal.Current, TerritoryTransferLedger.Restore(groupPhysical.Export()));
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(groupJournal.Export()).Current, "child") == groupScope && groupPhysical.Transfer("group-city").StockFormat == 6,
+            "original shared group configuration, membership, cells, goods and resident scope remain paired through lawful physical save/restore");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);

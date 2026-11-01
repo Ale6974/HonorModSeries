@@ -50,6 +50,44 @@ internal static class StorageMapTests
         Check(TerritoryTransferLedger.Restore(ledger.Export()).Transfer("shelf").LoadedMap == original);
         var cancelled = TerritoryTransferLedger.Restore(pending); cancelled.CancelUnmoved("shelf", observation, 4);
         Check(cancelled.Transfer("shelf").Phase == TerritoryTransferPhase.Cancelled);
+        var group = new NeutralMapStorageGroup("group", new string('D', 64), ["shelf"]);
+        string grouped = LoadedMapPreservation.CaptureGroups(original, [group]);
+        var groupedScope = LoadedMapPreservation.Restore(grouped);
+        Check(LoadedMapPreservation.Format(grouped) == 6 && !original.Contains("Groups"));
+        LoadedMapPreservation.Pair(grouped, "town", groupedScope.Proof, 6);
+        Reject(() => LoadedMapPreservation.Pair(grouped, "town", groupedScope.Proof, 5));
+        Reject(() => LoadedMapPreservation.CaptureGroups(basic, [group]));
+        Reject(() => LoadedMapPreservation.CaptureGroups(grouped, [group]));
+        Reject(() => LoadedMapPreservation.CaptureGroups(original, []));
+        Reject(() => LoadedMapPreservation.CaptureGroups(original, [group with { Members = [] }]));
+        Reject(() => LoadedMapPreservation.CaptureGroups(original, [group with { Members = ["missing"] }]));
+        Reject(() => LoadedMapPreservation.CaptureGroups(original, [group with { Members = ["steel"] }]));
+        Reject(() => LoadedMapPreservation.CaptureGroups(original, [group with { Members = ["shelf", "shelf"] }]));
+        Reject(() => LoadedMapPreservation.CaptureGroups(original, [group, group]));
+        Reject(() => LoadedMapPreservation.CaptureGroups(original, [group, group with { Id = "group2" }]));
+        string twoShelves = LoadedMapPreservation.Capture("town", "map", 20, 20, new string('A', 64), CityStockProof.Capture(true, false, -1, []), 0,
+            [shelf, shelf with { Id = "shelf2", Cell = 2 }]);
+        twoShelves = LoadedMapPreservation.CaptureStorage(twoShelves, [settings with { Cells = [0], Contents = [] }, settings with { Id = "shelf2", Cells = [2], Contents = [] }]);
+        string orderedGroup = LoadedMapPreservation.CaptureGroups(twoShelves, [group with { Members = ["shelf2", "shelf"] }]);
+        string reorderedGroup = LoadedMapPreservation.CaptureGroups(twoShelves, [group with { Members = ["shelf", "shelf2"] }]);
+        Check(LoadedMapPreservation.Restore(orderedGroup).Groups[0].Members.SequenceEqual(["shelf2", "shelf"]));
+        Check(LoadedMapPreservation.Restore(orderedGroup).Proof != LoadedMapPreservation.Restore(reorderedGroup).Proof);
+        var groupObservation = observation with { LoadedMap = grouped, StockFormat = 6, StockProof = groupedScope.Proof };
+        var groupLedger = new TerritoryTransferLedger();
+        groupLedger.PrepareLoadedJournaled("group", book, "bond", groupObservation, "target", "target", null, TerritoryTransferPurpose.ActiveCharter, 3);
+        groupLedger = TerritoryTransferLedger.Restore(groupLedger.Export()); string groupPending = groupLedger.Export();
+        string changedGroup = LoadedMapPreservation.CaptureGroups(original, [group with { Configuration = new string('E', 64) }]);
+        Reject(() => groupLedger.Confirm("group", groupObservation with { Owner = "target", LoadedMap = changedGroup, StockProof = LoadedMapPreservation.Restore(changedGroup).Proof }, 4));
+        Check(groupLedger.Export() == groupPending);
+        Reject(() => groupLedger.Confirm("group", observation with { Owner = "target" }, 4));
+        Check(groupLedger.Export() == groupPending);
+        Check(FollowerTransfers.Review(book, new(), [new("bond", groupObservation)], "target", 3).Moves.SequenceEqual(["bond"]));
+        groupLedger.Confirm("group", groupObservation with { Owner = "target" }, 4);
+        Check(TerritoryTransferLedger.Restore(groupLedger.Export()).Transfer("group").LoadedMap == grouped);
+        var groupCancelled = TerritoryTransferLedger.Restore(groupPending); groupCancelled.CancelUnmoved("group", groupObservation, 4);
+        Check(groupCancelled.Transfer("group").Phase == TerritoryTransferPhase.Cancelled);
+        var forged = JsonSerializer.Deserialize<TerritoryTransfersSave>(groupPending);
+        Reject(() => TerritoryTransferLedger.Restore(JsonSerializer.Serialize(forged with { Transfers = [forged.Transfers[0] with { StockFormat = 5 }] })));
         return n;
     }
 }

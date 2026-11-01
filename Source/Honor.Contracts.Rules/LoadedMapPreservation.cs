@@ -6,10 +6,12 @@ namespace Honor.Contracts.Rules;
 public sealed record NeutralMapThing(string Id, string Def, string Stuff, int Count, int HitPoints, int Cell, int Rotation, int? Quality);
 public sealed record NeutralMapHeld(string Holder, int Slot, NeutralMapThing Item);
 public sealed record NeutralMapStorage(string Id, string Configuration, int[] Cells, string[] Contents);
+public sealed record NeutralMapStorageGroup(string Id, string Configuration, string[] Members);
 public sealed record LoadedMapScope(string Town, string Map, int Width, int Height, string Grid, string Stock, int StockFormat, NeutralMapThing[] Things, string Proof)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapHeld[] Held { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorage[] Storage { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorageGroup[] Groups { get; init; }
 }
 
 /// <summary>Original neutral, pawn-free map custody. No actor, property or map-write authority.</summary>
@@ -41,6 +43,15 @@ public static class LoadedMapPreservation
         var rows = storage.Take(1001).ToArray();
         if (rows.Any(r => r == null)) throw new ArgumentException("Missing original shelf.");
         var s = before with { Storage = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
+        s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
+    public static string CaptureGroups(string original, IEnumerable<NeutralMapStorageGroup> groups)
+    {
+        var before = Restore(original);
+        if (before.Groups != null || before.Storage == null || groups == null) throw new ArgumentException("Fresh original grouped shelf scope required.");
+        var rows = groups.Take(1001).ToArray();
+        if (rows.Any(r => r == null)) throw new ArgumentException("Missing original storage group.");
+        var s = before with { Groups = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
         s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
     public static LoadedMapScope Restore(string json)
@@ -88,6 +99,15 @@ public static class LoadedMapPreservation
                 }
             }
         }
+        if (s.Groups != null)
+        {
+            if (s.Storage == null || s.Groups.Length is < 1 or > 1000 ||
+                s.Groups.Any(g => g == null || !Key(g.Id) || !CityStockProof.Valid(g.Configuration) || g.Members == null || g.Members.Length is < 1 or > 1000 ||
+                    g.Members.Any(id => !Key(id) || !s.Storage.Any(r => r.Id == id)) || g.Members.Distinct().Count() != g.Members.Length) ||
+                !s.Groups.Select(g => g.Id).SequenceEqual(s.Groups.Select(g => g.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal)) ||
+                s.Groups.SelectMany(g => g.Members).Distinct().Count() != s.Groups.Sum(g => g.Members.Length))
+                throw new ArgumentException("Missing, foreign or duplicated original storage group membership.");
+        }
         return s;
     }
     public static void Pair(string json, string town, string proof)
@@ -96,7 +116,7 @@ public static class LoadedMapPreservation
     }
     public static int Format(string json)
     {
-        var s = Restore(json); return s.Storage != null ? 5 : s.Held == null ? 3 : 4;
+        var s = Restore(json); return s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
     }
     public static void Pair(string json, string town, string proof, int format)
     {

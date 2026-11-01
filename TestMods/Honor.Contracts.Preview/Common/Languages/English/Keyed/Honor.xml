@@ -539,6 +539,7 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <RE_LoadedMapUnavailable>This loaded town lacks verified neutral-map custody or reciprocal peace. Keep the original map and records. Live map pawns, owned objects, incoming transports, assigned beds and unsupported contents remain deferred.</RE_LoadedMapUnavailable>
   <RE_LoadedMapReview>Preserve the same neutral loaded map and all {0} original map objects. Terrain, roofs, object identities and trade stock must match. No map pawn or property affiliation is changed; an uncertain ownership call is never repeated.</RE_LoadedMapReview>
   <RE_PackedMapReview>Keep all {0} originally held objects in the same original packages and order. Missing, changed, owned, custom or unsupported contents block transfer; nothing is unpacked or recreated.</RE_PackedMapReview>
-  <RE_StorageMapReview>Preserve {0} independent neutral shelves with original filters, priority, style, slot cells and goods. Nothing is regrouped, refiltered or hauled.</RE_StorageMapReview>
-  <RE_StorageMapUnavailable>Original shelf settings, cells or stored goods cannot be verified. Shared storage groups, changed settings and unsupported contents remain deferred; keep the original records.</RE_StorageMapUnavailable>
+  <RE_StorageMapReview>Preserve {0} neutral shelves with original filters, priority, style, slot cells and goods. Nothing is regrouped, refiltered or hauled.</RE_StorageMapReview>
+  <RE_StorageMapUnavailable>Original shelf settings, cells or stored goods cannot be verified. Unverified groups, changed settings and unsupported contents remain deferred; keep the original records.</RE_StorageMapUnavailable>
+  <RE_StorageGroupsReview>Preserve {0} original shared storage groups, their complete shelf membership and shared filters, priority and name. Original groups and members remain in place.</RE_StorageGroupsReview>
 </LanguageData>
