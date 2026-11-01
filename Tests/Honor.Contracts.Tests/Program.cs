@@ -195,6 +195,7 @@ assertions += ResidentCensusTests.Run();
 assertions += ResidentMobilityTests.Run();
 assertions += ResidentAreaTests.Run();
 assertions += LoadedMapTests.Run();
+assertions += PackedMapTests.Run();
 assertions += NpcReparentArchiveTests.Run();
 assertions += TerritoryCallGuardTests.Run();
 assertions += CharterAidGenerationTests.Run();

@@ -46,7 +46,7 @@ internal static class CityStockPreservation
         loaded = null;
         if (city?.HasMap != true) return CaptureUnloadedStock(city, out format);
         format = 0;
-        try { loaded = LoadedMapRecords.Capture(city).Snapshot; format = 3; return LoadedMapPreservation.Restore(loaded).Proof; }
+        try { loaded = LoadedMapRecords.Capture(city).Snapshot; format = LoadedMapPreservation.Format(loaded); return LoadedMapPreservation.Restore(loaded).Proof; }
         catch (ArgumentException) { return null; }
     }
     internal static string CaptureUnloadedStock(Settlement city, out int format)

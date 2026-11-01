@@ -33,6 +33,7 @@ public sealed record TerritoryAdministrationReview(string Charter, string City, 
     TerritoryTransferPurpose Purpose, string Stamp, string TargetIdentity, int Residents = 0)
 {
     public int? LoadedThings { get; init; }
+    public int PackedThings { get; init; }
 }
 
 /// <summary>Optional actual NPC city ownership execution. Never assigns a city to the native player faction.</summary>
@@ -147,7 +148,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (r.LoadedMap != null || r.Residents?.LoadedMapScope != null) throw new ArgumentException("Loaded custody cannot backfill an old transfer.");
             return;
         }
-        LoadedMapPreservation.Pair(t.LoadedMap, t.Territory, t.StockProof);
+        LoadedMapPreservation.Pair(t.LoadedMap, t.Territory, t.StockProof, t.StockFormat);
         if (r.LoadedMap?.Snapshot != t.LoadedMap || r.Residents != null && r.Residents.LoadedMapScope != t.LoadedMap || !r.CityCallV1 ||
             t.Phase == TerritoryTransferPhase.Applied && (!r.CityCallStarted || !r.CityCallReturned) ||
             t.Phase == TerritoryTransferPhase.Cancelled && (r.CityCallStarted || r.CityCallReturned))
@@ -210,9 +211,10 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
             c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
             Current.Game.GetComponent<SubtreeExitLedger>().Scope(id));
+        var mapScope = c.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(c.Observation.LoadedMap);
         return new(id, c.City.Label, c.City.Faction.Name, c.Target.Name, c.Purpose,
             string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose, c.Observation.StockProof, c.Observation.ResidentProof),
-            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = c.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(c.Observation.LoadedMap).Things.Length };
+            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = mapScope == null ? null : mapScope.Things.Length + (mapScope.Held?.Length ?? 0), PackedThings = mapScope?.Held?.Length ?? 0 };
     }
     public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true)
     {
@@ -554,6 +556,7 @@ public sealed class TerritoryAdministrationWindow : Window
                 list.Label("CT_Proposal".Translate(review.City, review.From, review.Target));
                 if (review.Residents > 0) list.Label("RE_Review".Translate(review.Residents));
                 if (review.LoadedThings.HasValue) list.Label("RE_LoadedMapReview".Translate(review.LoadedThings.Value));
+                if (review.PackedThings > 0) list.Label("RE_PackedMapReview".Translate(review.PackedThings));
                 list.Label((review.Purpose == TerritoryTransferPurpose.ActiveCharter ? "CT_Active" : "CT_Released").Translate());
                 if (list.ButtonText("CT_Confirm".Translate())) { ledger.Apply(review); review = null; }
             }
