@@ -198,6 +198,7 @@ assertions += LoadedMapTests.Run();
 assertions += PackedMapTests.Run();
 assertions += StorageMapTests.Run();
 assertions += StockpileMapTests.Run();
+assertions += ContainerMapTests.Run();
 assertions += NpcReparentArchiveTests.Run();
 assertions += TerritoryCallGuardTests.Run();
 assertions += CharterAidGenerationTests.Run();

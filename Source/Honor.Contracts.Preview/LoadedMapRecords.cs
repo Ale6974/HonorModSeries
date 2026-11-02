@@ -53,11 +53,12 @@ internal static class LoadedMapRecords
     private static NeutralMapThing Evidence(Thing t, Map map, bool held = false)
     {
         if (t == null || t.def == null || t.Destroyed || (held ? t.Spawned || t.Map != null || t.holdingOwner == null : !t.Spawned || t.Map != map || t.holdingOwner != null && t.holdingOwner != map.GetDirectlyHeldThings()) ||
-            t.Faction != null || t is Pawn or Corpse || t is IThingHolder && t.GetType() != typeof(MinifiedThing) ||
+            t.Faction != null || t is Pawn or Corpse || t is IThingHolder && t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t) ||
             t.GetType().Assembly != typeof(Thing).Assembly || t is ThingWithComps c && c.AllComps.Any(comp => comp == null || comp is IThingHolder ||
                 comp.GetType() != typeof(CompQuality) && comp.GetType() != typeof(CompForbiddable) && comp.GetType() != typeof(CompColorable) && comp.GetType() != typeof(CompArt) &&
-                (t.GetType() != typeof(Building_Storage) || comp.GetType() != typeof(CompStyleable))) ||
-            t.GetType() != typeof(Building) && t.GetType() != typeof(Building_Storage) && t.GetType() != typeof(Plant) && t.GetType() != typeof(Filth) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) && t.GetType() != typeof(MinifiedThing))
+                (t.GetType() != typeof(Building_Storage) || comp.GetType() != typeof(CompStyleable)) &&
+                (!ContainerMapEvidence.Supported(t) || comp.GetType() != typeof(CompHackable) && comp.GetType() != typeof(CompGlower))) ||
+            !ContainerMapEvidence.Supported(t) && t.GetType() != typeof(Building) && t.GetType() != typeof(Building_Storage) && t.GetType() != typeof(Plant) && t.GetType() != typeof(Filth) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) && t.GetType() != typeof(MinifiedThing))
             throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         if (AccessTools.PropertyGetter(t.GetType(), nameof(Thing.Faction))?.DeclaringType != typeof(Thing)) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         return new(t.GetUniqueLoadID(), t.def.defName, t.Stuff?.defName, t.stackCount, t.HitPoints, held ? -1 : map.cellIndices.CellToIndex(t.Position), t.Rotation.AsInt,
@@ -77,16 +78,18 @@ internal static class LoadedMapRecords
         Ready(city); var map = city.Map; var things = map.listerThings.AllThings.OrderBy(t => t?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         if (things.Count > 10000 || map.Size.x is < 1 or > 500 || map.Size.z is < 1 or > 500) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         var references = new List<Thing>(); var held = new List<NeutralMapHeld>(); var ids = new HashSet<string>(StringComparer.Ordinal);
-        var storage = new List<NeutralMapStorage>();
-        NeutralMapThing Collect(Thing t, string parent, int depth)
+        var storage = new List<NeutralMapStorage>(); var containers = new List<NeutralMapContainer>();
+        NeutralMapThing Collect(Thing t, string parent, int depth, int slot = 0)
         {
             if (t == null || t is Pawn or Corpse || depth > 8 || ids.Count >= 10000 || !ids.Add(t.GetUniqueLoadID())) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
-            var container = t.GetType() == typeof(MinifiedThing) ? Container((MinifiedThing)t) : null;
+            ThingOwner container;
+            if (ContainerMapEvidence.Supported(t)) { var captured = ContainerMapEvidence.Capture(t); container = captured.Owner; containers.Add(captured.Evidence); }
+            else container = t.GetType() == typeof(MinifiedThing) ? Container((MinifiedThing)t) : null;
             // Validate the entire child chain before quality helpers can inspect a package's InnerThing.
-            if (container != null) Collect(container[0], t.GetUniqueLoadID(), depth + 1);
+            if (container != null) for (int i = 0; i < container.Count; i++) Collect(container[i], t.GetUniqueLoadID(), depth + 1, i);
             var row = Evidence(t, map, parent != null); references.Add(t);
             if (t.GetType() == typeof(Building_Storage)) storage.Add(StorageMapEvidence.Capture((Building_Storage)t, map, grouped: true));
-            if (parent != null) held.Add(new(parent, 0, row));
+            if (parent != null) held.Add(new(parent, slot, row));
             return row;
         }
         var evidence = things.Select(t => Collect(t, null, 0)).ToArray();
@@ -99,7 +102,7 @@ internal static class LoadedMapRecords
         var stockpiles = StockpileMapEvidence.Capture(map);
         // Validate known holders BEFORE the native recursive pawn query can visit any ship/provider/unknown component.
         var holders = new List<IThingHolder>(); map.GetChildHolders(holders);
-        if (holders.Any(h => h is not MinifiedThing m || m.GetType() != typeof(MinifiedThing) || !things.Contains(m))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        if (holders.Any(h => h is not Thing t || !things.Contains(t) || t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         var direct = map.GetDirectlyHeldThings();
         if (direct != null && (direct.Count != things.Count || direct.Any(t => !things.Contains(t)))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         if (map.mapPawns.AllPawns.Count != 0) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
@@ -107,7 +110,13 @@ internal static class LoadedMapRecords
         string gridProof = RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(grid))));
         string stock = CityStockPreservation.CaptureLoadedStock(city, out int format);
         if (stock == null) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
-        string snapshot = held.Count == 0 ? LoadedMapPreservation.Capture("territory/" + city.GetUniqueLoadID(), map.GetUniqueLoadID(), map.Size.x, map.Size.z, gridProof, stock, format, evidence)
+        string snapshot;
+        if (containers.Count > 0)
+        {
+            string roots = LoadedMapPreservation.Capture("territory/" + city.GetUniqueLoadID(), map.GetUniqueLoadID(), map.Size.x, map.Size.z, gridProof, stock, format, evidence);
+            snapshot = LoadedMapPreservation.CaptureContainers(roots, held, containers);
+        }
+        else snapshot = held.Count == 0 ? LoadedMapPreservation.Capture("territory/" + city.GetUniqueLoadID(), map.GetUniqueLoadID(), map.Size.x, map.Size.z, gridProof, stock, format, evidence)
             : LoadedMapPreservation.CapturePacked("territory/" + city.GetUniqueLoadID(), map.GetUniqueLoadID(), map.Size.x, map.Size.z, gridProof, stock, format, evidence, held);
         if (storage.Count > 0) snapshot = LoadedMapPreservation.CaptureStorage(snapshot, storage);
         if (groups.Length > 0) snapshot = LoadedMapPreservation.CaptureGroups(snapshot, groupEvidence);

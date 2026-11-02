@@ -1,5 +1,19 @@
 # 1단계 예약 개발 인수인계 — 0.3.63 / 2026-10-27
 
+## 0.3.89 — M2 부분 구현: 원 다중 슬롯 보관함과 중첩 숲의 실제 보존
+
+최종 검사: .local/m2-089-build16.log/build17.log 양 타깃 전체 빌드 통과,각 Honor20,093/Contracts5,284개 검사·영한550개 문구 일치·컴파일 경고/오류0. ContainerMapTests는 다중 슬롯/중첩 포장·빈 보관함·legacy 슬롯0 엄격성·누락/중복/순서/범위/타입·Prepared/Applied/Cancelled 저장 복원·옛 형식 확대 거부를 검사한다. LawfulFollowerMigrationTests는 원 mixed10 주민/보관함9와 원 전체 정치/물리 이력을 함께 복원한다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.89.zip SHA2565CA57B8020BABC4A8530446FCFEC38E2C4F7493CD2232BF3F9C59ED9A66C5AE0. 백업 .local/contracts-preview-2a01917f2b7e4da2a2a14ec2d67423a0 후 로컬 설치 완료,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-089-install.log). Preview Steam 게시 없음. **M2 전체 미완료**: map/live roster alias와 원 예약/designation/지도 등록·개별 native-call/정상 반환·소유 주체별 자산 권한/원본 보존을 실제 집행과 복구에 연결하는 큰 경로가 남는다. 보관함9는 기본 중립 Casket/Crate 보존의 실제 실행이며 임의 커스텀 holder나 주민/재산 소속 변경의 완료가 아니다.
+
+2026-11-02. 새 지도 형식9의 Containers 기록으로 정확한 기본 Building_Casket/Building_Crate의 원 컨테이너·순서 있는 다중 슬롯·중첩 포장/보관함을 실제 도시 이전·원 주민/의료 기록·정당한 독립 전체 후손 검토·Scribe·명시적 중단 복구에 연결했다. 원 Map과 바깥/안쪽 Thing 참조만 보존하고 native parent town 소속 변경만 호출한다. 보관함/내용물의 Open/CanOpen/EjectContents/TryAcceptThing/꺼내기/넣기/재포장/복제/재생성/소속 변경을 호출하지 않는다.
+
+원 known contents/개봉 signal과 정확한 ThingOwner 기본 타입/Owner/각 자식 holdingOwner, 전체 정수 슬롯 순서·개수·원 물체/부모 ID를 대조한다. 최대 전체10,000물체·1,000보관함·8단계 원 forest를 묶는다. 새 scope에서만 다중 슬롯을 허용하며 기존 MinifiedThing은 여전히 슬롯0 하나다. 옛3~8/null bytes와 단일 포장 규칙은 확대하지 않는다. 누락·중복·잘못된 부모·슬롯 누락/순서 변경·순환·깊이 초과·원 내용물/설정 변화는 원본을 보존하며 보류한다.
+
+상자에서만 정확한 기본 CompHackable의 저장 필드 schema/값을 읽으며 lastUser가 있거나 autohack 진행 상태면 보류한다. 기본 CompGlower의 실제 저장 glowOn/color override만 읽고 비저장 radius/cache는 저장 권한으로 기록하지 않는다. Hack/빛/개봉/알림 getter·setter를 호출하지 않는다. 주민·시체·소유 보관함/물품·알 수 없는 holder/component·임의 커스텀 상자는 아직 지원하지 않는다. 같은 원 참조·doc·city-call 정상 반환·주민 census/medical/surgery/area·물리/법적 이력이 복구까지 짝지어야 한다. 영한 검토/보류 안내를 추가했다.
+
+동시에 설치1.7 Pawn.SetFaction/Thing.SetFaction/Building_Casket/Building_Crate/CompHackable/CompGlower와 reservation manager 코드를 확인했다(.local/m2-089-*). 지도 위 Pawn.SetFaction은 명부 재등록·목적지 예약 해제·designation 제거·auto-slaughter/attack target cache 알림을 실행한다. Thing 소속 변경도 quest/지도 이벤트를 실행한다. 이것을 기존 neutral scope/세계 주민 동의로 승인했다고 해석하거나 관련 가드를 제거하지 않는다. 지도 위 주민/소유 물체 경로는 미완료이며,원 map/saved roster alias·실제 map 등록·원 예약/designation/원 소속별 권리·개별 정상 반환/중단 journal을 별도로 실제 실행에 연결해야 한다.
+
+M2 전체 미완료. M1 10/10,M2 0/18,전체10/100,1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6을 유지한다. 자동 예약/Preview Steam 게시 없음.
+
 ## 0.3.88 — M2 부분 구현: 쓰러진 일반 주민·포로 혼합 명부의 실제 형식 선택
 
 최종 검사: .local/m2-088-build16.log/build17.log 양 타깃 전체 빌드 통과,각 Honor20,093/Contracts5,263개 검사·영한548개 문구 일치·컴파일 경고/오류0. 실제 CaptureForTransfer가 사용하는 임상 형식 선택의8가지 조합과 기존 mixed10/area/census/medical/authority/법적/물리 저장 검사를 통과했다. 자동 선택의 확대는 개별 대상의 기존 부적격 조건을 허용하지 않으며,옛 임상 증거의 profile 변경을 허용하지 않는다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.88.zip SHA2568E142BC4B95BE2769B9FD0B28296C0624DC76972CF16367C442EEDCA80071B52. 백업 .local/contracts-preview-49ce95c8dac44a20bdd1f7eb73bf4499 후 로컬 설치 완료,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-088-install.log). Preview Steam 게시 없음. M2 전체 완료 아님: live map resident의 명부/실제 map 소속/AI·의료·맵 목록 및 소유 물체의 별도 동의·개별 호출/참조/정상 반환·중단 복구 경로가 아직 없다. 기존 neutral scope를 병력/재산 권한으로 바꾸거나 가드를 제거해 완료 처리하지 않는다.

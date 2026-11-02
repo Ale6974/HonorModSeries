@@ -8,6 +8,7 @@ public sealed record NeutralMapHeld(string Holder, int Slot, NeutralMapThing Ite
 public sealed record NeutralMapStorage(string Id, string Configuration, int[] Cells, string[] Contents);
 public sealed record NeutralMapStorageGroup(string Id, string Configuration, string[] Members);
 public sealed record NeutralMapStockpile(string Id, string Configuration, int[] Cells, string[] Contents);
+public sealed record NeutralMapContainer(string Id, string Kind, string Configuration, int Count);
 public sealed record NeutralMapGrowing(string Id, string Configuration, int[] Cells);
 public sealed record LoadedMapScope(string Town, string Map, int Width, int Height, string Grid, string Stock, int StockFormat, NeutralMapThing[] Things, string Proof)
 {
@@ -16,6 +17,7 @@ public sealed record LoadedMapScope(string Town, string Map, int Width, int Heig
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorageGroup[] Groups { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStockpile[] Stockpiles { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapGrowing[] Growing { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapContainer[] Containers { get; init; }
 }
 
 /// <summary>Original neutral, pawn-free map custody. No actor, property or map-write authority.</summary>
@@ -76,6 +78,16 @@ public static class LoadedMapPreservation
         var s = before with { Growing = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
         s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
+    public static string CaptureContainers(string original, IEnumerable<NeutralMapHeld> held, IEnumerable<NeutralMapContainer> containers)
+    {
+        var before = Restore(original);
+        if (before.Held != null || before.Containers != null || held == null || containers == null) throw new ArgumentException("Fresh original container forest required.");
+        var children = held.Take(10001).ToArray(); var holders = containers.Take(1001).ToArray();
+        if (children.Any(r => r == null) || holders.Any(r => r == null)) throw new ArgumentException("Missing original container evidence.");
+        var s = before with { Held = children.Length == 0 ? null : children.OrderBy(r => r.Holder, StringComparer.Ordinal).ThenBy(r => r.Slot).ToArray(),
+            Containers = holders.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
+        s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
     public static LoadedMapScope Restore(string json)
     {
         if (json == null || json.Length > 3000000) throw new ArgumentException("Bounded original loaded-map scope required.");
@@ -87,8 +99,8 @@ public static class LoadedMapPreservation
         if (s.Held != null)
         {
             var roots = new HashSet<string>(s.Things.Select(t => t.Id), StringComparer.Ordinal);
-            if (s.Held.Length == 0 || s.Held.Length + roots.Count > 10000 || s.Held.Any(r => r == null || !Key(r.Holder) || r.Slot != 0 || !Item(r.Item, 0, true)) ||
-                s.Held.Select(r => r.Holder).Distinct().Count() != s.Held.Length || s.Held.Select(r => r.Item.Id).Distinct().Count() != s.Held.Length ||
+            if (s.Held.Length == 0 || s.Held.Length + roots.Count > 10000 || s.Held.Any(r => r == null || !Key(r.Holder) || (s.Containers == null ? r.Slot != 0 : r.Slot is < 0 or > 9999) || !Item(r.Item, 0, true)) ||
+                (s.Containers == null ? s.Held.Select(r => r.Holder).Distinct().Count() != s.Held.Length : s.Held.Select(r => (r.Holder, r.Slot)).Distinct().Count() != s.Held.Length) || s.Held.Select(r => r.Item.Id).Distinct().Count() != s.Held.Length ||
                 s.Held.Any(r => roots.Contains(r.Item.Id)) || !s.Held.Select(r => r.Holder).SequenceEqual(s.Held.Select(r => r.Holder).OrderBy(x => x, StringComparer.Ordinal)))
                 throw new ArgumentException("Invalid original packed-map tree.");
             var parents = s.Held.ToDictionary(r => r.Item.Id, r => r.Holder, StringComparer.Ordinal);
@@ -101,6 +113,17 @@ public static class LoadedMapPreservation
                     at = parent;
                 }
             }
+        }
+        if (s.Containers != null)
+        {
+            var allIds = new HashSet<string>(s.Things.Select(t => t.Id).Concat((s.Held ?? []).Select(r => r.Item.Id)), StringComparer.Ordinal);
+            if (s.Containers.Length is < 1 or > 1000 || s.Containers.Any(c => c == null || !Key(c.Id) || !allIds.Contains(c.Id) || c.Kind is not ("casket" or "crate") ||
+                !CityStockProof.Valid(c.Configuration) || c.Count is < 0 or > 10000) ||
+                !s.Containers.Select(c => c.Id).SequenceEqual(s.Containers.Select(c => c.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal))) throw new ArgumentException("Invalid original container scope.");
+            foreach (var c in s.Containers)
+                if (!(s.Held ?? []).Where(r => r.Holder == c.Id).Select(r => r.Slot).SequenceEqual(Enumerable.Range(0, c.Count))) throw new ArgumentException("Missing or reordered original container slots.");
+            foreach (var group in (s.Held ?? []).GroupBy(r => r.Holder))
+                if (!s.Containers.Any(c => c.Id == group.Key) && (group.Count() != 1 || group.First().Slot != 0)) throw new ArgumentException("Legacy package acquired extra contents.");
         }
         if (s.Storage != null)
         {
@@ -167,7 +190,7 @@ public static class LoadedMapPreservation
     }
     public static int Format(string json)
     {
-        var s = Restore(json); return s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
+        var s = Restore(json); return s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
     }
     public static void Pair(string json, string town, string proof, int format)
     {
