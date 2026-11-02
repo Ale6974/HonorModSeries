@@ -546,5 +546,5 @@
   <RE_StockpileMapUnavailable>원 저장 구역 등록·설정·칸·물품을 확인할 수 없습니다. 변경·중첩·미지원 구역은 원 기록을 유지하고 보류합니다.</RE_StockpileMapUnavailable>
   <RE_GrowingMapReview>원 재배 구역 {0}개의 작물 설정·파종/수확 허용·표시 상태·칸을 보존합니다. 작물을 새로 선택하거나 심거나 수확하지 않습니다.</RE_GrowingMapReview>
   <RE_GrowingMapUnavailable>원 재배 구역이나 설정을 확인할 수 없습니다. 원 기록을 유지하며 변경·중첩·미지원 구역은 보류합니다.</RE_GrowingMapUnavailable>
-  <RE_MixedResidentReview>영역 제한이 있는 일반 주민과 영역 제한이 없는 지원 포로의 원 명부를 함께 보존합니다. 포로의 원 소속·신분은 유지하며 관리 세력만 변경합니다.</RE_MixedResidentReview>
+  <RE_MixedResidentReview>쓰러짐·영역 제한을 보존할 일반 주민과 영역 제한이 없는 지원 포로의 원 명부를 함께 보존합니다. 포로의 원 소속·신분은 유지하며 관리 세력만 변경합니다.</RE_MixedResidentReview>
 </LanguageData>

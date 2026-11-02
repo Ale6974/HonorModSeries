@@ -10,6 +10,9 @@ public enum ResidentMoveAction { ChangeFaction, RestoreMedicalCare, Verify }
 
 public static class ResidentMoveProfiles
 {
+    // Format selection only; eligibility, original census and native-call evidence remain independent requirements.
+    public static int SelectTownClinical(bool areas, bool downed, bool prisoners)
+        => prisoners && (areas || downed) ? 10 : areas ? 9 : downed ? 8 : 7;
     public static string BindMixedAreas(string originalAreas)
     {
         if (!CityStockProof.Valid(originalAreas)) throw new ArgumentException("Original clinical/area scope required.");

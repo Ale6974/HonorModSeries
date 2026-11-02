@@ -39,6 +39,14 @@ internal static class ResidentMobilityTests
         set.VerifyDestination([same with { Faction = "target" }], "source", "target");
         Reject(() => care.Consume("target", 1));
         Check(ResidentTransferCensus.Restore(census).Profile == 8 && ResidentCareJournal.Restore(medical[0]).State.OriginalCare == 4);
+        Check(ResidentMoveProfiles.SelectTownClinical(false, false, false) == 7);
+        Check(ResidentMoveProfiles.SelectTownClinical(false, false, true) == 7);
+        Check(ResidentMoveProfiles.SelectTownClinical(false, true, false) == 8);
+        Check(ResidentMoveProfiles.SelectTownClinical(true, false, false) == 9);
+        Check(ResidentMoveProfiles.SelectTownClinical(true, true, false) == 9);
+        Check(ResidentMoveProfiles.SelectTownClinical(true, false, true) == 10);
+        Check(ResidentMoveProfiles.SelectTownClinical(false, true, true) == 10);
+        Check(ResidentMoveProfiles.SelectTownClinical(true, true, true) == 10);
         return n;
     }
 }

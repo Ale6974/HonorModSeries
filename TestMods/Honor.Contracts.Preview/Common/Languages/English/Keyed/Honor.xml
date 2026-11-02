@@ -546,5 +546,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <RE_StockpileMapUnavailable>Original stockpile registration, settings, cells or goods cannot be verified. Changed, overlapping or unsupported zones remain deferred; keep the original records.</RE_StockpileMapUnavailable>
   <RE_GrowingMapReview>Preserve {0} original growing zones, crop settings, sowing/cutting permissions, display state and cells. No crop is selected, planted or harvested.</RE_GrowingMapReview>
   <RE_GrowingMapUnavailable>Original growing zones or settings cannot be verified. Keep original records; changed, overlapping or unsupported zones remain deferred.</RE_GrowingMapUnavailable>
-  <RE_MixedResidentReview>Preserve the mixed resident roster: original nonprisoner area restrictions and supported prisoners without area restrictions. Original prisoner affiliation and status remain; only custodial authority changes.</RE_MixedResidentReview>
+  <RE_MixedResidentReview>Preserve the mixed resident roster: original nonprisoner clinical state and area restrictions, with supported prisoners without area restrictions. Original prisoner affiliation and status remain; only custodial authority changes.</RE_MixedResidentReview>
 </LanguageData>

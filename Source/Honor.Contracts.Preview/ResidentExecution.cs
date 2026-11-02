@@ -188,8 +188,13 @@ internal static class ResidentExecution
     }
     // Explicit new clinical format; legacy Capture/Read/profile7 bytes and restrictions remain unchanged.
     internal static ResidentExecutionRecord CaptureForTransfer(Settlement city)
-        => CaptureCore(city, city?.previouslyGeneratedInhabitants?.Any(ResidentAreaRecords.HasRestrictions) == true ? (city.previouslyGeneratedInhabitants.Any(p => p?.IsPrisoner == true) ? 10 : 9) : city?.previouslyGeneratedInhabitants?.Any(p => p?.Downed == true) == true ? 8 : 7,
-            city?.HasMap == true ? LoadedMapRecords.Capture(city).Snapshot : null);
+    {
+        // Inspect the complete original roster. Choosing a format never bypasses each resident's eligibility checks.
+        var roster = city?.previouslyGeneratedInhabitants;
+        int profile = ResidentMoveProfiles.SelectTownClinical(roster?.Any(ResidentAreaRecords.HasRestrictions) == true,
+            roster?.Any(p => p?.Downed == true) == true, roster?.Any(p => p?.IsPrisoner == true) == true);
+        return CaptureCore(city, profile, city?.HasMap == true ? LoadedMapRecords.Capture(city).Snapshot : null);
+    }
     internal static ResidentExecutionRecord CaptureScoped(Settlement city, int profile, string loaded) => CaptureCore(city, profile, loaded);
     internal static string Proof(Settlement city, int profile = 7, Faction target = null)
     {
