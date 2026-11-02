@@ -2,6 +2,18 @@
 
 최종 검사: .local/m2-084-build16.log와 build17.log의 양 타깃 전체 빌드 통과, 최종1.6 규칙 재검사 finalrules16.log와1.7은 각각 Honor20,093/Contracts5,199, 영한543개 문구, 컴파일 경고/오류0. 형식6 Prepared/Applied/Cancelled·변경 설정·누락/중복/범위 밖 멤버·옛 형식 확대 거부·원 멤버 순서·주민 보유 정당한 독립의 원 그룹/물리 journal roundtrip 검사 포함. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.84.zip SHA256CB92960E8DD4A03A74031C56BA598A3E726919BA947AA5A7330097614DF11DB3. 기존 로컬 Preview 백업 .local/contracts-preview-3b0431f3ae69440cba0ebe8e3d361655 후 설치,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-084-install.log). Preview Steam 게시 없음.
 
+## 0.3.87 — M2 부분 구현: 영역 제한 주민과 포로의 혼합 이전
+
+최종 검사: .local/m2-087-final16.log/final17.log 양 타깃 전체 빌드 통과,각 Honor20,093/Contracts5,255개 검사·영한548개 문구 일치·컴파일 경고/오류0. 혼합 profile10 census/원 clinical-area hash·옛9 증거 대체 거부·빈 포로 영역의 무복구권 완료·원 호출/의료 journal·정당한 독립의 원 혼합 scope/물리 이력 복원을 검사했다. 최초 검사는 기존 미지원10 경계 테스트가 새 지원10을 거부해 실패했으며,미지원 경계11과 신규10 원본/9분리 검사를 갖춘 뒤 최종 전체 검사를 다시 통과했다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.87.zip SHA256EEB656D0358B0FB98CCFD4B39C44EE8EB40973B8B3C608FFD4827895EB795041. 백업 .local/contracts-preview-d5380f10c6324c7fab687cfe7595daef 후 로컬 설치 완료,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-087-install.log). Preview Steam 게시 없음. M2 미완료: 지도 위 주민·소유 물체/임의 보관함·광범위 주민/중단 조합의 원본 보존과 실제 실행 경로가 남는다.
+
+2026-11-02. 새 resident profile10은 기존에 각각 지원되는 일반 주민의 원 영역 제한과 영역 제한이 없는 포로가 같은 도시에 있을 때의 실제 이전·저장·중단 복구를 연결한다. 옛 profile9의 포로 거부와1~9 bytes/권한은 그대로 둔다. 새 BindMixedAreas는 원 profile9 임상/영역 증거를 별도10 hash로 감싸고 원 census·각 주민 authority-call·의료·영역·수술/포로 journal·도시/물리/법적 전체 후손 기록을 짝지으며, 원 Pawn/Map/Area 참조만 저장한다.
+
+포로는 기존 profile7 임상·신앙·유전자·모집/작업/상태 증거와 원 개인 소속을 유지하며 기존 검증된 NPC 관리 세력 변경 경로만 사용한다. 포로의 원 영역은 비어 있어야 하고 쓰러진 포로·소유 재산·노예·지도자·임무·지도 위 주민 등 기존 제한을 제거하지 않는다. 일반 주민 영역은 정상 반환 뒤 실제 관찰된 초기화만 한 번 복구한다. 포로의 빈 영역은 빈 정상 출력/완료 사실만 기록하며 BeginRestore 권한을 만들지 않는다. 원 임상/기록 변화나 미확인 호출은 원본을 유지하며 보류한다.
+
+설치1.7 Pawn_GuestTracker.SetGuestStatus의 기존 포로 소속 유지·관리 세력/의료 초기화 읽기 경계를 다시 확인했다(.local/m2-087-guest.cs). 구금/신분 전환이나 원 영역 권한을 추정하지 않으며 재실행하지 않는다. 새 정당한 독립 주민 census도10을 명시적으로 짝지어 같은 원본으로 재검토한다. 영한 검토 화면에 혼합 명부 보존 범위를 추가했다.
+
+M2 전체 완료는 아니다. 지도 위 주민·소유 건물·임의 보관함·더 넓은 주민/복합 상태의 실제 경로가 남아 있다. M1 10/10,M2 0/18,전체10/100,1단계 잔여31.5%/8묶음 및2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6을 유지한다. 자동 예약과 Preview Steam 게시 없음.
+
 ## 0.3.86 — M2 부분 구현: 원 재배 구역과 혼합 구역 보존
 
 최종 검사: .local/m2-086-build16.log/build17.log 양 타깃 전체 빌드 통과,각 Honor20,093/Contracts5,244개 검사·영한547개 문구 일치·컴파일 경고/오류0. 원 재배/저장/공유 선반 조합,형식8 Prepared/Applied/Cancelled 저장 복원,변경 설정·중복/중첩/밖 칸·옛 형식 확대 거부 및 주민 동반 정당한 독립의 원 scope/물리 journal 검사를 포함한다. 설치1.7 Zone_Growing.ExposeData/PlantDefToGrow와 기존 Zone/ZoneManager의 저장/읽기 경계를 확인했다(.local/m2-086-growing.cs);1.6은 고정 참조/net472와 실제 경로의 필드/타입/패치 검사다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.86.zip SHA256058763453CFC51AD53357E635681E62AE52E1A48F2D89A28098511AB62376216. 백업 .local/contracts-preview-552b600697f0406e883444024b20fdfa 후 로컬 설치 완료,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-086-install.log). Preview Steam 게시 없음. 다음 실제 미완료는 지도 위 주민/소유 건물/임의 보관함/커스텀 구역과 복합 상태의 안전한 이전 경로다.

@@ -46,6 +46,12 @@ internal static class ResidentCensusTests
         Reject(() => ResidentTransferCensus.Check(census, original.Proof, "town", "source", "target", 7, set, calls.AsEnumerable().Reverse().ToList(), care, true));
         Reject(() => ResidentTransferCensus.Restore(JsonSerializer.Serialize(original with { Target = "changed" })));
         Reject(() => ResidentTransferCensus.Call(JsonSerializer.Serialize(new ResidentAuthorityState("a", false, true))));
+        string mixed = ResidentTransferCensus.Prepare("town", "source", "target", 10, set);
+        var mixedOriginal = ResidentTransferCensus.Restore(mixed);
+        ResidentTransferCensus.Check(mixed, mixedOriginal.Proof, "town", "source", "target", 10, set, calls, care, true, true);
+        Check(mixedOriginal.Profile == 10 && mixedOriginal.Proof != original.Proof);
+        Reject(() => ResidentTransferCensus.Check(mixed, mixedOriginal.Proof, "town", "source", "target", 9, set, calls, care, true, true));
+        Reject(() => ResidentTransferCensus.Check(census, original.Proof, "town", "source", "target", 10, set, calls, care, true, true));
         return n;
     }
 }

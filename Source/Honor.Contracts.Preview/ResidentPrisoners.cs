@@ -53,6 +53,7 @@ internal static class ResidentPrisoners
     internal static string Authority(Pawn p) => (IsPrisoner(p) ? p.HostFaction : p.Faction)?.GetUniqueLoadID();
     internal static void Eligible(Pawn p, int profile = 4)
     {
+        if (profile == 10) profile = 7;
         if (profile < 6 && p.guest?.ideoForConversion != null) throw new ResidentMoveBlocked("RE_ConversionUnavailable");
         if (p.workSettings?.Initialized != true) throw new ResidentMoveBlocked("RE_WorkUnavailable");
         if (p.ownership?.OwnedBed != null || p.ownership?.AssignedDeathrestCasket != null || p.ownership?.AssignedThrone != null)
@@ -120,6 +121,7 @@ internal static class ResidentPrisoners
     }
     internal static PrisonerEvidence Describe(Pawn p, int profile = 4)
     {
+        if (profile == 10) profile = 7;
         Eligible(p, profile);
         if (GuestFields.Length != KnownGuestFields.Length || GuestFields.Any(f => !KnownGuestFields.Contains(f.Name)) ||
             !GuestFields.Any(f => f.Name == "pawn" && f.FieldType == typeof(Pawn) && f.GetValue(p.guest) == p) ||

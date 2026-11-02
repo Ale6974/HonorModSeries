@@ -185,6 +185,20 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(cropJournal.Current, TerritoryTransferLedger.Restore(cropPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(cropJournal.Export()).Current, "child") == cropScope && cropPhysical.Transfer("crop-city").StockFormat == 8,
             "original growing/stockpile zones, shelf group and resident scope remain paired through lawful physical save/restore");
+        var mixedSet = ResidentMoveSet.Capture(restrictedSet.Residents.Select(r => new ResidentMoveEvidence(r.Id, ResidentMoveProfiles.BindMixedAreas(r.Preserved), r.MedicalCare)));
+        var mixedTown = loadedTown with { LoadedMap = cropScope, StockFormat = 8, ResidentProof = mixedSet.Proof, StockProof = LoadedMapPreservation.Restore(cropScope).Proof };
+        var mixedPlan = FollowerTransfers.Review(after, physical, [new("child", mixedTown), new("deep", actualDeep)], "union", now);
+        var mixedPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], mixedPlan.Moves);
+        var mixedJournal = new AllegianceTransitionLedger();
+        mixedJournal.PrepareLawfulResidentAdmission("mixed", politics, command, mixedPlan, physical, closure, mixedPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 10, mixedSet))]);
+        var mixedPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        mixedPhysical.PrepareLoadedJournaled("mixed-city", after, "child", mixedTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(mixedJournal.Current, mixedPhysical);
+        mixedPhysical.Confirm("mixed-city", mixedTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(mixedJournal.Current, TerritoryTransferLedger.Restore(mixedPhysical.Export()));
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(mixedJournal.Export()).Current, "child") == cropScope && mixedPhysical.Transfer("mixed-city").StockFormat == 8,
+            "original growing/stockpile zones, shelf group and resident scope remain paired through lawful physical save/restore");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);

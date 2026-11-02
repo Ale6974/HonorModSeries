@@ -52,6 +52,21 @@ internal static class ResidentAreaTests
         var restored = ResidentMoveSet.Restore(set.Export());
         restored.VerifyDestination([new("resident", "target", bound, 4)], "source", "target");
         Reject(() => restored.VerifyDestination([new("resident", "target", clinical, 4)], "source", "target"));
+        string mixed = ResidentMoveProfiles.BindMixedAreas(bound);
+        Check(mixed != bound);
+        Reject(() => ResidentMoveProfiles.BindMixedAreas("missing"));
+        var mixedSet = ResidentMoveSet.Capture([new("resident", mixed, 4), new("prisoner", ResidentMoveProfiles.BindMixedAreas(ResidentMoveProfiles.BindAreas(clinical,
+            ResidentAreas.Proof(ResidentAreas.Prepare("prisoner", [])))), 2)]);
+        string mixedCensus = ResidentTransferCensus.Prepare("town", "source", "target", 10, mixedSet);
+        Check(ResidentTransferCensus.Restore(mixedCensus).Profile == 10);
+        var mixedRestored = ResidentMoveSet.Restore(mixedSet.Export());
+        mixedRestored.VerifyDestination(mixedSet.Residents.Select(r => new ResidentMoveActual(r.Id, "target", r.Preserved, r.MedicalCare)).ToArray(), "source", "target");
+        Reject(() => mixedRestored.VerifyDestination(mixedSet.Residents.Select(r => new ResidentMoveActual(r.Id, "target", r.Id == "resident" ? bound : r.Preserved, r.MedicalCare)).ToArray(), "source", "target"));
+        string emptyPrisoner = ResidentAreas.Prepare("prisoner", []);
+        emptyPrisoner = ResidentAreas.Begin(emptyPrisoner, []); emptyPrisoner = ResidentAreas.Returned(emptyPrisoner, []);
+        Check(!ResidentAreas.Restore(emptyPrisoner).Cleared);
+        Reject(() => ResidentAreas.BeginRestore(emptyPrisoner, []));
+        emptyPrisoner = ResidentAreas.Complete(emptyPrisoner, []); Check(ResidentAreas.Restore(emptyPrisoner).Consumed);
         return n;
     }
 }

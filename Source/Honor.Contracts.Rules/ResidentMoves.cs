@@ -10,6 +10,11 @@ public enum ResidentMoveAction { ChangeFaction, RestoreMedicalCare, Verify }
 
 public static class ResidentMoveProfiles
 {
+    public static string BindMixedAreas(string originalAreas)
+    {
+        if (!CityStockProof.Valid(originalAreas)) throw new ArgumentException("Original clinical/area scope required.");
+        return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Profile = 10, OriginalAreas = originalAreas }))));
+    }
     public static string BindAreas(string previous, string areas)
     {
         if (!CityStockProof.Valid(previous) || !CityStockProof.Valid(areas)) throw new ArgumentException("Complete original resident/area evidence required.");
