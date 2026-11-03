@@ -2,6 +2,22 @@
 
 최종 검사: .local/m2-084-build16.log와 build17.log의 양 타깃 전체 빌드 통과, 최종1.6 규칙 재검사 finalrules16.log와1.7은 각각 Honor20,093/Contracts5,199, 영한543개 문구, 컴파일 경고/오류0. 형식6 Prepared/Applied/Cancelled·변경 설정·누락/중복/범위 밖 멤버·옛 형식 확대 거부·원 멤버 순서·주민 보유 정당한 독립의 원 그룹/물리 journal roundtrip 검사 포함. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.84.zip SHA256CB92960E8DD4A03A74031C56BA598A3E726919BA947AA5A7330097614DF11DB3. 기존 로컬 Preview 백업 .local/contracts-preview-3b0431f3ae69440cba0ebe8e3d361655 후 설치,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-084-install.log). Preview Steam 게시 없음.
 
+## 0.3.90 — M2 부분 구현: 지도 위 원 시민의 실제 소속 이전·저장·복구
+
+최종 검사: .local/m2-090-final16.log/final17.log 양 타깃 전체 빌드 통과(Honor20,093/Contracts5,312, 영한552문구). 마지막 native 경계/MVID 반영 소스도 .local/m2-090-final-ship16.log/final-ship17.log 컴파일 경고/오류0. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.90.zip SHA256 C705C2AA0C735A57A444A53BF8D50CC35A476F8B057D89DC6A2D8CD5510CD760. 기존 로컬 Preview를 .local/contracts-preview-2440f98bac4c411493dc5c6cee64125e에 백업 후 설치,32파일 해시 일치·활성화/언어 구성 불변(.local/m2-090-install.log). Preview Steam 게시 없음.
+
+2026-11-04. 새 map 형식10/임상 profile11로 같은 원 도시의 previouslyGeneratedInhabitants에 정확히 같은 Pawn 참조로 남아 있는 유휴 지도 시민을 실제 기존 Pawn.SetFaction 경로에 연결했다. 새 NativeResidents/MapBindings는 원 map ID·cell·rotation·임상/영역 hash를 묶으며 원 NativeMap/MapResidents 참조를 Scribe한다. 세계 명부와 지도 등록의 같은 원본을 별칭으로 보존하고 MapPawns의 실제 map owner/spawned list/소속별 원 목록을 양방향 대조한다. 원 지도/주민을 재생성·이동·despawn/spawn하거나 소속 raw field·건강·장비·관계·유전자/이념을 재작성하지 않는다.
+
+실제 준비는 새 census/authority-call/medical/area/수술 원 기록을 동일 map10과 짝짓는다. 개별 호출 시작은 먼저 저장하고 같은 Game의 정상 반환과 의료/영역 출력을 별도 관찰한다. 부분 처리 후 원 Prepared reference만 조회해 원 임상/영역 증거를 정규화하며 현재 Target 소속만으로 성공을 추정하지 않는다. 원 scope·직전 ref·호출·의료 관찰이 없거나 시작 뒤 정상 반환이 없으면 재실행하지 않는다. 완료 전 모든 원 증거/의료/영역 소비와 map/도시 정상 반환을 요구하고 완료 이력의 문서와 원천을 남긴 뒤 추가 참조만 해제한다. Load/FinalizeInit·명시적 복구·정당한 독립 전체 후손/council/물리 이력도 같은11/10 증거를 사용한다. 옛 map3~9/profile1~10/null bytes·조건·권한은 확대하지 않는다.
+
+엄격한 현재 범위: 원 도시 명부와 원 지도에 동시에 있는 적격 NPC 인간형 비포로/비노예/비지도자·무작위 부대 소속이 없는 시민이다. 현재/예약/대기/우선 작업·이동·지정 침대/재산·의료 수술 지시·추가 host/quest/거래 역할·비어 있지 않은 thinkData/명령 의도는 보류한다. **모든 로딩 지도의 다섯 예약 manager에 실제 예약이 없고, 해당 지도에 designation이 없어야 한다.** 원 NPC 임상 상태와 위치를 보존하며 native가 검증된 faction-change의 통상 AI reset/캐시 등록 알림을 수행한다. 일반 진행 작업/AI 이력을 복원하는 실행이 아니며 그 범위를 완료했다고 부르지 않는다. 등록부/추적기의 원 owner와 정확한 native 클래스/필드·IThingHolder interface dispatch·패치/이벤트 경계를 검사하고 모르는 callback/layout은 보류한다. 상태를 지울 수 있는 PriorityWork.IsPrioritized와 faction-list GetPawnList 조회를 준비에 호출하지 않는다.
+
+외부 인물은 별도 Visitors 원 참조/읽기 전용 proof로 분리한다. 지원되는 인간형 방문자는 소속/의료/영역/신체/장비/관계/유전자/신앙/수술/작업 ID/지도 위치와 기존 lord membership이 같은지 대조하며 어떤 이전/복구 호출도 적용하지 않는다. 방문자의 실제 소속/host도 목적지와 상호 평화여야 한다. 포로/노예/작위·특수 상태/커스텀 holder 등 미지원 방문자는 전체 작업을 보류한다. 이것은 방문자·병력·재산의 권한이나 소속을 넘겨받는 기능이 아니다.
+
+설치 Version.txt1.7.4995 rev309/DLL SHA25656399B6144D9F1695F9C53D054DC82972F7AB35E68D1A19A7129F2F5860CCD21의 Pawn.SetFaction/StopAll/CleanupCurrentJob/MapPawns/MapEvents/다섯 예약 manager/PriorityWork 및 Settlement의 명부 Reference Scribe를 대조했다.새 지도 시민 실행은 검토한 DLL MVID20545414-6845-4afb-b0ca-63bce8627a4c만 허용한다.1.6 고정 참조/net472 컴파일과 기존 경로는 유지하되,새11의 미검토1.6/다른 런타임 몸체는 보류하며 시그니처만으로 쓰기 권한을 가정하지 않는다.
+
+M2 전체는 미완료다. 원 시민 별칭이 없는 지도 인물, 진행 작업/예약/집단·포로/노예·소유 물체의 별도 소속별 권한·개별 호출/복구, 일반 커스텀 보관함과 더 넓은 조합이 남아 있다. M1 10/10,M2 0/18,전체10/100,1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6 유지. 자동 예약/Preview Steam 게시 없음.
+
 ## 0.3.89 — M2 부분 구현: 원 다중 슬롯 보관함과 중첩 숲의 실제 보존
 
 최종 검사: .local/m2-089-build16.log/build17.log 양 타깃 전체 빌드 통과,각 Honor20,093/Contracts5,284개 검사·영한550개 문구 일치·컴파일 경고/오류0. ContainerMapTests는 다중 슬롯/중첩 포장·빈 보관함·legacy 슬롯0 엄격성·누락/중복/순서/범위/타입·Prepared/Applied/Cancelled 저장 복원·옛 형식 확대 거부를 검사한다. LawfulFollowerMigrationTests는 원 mixed10 주민/보관함9와 원 전체 정치/물리 이력을 함께 복원한다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.89.zip SHA2565CA57B8020BABC4A8530446FCFEC38E2C4F7493CD2232BF3F9C59ED9A66C5AE0. 백업 .local/contracts-preview-2a01917f2b7e4da2a2a14ec2d67423a0 후 로컬 설치 완료,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-089-install.log). Preview Steam 게시 없음. **M2 전체 미완료**: map/live roster alias와 원 예약/designation/지도 등록·개별 native-call/정상 반환·소유 주체별 자산 권한/원본 보존을 실제 집행과 복구에 연결하는 큰 경로가 남는다. 보관함9는 기본 중립 Casket/Crate 보존의 실제 실행이며 임의 커스텀 holder나 주민/재산 소속 변경의 완료가 아니다.

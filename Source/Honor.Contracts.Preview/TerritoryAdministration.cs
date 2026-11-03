@@ -39,6 +39,8 @@ public sealed record TerritoryAdministrationReview(string Charter, string City, 
     public int Stockpiles { get; init; }
     public int GrowingZones { get; init; }
     public int Containers { get; init; }
+    public int NativeResidents { get; init; }
+    public int Visitors { get; init; }
     public bool MixedResidents { get; init; }
 }
 
@@ -53,6 +55,18 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     private readonly Game ownerGame;
     public TerritoryAdministrationLedger(Game game) { ownerGame = game; }
     private string AdministrationId => Current.Game.GetComponent<RealmAdministrationLedger>().OwnedFaction?.GetUniqueLoadID();
+    internal ResidentExecutionRecord MapResidentOriginal(Settlement city)
+    {
+        if (RestoreFailed) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        var matches = references.Where(r => r.City == city && r.Residents?.Profile == 11 && Ledger.Transfer(r.Id).Phase == TerritoryTransferPhase.Prepared).ToArray();
+        if (matches.Length > 1) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (matches.Length == 0) return null;
+        var r = matches[0]; var t = Ledger.Transfer(r.Id);
+        if (r.Residents.NativeMap != city.Map || r.LoadedMap?.Map != city.Map || r.Residents.LoadedMapScope != t.LoadedMap || t.StockFormat != 10 || r.LoadedMap.Snapshot != t.LoadedMap)
+            throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        ResidentExecution.ValidateCensus(r.Residents, r.ResidentCensusProof, t.Territory, t.FromOwner, t.TargetOwner);
+        return r.Residents;
+    }
     internal bool ReservesResident(Pawn pawn) => references?.Any(r => r?.Residents?.Pawns?.Contains(pawn) == true &&
         (RestoreFailed || r.Residents.Started || Ledger.Transfers.Any(t => t.Id == r.Id && t.Phase == TerritoryTransferPhase.Prepared))) == true;
     internal string ResidentProgress(string id)
@@ -147,6 +161,12 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     internal string OwnerLabel(string id) => Find.FactionManager.AllFactionsListForReading.FirstOrDefault(f => f.GetUniqueLoadID() == id)?.Name
         ?? "CT_Missing".Translate();
     private static Settlement[] Cities() => Find.WorldObjects.AllWorldObjects.OfType<Settlement>().Where(s => !s.Destroyed).ToArray();
+    private static void CheckMapVisitorPeace(Settlement city, Faction target)
+    {
+        foreach (var p in city.Map.listerThings.AllThings.OfType<Pawn>().Where(p => city.previouslyGeneratedInhabitants?.Contains(p) != true))
+            foreach (var faction in new[] { p.Faction, p.HostFaction }.Where(f => f != null))
+                if (faction.HostileTo(target) || target.HostileTo(faction)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+    }
     private static void ValidateMapReference(TerritoryTransfer t, TerritoryTransferReference r, bool current)
     {
         if (t.LoadedMap == null)
@@ -159,11 +179,14 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             t.Phase == TerritoryTransferPhase.Applied && (!r.CityCallStarted || !r.CityCallReturned) ||
             t.Phase == TerritoryTransferPhase.Cancelled && (r.CityCallStarted || r.CityCallReturned))
             throw new ArgumentException("Unpaired original map/call/resident custody.");
+        var mapped = LoadedMapPreservation.Restore(t.LoadedMap).NativeResidents;
+        if (mapped != null && (r.Residents?.Profile != 11 || r.Residents.MapBindings == null || current && r.Residents.NativeMap != r.LoadedMap.Map)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (current)
         {
             if (r.From == null || r.Target == null || !Find.FactionManager.AllFactionsListForReading.Contains(r.From) || !Find.FactionManager.AllFactionsListForReading.Contains(r.Target) ||
                 r.From.HostileTo(r.Target) || r.Target.HostileTo(r.From)) throw new ArgumentException("Neutral-map transfer requires current reciprocal peace.");
             LoadedMapRecords.Verify(r.City, r.LoadedMap);
+            if (mapped != null) CheckMapVisitorPeace(r.City, r.Target);
         }
     }
     private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
@@ -198,6 +221,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         var observed = Observe(binding.Settlement, binding.Identity, target, releasedSource);
         if (observed.HasMap && (observed.LoadedMap == null || binding.Settlement.Faction.HostileTo(target) || target.HostileTo(binding.Settlement.Faction)))
         { Messages.Message("RE_LoadedMapUnavailable".Translate(), MessageTypeDefOf.RejectInput); throw new ArgumentException("Unsupported loaded map or wartime scope."); }
+        if (observed.StockFormat == 10) CheckMapVisitorPeace(binding.Settlement, target);
         if (observed.Owner != target.GetUniqueLoadID() && observed.HasInhabitants && observed.ResidentProof == null)
         {
             Messages.Message("SX_CityBlocked".Translate(binding.Settlement.Label, ResidentExecution.BlockReasonKey(binding.Settlement, target).Translate()), MessageTypeDefOf.RejectInput);
@@ -220,7 +244,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         var mapScope = c.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(c.Observation.LoadedMap);
         return new(id, c.City.Label, c.City.Faction.Name, c.Target.Name, c.Purpose,
             string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose, c.Observation.StockProof, c.Observation.ResidentProof),
-            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = mapScope == null ? null : mapScope.Things.Length + (mapScope.Held?.Length ?? 0), PackedThings = mapScope?.Held?.Length ?? 0, StorageShelves = mapScope?.Storage?.Length ?? 0, StorageGroups = mapScope?.Groups?.Length ?? 0, Stockpiles = mapScope?.Stockpiles?.Length ?? 0, GrowingZones = mapScope?.Growing?.Length ?? 0, Containers = mapScope?.Containers?.Length ?? 0, MixedResidents = c.City.previouslyGeneratedInhabitants?.Any(p => p?.IsPrisoner == true) == true && (c.City.previouslyGeneratedInhabitants.Any(ResidentAreaRecords.HasRestrictions) || c.City.previouslyGeneratedInhabitants.Any(p => p?.Downed == true)) };
+            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = mapScope == null ? null : mapScope.Things.Length + (mapScope.Held?.Length ?? 0), PackedThings = mapScope?.Held?.Length ?? 0, StorageShelves = mapScope?.Storage?.Length ?? 0, StorageGroups = mapScope?.Groups?.Length ?? 0, Stockpiles = mapScope?.Stockpiles?.Length ?? 0, GrowingZones = mapScope?.Growing?.Length ?? 0, Containers = mapScope?.Containers?.Length ?? 0, NativeResidents = mapScope?.NativeResidents?.Length ?? 0, Visitors = mapScope?.Visitors?.Length ?? 0, MixedResidents = c.City.previouslyGeneratedInhabitants?.Any(p => p?.IsPrisoner == true) == true && (c.City.previouslyGeneratedInhabitants.Any(ResidentAreaRecords.HasRestrictions) || c.City.previouslyGeneratedInhabitants.Any(p => p?.Downed == true)) };
     }
     public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true)
     {
@@ -568,6 +592,7 @@ public sealed class TerritoryAdministrationWindow : Window
                 if (review.Stockpiles > 0) list.Label("RE_StockpileMapReview".Translate(review.Stockpiles));
                 if (review.GrowingZones > 0) list.Label("RE_GrowingMapReview".Translate(review.GrowingZones));
                 if (review.Containers > 0) list.Label("RE_ContainerMapReview".Translate(review.Containers));
+                if (review.NativeResidents > 0) list.Label("RE_MapResidentReview".Translate(review.NativeResidents, review.Visitors));
                 if (review.MixedResidents) list.Label("RE_MixedResidentReview".Translate());
                 list.Label((review.Purpose == TerritoryTransferPurpose.ActiveCharter ? "CT_Active" : "CT_Released").Translate());
                 if (list.ButtonText("CT_Confirm".Translate())) { ledger.Apply(review); review = null; }

@@ -215,6 +215,21 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(containerJournal.Current, TerritoryTransferLedger.Restore(containerPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(containerJournal.Export()).Current, "child") == containerScope && containerPhysical.Transfer("container-city").StockFormat == 9,
             "original growing/stockpile zones, shelf group and resident scope remain paired through lawful physical save/restore");
+        var mappedSet = ResidentMoveSet.Capture(restrictedSet.Residents.Select(r => new ResidentMoveEvidence(r.Id, ResidentMapped.Bind(r.Preserved, new(r.Id, "map-original", 5, 0)), r.MedicalCare)));
+        string mappedScope = LoadedMapPreservation.CaptureResidents(containerScope, mappedSet.Residents.Select(r => new NativeMapResident(r.Id, r.Preserved)), [new("visitor", Hash("unchanged-bystander"))]);
+        var mappedTown = loadedTown with { LoadedMap = mappedScope, StockFormat = 10, ResidentProof = mappedSet.Proof, StockProof = LoadedMapPreservation.Restore(mappedScope).Proof };
+        var mappedPlan = FollowerTransfers.Review(after, physical, [new("child", mappedTown), new("deep", actualDeep)], "union", now);
+        var mappedPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], mappedPlan.Moves);
+        var mappedJournal = new AllegianceTransitionLedger();
+        mappedJournal.PrepareLawfulResidentAdmission("mapped", politics, command, mappedPlan, physical, closure, mappedPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 11, mappedSet))]);
+        var mappedPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        mappedPhysical.PrepareLoadedJournaled("mapped-city", after, "child", mappedTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(mappedJournal.Current, mappedPhysical);
+        mappedPhysical.Confirm("mapped-city", mappedTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(mappedJournal.Current, TerritoryTransferLedger.Restore(mappedPhysical.Export()));
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(mappedJournal.Export()).Current, "child") == mappedScope && mappedPhysical.Transfer("mapped-city").StockFormat == 10,
+            "original growing/stockpile zones, shelf group and resident scope remain paired through lawful physical save/restore");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);

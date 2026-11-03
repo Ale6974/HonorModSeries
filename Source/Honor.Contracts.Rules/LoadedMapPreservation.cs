@@ -8,6 +8,7 @@ public sealed record NeutralMapHeld(string Holder, int Slot, NeutralMapThing Ite
 public sealed record NeutralMapStorage(string Id, string Configuration, int[] Cells, string[] Contents);
 public sealed record NeutralMapStorageGroup(string Id, string Configuration, string[] Members);
 public sealed record NeutralMapStockpile(string Id, string Configuration, int[] Cells, string[] Contents);
+public sealed record NativeMapResident(string Id, string Preserved);
 public sealed record NeutralMapContainer(string Id, string Kind, string Configuration, int Count);
 public sealed record NeutralMapGrowing(string Id, string Configuration, int[] Cells);
 public sealed record LoadedMapScope(string Town, string Map, int Width, int Height, string Grid, string Stock, int StockFormat, NeutralMapThing[] Things, string Proof)
@@ -18,6 +19,8 @@ public sealed record LoadedMapScope(string Town, string Map, int Width, int Heig
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStockpile[] Stockpiles { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapGrowing[] Growing { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapContainer[] Containers { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeMapResident[] NativeResidents { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeMapResident[] Visitors { get; init; }
 }
 
 /// <summary>Original neutral, pawn-free map custody. No actor, property or map-write authority.</summary>
@@ -86,6 +89,17 @@ public static class LoadedMapPreservation
         if (children.Any(r => r == null) || holders.Any(r => r == null)) throw new ArgumentException("Missing original container evidence.");
         var s = before with { Held = children.Length == 0 ? null : children.OrderBy(r => r.Holder, StringComparer.Ordinal).ThenBy(r => r.Slot).ToArray(),
             Containers = holders.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
+        s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
+    public static string CaptureResidents(string original, IEnumerable<NativeMapResident> residents, IEnumerable<NativeMapResident> visitors = null)
+    {
+        var before = Restore(original);
+        if (before.NativeResidents != null || residents == null) throw new ArgumentException("Fresh original mapped residents required.");
+        var rows = residents.Take(129).ToArray();
+        if (rows.Any(r => r == null)) throw new ArgumentException("Missing original map resident.");
+        var guests = visitors?.Take(129).ToArray();
+        if (guests?.Any(r => r == null) == true) throw new ArgumentException("Missing original visitor.");
+        var s = before with { NativeResidents = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Visitors = guests == null || guests.Length == 0 ? null : guests.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
         s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
     public static LoadedMapScope Restore(string json)
@@ -182,6 +196,21 @@ public static class LoadedMapPreservation
             var occupied = new HashSet<int>((s.Storage ?? []).SelectMany(r => r.Cells).Concat((s.Stockpiles ?? []).SelectMany(r => r.Cells)));
             if (s.Growing.SelectMany(r => r.Cells).Any(c => !occupied.Add(c))) throw new ArgumentException("Original growing zone overlaps storage or another zone.");
         }
+        if (s.NativeResidents != null)
+        {
+            var objectIds = new HashSet<string>(s.Things.Select(t => t.Id).Concat((s.Held ?? []).Select(r => r.Item.Id)), StringComparer.Ordinal);
+            if (s.NativeResidents.Length is < 1 or > 128 || objectIds.Count + s.NativeResidents.Length > 10000 ||
+                s.NativeResidents.Any(r => r == null || !Key(r.Id) || !CityStockProof.Valid(r.Preserved) || objectIds.Contains(r.Id)) ||
+                !s.NativeResidents.Select(r => r.Id).SequenceEqual(s.NativeResidents.Select(r => r.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal)))
+                throw new ArgumentException("Invalid original map resident scope.");
+        }
+        if (s.Visitors != null)
+        {
+            var used = new HashSet<string>(s.Things.Select(t => t.Id).Concat((s.Held ?? []).Select(r => r.Item.Id)).Concat((s.NativeResidents ?? []).Select(r => r.Id)), StringComparer.Ordinal);
+            if (s.NativeResidents == null || s.Visitors.Length is < 1 or > 128 || used.Count + s.Visitors.Length > 10000 ||
+                s.Visitors.Any(r => r == null || !Key(r.Id) || !CityStockProof.Valid(r.Preserved) || used.Contains(r.Id)) ||
+                !s.Visitors.Select(r => r.Id).SequenceEqual(s.Visitors.Select(r => r.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal))) throw new ArgumentException("Invalid original bystander scope.");
+        }
         return s;
     }
     public static void Pair(string json, string town, string proof)
@@ -190,7 +219,7 @@ public static class LoadedMapPreservation
     }
     public static int Format(string json)
     {
-        var s = Restore(json); return s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
+        var s = Restore(json); return s.NativeResidents != null ? 10 : s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
     }
     public static void Pair(string json, string town, string proof, int format)
     {

@@ -192,6 +192,7 @@ assertions += LawfulAdmissionHistoryTests.Run();
 assertions += LawfulFollowerMigrationTests.Run();
 assertions += ResidentCareJournalTests.Run();
 assertions += ResidentCensusTests.Run();
+assertions += ResidentMappedTests.Run();
 assertions += ResidentMobilityTests.Run();
 assertions += ResidentAreaTests.Run();
 assertions += LoadedMapTests.Run();

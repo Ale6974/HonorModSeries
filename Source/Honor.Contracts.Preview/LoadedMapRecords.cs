@@ -15,6 +15,8 @@ public sealed class LoadedMapRecord : IExposable
     public List<StorageGroup> Groups;
     public List<Zone> Stockpiles;
     public List<Zone> Growing;
+    public List<Pawn> MapResidents;
+    public List<Pawn> Visitors;
     public string Snapshot;
     public void ExposeData()
     {
@@ -22,6 +24,8 @@ public sealed class LoadedMapRecord : IExposable
         Scribe_Collections.Look(ref Groups, "originalStorageGroups", LookMode.Reference);
         Scribe_Collections.Look(ref Stockpiles, "originalStockpileZones", LookMode.Reference);
         Scribe_Collections.Look(ref Growing, "originalGrowingZones", LookMode.Reference);
+        Scribe_Collections.Look(ref MapResidents, "originalNativeMapResidentsV1", LookMode.Reference);
+        Scribe_Collections.Look(ref Visitors, "originalMapBystandersV1", LookMode.Reference);
         Scribe_Values.Look(ref Snapshot, "originalNeutralMapV1");
     }
 }
@@ -77,6 +81,16 @@ internal static class LoadedMapRecords
     {
         Ready(city); var map = city.Map; var things = map.listerThings.AllThings.OrderBy(t => t?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         if (things.Count > 10000 || map.Size.x is < 1 or > 500 || map.Size.z is < 1 or > 500) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        var allActors = things.OfType<Pawn>().OrderBy(p => p.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
+        var actors = allActors.Where(p => city.previouslyGeneratedInhabitants?.Contains(p) == true).ToList();
+        var visitors = allActors.Where(p => !actors.Contains(p)).ToList();
+        if (visitors.Count > 0 && actors.Count == 0) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (actors.Count > 128 || actors.Any(p => !p.Spawned || p.Map != map || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count(x => ReferenceEquals(x, p)) != 1)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        var originalResidents = actors.Count == 0 ? null : Current.Game.GetComponent<TerritoryAdministrationLedger>().MapResidentOriginal(city);
+        var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents)).ToArray();
+        if (visitors.Count > 128) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        var visitorRows = visitors.Select(ResidentMapVisitors.Capture).ToArray();
+        var rootThings = things.Where(t => t is not Pawn).ToList();
         var references = new List<Thing>(); var held = new List<NeutralMapHeld>(); var ids = new HashSet<string>(StringComparer.Ordinal);
         var storage = new List<NeutralMapStorage>(); var containers = new List<NeutralMapContainer>();
         NeutralMapThing Collect(Thing t, string parent, int depth, int slot = 0)
@@ -92,7 +106,7 @@ internal static class LoadedMapRecords
             if (parent != null) held.Add(new(parent, slot, row));
             return row;
         }
-        var evidence = things.Select(t => Collect(t, null, 0)).ToArray();
+        var evidence = rootThings.Select(t => Collect(t, null, 0)).ToArray();
         var groups = things.OfType<Building_Storage>().Select(s => s.storageGroup).Where(g => g != null).Distinct().ToArray();
         var groupEvidence = groups.Select(g => StorageMapEvidence.CaptureGroup(g, map, things)).ToArray();
         if (groups.Length > 0 && (map.storageGroups.StorageGroupsForReading.Count != groups.Length ||
@@ -102,10 +116,10 @@ internal static class LoadedMapRecords
         var stockpiles = StockpileMapEvidence.Capture(map);
         // Validate known holders BEFORE the native recursive pawn query can visit any ship/provider/unknown component.
         var holders = new List<IThingHolder>(); map.GetChildHolders(holders);
-        if (holders.Any(h => h is not Thing t || !things.Contains(t) || t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        if (holders.Any(h => h is not Thing t || !things.Contains(t) || t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t) && (t is not Pawn p || !allActors.Contains(p)))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         var direct = map.GetDirectlyHeldThings();
         if (direct != null && (direct.Count != things.Count || direct.Any(t => !things.Contains(t)))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
-        if (map.mapPawns.AllPawns.Count != 0) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        if (map.mapPawns.AllPawns.Count != allActors.Count || map.mapPawns.AllPawns.Any(p => !allActors.Contains(p))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         var grid = map.AllCells.Select(c => new { Terrain = map.terrainGrid.TerrainAt(c)?.defName, Under = map.terrainGrid.UnderTerrainAt(c)?.defName, Roof = map.roofGrid.RoofAt(c)?.defName }).ToArray();
         string gridProof = RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(grid))));
         string stock = CityStockPreservation.CaptureLoadedStock(city, out int format);
@@ -122,7 +136,8 @@ internal static class LoadedMapRecords
         if (groups.Length > 0) snapshot = LoadedMapPreservation.CaptureGroups(snapshot, groupEvidence);
         if (stockpiles.Evidence.Length > 0) snapshot = LoadedMapPreservation.CaptureStockpiles(snapshot, stockpiles.Evidence);
         if (stockpiles.Growing.Length > 0) snapshot = LoadedMapPreservation.CaptureGrowing(snapshot, stockpiles.Growing);
-        return new() { Map = map, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
+        if (actors.Count > 0) snapshot = LoadedMapPreservation.CaptureResidents(snapshot, actorRows, visitorRows);
+        return new() { Map = map, MapResidents = actors.Count == 0 ? null : actors, Visitors = visitors.Count == 0 ? null : visitors, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
             Groups = groups.Length == 0 ? null : groups.OrderBy(g => g.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
             Stockpiles = stockpiles.Evidence.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Stockpile)).ToList(),
             Growing = stockpiles.Growing.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Growing)).ToList(), Snapshot = snapshot };
@@ -133,6 +148,8 @@ internal static class LoadedMapRecords
         var fresh = Capture(city);
         if (fresh.Snapshot != original.Snapshot || !fresh.Things.SequenceEqual(original.Things)) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         if (fresh.Groups == null ? original.Groups != null : original.Groups == null || !fresh.Groups.SequenceEqual(original.Groups)) throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
+        if (fresh.MapResidents == null ? original.MapResidents != null : original.MapResidents == null || !fresh.MapResidents.SequenceEqual(original.MapResidents)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (fresh.Visitors == null ? original.Visitors != null : original.Visitors == null || !fresh.Visitors.SequenceEqual(original.Visitors)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (fresh.Stockpiles == null ? original.Stockpiles != null : original.Stockpiles == null || !fresh.Stockpiles.SequenceEqual(original.Stockpiles)) throw new ResidentMoveBlocked("RE_StockpileMapUnavailable");
         if (fresh.Growing == null ? original.Growing != null : original.Growing == null || !fresh.Growing.SequenceEqual(original.Growing)) throw new ResidentMoveBlocked("RE_GrowingMapUnavailable");
     }
@@ -140,5 +157,5 @@ internal static class LoadedMapRecords
     {
         if (Capture(city).Snapshot != scope) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
     }
-    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); r.Growing?.Clear(); }
+    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); r.Growing?.Clear(); r.MapResidents?.Clear(); r.Visitors?.Clear(); }
 }

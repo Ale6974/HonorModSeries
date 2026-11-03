@@ -51,8 +51,11 @@ public static class LawfulAdmissions
             var entry = entries.SingleOrDefault(e => e.Charter == row.Charter);
             Require(entry != null, "Unreviewed resident town.");
             var census = ResidentTransferCensus.Restore(row.Census); var residents = ResidentMoveSet.Restore(census.Residents);
-            Require(census.Town == entry.Observation.Territory && census.Source == entry.Observation.Owner && census.Target == scope.Target && census.Profile is 7 or 8 or 9 or 10 && residents.Proof == entry.Observation.ResidentProof,
+            Require(census.Town == entry.Observation.Territory && census.Source == entry.Observation.Owner && census.Target == scope.Target && census.Profile is 7 or 8 or 9 or 10 or 11 && residents.Proof == entry.Observation.ResidentProof,
                 "Original resident town, medical profile or authority changed.");
+            var mapped = entry.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(entry.Observation.LoadedMap).NativeResidents;
+            Require((census.Profile == 11) == (mapped != null) && (mapped == null || mapped.All(r => residents.Residents.Any(p => p.Id == r.Id && p.Preserved == r.Preserved))),
+                "Mapped residents require the same original clinical profile and map scope.");
             foreach (var r in residents.Residents) Require(ids.Add(r.Id), "Resident shared by original follower towns.");
         }
         Require(scope.Entries.All(e => e.Observation.HasInhabitants == (e.Observation.ResidentProof != null)), "Missing original resident preservation evidence.");
