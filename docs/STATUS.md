@@ -2,6 +2,16 @@
 
 최종 검사: .local/m2-084-build16.log와 build17.log의 양 타깃 전체 빌드 통과, 최종1.6 규칙 재검사 finalrules16.log와1.7은 각각 Honor20,093/Contracts5,199, 영한543개 문구, 컴파일 경고/오류0. 형식6 Prepared/Applied/Cancelled·변경 설정·누락/중복/범위 밖 멤버·옛 형식 확대 거부·원 멤버 순서·주민 보유 정당한 독립의 원 그룹/물리 journal roundtrip 검사 포함. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.84.zip SHA256CB92960E8DD4A03A74031C56BA598A3E726919BA947AA5A7330097614DF11DB3. 기존 로컬 Preview 백업 .local/contracts-preview-3b0431f3ae69440cba0ebe8e3d361655 후 설치,32파일 해시 일치·ModsConfig/Prefs 불변(.local/m2-084-install.log). Preview Steam 게시 없음.
 
+## 0.3.91 — M2 부분 구현: 방문자만 있는 지도의 실제 도시 이전·원 참조 보존
+
+2026-11-05. 새 StockFormat11/ReadOnlyBystandersV1=1은 NativeResidents 없이 지원되는 원 방문자만 있는 지도를 실제 기존 도시 SetFaction·정당한 독립 전체 후손 이전·저장·명시적 중단 복구에 연결한다. 방문자는 시민 소속 이전/의료/영역 호출의 대상이 아니다. 별도 원 Visitors proof와 Pawn/Lord/인벤토리/무기/의복 원 참조를 reference-only Scribe하고 준비·도시 호출 전후·복구에서 원 객체와 소속/신체/장비/관계/작업 ID/부대 membership을 대조한다. 원 장비 holder의 정확한 타입(ThingOwner<Thing>/ThingOwner<ThingWithComps>/ThingOwner<Apparel>), Owner와 각 child holdingOwner를 확인한다. 방문자 최대128,개별 장비256,지도 물체/방문자/원 장비 합계10,000과 전역 ID 중복 금지를 적용한다. 인물/장비/부대를 이동·재생성·재소속시키지 않는다.
+
+옛 map3~10/null JSON bytes와 호출 권한은 확대하지 않는다. 옛 CaptureResidents 빈 시민/방문자-only 호출은 계속 거부하며 새 CaptureBystanders만 새 marker11을 만든다. marker 누락/알 수 없는 값/원 시민과의 혼합/중복·범위 초과/원 인물·부대·장비 교체/상태 변화는 원본을 유지하며 보류한다. 방문자의 실제 Faction/Host는 목적지와 상호 평화여야 하며 원 지도의 중립 물체·재고·grid·zone·holder 제한, source 마지막 정착지·provider·quest·계약·채무·제삼자 권리를 그대로 검사한다. 원 도시 호출 시작/정상 반환은 기존 독립 CityCall journal로 보존하며, target 소속이나 visitor proof만으로 미확인 호출을 재실행/완료하지 않는다. 원 저장 세계 시민은 별도 기존 임상7~10/census/의료/영역/수술 기록을 유지하며 방문자 proof로 시민 권한을 만들지 않는다. 기존 map10/profile11의 MVID 제한도 유지한다.
+
+검사: .local/m2-091-final16.log/final17.log 양 타깃 전체 빌드 통과(Honor20,093/Contracts5,338,영한553문구). MapBystanderTests는 옛 null/typed scope 엄격성·marker/중복/범위·변경 후 원 기록 불변·Prepared/Applied/Cancelled 복원·미확인 호출 거부를 검사한다. LawfulFollowerMigrationTests는 새 방문자11+원 mixed10 세계 시민의 정당한 독립 전체 후손·도시 이전/저장 복원을 확인한다. 마지막 native holder 원 타입 검사 반영도 .local/m2-091-native16.log/native17.log 경고/오류0. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.91.zip SHA2565CFE6FB838090100752EB61116B174F53DCA7EC8F74BBFD6726F110A72D1BC27. 기존 로컬 Preview를 .local/contracts-preview-f8e884de08a543ac8640945d7bf7dee6에 백업 후32파일 해시 일치·활성화/언어 불변으로 설치(.local/m2-091-install.log). Preview Steam 게시 없음.
+
+M2 전체 미완료: 소유 물체의 별도 실제 소속 변경/권한·개별 호출/복구,진행 작업/예약/집단 상태·포로/노예·원 명부 별칭이 없는 시민의 소속 이전,일반 커스텀 holder와 더 넓은 조합이 남는다. 다음 실제 착수점은 소유 물체 이전의 원 소유자/권리 범위와 Thing.SetFaction의 지도 registry·quest/event 경계를 함께 묶는 별도 원 자산/호출 journal이다. 단순 guard 제거나 기존 중립 증거로 소유권을 추정하지 않는다. M1 10/10,M2 0/18,전체10/100,1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6 유지. 자동 예약 없음.
+
 ## 0.3.90 — M2 부분 구현: 지도 위 원 시민의 실제 소속 이전·저장·복구
 
 최종 검사: .local/m2-090-final16.log/final17.log 양 타깃 전체 빌드 통과(Honor20,093/Contracts5,312, 영한552문구). 마지막 native 경계/MVID 반영 소스도 .local/m2-090-final-ship16.log/final-ship17.log 컴파일 경고/오류0. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.90.zip SHA256 C705C2AA0C735A57A444A53BF8D50CC35A476F8B057D89DC6A2D8CD5510CD760. 기존 로컬 Preview를 .local/contracts-preview-2440f98bac4c411493dc5c6cee64125e에 백업 후 설치,32파일 해시 일치·활성화/언어 구성 불변(.local/m2-090-install.log). Preview Steam 게시 없음.

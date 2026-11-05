@@ -17,6 +17,7 @@ public sealed class LoadedMapRecord : IExposable
     public List<Zone> Growing;
     public List<Pawn> MapResidents;
     public List<Pawn> Visitors;
+    public List<MapVisitorReference> BystanderReferencesV1;
     public string Snapshot;
     public void ExposeData()
     {
@@ -26,6 +27,7 @@ public sealed class LoadedMapRecord : IExposable
         Scribe_Collections.Look(ref Growing, "originalGrowingZones", LookMode.Reference);
         Scribe_Collections.Look(ref MapResidents, "originalNativeMapResidentsV1", LookMode.Reference);
         Scribe_Collections.Look(ref Visitors, "originalMapBystandersV1", LookMode.Reference);
+        Scribe_Collections.Look(ref BystanderReferencesV1, "originalReadOnlyBystanderReferencesV1", LookMode.Deep);
         Scribe_Values.Look(ref Snapshot, "originalNeutralMapV1");
     }
 }
@@ -84,7 +86,6 @@ internal static class LoadedMapRecords
         var allActors = things.OfType<Pawn>().OrderBy(p => p.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         var actors = allActors.Where(p => city.previouslyGeneratedInhabitants?.Contains(p) == true).ToList();
         var visitors = allActors.Where(p => !actors.Contains(p)).ToList();
-        if (visitors.Count > 0 && actors.Count == 0) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (actors.Count > 128 || actors.Any(p => !p.Spawned || p.Map != map || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count(x => ReferenceEquals(x, p)) != 1)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var originalResidents = actors.Count == 0 ? null : Current.Game.GetComponent<TerritoryAdministrationLedger>().MapResidentOriginal(city);
         var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents)).ToArray();
@@ -137,7 +138,19 @@ internal static class LoadedMapRecords
         if (stockpiles.Evidence.Length > 0) snapshot = LoadedMapPreservation.CaptureStockpiles(snapshot, stockpiles.Evidence);
         if (stockpiles.Growing.Length > 0) snapshot = LoadedMapPreservation.CaptureGrowing(snapshot, stockpiles.Growing);
         if (actors.Count > 0) snapshot = LoadedMapPreservation.CaptureResidents(snapshot, actorRows, visitorRows);
-        return new() { Map = map, MapResidents = actors.Count == 0 ? null : actors, Visitors = visitors.Count == 0 ? null : visitors, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
+        else if (visitors.Count > 0) snapshot = LoadedMapPreservation.CaptureBystanders(snapshot, visitorRows);
+        var visitorReferences = actors.Count == 0 && visitors.Count > 0 ? visitors.Select(ResidentMapVisitors.References).ToList() : null;
+        if (visitorReferences != null)
+        {
+            var custodyIds = new HashSet<string>(ids, StringComparer.Ordinal);
+            foreach (var visitor in visitorReferences)
+            {
+                if (!custodyIds.Add(visitor.Pawn.GetUniqueLoadID())) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+                foreach (var item in visitor.Inventory.Concat(visitor.Equipment).Concat(visitor.Apparel))
+                    if (!custodyIds.Add(item.GetUniqueLoadID()) || custodyIds.Count > 10000) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+            }
+        }
+        return new() { BystanderReferencesV1 = visitorReferences, Map = map, MapResidents = actors.Count == 0 ? null : actors, Visitors = visitors.Count == 0 ? null : visitors, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
             Groups = groups.Length == 0 ? null : groups.OrderBy(g => g.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
             Stockpiles = stockpiles.Evidence.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Stockpile)).ToList(),
             Growing = stockpiles.Growing.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Growing)).ToList(), Snapshot = snapshot };
@@ -146,6 +159,12 @@ internal static class LoadedMapRecords
     {
         if (original == null || original.Map != city.Map || original.Things == null) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         var fresh = Capture(city);
+        if (LoadedMapPreservation.Restore(original.Snapshot).ReadOnlyBystandersV1 == 1)
+        {
+            if (original.BystanderReferencesV1 == null || original.Visitors == null || original.BystanderReferencesV1.Count != original.Visitors.Count) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+            for (int i = 0; i < original.Visitors.Count; i++) ResidentMapVisitors.VerifyReferences(original.BystanderReferencesV1[i], original.Visitors[i]);
+        }
+        else if (original.BystanderReferencesV1 != null) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (fresh.Snapshot != original.Snapshot || !fresh.Things.SequenceEqual(original.Things)) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         if (fresh.Groups == null ? original.Groups != null : original.Groups == null || !fresh.Groups.SequenceEqual(original.Groups)) throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
         if (fresh.MapResidents == null ? original.MapResidents != null : original.MapResidents == null || !fresh.MapResidents.SequenceEqual(original.MapResidents)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
@@ -157,5 +176,5 @@ internal static class LoadedMapRecords
     {
         if (Capture(city).Snapshot != scope) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
     }
-    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); r.Growing?.Clear(); r.MapResidents?.Clear(); r.Visitors?.Clear(); }
+    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); r.Growing?.Clear(); r.MapResidents?.Clear(); r.Visitors?.Clear(); r.BystanderReferencesV1?.Clear(); }
 }

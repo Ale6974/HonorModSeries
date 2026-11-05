@@ -551,4 +551,5 @@
   <RE_ContainerMapUnavailable>원 보관함 신원·내용물·저장 상태를 확인할 수 없습니다. 주민 수용·진행 작업·커스텀·변경 보관함은 원 기록을 유지하고 보류합니다.</RE_ContainerMapUnavailable>
   <RE_MapResidentReview>같은 지도 위 원 유휴 주민 {0}명을 개별 호출·의료 기록으로 이전합니다. 검토된 방문자 {1}명은 그대로 둡니다. 주민 이동·재생성이나 재산·병력 권한 추정은 하지 않습니다.</RE_MapResidentReview>
   <RE_MapResidentUnavailable>원 시민 명부·지도 등록·활동·참조·네이티브 콜백 경계를 확인할 수 없습니다. 진행 작업·예약·지정·병력 집단·미지원 방문자·변경되거나 불확실한 기록은 보류합니다.</RE_MapResidentUnavailable>
+  <RE_BystanderReview>지도 방문자 {0}명 보존: 원 인물·소속·장비·부대 관계를 그대로 유지합니다. 소속을 이전하는 시민이 아닙니다.</RE_BystanderReview>
 </LanguageData>

@@ -21,9 +21,10 @@ public sealed record LoadedMapScope(string Town, string Map, int Width, int Heig
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapContainer[] Containers { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeMapResident[] NativeResidents { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeMapResident[] Visitors { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? ReadOnlyBystandersV1 { get; init; }
 }
 
-/// <summary>Original neutral, pawn-free map custody. No actor, property or map-write authority.</summary>
+/// <summary>Original map custody. Actor affiliation requires separate clinical authority; bystanders grant no actor or property writes.</summary>
 public static class LoadedMapPreservation
 {
     private static bool Key(string s) => !string.IsNullOrWhiteSpace(s) && s.Length <= 120 && !s.Any(char.IsControl);
@@ -94,12 +95,21 @@ public static class LoadedMapPreservation
     public static string CaptureResidents(string original, IEnumerable<NativeMapResident> residents, IEnumerable<NativeMapResident> visitors = null)
     {
         var before = Restore(original);
-        if (before.NativeResidents != null || residents == null) throw new ArgumentException("Fresh original mapped residents required.");
+        if (before.NativeResidents != null || before.Visitors != null || before.ReadOnlyBystandersV1 != null || residents == null) throw new ArgumentException("Fresh original mapped residents required.");
         var rows = residents.Take(129).ToArray();
         if (rows.Any(r => r == null)) throw new ArgumentException("Missing original map resident.");
         var guests = visitors?.Take(129).ToArray();
         if (guests?.Any(r => r == null) == true) throw new ArgumentException("Missing original visitor.");
         var s = before with { NativeResidents = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Visitors = guests == null || guests.Length == 0 ? null : guests.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
+        s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
+    public static string CaptureBystanders(string original, IEnumerable<NativeMapResident> visitors)
+    {
+        var before = Restore(original);
+        if (before.NativeResidents != null || before.Visitors != null || before.ReadOnlyBystandersV1 != null || visitors == null) throw new ArgumentException("Fresh original read-only bystander scope required.");
+        var rows = visitors.Take(129).ToArray();
+        if (rows.Any(r => r == null)) throw new ArgumentException("Missing original bystander.");
+        var s = before with { ReadOnlyBystandersV1 = 1, Visitors = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
         s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
     public static LoadedMapScope Restore(string json)
@@ -204,10 +214,11 @@ public static class LoadedMapPreservation
                 !s.NativeResidents.Select(r => r.Id).SequenceEqual(s.NativeResidents.Select(r => r.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal)))
                 throw new ArgumentException("Invalid original map resident scope.");
         }
+        if (s.ReadOnlyBystandersV1 != null && (s.ReadOnlyBystandersV1 != 1 || s.NativeResidents != null || s.Visitors == null)) throw new ArgumentException("Unknown or expanded read-only bystander scope.");
         if (s.Visitors != null)
         {
             var used = new HashSet<string>(s.Things.Select(t => t.Id).Concat((s.Held ?? []).Select(r => r.Item.Id)).Concat((s.NativeResidents ?? []).Select(r => r.Id)), StringComparer.Ordinal);
-            if (s.NativeResidents == null || s.Visitors.Length is < 1 or > 128 || used.Count + s.Visitors.Length > 10000 ||
+            if (s.NativeResidents == null && s.ReadOnlyBystandersV1 != 1 || s.Visitors.Length is < 1 or > 128 || used.Count + s.Visitors.Length > 10000 ||
                 s.Visitors.Any(r => r == null || !Key(r.Id) || !CityStockProof.Valid(r.Preserved) || used.Contains(r.Id)) ||
                 !s.Visitors.Select(r => r.Id).SequenceEqual(s.Visitors.Select(r => r.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal))) throw new ArgumentException("Invalid original bystander scope.");
         }
@@ -219,7 +230,7 @@ public static class LoadedMapPreservation
     }
     public static int Format(string json)
     {
-        var s = Restore(json); return s.NativeResidents != null ? 10 : s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
+        var s = Restore(json); return s.ReadOnlyBystandersV1 == 1 ? 11 : s.NativeResidents != null ? 10 : s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
     }
     public static void Pair(string json, string town, string proof, int format)
     {

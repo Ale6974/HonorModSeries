@@ -6,9 +6,49 @@ using Verse.AI.Group;
 
 namespace Honor.Contracts.Preview;
 
+/// <summary>Original reference custody for new visitor-only map transfers; never deep-save native people or their gear.</summary>
+public sealed class MapVisitorReference : IExposable
+{
+    public Pawn Pawn;
+    public Lord Lord;
+    public List<Thing> Inventory, Equipment, Apparel;
+    public void ExposeData()
+    {
+        Scribe_References.Look(ref Pawn, "originalVisitor");
+        Scribe_References.Look(ref Lord, "originalVisitorLord");
+        Scribe_Collections.Look(ref Inventory, "originalVisitorInventory", LookMode.Reference);
+        Scribe_Collections.Look(ref Equipment, "originalVisitorEquipment", LookMode.Reference);
+        Scribe_Collections.Look(ref Apparel, "originalVisitorApparel", LookMode.Reference);
+    }
+}
+
 /// <summary>Read-only bystanders, never participants in affiliation, medical or area writes.</summary>
 internal static class ResidentMapVisitors
 {
+    private static List<Thing> Ordered(IEnumerable<Thing> things) => (things ?? []).OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
+    internal static MapVisitorReference References(Pawn p)
+    {
+        _ = Capture(p); // Validate known native holder dispatch before reading any contents.
+        var ids = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var pair in new (IThingHolder Tracker, Type Container)[] { (p.inventory, typeof(ThingOwner<Thing>)), (p.equipment, typeof(ThingOwner<ThingWithComps>)), (p.apparel, typeof(ThingOwner<RimWorld.Apparel>)) }.Where(t => t.Tracker != null))
+        {
+            var container = pair.Tracker.GetDirectlyHeldThings();
+            if (container?.GetType() != pair.Container || !ReferenceEquals(container.Owner, pair.Tracker) || container.Count > 256 ||
+                container.Any(t => t == null || t.Spawned || t.Map != null || t.holdingOwner != container || !ids.Add(t.GetUniqueLoadID())))
+                throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        }
+        if (ids.Count > 256) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        return new() { Pawn = p, Lord = p.GetLord(), Inventory = Ordered(p.inventory?.innerContainer.Cast<Thing>()),
+            Equipment = Ordered(p.equipment?.AllEquipmentListForReading.Cast<Thing>()), Apparel = Ordered(p.apparel?.WornApparel.Cast<Thing>()) };
+    }
+    internal static void VerifyReferences(MapVisitorReference original, Pawn p)
+    {
+        if (original == null || !ReferenceEquals(original.Pawn, p)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        var fresh = References(p);
+        if (!ReferenceEquals(original.Lord, fresh.Lord) || original.Inventory == null || original.Equipment == null || original.Apparel == null ||
+            !original.Inventory.SequenceEqual(fresh.Inventory) || !original.Equipment.SequenceEqual(fresh.Equipment) || !original.Apparel.SequenceEqual(fresh.Apparel))
+            throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+    }
     internal static NativeMapResident Capture(Pawn p)
     {
         if (p?.GetType() != typeof(Pawn) || !p.Spawned || p.Map == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || p.IsPrisoner || p.IsSlave || p.carryTracker?.CarriedThing != null ||

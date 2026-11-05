@@ -186,7 +186,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (r.From == null || r.Target == null || !Find.FactionManager.AllFactionsListForReading.Contains(r.From) || !Find.FactionManager.AllFactionsListForReading.Contains(r.Target) ||
                 r.From.HostileTo(r.Target) || r.Target.HostileTo(r.From)) throw new ArgumentException("Neutral-map transfer requires current reciprocal peace.");
             LoadedMapRecords.Verify(r.City, r.LoadedMap);
-            if (mapped != null) CheckMapVisitorPeace(r.City, r.Target);
+            if (LoadedMapPreservation.Restore(t.LoadedMap).Visitors != null) CheckMapVisitorPeace(r.City, r.Target);
         }
     }
     private static bool Eligible(Faction faction, string releasedSource = null) => faction != null && !faction.IsPlayer && !faction.Hidden && !faction.temporary &&
@@ -221,7 +221,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         var observed = Observe(binding.Settlement, binding.Identity, target, releasedSource);
         if (observed.HasMap && (observed.LoadedMap == null || binding.Settlement.Faction.HostileTo(target) || target.HostileTo(binding.Settlement.Faction)))
         { Messages.Message("RE_LoadedMapUnavailable".Translate(), MessageTypeDefOf.RejectInput); throw new ArgumentException("Unsupported loaded map or wartime scope."); }
-        if (observed.StockFormat == 10) CheckMapVisitorPeace(binding.Settlement, target);
+        if (observed.StockFormat is 10 or 11) CheckMapVisitorPeace(binding.Settlement, target);
         if (observed.Owner != target.GetUniqueLoadID() && observed.HasInhabitants && observed.ResidentProof == null)
         {
             Messages.Message("SX_CityBlocked".Translate(binding.Settlement.Label, ResidentExecution.BlockReasonKey(binding.Settlement, target).Translate()), MessageTypeDefOf.RejectInput);
@@ -593,6 +593,7 @@ public sealed class TerritoryAdministrationWindow : Window
                 if (review.GrowingZones > 0) list.Label("RE_GrowingMapReview".Translate(review.GrowingZones));
                 if (review.Containers > 0) list.Label("RE_ContainerMapReview".Translate(review.Containers));
                 if (review.NativeResidents > 0) list.Label("RE_MapResidentReview".Translate(review.NativeResidents, review.Visitors));
+                else if (review.Visitors > 0) list.Label("RE_BystanderReview".Translate(review.Visitors));
                 if (review.MixedResidents) list.Label("RE_MixedResidentReview".Translate());
                 list.Label((review.Purpose == TerritoryTransferPurpose.ActiveCharter ? "CT_Active" : "CT_Released").Translate());
                 if (list.ButtonText("CT_Confirm".Translate())) { ledger.Apply(review); review = null; }

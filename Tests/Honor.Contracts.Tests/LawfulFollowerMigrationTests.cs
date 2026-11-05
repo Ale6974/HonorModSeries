@@ -230,6 +230,21 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(mappedJournal.Current, TerritoryTransferLedger.Restore(mappedPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(mappedJournal.Export()).Current, "child") == mappedScope && mappedPhysical.Transfer("mapped-city").StockFormat == 10,
             "original growing/stockpile zones, shelf group and resident scope remain paired through lawful physical save/restore");
+        // Visitor-only map custody stays separate from the original saved-world clinical roster.
+        string visitorsScope = LoadedMapPreservation.CaptureBystanders(containerScope, [new("visitor", Hash("unchanged-bystander"))]);
+        var visitorsTown = containerTown with { LoadedMap = visitorsScope, StockFormat = 11, StockProof = LoadedMapPreservation.Restore(visitorsScope).Proof };
+        var visitorsPlan = FollowerTransfers.Review(after, physical, [new("child", visitorsTown), new("deep", actualDeep)], "union", now);
+        var visitorsPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], visitorsPlan.Moves);
+        var visitorsJournal = new AllegianceTransitionLedger();
+        visitorsJournal.PrepareLawfulResidentAdmission("visitors", politics, command, visitorsPlan, physical, closure, visitorsPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 10, mixedSet))]);
+        var visitorsPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        visitorsPhysical.PrepareLoadedJournaled("visitors-city", after, "child", visitorsTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(visitorsJournal.Current, visitorsPhysical);
+        visitorsPhysical.Confirm("visitors-city", visitorsTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(visitorsJournal.Current, TerritoryTransferLedger.Restore(visitorsPhysical.Export()));
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(visitorsJournal.Export()).Current, "child") == visitorsScope && visitorsPhysical.Transfer("visitors-city").StockFormat == 11,
+            "read-only map bystanders and separate original saved-world residents survive lawful follower execution and restore");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);

@@ -551,4 +551,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <RE_ContainerMapUnavailable>Original container identity, contents or saved state cannot be verified. Occupied, active, custom or changed containers remain deferred; keep original records.</RE_ContainerMapUnavailable>
   <RE_MapResidentReview>Transfer {0} original idle town residents on the same map with individual call and medical journals. Keep {1} reviewed visitors unchanged. No pawn is moved or respawned, and no property or army authority is inferred.</RE_MapResidentReview>
   <RE_MapResidentUnavailable>Original civic roster, map registry, activity, references or native callback boundaries cannot be verified. Active jobs, reservations, designations, military groups, unsupported visitors and changed or uncertain data remain deferred.</RE_MapResidentUnavailable>
+  <RE_BystanderReview>Read-only map visitors: {0}. Their original identity, faction, equipment and group membership are preserved. They are not citizens being transferred.</RE_BystanderReview>
 </LanguageData>
