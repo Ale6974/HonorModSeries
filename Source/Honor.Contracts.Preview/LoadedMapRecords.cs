@@ -18,6 +18,7 @@ public sealed class LoadedMapRecord : IExposable
     public List<Pawn> MapResidents;
     public List<Pawn> Visitors;
     public List<MapVisitorReference> BystanderReferencesV1;
+    public string AssetJournal;
     public string Snapshot;
     public void ExposeData()
     {
@@ -28,6 +29,7 @@ public sealed class LoadedMapRecord : IExposable
         Scribe_Collections.Look(ref MapResidents, "originalNativeMapResidentsV1", LookMode.Reference);
         Scribe_Collections.Look(ref Visitors, "originalMapBystandersV1", LookMode.Reference);
         Scribe_Collections.Look(ref BystanderReferencesV1, "originalReadOnlyBystanderReferencesV1", LookMode.Deep);
+        Scribe_Values.Look(ref AssetJournal, "originalOwnedAssetCallsV1");
         Scribe_Values.Look(ref Snapshot, "originalNeutralMapV1");
     }
 }
@@ -56,13 +58,13 @@ internal static class LoadedMapRecords
             Harmony.GetPatchInfo(method)?.Owners.Any(x => x != "honor.series.contracts.preview") == true)
             throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
     }
-    private static NeutralMapThing Evidence(Thing t, Map map, bool held = false)
+    private static NeutralMapThing Evidence(Thing t, Map map, bool held = false, bool owned = false)
     {
         if (t == null || t.def == null || t.Destroyed || (held ? t.Spawned || t.Map != null || t.holdingOwner == null : !t.Spawned || t.Map != map || t.holdingOwner != null && t.holdingOwner != map.GetDirectlyHeldThings()) ||
-            t.Faction != null || t is Pawn or Corpse || t is IThingHolder && t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t) ||
+            t.Faction != null && !owned || t is Pawn or Corpse || t is IThingHolder && t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t) ||
             t.GetType().Assembly != typeof(Thing).Assembly || t is ThingWithComps c && c.AllComps.Any(comp => comp == null || comp is IThingHolder ||
                 comp.GetType() != typeof(CompQuality) && comp.GetType() != typeof(CompForbiddable) && comp.GetType() != typeof(CompColorable) && comp.GetType() != typeof(CompArt) &&
-                (t.GetType() != typeof(Building_Storage) || comp.GetType() != typeof(CompStyleable)) &&
+                (t.GetType() != typeof(Building_Storage) && !owned || comp.GetType() != typeof(CompStyleable)) &&
                 (!ContainerMapEvidence.Supported(t) || comp.GetType() != typeof(CompHackable) && comp.GetType() != typeof(CompGlower))) ||
             !ContainerMapEvidence.Supported(t) && t.GetType() != typeof(Building) && t.GetType() != typeof(Building_Storage) && t.GetType() != typeof(Plant) && t.GetType() != typeof(Filth) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) && t.GetType() != typeof(MinifiedThing))
             throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
@@ -83,6 +85,9 @@ internal static class LoadedMapRecords
     {
         Ready(city); var map = city.Map; var things = map.listerThings.AllThings.OrderBy(t => t?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         if (things.Count > 10000 || map.Size.x is < 1 or > 500 || map.Size.z is < 1 or > 500) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        var assetOriginal = Current.Game.GetComponent<TerritoryAdministrationLedger>().MapAssetOriginal(city);
+        var ownedRows = new List<MapAsset>();
+        var originalAssets = assetOriginal == null ? null : LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).OwnedAssets;
         var allActors = things.OfType<Pawn>().OrderBy(p => p.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         var actors = allActors.Where(p => city.previouslyGeneratedInhabitants?.Contains(p) == true).ToList();
         var visitors = allActors.Where(p => !actors.Contains(p)).ToList();
@@ -102,7 +107,13 @@ internal static class LoadedMapRecords
             else container = t.GetType() == typeof(MinifiedThing) ? Container((MinifiedThing)t) : null;
             // Validate the entire child chain before quality helpers can inspect a package's InnerThing.
             if (container != null) for (int i = 0; i < container.Count; i++) Collect(container[i], t.GetUniqueLoadID(), depth + 1, i);
-            var row = Evidence(t, map, parent != null); references.Add(t);
+            bool owned = t.Faction != null || originalAssets?.Any(a => a.Id == t.GetUniqueLoadID()) == true;
+            if (owned)
+            {
+                if (parent != null || allActors.Count > 0) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+                ownedRows.Add(MapAssetRecords.Capture(t, city, assetOriginal));
+            }
+            var row = Evidence(t, map, parent != null, owned); references.Add(t);
             if (t.GetType() == typeof(Building_Storage)) storage.Add(StorageMapEvidence.Capture((Building_Storage)t, map, grouped: true));
             if (parent != null) held.Add(new(parent, slot, row));
             return row;
@@ -139,6 +150,7 @@ internal static class LoadedMapRecords
         if (stockpiles.Growing.Length > 0) snapshot = LoadedMapPreservation.CaptureGrowing(snapshot, stockpiles.Growing);
         if (actors.Count > 0) snapshot = LoadedMapPreservation.CaptureResidents(snapshot, actorRows, visitorRows);
         else if (visitors.Count > 0) snapshot = LoadedMapPreservation.CaptureBystanders(snapshot, visitorRows);
+        if (ownedRows.Count > 0) snapshot = LoadedMapPreservation.CaptureAssets(snapshot, ownedRows);
         var visitorReferences = actors.Count == 0 && visitors.Count > 0 ? visitors.Select(ResidentMapVisitors.References).ToList() : null;
         if (visitorReferences != null)
         {

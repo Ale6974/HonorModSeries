@@ -68,6 +68,19 @@ internal static class ResidentMapActors
             else if (collection.Count != 0) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         }
     }
+    internal static void RequireEmptyReservations(Map source, Guid? auditedModule = null)
+    {
+        if (typeof(Pawn).Module.ModuleVersionId != (auditedModule ?? AuditedModule) || source == null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        foreach (var map in Find.Maps)
+            foreach (string field in new[] { "reservationManager", "pawnDestinationReservationManager", "enrouteManager", "physicalInteractionReservationManager", "attackTargetReservationManager" })
+            {
+                var f = AccessTools.Field(typeof(Map), field);
+                if (f == null) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+                var value = f.GetValue(map);
+                if (value?.GetType() != f.FieldType) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+                EmptyManager(value, map, field == "pawnDestinationReservationManager");
+            }
+    }
     internal static void Require(Pawn p)
     {
         if (typeof(Pawn).Module.ModuleVersionId != AuditedModule) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
@@ -129,15 +142,7 @@ internal static class ResidentMapActors
             var getterMethod = AccessTools.PropertyGetter(p.pather.GetType(), name);
             if (getterMethod == null || Harmony.GetPatchInfo(getterMethod)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         }
-        foreach (var map in Find.Maps)
-            foreach (string field in new[] { "reservationManager", "pawnDestinationReservationManager", "enrouteManager", "physicalInteractionReservationManager", "attackTargetReservationManager" })
-            {
-                var f = AccessTools.Field(typeof(Map), field);
-                if (f == null) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-                var value = f.GetValue(map);
-                if (value?.GetType() != f.FieldType) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-                EmptyManager(value, map, field == "pawnDestinationReservationManager");
-            }
+        RequireEmptyReservations(p.Map);
         var getter = AccessTools.PropertyGetter(typeof(DesignationManager), "AllDesignations");
         if (getter == null || Harmony.GetPatchInfo(getter)?.Owners.Any() == true || p.Map.designationManager?.GetType() != typeof(DesignationManager) ||
             getter.Invoke(p.Map.designationManager, null) is not IEnumerable designations || designations.Cast<object>().Any()) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");

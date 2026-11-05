@@ -22,6 +22,7 @@ public sealed record LoadedMapScope(string Town, string Map, int Width, int Heig
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeMapResident[] NativeResidents { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeMapResident[] Visitors { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? ReadOnlyBystandersV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public MapAsset[] OwnedAssets { get; init; }
 }
 
 /// <summary>Original map custody. Actor affiliation requires separate clinical authority; bystanders grant no actor or property writes.</summary>
@@ -110,6 +111,15 @@ public static class LoadedMapPreservation
         var rows = visitors.Take(129).ToArray();
         if (rows.Any(r => r == null)) throw new ArgumentException("Missing original bystander.");
         var s = before with { ReadOnlyBystandersV1 = 1, Visitors = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
+        s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
+    public static string CaptureAssets(string original, IEnumerable<MapAsset> assets)
+    {
+        var before = Restore(original);
+        if (before.OwnedAssets != null || before.NativeResidents != null || before.Visitors != null || assets == null) throw new ArgumentException("Fresh unoccupied original property scope required.");
+        var rows = assets.Take(1001).ToArray();
+        if (rows.Any(r => r == null)) throw new ArgumentException("Missing original property.");
+        var s = before with { OwnedAssets = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), Proof = null };
         s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
     public static LoadedMapScope Restore(string json)
@@ -222,6 +232,11 @@ public static class LoadedMapPreservation
                 s.Visitors.Any(r => r == null || !Key(r.Id) || !CityStockProof.Valid(r.Preserved) || used.Contains(r.Id)) ||
                 !s.Visitors.Select(r => r.Id).SequenceEqual(s.Visitors.Select(r => r.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal))) throw new ArgumentException("Invalid original bystander scope.");
         }
+        if (s.OwnedAssets != null && (s.NativeResidents != null || s.Visitors != null || s.ReadOnlyBystandersV1 != null || s.OwnedAssets.Length is < 1 or > 1000 ||
+            s.OwnedAssets.Any(a => a == null || !Key(a.Id) || !Key(a.Owner) || !CityStockProof.Valid(a.Configuration) || !s.Things.Any(t => t.Id == a.Id) ||
+                (s.Storage ?? []).Any(x => x.Id == a.Id) || (s.Containers ?? []).Any(x => x.Id == a.Id)) ||
+            !s.OwnedAssets.Select(a => a.Id).SequenceEqual(s.OwnedAssets.Select(a => a.Id).Distinct().OrderBy(x => x, StringComparer.Ordinal))))
+            throw new ArgumentException("Invalid or overlapping original fixed property scope.");
         return s;
     }
     public static void Pair(string json, string town, string proof)
@@ -230,7 +245,7 @@ public static class LoadedMapPreservation
     }
     public static int Format(string json)
     {
-        var s = Restore(json); return s.ReadOnlyBystandersV1 == 1 ? 11 : s.NativeResidents != null ? 10 : s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
+        var s = Restore(json); return s.OwnedAssets != null ? 12 : s.ReadOnlyBystandersV1 == 1 ? 11 : s.NativeResidents != null ? 10 : s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
     }
     public static void Pair(string json, string town, string proof, int format)
     {

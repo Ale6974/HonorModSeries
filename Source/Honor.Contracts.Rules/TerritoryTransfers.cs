@@ -63,7 +63,8 @@ public sealed class TerritoryTransferLedger
         string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration, string releasedRoot, bool loaded)
     {
         RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(observed);
-        Require(loaded ? observed.HasMap && observed.LoadedMap != null && observed.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 : observed.LoadedMap == null && !observed.HasMap, "Loaded custody requires a separately scoped preparation.");
+        Require(loaded ? observed.HasMap && observed.LoadedMap != null && observed.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 : observed.LoadedMap == null && !observed.HasMap, "Loaded custody requires a separately scoped preparation.");
+        Require(observed.LoadedMap == null || LoadedMapPreservation.Restore(observed.LoadedMap).OwnedAssets?.Any(a => a.Owner != observed.Owner) != true, "Original property rights must belong to the reviewed source faction.");
         Require(observed.StockFormat != 10 || observed.HasInhabitants && CityStockProof.Valid(observed.ResidentProof), "Mapped residents require their original clinical census.");
         Key(id); Key(target); Key(observed.Territory); Key(observed.Owner); Time(now);
         Require(now >= book.LastTick, "Transfer cannot precede the current consent book clock.");
@@ -139,7 +140,7 @@ public sealed class TerritoryTransferLedger
     private static bool MapPreserved(TerritoryTransferObservation actual, string proof)
     {
         if (actual.LoadedMap == null) return actual.StockFormat is 0 or 1 or 2 && (actual.StockFormat == 0 || proof != null) && !actual.HasMap;
-        if (!actual.HasMap || actual.StockFormat is not (3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11)) return false;
+        if (!actual.HasMap || actual.StockFormat is not (3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12)) return false;
         LoadedMapPreservation.Pair(actual.LoadedMap, actual.Territory, proof, actual.StockFormat); return true;
     }
     public static TerritoryTransferLedger Restore(string json)
@@ -156,8 +157,12 @@ public sealed class TerritoryTransferLedger
             if (item.ReleasedRoot != null) { Key(item.ReleasedRoot); Require(item.Purpose == TerritoryTransferPurpose.ReleasedToUnion, "Subtree scope is union-only."); }
             Require(item.ResidentProof == null || CityStockProof.Valid(item.ResidentProof), "Invalid resident preservation proof.");
             Require(item.StockFormat != 10 || CityStockProof.Valid(item.ResidentProof), "Mapped city history requires its original resident proof.");
-            if (item.LoadedMap != null) LoadedMapPreservation.Pair(item.LoadedMap, item.Territory, item.StockProof, item.StockFormat);
-            Require((item.LoadedMap == null ? item.StockFormat is 0 or 1 or 2 : item.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 && item.CityCallJournalV1) && (item.StockFormat == 0 || item.StockProof != null) &&
+            if (item.LoadedMap != null)
+            {
+                LoadedMapPreservation.Pair(item.LoadedMap, item.Territory, item.StockProof, item.StockFormat);
+                Require(LoadedMapPreservation.Restore(item.LoadedMap).OwnedAssets?.Any(a => a.Owner != item.FromOwner) != true, "Original asset owner changed.");
+            }
+            Require((item.LoadedMap == null ? item.StockFormat is 0 or 1 or 2 : item.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 && item.CityCallJournalV1) && (item.StockFormat == 0 || item.StockProof != null) &&
                 (item.StockProof == null || CityStockProof.Valid(item.StockProof)) &&
                 RuntimeCompat.IsDefined(item.Purpose) && RuntimeCompat.IsDefined(item.Phase) && item.FromOwner != item.TargetOwner &&
                 item.PreparedTick >= result.LastTick && item.PreparedTick <= save.LastTick &&
