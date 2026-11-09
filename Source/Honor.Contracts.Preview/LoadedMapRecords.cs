@@ -88,9 +88,15 @@ internal static class LoadedMapRecords
         var assetOriginal = Current.Game.GetComponent<TerritoryAdministrationLedger>().MapAssetOriginal(city);
         var ownedRows = new List<MapAsset>();
         var originalAssets = assetOriginal == null ? null : LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).OwnedAssets;
+        bool ownedStorage = assetOriginal != null ? LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).OwnedStorageV1 == 1 :
+            things.Any(t => t?.GetType() == typeof(Building_Storage) && t.Faction != null);
+        bool repairAssets = assetOriginal != null ? LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).AssetRepairV1 == 1 :
+            things.Any(t => t?.Faction != null && MapAssetRecords.NeedsRepairScope(t, ownedStorage));
         var allActors = things.OfType<Pawn>().OrderBy(p => p.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         var actors = allActors.Where(p => city.previouslyGeneratedInhabitants?.Contains(p) == true).ToList();
         var visitors = allActors.Where(p => !actors.Contains(p)).ToList();
+        bool civicAssets = assetOriginal != null ? LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).CivicAssetsV1 == 1 :
+            actors.Count > 0 && things.Any(t => t is not Pawn && t.Faction != null);
         if (actors.Count > 128 || actors.Any(p => !p.Spawned || p.Map != map || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count(x => ReferenceEquals(x, p)) != 1)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var originalResidents = actors.Count == 0 ? null : Current.Game.GetComponent<TerritoryAdministrationLedger>().MapResidentOriginal(city);
         var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents)).ToArray();
@@ -110,11 +116,11 @@ internal static class LoadedMapRecords
             bool owned = t.Faction != null || originalAssets?.Any(a => a.Id == t.GetUniqueLoadID()) == true;
             if (owned)
             {
-                if (parent != null || allActors.Count > 0) throw new ResidentMoveBlocked("RE_AssetUnavailable");
-                ownedRows.Add(MapAssetRecords.Capture(t, city, assetOriginal));
+                if (parent != null || allActors.Count > 0 && !civicAssets) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+                ownedRows.Add(MapAssetRecords.Capture(t, city, assetOriginal, repairAssets, ownedStorage, civicAssets ? allActors : null));
             }
             var row = Evidence(t, map, parent != null, owned); references.Add(t);
-            if (t.GetType() == typeof(Building_Storage)) storage.Add(StorageMapEvidence.Capture((Building_Storage)t, map, grouped: true));
+            if (t.GetType() == typeof(Building_Storage)) storage.Add(owned ? StorageMapEvidence.CaptureOwned((Building_Storage)t, map, grouped: true) : StorageMapEvidence.Capture((Building_Storage)t, map, grouped: true));
             if (parent != null) held.Add(new(parent, slot, row));
             return row;
         }
@@ -150,7 +156,7 @@ internal static class LoadedMapRecords
         if (stockpiles.Growing.Length > 0) snapshot = LoadedMapPreservation.CaptureGrowing(snapshot, stockpiles.Growing);
         if (actors.Count > 0) snapshot = LoadedMapPreservation.CaptureResidents(snapshot, actorRows, visitorRows);
         else if (visitors.Count > 0) snapshot = LoadedMapPreservation.CaptureBystanders(snapshot, visitorRows);
-        if (ownedRows.Count > 0) snapshot = LoadedMapPreservation.CaptureAssets(snapshot, ownedRows);
+        if (ownedRows.Count > 0) snapshot = civicAssets ? LoadedMapPreservation.CaptureCivicAssets(snapshot, ownedRows, repairAssets, ownedStorage) : ownedStorage ? LoadedMapPreservation.CaptureOwnedStorage(snapshot, ownedRows, repairAssets) : repairAssets ? LoadedMapPreservation.CaptureRepairAssets(snapshot, ownedRows) : LoadedMapPreservation.CaptureAssets(snapshot, ownedRows);
         var visitorReferences = actors.Count == 0 && visitors.Count > 0 ? visitors.Select(ResidentMapVisitors.References).ToList() : null;
         if (visitorReferences != null)
         {

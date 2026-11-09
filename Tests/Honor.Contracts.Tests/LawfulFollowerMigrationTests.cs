@@ -264,6 +264,55 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(assetJournal.Current, TerritoryTransferLedger.Restore(assetPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(assetJournal.Export()).Current, "child") == assetScope && assetPhysical.Transfer("asset-city").StockFormat == 12,
             "original fixed property, call prefix and separate saved-world clinical residents remain paired through lawful follower restore");
+        string repairScope = LoadedMapPreservation.CaptureRepairAssets(assetBase, [new MapAsset("wall", "realm", Hash("original-style")) { Repair = new(150, true) }]);
+        var repairTown = assetTown with { LoadedMap = repairScope, StockFormat = 13, StockProof = LoadedMapPreservation.Restore(repairScope).Proof };
+        var repairPlan = FollowerTransfers.Review(after, physical, [new("child", repairTown), new("deep", actualDeep)], "union", now);
+        var repairPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], repairPlan.Moves);
+        var repairJournal = new AllegianceTransitionLedger();
+        repairJournal.PrepareLawfulResidentAdmission("repair", politics, command, repairPlan, physical, closure, repairPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 10, mixedSet))]);
+        var repairPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        repairPhysical.PrepareLoadedJournaled("repair-city", after, "child", repairTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(repairJournal.Current, repairPhysical);
+        repairPhysical.Confirm("repair-city", repairTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(repairJournal.Current, TerritoryTransferLedger.Restore(repairPhysical.Export()));
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(repairJournal.Export()).Current, "child") == repairScope,
+            "damaged original asset health and separate clinical residents survive lawful follower restore without healing");
+        string ownedShelfBase = LoadedMapPreservation.Capture("town", "map-original", 20, 20, Hash("terrain-roof"), CityStockProof.Capture(true, false, -1, []), 0,
+            [new("shelf", "Shelf", "Wood", 1, 40, 0, 0, 2), new("goods", "Steel", null, 50, 100, 0, 0, null)]);
+        string ownedShelfNeutral = LoadedMapPreservation.CaptureStorage(ownedShelfBase, [new("shelf", Hash("priority-filter-style"), [0], ["goods"])]);
+        string ownedShelfScope = LoadedMapPreservation.CaptureOwnedStorage(ownedShelfNeutral, [new MapAsset("shelf", "realm", Hash("original-style")) { Repair = new(100, true) }], true);
+        var ownedShelfTown = assetTown with { LoadedMap = ownedShelfScope, StockFormat = 14, StockProof = LoadedMapPreservation.Restore(ownedShelfScope).Proof };
+        var ownedShelfPlan = FollowerTransfers.Review(after, physical, [new("child", ownedShelfTown), new("deep", actualDeep)], "union", now);
+        var ownedShelfPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], ownedShelfPlan.Moves);
+        var ownedShelfJournal = new AllegianceTransitionLedger();
+        ownedShelfJournal.PrepareLawfulResidentAdmission("owned-shelf", politics, command, ownedShelfPlan, physical, closure, ownedShelfPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 10, mixedSet))]);
+        var ownedShelfPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        ownedShelfPhysical.PrepareLoadedJournaled("shelf-city", after, "child", ownedShelfTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(ownedShelfJournal.Current, ownedShelfPhysical);
+        ownedShelfPhysical.Confirm("shelf-city", ownedShelfTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(ownedShelfJournal.Current, TerritoryTransferLedger.Restore(ownedShelfPhysical.Export()));
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(ownedShelfJournal.Export()).Current, "child") == ownedShelfScope,
+            "owned shelf, original damaged health/goods/settings and separate saved-world clinical residents survive lawful follower execution and restore");
+        string combinedCitizens = LoadedMapPreservation.CaptureResidents(ownedShelfNeutral, mappedSet.Residents.Select(r => new NativeMapResident(r.Id, r.Preserved)));
+        string combinedScope = LoadedMapPreservation.CaptureCivicAssets(combinedCitizens, [new MapAsset("shelf", "realm", Hash("original-style")) { Repair = new(100, true) }], true, true);
+        var combinedTown = mappedTown with { LoadedMap = combinedScope, StockFormat = 15, StockProof = LoadedMapPreservation.Restore(combinedScope).Proof };
+        var combinedPlan = FollowerTransfers.Review(after, physical, [new("child", combinedTown), new("deep", actualDeep)], "union", now);
+        var combinedPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], combinedPlan.Moves);
+        var combinedJournal = new AllegianceTransitionLedger();
+        combinedJournal.PrepareLawfulResidentAdmission("combined", politics, command, combinedPlan, physical, closure, combinedPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 11, mappedSet))]);
+        var combinedPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        combinedPhysical.PrepareLoadedJournaled("combined-city", after, "child", combinedTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(combinedJournal.Current, combinedPhysical);
+        string combinedCalls = MapAssetTransfers.Prepare(combinedScope, "realm", "union");
+        combinedCalls = MapAssetTransfers.Returned(MapAssetTransfers.Begin(combinedCalls, "shelf", "realm"), "shelf", "union");
+        MapAssetTransfers.Pair(combinedCalls, combinedScope, "realm", "union", true);
+        combinedPhysical.Confirm("combined-city", combinedTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(combinedJournal.Current, TerritoryTransferLedger.Restore(combinedPhysical.Export()));
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(combinedJournal.Export()).Current, "child") == combinedScope,
+            "original mapped civilians plus damaged owned shelves and all lawful follower scope survive joint execution and restore");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);

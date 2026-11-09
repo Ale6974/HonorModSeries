@@ -12,7 +12,8 @@ namespace Honor.Contracts.Preview;
 
 internal static class MapAssetRecords
 {
-    private static readonly Guid AuditedModule = new("bfbab472-0f01-4378-acdf-3bd92e3a67f8");
+    private static readonly Guid[] AuditedModules = [new("bfbab472-0f01-4378-acdf-3bd92e3a67f8"), new("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e")];
+    private static bool Component(Type type, bool shelf) => type == typeof(CompStyleable) || shelf && type == typeof(CompQuality);
     private static void Native(Type type, string name)
     {
         var methods = AccessTools.GetDeclaredMethods(type).Where(m => m.Name == name).ToArray();
@@ -24,20 +25,35 @@ internal static class MapAssetRecords
         if (f == null || f.FieldType != expected) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         return f.GetValue(owner);
     }
-    private static void Boundary(Thing t, Map map)
+    internal static bool NeedsRepairScope(Thing t, bool ownedStorage = false)
     {
-        if (typeof(Thing).Module.ModuleVersionId != AuditedModule || map.mapPawns.AllPawns.Count != 0 || map.lordManager?.lords?.Count != 0 ||
-            t.GetType() != typeof(Building) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) ||
+        if (t?.GetType() != typeof(Building) && (!ownedStorage || t?.GetType() != typeof(Building_Storage))) return false;
+        if (t.def == null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        var getter = AccessTools.PropertyGetter(typeof(Thing), nameof(Thing.MaxHitPoints));
+        if (!AuditedModules.Contains(typeof(Thing).Module.ModuleVersionId) || getter == null || Harmony.GetPatchInfo(getter)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        return t.HitPoints < t.MaxHitPoints;
+    }
+    private static void Boundary(Thing t, Map map, bool repairAssets, bool ownedStorage, IReadOnlyCollection<Pawn> reviewedPawns)
+    {
+        bool shelf = ownedStorage && t.GetType() == typeof(Building_Storage);
+        if (!AuditedModules.Contains(typeof(Thing).Module.ModuleVersionId) || (reviewedPawns == null ? map.mapPawns.AllPawns.Count != 0 : map.mapPawns.AllPawns.Count != reviewedPawns.Count || map.mapPawns.AllPawns.Any(p => !reviewedPawns.Contains(p))) || map.lordManager?.lords?.Count != 0 ||
+            t.GetType() != typeof(Building) && (!ownedStorage || t.GetType() != typeof(Building_Storage)) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) ||
             !t.def.CanHaveFaction || t.def.GetType() != typeof(ThingDef) || DefDatabase<ThingDef>.GetNamedSilentFail(t.def.defName) != t.def ||
             t is IThingHolder || t is IAttackTarget || t.questTags?.Count > 0 || !t.Spawned || t.Map != map || t.Faction == null || t.Faction.IsPlayer ||
-            t is ThingWithComps c && (c.AllComps.Count > 1 || c.AllComps.Any(x => x?.GetType() != typeof(CompStyleable) || x.parent != t))) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+            t is ThingWithComps c && (c.AllComps.Count > (shelf ? 2 : 1) || c.AllComps.Any(x => x == null || !Component(x.GetType(), shelf) || x.parent != t) || c.AllComps.Select(x => x.GetType()).Distinct().Count() != c.AllComps.Count)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if ((t.def.comps?.Count ?? 0) != ((t as ThingWithComps)?.AllComps.Count ?? 0)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         foreach (var getter in new[] { AccessTools.PropertyGetter(typeof(ThingDef), nameof(ThingDef.CanHaveFaction)), AccessTools.PropertyGetter(typeof(Thing), nameof(Thing.MaxHitPoints)) })
             if (getter == null || getter.DeclaringType.Assembly != typeof(Thing).Assembly || Harmony.GetPatchInfo(getter)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         var dispatch = AccessTools.Method(t.GetType(), nameof(Thing.SetFaction), [typeof(Faction), typeof(Pawn)]);
         if (dispatch?.DeclaringType != (t is Building ? typeof(Building) : typeof(Thing)) || Harmony.GetPatchInfo(dispatch)?.Owners.Any() == true ||
-            t.def.comps?.Any(c => c == null || c.compClass != typeof(CompStyleable) || c.GetType().Assembly != typeof(Thing).Assembly) == true ||
+            t.def.comps?.Any(c => c == null || !Component(c.compClass, shelf) || c.GetType().Assembly != typeof(Thing).Assembly) == true ||
             RimWorld.QuestGen.QuestGen.quest != null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        if (shelf)
+        {
+            var comps = ((ThingWithComps)t).AllComps;
+            if (Field(t, "compQuality", typeof(CompQuality)) != comps.OfType<CompQuality>().SingleOrDefault() || Field(t, "compStyleable", typeof(CompStyleable)) != comps.OfType<CompStyleable>().SingleOrDefault()) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+            Native(typeof(QualityUtility), "TryGetQuality"); Native(typeof(CompQuality), "get_Quality");
+        }
         Native(typeof(Quest), "get_State"); Native(typeof(Quest), "get_TicksUntilExpiry"); Native(typeof(QuestManager), "get_QuestsListForReading");
         if (Find.QuestManager.QuestsListForReading.Any(q => q == null || q.State is QuestState.Ongoing or QuestState.NotYetAccepted)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         Native(typeof(Thing), "SetFaction"); Native(typeof(QuestUtility), "SendQuestTargetSignals");
@@ -49,13 +65,13 @@ internal static class MapAssetRecords
             var f = AccessTools.Field(events.GetType(), name);
             if (f == null || !typeof(Delegate).IsAssignableFrom(f.FieldType) || f.GetValue(events) != null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         }
-        ResidentMapActors.RequireEmptyReservations(map, AuditedModule);
+        ResidentMapActors.RequireEmptyReservations(map, typeof(Thing).Module.ModuleVersionId);
         var designations = map.designationManager;
         Native(typeof(DesignationManager), "get_AllDesignations");
         if (designations?.GetType() != typeof(DesignationManager) || designations.AllDesignations.Any()) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (t is Building b)
         {
-            if (b.def.building == null || b.def.building.isNaturalRock || b.def == ThingDefOf.CaravanPackingSpot || b.HitPoints != b.MaxHitPoints || map.listerBuildings?.GetType() != typeof(ListerBuildings) ||
+            if (b.def.building == null || b.def.building.isNaturalRock || b.def == ThingDefOf.CaravanPackingSpot || !repairAssets && b.HitPoints != b.MaxHitPoints || map.listerBuildings?.GetType() != typeof(ListerBuildings) ||
                 map.listerBuildings.allBuildingsColonist.Contains(b) || map.listerBuildings.allBuildingsNonColonist.Count(x => ReferenceEquals(x, b)) != 1 ||
                 ((ICollection)Field(map.listerBuildings, "scopes", typeof(List<ListerBuildings.TrackingScope>))).Count != 0 ||
                 ((ICollection)Field(map.listerBuildings, "reinstallationMap", typeof(Dictionary<Thing, Blueprint_Install>))).Count != 0) throw new ResidentMoveBlocked("RE_AssetUnavailable");
@@ -71,15 +87,23 @@ internal static class MapAssetRecords
             var repair = map.listerBuildingsRepairable;
             var lists = (Dictionary<Faction, List<Thing>>)Field(repair, "repairables", typeof(Dictionary<Faction, List<Thing>>));
             var sets = (Dictionary<Faction, HashSet<Thing>>)Field(repair, "repairablesSet", typeof(Dictionary<Faction, HashSet<Thing>>));
-            if (lists.Values.Any(l => l == null || l.Contains(b)) || sets.Values.Any(l => l == null || l.Contains(b))) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+            if (lists.Values.Any(l => l == null) || sets.Values.Any(l => l == null)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+            if (repairAssets)
+            {
+                var owners = lists.Keys.Concat(sets.Keys).Distinct().ToArray();
+                if (owners.Any(f => f == null || !Find.FactionManager.AllFactionsListForReading.Contains(f))) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+                MapAssetRepairs.Verify(b.Faction.GetUniqueLoadID(), b.HitPoints, new(b.MaxHitPoints, b.def.building.repairable), owners.Select(f =>
+                    new MapAssetRepairMembership(f.GetUniqueLoadID(), lists.TryGetValue(f, out var list) ? list.Count(x => ReferenceEquals(x, b)) : 0, sets.TryGetValue(f, out var set) && set.Contains(b))));
+            }
+            else if (lists.Values.Any(l => l.Contains(b)) || sets.Values.Any(l => l.Contains(b))) throw new ResidentMoveBlocked("RE_AssetUnavailable");
             Native(typeof(ListerBuildingsRepairable), "UpdateBuilding"); Native(typeof(ListerBuildingsRepairable), "ListFor"); Native(typeof(ListerBuildingsRepairable), "HashSetFor");
             Native(typeof(MeditationUtility), "CountsAsArtificialBuilding"); Native(typeof(MapDrawer), "MapMeshDirty"); Native(typeof(MapDrawer), "SectionAt"); Native(typeof(MapDrawer), "SectionCoordsAt");
             if (map.mapDrawer?.GetType() != typeof(MapDrawer) || Field(map.mapDrawer, "map", typeof(Map)) != map) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         }
     }
-    internal static MapAsset Capture(Thing t, Settlement city, TerritoryTransferReference original)
+    internal static MapAsset Capture(Thing t, Settlement city, TerritoryTransferReference original, bool repairAssets = false, bool ownedStorage = false, IReadOnlyCollection<Pawn> reviewedPawns = null)
     {
-        Boundary(t, city.Map);
+        Boundary(t, city.Map, repairAssets, ownedStorage, reviewedPawns);
         string owner = t.Faction.GetUniqueLoadID();
         if (original != null)
         {
@@ -101,7 +125,7 @@ internal static class MapAssetRecords
             Class = t.GetType().FullName, Paint = paint?.defName, ChangeTerrain = t is Building building ? (bool?)building.canChangeTerrainOnDestroyed : null,
             Style = style == null ? null : new { Def = style.styleDef?.defName, Precept = precept?.GetUniqueLoadID(), Ideo = precept?.ideo.GetUniqueLoadID(), style.everSeenByPlayer }
         }))));
-        return new(t.GetUniqueLoadID(), owner, configuration);
+        return new(t.GetUniqueLoadID(), owner, configuration) { Repair = repairAssets && t is Building b ? new(b.MaxHitPoints, b.def.building.repairable) : null };
     }
     internal static void Prepare(LoadedMapRecord r, Faction source, Faction target)
     {

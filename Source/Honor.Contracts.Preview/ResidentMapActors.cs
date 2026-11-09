@@ -11,7 +11,7 @@ namespace Honor.Contracts.Preview;
 internal static class ResidentMapActors
 {
     // Metadata-read installed assembly whose map faction-change body and reservation/event boundaries were audited.
-    private static readonly Guid AuditedModule = new("20545414-6845-4afb-b0ca-63bce8627a4c");
+    private static readonly Guid[] AuditedModules = [new("20545414-6845-4afb-b0ca-63bce8627a4c"), new("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e")];
     internal static ResidentMapBinding Binding(Pawn p) => new(p.GetUniqueLoadID(), p.Spawned ? p.Map.GetUniqueLoadID() : null,
         p.Spawned ? p.Map.cellIndices.CellToIndex(p.Position) : -1, p.Spawned ? p.Rotation.AsInt : 0);
 
@@ -70,7 +70,7 @@ internal static class ResidentMapActors
     }
     internal static void RequireEmptyReservations(Map source, Guid? auditedModule = null)
     {
-        if (typeof(Pawn).Module.ModuleVersionId != (auditedModule ?? AuditedModule) || source == null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        if ((auditedModule.HasValue ? typeof(Pawn).Module.ModuleVersionId != auditedModule.Value : !AuditedModules.Contains(typeof(Pawn).Module.ModuleVersionId)) || source == null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         foreach (var map in Find.Maps)
             foreach (string field in new[] { "reservationManager", "pawnDestinationReservationManager", "enrouteManager", "physicalInteractionReservationManager", "attackTargetReservationManager" })
             {
@@ -83,7 +83,7 @@ internal static class ResidentMapActors
     }
     internal static void Require(Pawn p)
     {
-        if (typeof(Pawn).Module.ModuleVersionId != AuditedModule) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (!AuditedModules.Contains(typeof(Pawn).Module.ModuleVersionId)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (p?.Spawned != true || p.Map?.Parent is not Settlement city || p.Map.IsPlayerHome || !Find.Maps.Contains(p.Map) ||
             city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count(x => ReferenceEquals(x, p)) != 1 ||
             p.IsPrisoner || p.IsSlave || p.Drafted || p.CurJob != null || p.jobs == null || p.jobs.jobQueue.Count != 0 || p.jobs.startingNewJob ||
@@ -92,6 +92,16 @@ internal static class ResidentMapActors
             p.health?.surgeryBills?.Count != 0 || p.AllComps.Any(c => c is IThingHolder) ||
             p.inventory?.innerContainer.Any(t => t is IThingHolder || t is ThingWithComps c && c.AllComps.Any(x => x is IThingHolder)) == true)
             throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (typeof(Pawn).Module.ModuleVersionId == new Guid("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e"))
+        {
+            // Current StopDead disposes pending asynchronous paths. No path/cancellation authority is inferred from Moving=false.
+            foreach (string name in new[] { "curPath", "curPathRequest" })
+            {
+                var field = AccessTools.Field(p.pather.GetType(), name);
+                if (field == null || field.FieldType.IsValueType || field.FieldType.Assembly != typeof(Pawn).Assembly || field.GetValue(p.pather) != null) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+            }
+            Unpatched(p.pather.GetType(), "DisposeAndClearCurPath"); Unpatched(p.pather.GetType(), "DisposeAndClearCurPathRequest");
+        }
         RequireHolders(p);
         if (p.jobs.GetType().FullName != "Verse.AI.Pawn_JobTracker" || p.pather.GetType().FullName != "Verse.AI.Pawn_PathFollower" || p.mindState.GetType().FullName != "Verse.AI.Pawn_MindState") throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         foreach (object tracker in new object[] { p.jobs, p.pather, p.mindState, p.needs, p.relations })

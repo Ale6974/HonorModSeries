@@ -3,7 +3,25 @@ using System.Text.Json;
 
 namespace Honor.Contracts.Rules;
 
-public sealed record MapAsset(string Id, string Owner, string Configuration);
+public sealed record MapAssetRepair(int Maximum, bool Repairable);
+public sealed record MapAssetRepairMembership(string Owner, int ListCount, bool InSet);
+public sealed record MapAsset(string Id, string Owner, string Configuration)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public MapAssetRepair Repair { get; init; }
+}
+
+public static class MapAssetRepairs
+{
+    // Native repair caches are derived, not a saved priority order. No cache getter that creates a faction list is called.
+    public static void Verify(string owner, int health, MapAssetRepair repair, IEnumerable<MapAssetRepairMembership> entries)
+    {
+        if (string.IsNullOrWhiteSpace(owner) || repair == null || repair.Maximum <= 0 || health <= 0 || health > repair.Maximum || entries == null) throw new ArgumentException("Original repair state required.");
+        var rows = entries.Take(4097).ToArray(); bool wanted = repair.Repairable && health < repair.Maximum;
+        if (rows.Length > 4096 || rows.Any(r => r == null || string.IsNullOrWhiteSpace(r.Owner) || r.ListCount is < 0 or > 1 || r.InSet != (r.ListCount == 1)) ||
+            rows.Select(r => r.Owner).Distinct().Count() != rows.Length || rows.Any(r => r.Owner != owner && (r.InSet || r.ListCount != 0)) ||
+            rows.Where(r => r.Owner == owner).Sum(r => r.ListCount) != (wanted ? 1 : 0)) throw new ArgumentException("Actual repair membership differs from the original health and current positive owner.");
+    }
+}
 public sealed record MapAssetCall(string Id, bool Started = false, bool Returned = false);
 public sealed record MapAssetState(string Town, string Map, string OriginalProof, string Source, string Target, MapAssetCall[] Calls, string Proof);
 

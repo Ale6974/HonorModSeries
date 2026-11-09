@@ -11,8 +11,12 @@ internal static class StorageMapEvidence
 {
     private static readonly System.Reflection.FieldInfo Root = AccessTools.Field(typeof(ThingFilter), "overrideRootDef");
     internal static NeutralMapStorage Capture(Building_Storage shelf, Map map, bool grouped = false)
+        => CaptureCore(shelf, map, grouped, false);
+    internal static NeutralMapStorage CaptureOwned(Building_Storage shelf, Map map, bool grouped = false)
+        => CaptureCore(shelf, map, grouped, true);
+    private static NeutralMapStorage CaptureCore(Building_Storage shelf, Map map, bool grouped, bool owned)
     {
-        if (shelf?.GetType() != typeof(Building_Storage) || !shelf.Spawned || shelf.Map != map || shelf.Faction != null || (!grouped && shelf.storageGroup != null) ||
+        if (shelf?.GetType() != typeof(Building_Storage) || !shelf.Spawned || shelf.Map != map || (owned ? shelf.Faction == null || shelf.Faction.IsPlayer : shelf.Faction != null) || (!grouped && shelf.storageGroup != null) ||
             shelf.settings?.GetType() != typeof(StorageSettings) || shelf.settings.owner != shelf || shelf.settings.filter?.GetType() != typeof(ThingFilter) ||
             shelf.slotGroup?.GetType() != typeof(SlotGroup) || shelf.slotGroup.parent != shelf)
             throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
