@@ -1,5 +1,19 @@
 # 요구사항 상태 — 공개 0.2.1 / 호환성 0.2.2 / Contracts 개발판
 
+## 0.3.98 — M2 부분 구현: 현재 외부 종주 권리를 유지하는 원 인계 복구
+
+2026-11-12. 새 ForeignRightsV1은 원 계약이 종료된 뒤 새 NPC 종주 계약이 유효한 경우를 별도로 처리한다. 원 외부 계약 ID·liege/subject·서명/조건/권리 전체 hash와 현재 실제 소속을 원 CustodyAgreement의 Book/payment/physical/census/map/호출 증거에 묶는다. 별도 행동명 ForeignMasterCustodyCompletion/v1에 현재 source/target·새 종주·전체 연결 제삼자와 상위 계약 당사자의 대표 결정 또는 해당 연합/귀족 결정을 검토한다. 가장 가까운 종주의 허가만으로 상위 종주의 권리를 우회하지 않는다. 현 상위 계층 전부가 같은 원 목적 세력에 있어야 하며 전체 4단계 한도와 기존 topology/현재 소유자 검증을 유지한다.
+
+실제 CurrentCustodyWitness→검토/확인→기존 Recover→각 주민/자산 호출 전→도시 호출 전후에 새 권리 범위를 다시 검토한다. 이 별도 합의는 플레이어가 현재 그 세력의 봉신이라는 권한에 의존하지 않고, 현재 외부 종주와 모든 당사자가 승인한 같은 원 target만 인계한다. 플레이어 native 소속·식민지 통제는 변경하지 않으며 새 종주 계약·하위 계약을 해약/교체/재서명하지 않는다. 이미 정상 반환한 원 호출 prefix와 기존 원 임상/의료/수술/영역/재고·채무·납부 이력은 그대로 유지한다. 도중 계약/대표/공납이 변하면 옛 승인을 재사용하지 않고 새 전체 검토가 필요하다.
+
+저장: optional null-omitted ForeignRightsV1을 기존 bounded128/32M 승인 archive에 포함한다. 외부 권리 없는0.3.97 문서의 직렬화 bytes/옛 Scope/hash는 그대로이며 null/옛 승인에 외부 종주 권한을 소급하지 않는다. 새 전체 권리와 별도 Scope는 archive proof에 포함하고 원 execution reference/latest marker·Scribe/PostLoad/Finalize·terminal 원 transfer와 연결한다. 반환이 불명확한 호출은 소유권만 보고 재실행/완료하지 않는다. 기존 물리 보존·평화·마지막 도시·provider/quest/배상/인원·자산 가드를 제거하지 않는다. 현재 DLL SHA25682387F78262461E53BB06A67C3945912B876D1FDB07235122BBB6E59D073F125가 직전 검토본과 같음을 확인했다. 새 native API는 추가하지 않으며 검토5000/5005 범위와 미검토1.6 몸체 보류를 유지한다.
+
+새 검사 흐름은 실제 원 이전 준비/일부 자산 정상 반환→상위 계약 해약→새 NPC 종주 서명→독립 현재 승인→저장/중단 복원→같은 원 이전 완료/terminal archive 복원이다. 유효 하위 계약·새 종주 계약·기존 미납 및 납부 실적을 그대로 검증한다. 상위 4단계 권리, 누락된 종주/상위 당사자, 다른 목적 세력, 승인 거부/철회, 무관한 계약 hash, 현재 대표/연합 scope/귀족 대표 변경, null 옛 권한 확대 및 legacy bytes 회귀를 검사한다.
+
+최종 검증: .local/m2-098-build16.log 및 .local/m2-098-final17.log 양 타깃 전체 빌드·규칙·XML/양식 검사 통과. Honor20,093/Contracts5,614(합25,707),영한584키/인자 일치,양 타깃 컴파일 경고·오류0. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.98.zip SHA256B1680EA11129B7141274BA3E0AAA1CF891EA3866C95FBE5727B7D2830415AA8E. 기존 로컬 Preview를 .local/contracts-preview-6e35c7431beb4a70a252555a8cd10828에 백업하고32파일 해시 일치·활성화/언어 불변으로 설치했다(.local/m2-098-install.log).
+
+범위: 새 종주의 실제 소속과 SAME 원 목적지가 일치하는 인계의 실제 실행·저장·중단 복구를 연결했다. 새 종주가 다른 목적지를 요구하는 경우의 별도 계약 재편/해약과 물리 목적지 변경은 원 임상/호출 journal을 바꿔 처리하지 않으며 보류한다. 소실·재생성된 원 지도/주민/물품, 미확인 정상 반환, 달라진 임상/재고, 개인/병력 권리·일반 진행 작업/예약·커스텀 holder의 전체 복합 복원도 남아 있다. M1 10/10,M2 전체 미완료0/18,전체10/100;1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6. 작업군 전체 점수와 실제 부분 실행 구현을 구분한다. Preview Steam 게시·외부 예약 없음.
+
 ## 0.3.97 — M2 부분 구현: 종료 계약·제삼자 현재 승인과 원 custody 중단 복구
 
 2026-11-11. 새 CustodyAgreements는 원 Prepared/CityCallJournalV1 이전의 동일 ID·계약·source/target·원 임상/census·지도/재산 scope에 현재 계약 Book·공납 장부·전체 연결 당사자와 현재 대표의 별도 행동별 승인을 묶는다. 원 계약이 Released/TerritoryLost/Replaced/LawfullyEnded인 경우에도 기존 계약을 되살리거나 새 봉건 계약을 만들지 않는다. 옛 상위 당사자, 현재 활성 하위 계약과 연결 당사자 전체, 원 source와 target의 현 대표를 확인한다. 일반 대표 결정 및 연합의 해당 범위 투표/귀족의 현 작위 결정을 별도로 재검토한다. 새 외부 종주의 권한을 덮어쓰지 않으며 경쟁 제안/미결제 배송/불명확 호출/바뀐 물리 상태는 보류한다.

@@ -43,3 +43,16 @@ Deferred transfers keep native work and reservations running and natively saved.
 The town history and full transfer window offer a separate current approval review. Review the actual parties, current representatives and original transfer scope, then confirm to finish the same original residents, assets and town through the existing executor. An ended charter stays ended; subordinate contracts, debt and payment evidence remain. Collective/royal parties require a fresh decision scoped to this action.
 
 Recover through the same original history after interruption. Positive normal returns are not replayed; uncertain calls or changed original objects remain blocked. Changed contracts, payments or representatives require a fresh complete approval. This does not recreate lost maps, people or items, reset clinical/stock evidence, or complete every compound loss/recapture case.
+
+
+## 현재 외부 종주가 있는 원 인계 — 0.3.98
+
+‘원 인계를 마치기 위한 현재 승인 검토’는 새 종주의 현재 체결 계약도 검토한다. 확인 창에서 현재 외부 종주와 유지할 계약을 추가로 보여준다. 새 종주·그 상위 당사자·연결된 제삼자의 실제 현재 승인이 필요하며 상위 계층의 소속과 원 인계 목적 세력이 일치해야 한다. 계약·하위 권리·미납·납부 이력은 유지하고 같은 원 이전만 마친다. 플레이어의 소속을 새 종주로 변경하거나 식민지 통제를 넘기지 않는다.
+
+계약·대표·공납이 바뀌면 현재 승인을 다시 검토한다. 다른 목적지 요구는 별도 계약 재편/이전이 필요하므로 보류한다. 원 지도·주민·물품이 소실됐거나 호출 반환이 불명확한 경우도 이 승인으로 재생성·재실행하지 않는다.
+
+## Current foreign master — English
+
+The current custody review now also shows a new foreign master's signed contract. The master, all current higher parties and connected third parties must approve this exact action; the higher chain's actual realm must match the SAME original destination. Existing contracts, lower rights, arrears and paid evidence remain. The player keeps native faction and colony control.
+
+Changed contracts, representatives or payments require a fresh review. A different destination needs a separate contractual and physical transition and remains deferred. Missing original maps, people or goods and uncertain native returns are not recreated or replayed by this approval.

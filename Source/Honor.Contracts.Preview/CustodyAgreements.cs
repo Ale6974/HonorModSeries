@@ -83,6 +83,7 @@ public sealed partial class TerritoryAdministrationLedger
         var realms = realmIds.Select(id => { var matches = Find.FactionManager.AllFactionsListForReading.Where(f => f.GetUniqueLoadID() == id).ToArray(); if (matches.Length != 1) throw new ArgumentException("Missing current party realm."); return matches[0]; }).ToArray();
         var evidence = realms.Select(NpcDecisionAuthority.Observe).ToArray();
         var w = new CustodyAgreement(id, transfer, Charters.Book.Export(), payments.Ledger.Export(), Ledger.Export(), CustodyFingerprint(t, r), actualParties.ToArray(), observations.ToArray(), evidence, tick);
+        w = w with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(Charters.Book, t, w.Parties) };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };
         _ = CustodyAgreements.Validate(w); return w;
     }
@@ -144,7 +145,14 @@ public sealed partial class TerritoryAdministrationLedger
             var reviewed = ReviewCustodyAgreement(transfer);
             string parties = string.Join(", ", reviewed.Witness.Parties.Select(p => Charters.Binding(p.Party).Settlement?.Label ?? (p.Player ? Faction.OfPlayer.Name : Charters.Binding(p.Party).OriginalFaction?.Name) ?? p.Party));
             string rulers = string.Join(", ", reviewed.Witness.Realms.Select(r => { var f = Find.FactionManager.AllFactionsListForReading.Single(f => f.GetUniqueLoadID() == r.Realm); return f.Name + "/" + f.leader.LabelShortCap; }));
-            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("RE_CustodyConfirm".Translate(reviewed.Label, parties, rulers), () => CommitCustodyAgreement(reviewed)));
+            string text = "RE_CustodyConfirm".Translate(reviewed.Label, parties, rulers);
+            if (reviewed.Witness.ForeignRightsV1 != null)
+            {
+                var right = JsonSerializer.Deserialize<CustodyForeignRight>(reviewed.Witness.ForeignRightsV1);
+                var liege = Charters.Binding(right.Liege);
+                text += "\n\n" + "RE_CustodyForeign".Translate(liege.Settlement?.Label ?? liege.OriginalFaction?.Name ?? right.Liege, right.Charter);
+            }
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(text, () => CommitCustodyAgreement(reviewed)));
         }
         catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Custody completion review unavailable; original state retained: " + e.GetType().Name); Messages.Message("RE_CustodyBlocked".Translate(), MessageTypeDefOf.RejectInput); }
     }

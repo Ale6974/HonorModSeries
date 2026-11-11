@@ -37,6 +37,11 @@ internal static class CustodyAgreementTests
             [observations[2], observations[0], observations[1]], [Realm("source"), Realm("target"), Realm("third")], now + 3);
         Check(CustodyAgreements.PartiesFor(book, original).SequenceEqual(["child", "p", "town"]));
         Check(CustodyAgreements.Validate(witness) == original);
+        // Previous .97 documents/proofs remain byte-identical with no new permission field.
+        string legacy = JsonSerializer.Serialize(new { witness.Id, witness.Transfer, witness.Book, witness.Payments, witness.Physical, witness.Custody, witness.Parties, witness.Observations, witness.Realms, witness.Tick, witness.Regimes });
+        Check(JsonSerializer.Serialize(witness) == legacy && !legacy.Contains("ForeignRightsV1"));
+        string legacyScope = JsonSerializer.Serialize(new { Action = "CurrentCustodyCompletion/v1", witness.Id, witness.Transfer, witness.Book, witness.Payments, witness.Physical, witness.Custody, witness.Parties, witness.Observations, witness.Realms, witness.Tick });
+        Check(CustodyAgreements.Scope(witness) == Hash(legacyScope));
         var agreements = new CustodyAgreements(); agreements.Add(witness);
         string archive = agreements.Export(); agreements = CustodyAgreements.Restore(archive);
         agreements.RequireCurrent("consent", original, book.Export(), payments.Export(), witness.Custody);
@@ -68,6 +73,67 @@ internal static class CustodyAgreementTests
         string unknown = MapAssetTransfers.Begin(calls, "asset-b", "source");
         Reject(() => MapAssetTransfers.ExpectedOwner(unknown, "asset-b"));
         calls = MapAssetTransfers.Returned(unknown, "asset-b", "target"); MapAssetTransfers.Pair(calls, map, "source", "target", true);
+        // A new NPC master signs its own contract after the former root ended.
+        // Its current realm must be the immutable old physical destination; all lower rights remain intact.
+        var foreignBook = CharterBook.Restore(endedBook);
+        foreignBook.Register(new("master", "target", false), now + 3);
+        var foreignObs = observations.Append(new TerritoryObservation("master", "target", true, false, true)).ToArray();
+        foreignBook.OfferNpc("foreign-root", new("master", "town", 45, PoliticalWorld.Day, 0, TributeTransport.SubjectDelivery, 0), new("target-ruler", "source-ruler"), now + 4, PoliticalWorld.Day, foreignObs);
+        foreignBook.SignNpc("foreign-root", "master", "target-ruler", now + 5, foreignObs);
+        foreignBook.SignNpc("foreign-root", "town", "source-ruler", now + 6, foreignObs);
+        string originalForeignBook = foreignBook.Export();
+        var foreignWitness = witness with { Id = "foreign-current", Book = originalForeignBook, Tick = now + 7,
+            Parties = [new("child", "third", false), new("master", "target", false), new("p", "player", true), new("town", "source", false)],
+            Observations = [observations[2], foreignObs.Last(), observations[0], observations[1]] };
+        Reject(() => CustodyAgreements.Validate(foreignWitness)); // No implicit expansion of old/null permission.
+        foreignWitness = foreignWitness with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(foreignBook, original, foreignWitness.Parties) };
+        Check(CustodyAgreements.Validate(foreignWitness) == original);
+        Check(CustodyAgreements.Scope(foreignWitness) != CustodyAgreements.Scope(foreignWitness with { ForeignRightsV1 = null }));
+        Reject(() => CustodyAgreements.Validate(foreignWitness with { ForeignRightsV1 = foreignWitness.ForeignRightsV1 + " " }));
+        Reject(() => CustodyAgreements.Validate(foreignWitness with { Realms = [Realm("source"), Realm("target") with { Willing = false }, Realm("third")] }));
+        Reject(() => CustodyAgreements.Validate(foreignWitness with { Parties = foreignWitness.Parties.Where(p => p.Party != "master").ToArray() }));
+        Reject(() => CustodyAgreements.CaptureForeignRights(foreignBook, original with { TargetOwner = "other" }, foreignWitness.Parties));
+        var foreignUnion = foreignWitness with { Id = "foreign-union", Realms = [Realm("source"), Realm("target") with { Regime = NpcDecisionRegime.Union }, Realm("third")] };
+        foreignUnion = foreignUnion with { Regimes = [new("target", "target-ruler", NpcDecisionRegime.Union, CustodyAgreements.Scope(foreignUnion), foreignUnion.Tick, 1, 75, [new("master-seat", true)])] };
+        Check(CustodyAgreements.Validate(foreignUnion) == original);
+        Reject(() => CustodyAgreements.Validate(foreignUnion with { Regimes = [foreignUnion.Regimes[0] with { Scope = CustodyAgreements.Scope(foreignUnion with { ForeignRightsV1 = null }) }] }));
+        var foreignRoyal = foreignWitness with { Id = "foreign-royal", Realms = [Realm("source"), Realm("target") with { Regime = NpcDecisionRegime.Royal }, Realm("third")] };
+        foreignRoyal = foreignRoyal with { Regimes = [new("target", "target-ruler", NpcDecisionRegime.Royal, CustodyAgreements.Scope(foreignRoyal), foreignRoyal.Tick, 1, 75, [], "Count", 2)] };
+        Check(CustodyAgreements.Validate(foreignRoyal) == original);
+        Reject(() => CustodyAgreements.Validate(foreignRoyal with { Regimes = [foreignRoyal.Regimes[0] with { Representative = "dead-ruler" }] }));
+        var wrongForeign = foreignWitness with { ForeignRightsV1 = JsonSerializer.Serialize(JsonSerializer.Deserialize<CustodyForeignRight>(foreignWitness.ForeignRightsV1) with { OriginalContract = Hash("unrelated-contract") }) };
+        Reject(() => CustodyAgreements.Validate(wrongForeign));
+        var foreignArchive = new CustodyAgreements(); foreignArchive.Add(foreignWitness);
+        string savedForeign = foreignArchive.Export(); foreignArchive = CustodyAgreements.Restore(savedForeign);
+        foreignArchive.RequireCurrent("foreign-current", original, originalForeignBook, paidBefore, witness.Custody);
+        var interruptedPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        foreignArchive.ValidateHistory(foreignBook, interruptedPhysical, payments);
+        interruptedPhysical.Confirm("move", actual with { Owner = "target" }, now + 8);
+        foreignArchive.ValidateHistory(foreignBook, TerritoryTransferLedger.Restore(interruptedPhysical.Export()), TributeLedger.Restore(paidBefore));
+        Check(foreignBook.Export() == originalForeignBook && foreignBook.Charter("root").Phase == RecordedCharterPhase.Released &&
+            foreignBook.Charter("foreign-root").Phase == RecordedCharterPhase.Active && foreignBook.Charter("lower").Phase == RecordedCharterPhase.Active);
+        Check(payments.Export() == paidBefore && payments.Bill("debt", 2).Principal == 100 && payments.IsPaid("debt", 1));
+        Reject(() => foreignArchive.RequireCurrent("foreign-current", interruptedPhysical.Transfer("move"), originalForeignBook, paidBefore, witness.Custody));
+        // A fourth-level current higher party keeps its own rights and realm consent.
+        var higherBook = CharterBook.Restore(originalForeignBook);
+        higherBook.Register(new("overlord", "target", false), now + 8);
+        var higherObs = foreignObs.Append(new TerritoryObservation("overlord", "target", true, false, true)).ToArray();
+        higherBook.OfferNpc("higher-root", new("overlord", "master", 15, PoliticalWorld.Day, 0, TributeTransport.SubjectDelivery, 0), new("target-ruler", "target-ruler"), now + 9, PoliticalWorld.Day, higherObs);
+        higherBook.SignNpc("higher-root", "overlord", "target-ruler", now + 10, higherObs);
+        higherBook.SignNpc("higher-root", "master", "target-ruler", now + 11, higherObs);
+        var higherWitness = foreignWitness with { Id = "higher-consent", Book = higherBook.Export(), Tick = now + 12,
+            Parties = [new("child", "third", false), new("master", "target", false), new("overlord", "target", false), new("p", "player", true), new("town", "source", false)],
+            Observations = [observations[2], foreignObs.Last(), higherObs.Last(), observations[0], observations[1]] };
+        higherWitness = higherWitness with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(higherBook, original, higherWitness.Parties) };
+        Check(CustodyAgreements.Validate(higherWitness) == original);
+        Reject(() => CustodyAgreements.Validate(higherWitness with { Parties = higherWitness.Parties.Where(p => p.Party != "overlord").ToArray() }));
+        Reject(() => CustodyAgreements.CaptureForeignRights(higherBook, original, higherWitness.Parties.Select(p => p.Party == "overlord" ? p with { Realm = "third" } : p).ToArray()));
+        // Revocation/change needs a new complete approval; historical normal-return facts stay untouched.
+        foreignBook.ConsentNpcRelease("foreign-root", "master", now + 9, foreignObs);
+        foreignBook.ConsentNpcRelease("foreign-root", "town", now + 10, foreignObs);
+        Reject(() => foreignArchive.RequireCurrent("foreign-current", original, foreignBook.Export(), paidBefore, witness.Custody));
+        foreignArchive.ValidateHistory(foreignBook, interruptedPhysical, payments);
+        Check(CustodyAgreements.Restore(savedForeign).Export() == savedForeign);
         physical.Confirm("move", actual with { Owner = "target" }, now + 4);
         agreements = CustodyAgreements.Restore(archive); agreements.ValidateHistory(book, TerritoryTransferLedger.Restore(physical.Export()), TributeLedger.Restore(payments.Export()));
         Check(book.Export() == endedBook && payments.Export() == paidBefore && physical.Transfer("move").Charter == "root");

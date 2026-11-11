@@ -558,6 +558,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         var charter = Charters.Book.Charter(item.Charter);
         bool currentCustody = reference.CustodyAgreementV1 != null;
         if (currentCustody) RequireCurrentCustody(reference);
+        bool foreignCustody = currentCustody && custodyAgreements.Record(reference.CustodyAgreementV1).Witness.ForeignRightsV1 != null;
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (payments.RestoreFailed || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) ||
             Current.Game.GetComponent<PlayerPoliticsLedger>().RestoreFailed || Current.Game.GetComponent<UnionPoliticsLedger>().RestoreFailed ||
@@ -570,7 +571,9 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (item.Purpose == TerritoryTransferPurpose.ActiveCharter)
         {
             if (!currentCustody && (charter.Phase != RecordedCharterPhase.Active || !Charters.Book.PlayerManaged(charter))) throw new ArgumentException("Original active consent changed.");
-            destination = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryRecoveryAuthority(observations);
+            // Separate current foreign consent finishes only the immutable original destination.
+            // It grants no player membership, replacement charter or new destination authority.
+            destination = foreignCustody ? reference.Target : Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryRecoveryAuthority(observations);
         }
         else
         {

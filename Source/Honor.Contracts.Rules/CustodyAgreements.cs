@@ -1,9 +1,14 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 namespace Honor.Contracts.Rules;
 public sealed record CustodyParty(string Party, string Realm, bool Player);
+public sealed record CustodyForeignRight(string Charter, string Liege, string Subject, string Realm, string OriginalContract);
 public sealed record CustodyAgreement(string Id, string Transfer, string Book, string Payments, string Physical, string Custody,
-    CustodyParty[] Parties, TerritoryObservation[] Observations, NpcRealmDecisionEvidence[] Realms, long Tick, ScopedNpcContractDecision[] Regimes = null);
+    CustodyParty[] Parties, TerritoryObservation[] Observations, NpcRealmDecisionEvidence[] Realms, long Tick, ScopedNpcContractDecision[] Regimes = null)
+{
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string ForeignRightsV1 { get; init; }
+}
 public sealed record CustodyAgreementReceipt(CustodyAgreement Witness, string Proof);
 public sealed record CustodyAgreementSave(int Version, CustodyAgreementReceipt[] Records);
 /// <summary>Current standalone consent to finish immutable old custody. Never revives an ended charter or rewrites original calls/clinical/debt.</summary>
@@ -13,7 +18,33 @@ public sealed class CustodyAgreements
     public IReadOnlyList<CustodyAgreementReceipt> Records => records.Select(r => JsonSerializer.Deserialize<CustodyAgreementReceipt>(JsonSerializer.Serialize(r))).ToArray();
     private static bool Key(string s) => !string.IsNullOrWhiteSpace(s) && s.Length <= 120 && !s.Any(char.IsControl);
     private static string Hash(object value) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(value))));
-    public static string Scope(CustodyAgreement w) => Hash(new { Action = "CurrentCustodyCompletion/v1", w.Id, w.Transfer, w.Book, w.Payments, w.Physical, w.Custody, w.Parties, w.Observations, w.Realms, w.Tick });
+    private static string LegacyScope(CustodyAgreement w) => Hash(new { Action = "CurrentCustodyCompletion/v1", w.Id, w.Transfer, w.Book, w.Payments, w.Physical, w.Custody, w.Parties, w.Observations, w.Realms, w.Tick });
+    public static string Scope(CustodyAgreement w) => w.ForeignRightsV1 == null ? LegacyScope(w) : Hash(new { Action = "ForeignMasterCustodyCompletion/v1", Original = LegacyScope(w), w.ForeignRightsV1 });
+    /// <summary>Descriptor only: current scoped representative decisions must independently approve it.</summary>
+    public static string CaptureForeignRights(CharterBook book, TerritoryTransfer t, CustodyParty[] parties)
+    {
+        var foreign = book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active && c.Terms.Subject == t.Territory && !book.PlayerManaged(c)).ToArray();
+        if (foreign.Length == 0) return null;
+        if (foreign.Length != 1 || book.Charter(t.Charter).Phase == RecordedCharterPhase.Active || foreign[0].Id == t.Charter)
+            throw new ArgumentException("A distinct current foreign contract and ended original root are required.");
+        var c = foreign[0];
+        var liege = parties.Single(p => p.Party == c.Terms.Liege);
+        if (liege.Player || liege.Realm != t.TargetOwner || c.NpcAuthority == null || !c.PlayerSignedTick.HasValue || !c.NpcSignedTick.HasValue)
+            throw new ArgumentException("Current foreign contract must retain its own signed rights in the SAME original destination realm.");
+        // Shared realm follows the entire current higher chain, not just the nearest signatory.
+        // Consent from one intermediary cannot deliver a town against its own higher party's realm.
+        string higher = c.Terms.Liege;
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        while (seen.Add(higher))
+        {
+            var party = parties.Single(p => p.Party == higher);
+            if (party.Player || party.Realm != t.TargetOwner) throw new ArgumentException("Every current foreign higher party must share the original destination realm.");
+            var parent = book.Charters.SingleOrDefault(p => p.Phase == RecordedCharterPhase.Active && p.Terms.Subject == higher);
+            if (parent == null) break;
+            higher = parent.Terms.Liege;
+        }
+        return JsonSerializer.Serialize(new CustodyForeignRight(c.Id, c.Terms.Liege, c.Terms.Subject, liege.Realm, Hash(c)));
+    }
     public static string[] PartiesFor(CharterBook book, TerritoryTransfer t)
     {
         var all = new HashSet<string>([t.Territory, book.Charter(t.Charter).Terms.Liege], StringComparer.Ordinal); bool changed;
@@ -24,7 +55,7 @@ public sealed class CustodyAgreements
     public static TerritoryTransfer Validate(CustodyAgreement w)
     {
         if (w == null || !Key(w.Id) || !Key(w.Transfer) || w.Book?.Length > 7000000 || w.Payments?.Length > 8000000 || w.Physical?.Length > 4000000 ||
-            !CityStockProof.Valid(w.Custody) || w.Parties == null || w.Observations == null || w.Realms == null || w.Tick is < 0 or > int.MaxValue) throw new ArgumentException("Bounded original custody and current consent required.");
+            !CityStockProof.Valid(w.Custody) || w.ForeignRightsV1?.Length > 4096 || w.Parties == null || w.Observations == null || w.Realms == null || w.Tick is < 0 or > int.MaxValue) throw new ArgumentException("Bounded original custody and current consent required.");
         var book = CharterBook.Restore(w.Book); var physical = TerritoryTransferLedger.Restore(w.Physical); var payments = TributeLedger.Restore(w.Payments);
         var t = physical.Transfer(w.Transfer); var old = book.Charter(t.Charter);
         if (t.Phase != TerritoryTransferPhase.Prepared || !t.CityCallJournalV1 || t.Purpose != TerritoryTransferPurpose.ActiveCharter || t.ReleasedRoot != null ||
@@ -43,8 +74,10 @@ public sealed class CustodyAgreements
             else if (party.Player ? party.Realm != book.Entity(party.Party).NativeOwner : !physical.VerifiedOwner(party.Party, book.Entity(party.Party).NativeOwner, party.Realm))
                 throw new ArgumentException("Unverified third-party actual authority.");
         }
+        string currentForeign = CaptureForeignRights(book, t, w.Parties);
+        if (currentForeign != w.ForeignRightsV1) throw new ArgumentException("Explicit exact current foreign rights are required; legacy consent grants no foreign master authority.");
         foreach (var active in book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active && scope.Contains(c.Terms.Subject)))
-        { if (active.Terms.Subject == t.Territory && !book.PlayerManaged(active)) throw new ArgumentException("A foreign current master cannot be overridden by the former delivery."); book.ValidateCurrent(active.Id, w.Observations); }
+        { book.ValidateCurrent(active.Id, w.Observations); }
         if (book.Charters.Any(c => book.Phase(c, w.Tick) == RecordedCharterPhase.Offered && (scope.Contains(c.Terms.Subject) || scope.Contains(c.Terms.Liege)))) throw new ArgumentException("Competing current party offers.");
         string[] realms = w.Parties.Where(p => !p.Player).Select(p => p.Realm).Concat([t.FromOwner, t.TargetOwner]).Distinct().OrderBy(r => r, StringComparer.Ordinal).ToArray();
         if (!w.Realms.Select(r => r?.Realm).SequenceEqual(realms)) throw new ArgumentException("Each current source, target and third-party representative must consent.");
