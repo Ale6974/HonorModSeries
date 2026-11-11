@@ -201,6 +201,7 @@ assertions += OwnedContainerTests.Run();
 assertions += OwnedHolderForestTests.Run();
 assertions += ResidentEnrollmentTests.Run();
 assertions += DeferredTownTransferTests.Run();
+assertions += CustodyAgreementTests.Run();
 assertions += CivicAssetTests.Run();
 assertions += ResidentMobilityTests.Run();
 assertions += ResidentAreaTests.Run();

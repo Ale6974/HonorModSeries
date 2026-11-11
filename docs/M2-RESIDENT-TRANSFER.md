@@ -30,3 +30,16 @@
 The town window offers a separate explicit enrollment review for eligible unlisted civilians. It records the current ordinary representative, original roster and people, clinical/care evidence, each append start/normal return and final verification. It appends the same original Pawn references; it does not change faction, health, equipment or work. A fresh complete town migration review is still required afterward.
 
 Deferred transfers keep native work and reservations running and natively saved. At an observed safe idle boundary they perform fresh authority, registration and full migration reviews before calling the existing executor. A busy town may keep waiting indefinitely; no work is forcibly cancelled. Started execution is never automatically retried. Recover original journals and link only their independent positive applied migration receipt. Changed scope/loss stops waiting with evidence retained. Compound loss/recapture and generic in-flight job continuation remain unfinished.
+
+
+## 종료 계약의 원 이전 완료 승인 — 0.3.97
+
+도시 이력 또는 전체 이전 창에서 ‘현재 승인’ 검토를 선택한다. 현재 당사자·세력 대표와 원 이전 범위를 검토하고 확인하면 같은 원 주민·재산·도시의 남은 이전을 기존 실행 경로로 진행한다. 해약된 원 계약을 다시 활성화하지 않으며 기존 하위 계약·채무·공납 실적은 유지한다. 연합/귀족은 이번 범위의 현재 결정이 필요하다.
+
+중단 후에는 같은 원 이력에서 복구한다. 이미 정상 반환한 호출은 반복하지 않고, 반환 여부가 불분명하거나 원 대상이 바뀌면 보류한다. 계약·공납·대표가 바뀌었다면 현재 승인 전체를 다시 검토한다. 도시/지도/주민/물체 소실이나 재생성, 원 임상/재고 변화는 이 승인으로 초기화·재생성하지 않는다.
+
+## Current custody completion — English
+
+The town history and full transfer window offer a separate current approval review. Review the actual parties, current representatives and original transfer scope, then confirm to finish the same original residents, assets and town through the existing executor. An ended charter stays ended; subordinate contracts, debt and payment evidence remain. Collective/royal parties require a fresh decision scoped to this action.
+
+Recover through the same original history after interruption. Positive normal returns are not replayed; uncertain calls or changed original objects remain blocked. Changed contracts, payments or representatives require a fresh complete approval. This does not recreate lost maps, people or items, reset clinical/stock evidence, or complete every compound loss/recapture case.

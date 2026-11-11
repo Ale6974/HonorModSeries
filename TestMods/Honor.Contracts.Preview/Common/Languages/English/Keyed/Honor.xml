@@ -578,4 +578,8 @@ Review Honor contracts for settlement. This notice does not establish intent, di
 <RE_Deferred_Applied>Completed: independent applied migration receipt retained.</RE_Deferred_Applied>
 <RE_Deferred_Stopped>Stopped: original scope or authority changed; original evidence retained.</RE_Deferred_Stopped>
 <RE_Deferred_Cancelled>Waiting intent cancelled before execution; town untouched.</RE_Deferred_Cancelled>
+<RE_CustodyReview>Review current consent to finish the original handover</RE_CustodyReview>
+<RE_CustodyConfirm>Finish the original interrupted handover of {0} under new current approval? Affected parties: {1}. Current representatives: {2}. Ended contracts, original debts, signatures and third-party terms remain unchanged. Only the original remaining handover may proceed. Original people, goods and call evidence must still match; unknown calls are never replayed. This creates no new feudal contract, army or war authority.</RE_CustodyConfirm>
+<RE_CustodyApproved>Current custody agreement recorded. Continuing only the original verified remaining handover.</RE_CustodyApproved>
+<RE_CustodyBlocked>Current custody completion is deferred: original physical evidence, representatives, third-party rights or current authority changed. Original journals and ended contracts remain intact.</RE_CustodyBlocked>
 </LanguageData>

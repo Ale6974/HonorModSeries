@@ -342,7 +342,15 @@ internal static class ResidentExecution
             }
         }
     }
-    internal static void Apply(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
+    internal static void ReviewCustody(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof)
+    {
+        ValidateReferences(record, city, proof); ValidateCareJournal(record, source, target);
+        if (record.Census == null || record.AuthorityJournal == null || !record.CareJournalV1) throw new ArgumentException("Original independent resident evidence required.");
+        ValidateCensus(record, ResidentTransferCensus.Restore(record.Census).Proof, "territory/" + city.GetUniqueLoadID(), source.GetUniqueLoadID(), target.GetUniqueLoadID());
+        ResidentTransferCensus.RequireRecoverable(record.AuthorityJournal, record.CareJournal);
+        record.Set().Review(ReadAll(record), source.GetUniqueLoadID(), target.GetUniqueLoadID(), record.Started);
+    }
+    internal static void Apply(ResidentExecutionRecord record, Settlement city, Faction source, Faction target, string proof, Action currentAuthority = null)
     {
         var executionGame = Current.Game;
         if (executionGame == null || Current.ProgramState != ProgramState.Playing)
@@ -365,6 +373,7 @@ internal static class ResidentExecution
         {
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
                 throw new ArgumentException("Current game changed during resident execution; original intent retained.");
+            currentAuthority?.Invoke();
             var p = record.Pawns[i];
             var surgery = record.Profile >= 2 ? record.Surgery[i] : null;
             var prisoner = record.Prisoners.SingleOrDefault(r => r.Pawn == p);

@@ -23,6 +23,7 @@ internal static class NativeNpcContractAuthority
         => Build(TownSuccessionMandates.Scope(w), w.Plan.Tick, [realm])?.Single();
     internal static ScopedNpcContractDecision[] ReviewSuccessionParties(TownSuccessionMandate w, IEnumerable<Faction> realms)
         => Build(TownSuccessionMandates.Scope(w), w.Plan.Tick, realms);
+    internal static ScopedNpcContractDecision[] ReviewCustody(string scope, long tick, IEnumerable<Faction> realms) => Build(scope, tick, realms);
     private static ScopedNpcContractDecision[] Build(string scope, long tick, IEnumerable<Faction> actualRealms)
     {
         var decisions = new List<ScopedNpcContractDecision>();

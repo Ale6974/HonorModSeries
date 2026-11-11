@@ -1,5 +1,19 @@
 # 요구사항 상태 — 공개 0.2.1 / 호환성 0.2.2 / Contracts 개발판
 
+## 0.3.97 — M2 부분 구현: 종료 계약·제삼자 현재 승인과 원 custody 중단 복구
+
+2026-11-11. 새 CustodyAgreements는 원 Prepared/CityCallJournalV1 이전의 동일 ID·계약·source/target·원 임상/census·지도/재산 scope에 현재 계약 Book·공납 장부·전체 연결 당사자와 현재 대표의 별도 행동별 승인을 묶는다. 원 계약이 Released/TerritoryLost/Replaced/LawfullyEnded인 경우에도 기존 계약을 되살리거나 새 봉건 계약을 만들지 않는다. 옛 상위 당사자, 현재 활성 하위 계약과 연결 당사자 전체, 원 source와 target의 현 대표를 확인한다. 일반 대표 결정 및 연합의 해당 범위 투표/귀족의 현 작위 결정을 별도로 재검토한다. 새 외부 종주의 권한을 덮어쓰지 않으며 경쟁 제안/미결제 배송/불명확 호출/바뀐 물리 상태는 보류한다.
+
+실제 도시·전체 이전 창의 새 현재 승인 검토/확인은 기존 Recover에 연결된다. 새 승인 경로는 원 source에서 아직 호출하지 않은 항목도 forward-only로 기존 ResidentExecution.Apply/MapAssetRecords.Apply/Settlement.SetFaction에 연결한다. 각 주민·자산 호출 전과 도시 호출 전후에 현재 Book/공납/대표·행동별 결정 및 원 참조를 재검토한다. 기존 원 의료/영역/수술·권한 호출/자산 호출의 독립 시작/정상 반환과 원 물리 ledger는 덮어쓰지 않는다. 원 positive prefix만 계속하며 unknown started call은 현재 target 소유여도 다시 호출하거나 완료하지 않는다. 승인은 원 객체·의료·재고를 복원하는 새 허가가 아니다.
+
+새 bounded128/32M 승인 archive와 실행 reference의 optional marker를 Scribe하고 PostLoad/Finalize에 원 transfer·fingerprint·승인 hash·최근 marker·시계 및 계약 서명/조건·기존 채무/납부 실적을 대조한다. malformed raw를 유지한다. 원 physical Prepared/Applied 이력과 terminal 참조 해제 뒤에도 원 임상/지도 snapshot 연결을 보존한다. 현재 Book/공납 또는 대표가 바뀌면 옛 승인을 재사용하지 않고 전체 새 검토가 필요하다. 승인 기록은 옛 계약의 부활·채무 삭제·제삼자 소속/군사/재산 권한 확대를 하지 않는다. UI는 실제 당사자/세력/대표 이름과 영한 안내를 제공한다.
+
+검사: 양 타깃 전체 빌드 및 규칙 검사를 수행한다. 새 CustodyAgreementTests는 실제 서명→원 loaded asset 이전 준비→일부 정상 반환→상위 계약 해약→현재 제삼자 승인→저장/복원→남은 원 호출/완료 흐름을 검사한다. 유효 하위 계약과 종료된 채무 계약의 이미 낸 공납/미납 잔액을 유지하며 누락/거부/바뀐 당사자·대표·범위, 옛 연합 투표 재사용, 귀족 작위 누락, 변조된 승인 archive, unknown 호출 재실행을 거부한다. native 몸체 허용 범위는 기존 검토5000/5005만 유지하고 미검토1.6 새 몸체는 보류한다. 게임/엔진 실행 없음, Preview Steam 게시/외부 예약 없음.
+
+최종 검증: .local/m2-097-build16.log 전체1.6 빌드/규칙, .local/m2-097-final17.log 전체1.7 빌드/규칙, .local/m2-097-final-native16.log 마지막 native1.6 컴파일 통과. Honor20,093/Contracts5,592(합25,685),영한583키/인자 일치,최종 양 native 경고·오류0. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.97.zip SHA256CB9CCFB211E3F30194346B2B9FAB7FBC22B49FA16D0F896D7A0404828B9A6092. 기존 로컬 Preview는 .local/contracts-preview-9ad164421a0a4c30a87100e45613ff55에 백업하고32파일 해시 일치·활성화/언어 불변으로 설치했다(.local/m2-097-install.log).
+
+한계와 다음 착수점: 이번 실제 복구는 SAME 원 도시/지도/주민/물체와 원 물리 상태가 검증되는 진행 중 custody에 대한 새 현재 승인이다. 소실·재생성된 지도/인물/물체, 달라진 임상·재고, unknown native 반환, 새 외부 종주가 있는 복합 재탈환의 전체 집행, 개인·병력 권리와 일반 진행 작업/예약의 소속 변경 너머 보존, 왕정/연합 새 등록 및 일반 커스텀 holder는 남아 있다. 원 데이터를 재생성/초기화하거나 보류 가드를 제거하지 않는다. M1 10/10,M2 미완료0/18,전체10/100;1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6. 부분 실행 구현과 작업군 전체 완료 점수를 구분한다.
+
 ## 0.3.96 — M2 부분 구현: 명부 밖 민간인 등록·작업/예약 보존 대기와 실제 이전
 
 2026-11-11. 두 개의 새 실제 실행 경로를 연결했다. 이 변경으로 M2 전체를 완료한 것으로 판정하지 않는다.

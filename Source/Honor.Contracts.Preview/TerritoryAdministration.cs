@@ -16,6 +16,7 @@ public sealed class TerritoryTransferReference : IExposable
     public string ResidentCensusProof;
     public LoadedMapRecord LoadedMap;
     public bool CityCallV1, CityCallStarted, CityCallReturned;
+    public string CustodyAgreementV1;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Id, "id"); Scribe_References.Look(ref City, "city");
@@ -27,6 +28,7 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Values.Look(ref CityCallV1, "cityCallV1", false);
         Scribe_Values.Look(ref CityCallStarted, "cityCallStartedV1", false);
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
+        Scribe_Values.Look(ref CustodyAgreementV1, "currentCustodyCompletionAgreementV1");
     }
 }
 public sealed record TerritoryAdministrationReview(string Charter, string City, string From, string Target,
@@ -109,6 +111,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         ExposePendingTownLosses();
         ExposeResidentEnrollments();
         ExposeDeferredTowns();
+        ExposeCustodyAgreements();
         if (Scribe.mode != LoadSaveMode.PostLoadInit) return;
         references ??= [];
         try
@@ -171,6 +174,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     (t.Phase != TerritoryTransferPhase.Destroyed || reference.LoadedMap.AssetJournal == null)) LoadedMapRecords.Release(reference.LoadedMap);
             }
             ValidateDeferredTowns();
+            ValidateCustodyAgreements();
             pendingTownLosses.ValidatePair(Charters.Book, Ledger);
             politicalTownLosses.ValidatePair(Charters.Book, Ledger);
             ValidatePoliticalLosses(Current.Game.GetComponent<PoliticalTransitionLedger>().Journal);
@@ -441,6 +445,12 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 reference.From == null || reference.From.GetUniqueLoadID() != item.FromOwner || reference.Target == null ||
                 reference.Target.GetUniqueLoadID() != item.TargetOwner || reference.Target.IsPlayer)
                 throw new ArgumentException("Cannot establish original transfer references.");
+            if (reference.CustodyAgreementV1 != null)
+            {
+                RequireCurrentCustody(reference);
+                RecoverAssets(item, reference, executionGame);
+                return;
+            }
             var actual = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents?.Profile ?? 3);
             if (reference.LoadedMap?.AssetJournal != null && (MapAssetTransfers.Started(reference.LoadedMap.AssetJournal) || reference.CityCallStarted || reference.Residents?.Started == true))
             {
@@ -462,7 +472,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 else
                 {
                     ValidateResidentRecovery(item, reference);
-                    ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
+                    ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, reference.CustodyAgreementV1 == null ? null : () => RequireCurrentCustody(reference));
                     if (political.Journal.Pending && political.Journal.Current?.LawfulResidents != null)
                     {
                         political.VerifyLawfulPhysicalRecovery();
@@ -519,7 +529,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (reference.Residents != null)
         {
             ResidentExecution.ValidateCensus(reference.Residents, reference.ResidentCensusProof, item.Territory, item.FromOwner, item.TargetOwner);
-            ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
+            ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, reference.CustodyAgreementV1 == null ? null : () => RequireCurrentCustody(reference));
         }
         MapAssetRecords.Apply(reference);
         ValidateResidentRecovery(item, reference);
@@ -533,6 +543,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             reference.CityCallReturned = true;
         }
         else if (!reference.CityCallReturned) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        if (reference.CustodyAgreementV1 != null) RequireCurrentCustody(reference);
         CityStockPreservation.InvalidateMaterial(reference.City);
         ValidateMapReference(item, reference, true);
         if (reference.Residents != null) ResidentExecution.Verify(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
@@ -540,11 +551,13 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (Current.Game != game || Current.ProgramState != ProgramState.Playing) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         Ledger.Confirm(item.Id, final, Find.TickManager.TicksGame);
         if (reference.Residents != null) ResidentExecution.ReleaseReferences(reference.Residents);
-        LoadedMapRecords.Release(reference.LoadedMap);
+        if (reference.LoadedMap != null) LoadedMapRecords.Release(reference.LoadedMap);
     }
     private void ValidateResidentRecovery(TerritoryTransfer item, TerritoryTransferReference reference)
     {
         var charter = Charters.Book.Charter(item.Charter);
+        bool currentCustody = reference.CustodyAgreementV1 != null;
+        if (currentCustody) RequireCurrentCustody(reference);
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (payments.RestoreFailed || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) ||
             Current.Game.GetComponent<PlayerPoliticsLedger>().RestoreFailed || Current.Game.GetComponent<UnionPoliticsLedger>().RestoreFailed ||
@@ -556,7 +569,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         Faction destination;
         if (item.Purpose == TerritoryTransferPurpose.ActiveCharter)
         {
-            if (charter.Phase != RecordedCharterPhase.Active || !Charters.Book.PlayerManaged(charter)) throw new ArgumentException("Original active consent changed.");
+            if (!currentCustody && (charter.Phase != RecordedCharterPhase.Active || !Charters.Book.PlayerManaged(charter))) throw new ArgumentException("Original active consent changed.");
             destination = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryRecoveryAuthority(observations);
         }
         else
@@ -571,7 +584,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (reference.From.HostileTo(destination) && reference.From.GetUniqueLoadID() != releasedSource ||
             item.Purpose == TerritoryTransferPurpose.ReleasedToUnion && Find.FactionManager.AllFactionsListForReading.Any(f => f != Faction.OfPlayer && f != reference.From && f != destination &&
                 reference.From.HostileTo(f) && !destination.HostileTo(f))) throw new ArgumentException("Unreviewed wartime admission.");
-        Charters.Book.ValidateCurrent(item.Charter, observations);
+        if (!currentCustody) Charters.Book.ValidateCurrent(item.Charter, observations);
         if (Charters.Book.Charters.Any(c => Charters.Book.Phase(c, Find.TickManager.TicksGame) == RecordedCharterPhase.Offered && c.Terms.Subject == item.Territory))
             throw new ArgumentException("Competing current city offer.");
         var stock = Observe(reference.City, item.Territory, destination, releasedSource);
@@ -619,6 +632,7 @@ public sealed class FollowerTransfersWindow : Window
             {
                 list.Label("FB_Pending".Translate(ledger.FollowerLabel(pending.Charter)));
                 var progress = ledger.ResidentProgress(pending.Id); if (progress != null) list.Label(progress);
+                ledger.DrawCustodyAgreement(list, pending.Id);
                 if (list.ButtonText("CT_Recover".Translate())) { ledger.Recover(pending.Id); review = null; }
             }
         }
@@ -685,6 +699,7 @@ public sealed class TerritoryAdministrationWindow : Window
             {
                 list.Label("CT_Record".Translate(ledger.OwnerLabel(item.FromOwner), ledger.OwnerLabel(item.TargetOwner), ("CT_" + item.Phase).Translate()));
                 var progress = ledger.ResidentProgress(item.Id); if (progress != null) list.Label(progress);
+                if (item.Phase == TerritoryTransferPhase.Prepared) ledger.DrawCustodyAgreement(list, item.Id);
                 if (item.Phase == TerritoryTransferPhase.Prepared && list.ButtonText("CT_Recover".Translate())) ledger.Recover(item.Id);
             }
         }

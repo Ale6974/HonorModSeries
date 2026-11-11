@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.96</modVersion>
+  <modVersion>0.3.97</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.96 also persists deferred work/reservation-safe town intents. Native jobs, drivers, queues and reservations continue unchanged while waiting. At an observed safe idle boundary, fresh current clinical, representative, roster and complete migration reviews precede the existing actual execution. Started calls are never automatically replayed. Changed scope/loss stops the wait with evidence retained; compound interrupted physical losses remain unfinished. Audited native 1.7.5005 bodies are now supported separately from unreviewed runtimes.
+  <description>0.3.97: Separate current source/target/connected-party custody consent can finish an original interrupted handover while retaining ended contracts, obligations and original clinical/asset/call evidence. Current ordinary, council or titled-ruler decisions are bound to this exact action. Original unknown calls and changed/missing physical custody remain blocked; no contract revival or object recreation.
+0.3.97: 현재 source/target·연결된 제삼자 승인으로 원 중단 인계를 마치는 별도 합의를 실제 복구에 연결합니다. 종료 계약·채무·원 임상/자산/호출 증거를 보존하며 일반/연합/귀족 결정을 해당 행동에 묶습니다. 불확실한 호출·바뀌거나 소실된 원 물리 상태는 보류하며 계약 부활·객체 재생성은 하지 않습니다.
+0.3.96 also persists deferred work/reservation-safe town intents. Native jobs, drivers, queues and reservations continue unchanged while waiting. At an observed safe idle boundary, fresh current clinical, representative, roster and complete migration reviews precede the existing actual execution. Started calls are never automatically replayed. Changed scope/loss stops the wait with evidence retained; compound interrupted physical losses remain unfinished. Audited native 1.7.5005 bodies are now supported separately from unreviewed runtimes.
 0.3.96은 작업·예약을 건드리지 않고 안전한 유휴 시점을 기다리는 도시 이전 의도를 저장합니다. 현재 임상·대표·명부·전체 이전을 새로 검토한 뒤 기존 실제 실행에 연결하며 시작한 호출은 자동 재실행하지 않습니다. 범위 변경·소실은 증거를 보존하고 대기를 중단합니다. 복합 물리 소실은 미완료이며 검토한 1.7.5005 몸체만 추가 허용합니다.
 0.3.96: Explicit current ordinary representative approval can enroll independently eligible unlisted map civilians by appending the same original Pawn references. Original roster/clinical/care and independent append-return/final verification journals persist through save and explicit recovery. Fresh existing migration review then uses those same residents. No automatic visitor classification, faction change, health reset or work cancellation during enrollment. M2 remains incomplete.
 0.3.96: 현 일반 세력 대표의 별도 승인으로 적격 명부 밖 지도 민간인을 같은 원 Pawn 참조로 등록하고 원 명부·임상·의료·개별 반환·최종 검증을 저장·중단 복구합니다. 이후 새 전체 이전 검토로 같은 주민을 이전합니다. 자동 방문자 분류·소속 변경·체력 초기화·작업 취소는 등록에 포함하지 않습니다. M2 전체는 미완료입니다.

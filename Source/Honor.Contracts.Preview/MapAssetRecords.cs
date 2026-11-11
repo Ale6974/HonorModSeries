@@ -155,6 +155,7 @@ internal static class MapAssetRecords
         MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, r.LoadedMap.Snapshot, r.From.GetUniqueLoadID(), r.Target.GetUniqueLoadID());
         foreach (var asset in LoadedMapPreservation.Restore(r.LoadedMap.Snapshot).OwnedAssets)
         {
+            if (r.CustodyAgreementV1 != null) Current.Game.GetComponent<TerritoryAdministrationLedger>().RequireCurrentCustody(r);
             LoadedMapRecords.Verify(r.City, r.LoadedMap);
             var call = MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Single(c => c.Id == asset.Id);
             if (call.Returned) continue;
