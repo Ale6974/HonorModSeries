@@ -351,6 +351,25 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(heldJointJournal.Current, TerritoryTransferLedger.Restore(heldJointPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(heldJointJournal.Export()).Current, "child") == heldJointScope,
             "original mapped civilians plus original held faction property and all lawful follower scope survive joint execution and restore");
+        string forestJointCitizens = LoadedMapPreservation.CaptureResidents(LoadedMapPreservation.CaptureContainers(ownedShelfBase,
+            [new("shelf", 0, new("held", "Steel", null, 15, 100, -1, 0, null))], [new("shelf", "crate", Hash("hack-glow-known-signal"), 1)]), mappedSet.Residents.Select(r => new NativeMapResident(r.Id, r.Preserved)));
+        string forestJointScope = LoadedMapPreservation.CaptureOwnedHolderForest(forestJointCitizens, [new MapAsset("shelf", "realm", Hash("original-style")) { Repair = new(100, true) }], true, false, true, false);
+        var forestJointTown = mappedTown with { LoadedMap = forestJointScope, StockFormat = 21, StockProof = LoadedMapPreservation.Restore(forestJointScope).Proof };
+        var forestJointPlan = FollowerTransfers.Review(after, physical, [new("child", forestJointTown), new("deep", actualDeep)], "union", now);
+        var forestJointPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], forestJointPlan.Moves);
+        var forestJointJournal = new AllegianceTransitionLedger();
+        forestJointJournal.PrepareLawfulResidentAdmission("forestJoint", politics, command, forestJointPlan, physical, closure, forestJointPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 11, mappedSet))]);
+        var forestJointPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        forestJointPhysical.PrepareLoadedJournaled("forestJoint-city", after, "child", forestJointTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        LawfulAdmissions.ValidateCurrentPhysical(forestJointJournal.Current, forestJointPhysical);
+        string forestJointCalls = MapAssetTransfers.Prepare(forestJointScope, "realm", "union");
+        forestJointCalls = MapAssetTransfers.Returned(MapAssetTransfers.Begin(forestJointCalls, "shelf", "realm"), "shelf", "union");
+        MapAssetTransfers.Pair(forestJointCalls, forestJointScope, "realm", "union", true);
+        forestJointPhysical.Confirm("forestJoint-city", forestJointTown with { Owner = "union" }, now);
+        LawfulAdmissions.ValidateCurrentPhysical(forestJointJournal.Current, TerritoryTransferLedger.Restore(forestJointPhysical.Export()));
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(forestJointJournal.Export()).Current, "child") == forestJointScope,
+            "original mapped civilians plus original owned holder forest and all lawful follower scope survive joint execution and restore");
         var peace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], plan.Moves);
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulAdmission("old-api", politics, command, plan, physical, closure, peace), "old empty-scope API cannot acquire follower authority");
         var journal = new AllegianceTransitionLedger(); journal.PrepareLawfulFollowerAdmission("follow", politics, command, plan, physical, closure, peace);

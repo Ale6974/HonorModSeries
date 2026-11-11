@@ -1,5 +1,18 @@
 # 요구사항 상태 — 공개 0.2.1 / 호환성 0.2.2 / Contracts 개발판
 
+## 0.3.95 — M2 부분 구현: 소유 중첩 보관 계층·포장 물체 자체의 실제 이전
+
+2026-11-11. 새 OwnedHolderForestV1=1/StockFormat20은 기존 원 Map/모든 Thing/holder/slot/내용물 증거와 각 물체 자신의 source 권한을 묶어, 정확한 기본 소유 중첩 Casket/Crate와 소유 MinifiedThing 자체를 실제 기존 SetFaction·독립 자산별 시작/정상 반환·도시 호출·reference-only Scribe·명시적 중단 복구에 연결한다. 새21은 같은 범위와 기존 mapped clinical11 주민을 함께 처리한다. 원 도시 전체 후손의 법적 검토/의료·census/영역/수술/원 Pawn 참조와 물리 journal도 같은20/21을 사용한다. 옛3~19/null bytes·native 보류 조건은 새 권한으로 확대하지 않는다.
+
+각 보관함·포장·내부 재산은 자기 원 소유자를 검토하며 부모의 권한으로 자식의 private/foreign 소유권을 추정하지 않는다. 원 positive normal-return prefix만 target 소유를 source 원 증거로 정규화하며 unknown started 호출은 target 소유여도 재실행/완료하지 않는다. 원 건강·품질/style·stored known/signal/hack/glow 설정·모든 원 slot과 부모/child holdingOwner·참조를 유지한다. 열기/CanOpen/lazy hackable 초기화/InnerThing setter/SplitOff/꺼내기/넣기/재포장/운반/재생성/체력 수리·중복 native deep-save는 하지 않는다. 원 경로에서 새 보관 계층이 안쪽에서 선택된 경우 바깥쪽 물체도 다시 새 경계로 검토한다. quality/style의 실제 comp 목록과 native cached refs를 대조하고 바뀌거나 알 수 없는 상태는 원 raw를 유지하며 보류한다.
+
+현재 DLL SHA256D55AA8E47FA3C5463CA85B0ECCD51F195B4BBCD04F56DA3AF21C2F6688A81254가 직전과 같음을 확인했다. metadata로 읽은 현재 RimWorld.MinifiedThing에는 SetFaction override가 없고 Thing.SetFaction을 상속한다. 원 GetDirectlyHeldThings/get_InnerThing은 원 container 및 slot0만 읽으며 setter/SplitOff는 물품을 이동·파괴할 수 있으므로 호출하지 않는다. ExposeData는 원 innerContainer의 native deep-save를 이미 담당하므로 모드 장부에서는 같은 원 객체의 reference만 남긴다. QualityUtility.TryGetQuality가 package.InnerThing의 compQuality를 읽으므로 전체 원 자식 계층 검토 이후 알려진 unpatched getter/quality dispatch와 실제 comp cache를 확인한다. 기존5000/6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e body 경계만 새 native 실행을 허용하며 미검토1.6 몸체는 보류한다. 양 버전 빌드/기존 경로는 유지한다.
+
+최종 검사: .local/m2-095-release16.log/release17.log 양 타깃 전체 빌드 통과(Honor20,093/Contracts5,511,영한561키/인자 일치,컴파일 경고·오류0). OwnedHolderForestTests는 실제 계층 ID/슬롯·빈/중첩 원 범위·각 자산의 원 source·독립 부분 호출/unknown 재실행 거부·옛 scope/marker 확대 거부·설정 변경 거부·20/21 Prepared/Applied/Cancelled 복원을 검사한다. 기존 OwnedContainer/repair/civic/전체 lawful follower 회귀도 통과했고 LawfulFollowerMigrationTests에21의 원 clinical census/별도 asset calls/전체 법적·물리 복원을 추가했다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.95.zip SHA25644851A7F1790D013B67371C21597393ECDD73EED307DB74758E1696A36C9C54B. 기존 로컬 Preview는 .local/contracts-preview-279354a99ca64b298d238e9b39f7d0a6에 백업한 뒤32파일 해시 일치·활성화/언어 불변으로 설치했다(.local/m2-095-install.log). Preview Steam 게시 없음. 다음 실제 착수점은 진행 작업/예약·개별 권리,원 도시 명부와 별칭이 없는 지도 시민의 원 권한/임상/호출/Scribe 복구,일반 커스텀 holder와 복합 소실·재탈환이다.
+
+M1 10/10,M2 전체 미완료0/18,전체10/100,1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6. 진행 작업/예약·개별 권리/병력,원 명부 alias 없는 시민,일반 커스텀 holder 및 복합 소실·귀환은 실제 구현이 더 필요하다. source/current representative/마지막 도시/provider/quest/평화/채무/제삼자 권리 가드는 유지하며 미지원 상태를 삭제·초기화하지 않는다. 자동 예약/Preview Steam 게시 없음.
+
+
 ## 0.3.94 — M2 부분 구현: 소유 상자·보관함의 실제 이전과 원 내용물 보존
 
 2026-11-11. 새 OwnedContainersV1=1/StockFormat16은 검토한 원 세력 소유의 정확한 기본 Building_Casket/Building_Crate를 실제 기존 Building.SetFaction·개별 자산 시작/정상 반환 journal·도시 호출·Scribe·명시적 복구에 연결한다. 새17은 같은 범위와 기존 적격 mapped clinical11 주민의 동시 이전이다. 기존 원 주민 census/의료/영역/수술/개별 호출과 자산별 호출은 독립적으로 유지하며, 주민→자산→도시 순서와 원 모든 Map/Pawn/Thing 참조 검사를 그대로 사용한다. 옛3~15/null bytes·중립 Capture·옛 권한은 확대하지 않는다.

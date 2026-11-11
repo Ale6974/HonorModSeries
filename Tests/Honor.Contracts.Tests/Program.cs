@@ -198,6 +198,7 @@ assertions += MapAssetTests.Run();
 assertions += MapRepairAssetTests.Run();
 assertions += OwnedShelfTests.Run();
 assertions += OwnedContainerTests.Run();
+assertions += OwnedHolderForestTests.Run();
 assertions += CivicAssetTests.Run();
 assertions += ResidentMobilityTests.Run();
 assertions += ResidentAreaTests.Run();
