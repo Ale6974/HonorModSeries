@@ -88,10 +88,13 @@ internal static class LoadedMapRecords
         var assetOriginal = Current.Game.GetComponent<TerritoryAdministrationLedger>().MapAssetOriginal(city);
         var ownedRows = new List<MapAsset>();
         var originalAssets = assetOriginal == null ? null : LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).OwnedAssets;
+        bool heldAssets = assetOriginal != null && LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).HeldAssetsV1 == 1;
+        bool ownedContainers = assetOriginal != null ? LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).OwnedContainersV1 == 1 :
+            things.Any(t => ContainerMapEvidence.Supported(t) && t.Faction != null);
         bool ownedStorage = assetOriginal != null ? LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).OwnedStorageV1 == 1 :
             things.Any(t => t?.GetType() == typeof(Building_Storage) && t.Faction != null);
         bool repairAssets = assetOriginal != null ? LoadedMapPreservation.Restore(assetOriginal.LoadedMap.Snapshot).AssetRepairV1 == 1 :
-            things.Any(t => t?.Faction != null && MapAssetRecords.NeedsRepairScope(t, ownedStorage));
+            things.Any(t => t?.Faction != null && MapAssetRecords.NeedsRepairScope(t, ownedStorage, ownedContainers));
         var allActors = things.OfType<Pawn>().OrderBy(p => p.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         var actors = allActors.Where(p => city.previouslyGeneratedInhabitants?.Contains(p) == true).ToList();
         var visitors = allActors.Where(p => !actors.Contains(p)).ToList();
@@ -108,16 +111,19 @@ internal static class LoadedMapRecords
         NeutralMapThing Collect(Thing t, string parent, int depth, int slot = 0)
         {
             if (t == null || t is Pawn or Corpse || depth > 8 || ids.Count >= 10000 || !ids.Add(t.GetUniqueLoadID())) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+            bool owned = t.Faction != null || originalAssets?.Any(a => a.Id == t.GetUniqueLoadID()) == true;
+            if (parent != null && owned && ContainerMapEvidence.Supported(t)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
             ThingOwner container;
-            if (ContainerMapEvidence.Supported(t)) { var captured = ContainerMapEvidence.Capture(t); container = captured.Owner; containers.Add(captured.Evidence); }
+            if (ContainerMapEvidence.Supported(t)) { var captured = owned && ownedContainers ? ContainerMapEvidence.CaptureOwned(t) : ContainerMapEvidence.Capture(t); container = captured.Owner; containers.Add(captured.Evidence); }
             else container = t.GetType() == typeof(MinifiedThing) ? Container((MinifiedThing)t) : null;
             // Validate the entire child chain before quality helpers can inspect a package's InnerThing.
             if (container != null) for (int i = 0; i < container.Count; i++) Collect(container[i], t.GetUniqueLoadID(), depth + 1, i);
-            bool owned = t.Faction != null || originalAssets?.Any(a => a.Id == t.GetUniqueLoadID()) == true;
             if (owned)
             {
-                if (parent != null || allActors.Count > 0 && !civicAssets) throw new ResidentMoveBlocked("RE_AssetUnavailable");
-                ownedRows.Add(MapAssetRecords.Capture(t, city, assetOriginal, repairAssets, ownedStorage, civicAssets ? allActors : null));
+                if (assetOriginal == null && allActors.Count > 0) civicAssets = true;
+                if (parent != null && !heldAssets && assetOriginal != null || allActors.Count > 0 && !civicAssets) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+                if (parent != null) heldAssets = true;
+                ownedRows.Add(MapAssetRecords.Capture(t, city, assetOriginal, repairAssets, ownedStorage, civicAssets ? allActors : null, ownedContainers, heldAssets));
             }
             var row = Evidence(t, map, parent != null, owned); references.Add(t);
             if (t.GetType() == typeof(Building_Storage)) storage.Add(owned ? StorageMapEvidence.CaptureOwned((Building_Storage)t, map, grouped: true) : StorageMapEvidence.Capture((Building_Storage)t, map, grouped: true));
@@ -156,7 +162,7 @@ internal static class LoadedMapRecords
         if (stockpiles.Growing.Length > 0) snapshot = LoadedMapPreservation.CaptureGrowing(snapshot, stockpiles.Growing);
         if (actors.Count > 0) snapshot = LoadedMapPreservation.CaptureResidents(snapshot, actorRows, visitorRows);
         else if (visitors.Count > 0) snapshot = LoadedMapPreservation.CaptureBystanders(snapshot, visitorRows);
-        if (ownedRows.Count > 0) snapshot = civicAssets ? LoadedMapPreservation.CaptureCivicAssets(snapshot, ownedRows, repairAssets, ownedStorage) : ownedStorage ? LoadedMapPreservation.CaptureOwnedStorage(snapshot, ownedRows, repairAssets) : repairAssets ? LoadedMapPreservation.CaptureRepairAssets(snapshot, ownedRows) : LoadedMapPreservation.CaptureAssets(snapshot, ownedRows);
+        if (ownedRows.Count > 0) snapshot = heldAssets ? LoadedMapPreservation.CaptureHeldAssets(snapshot, ownedRows, repairAssets, ownedStorage, ownedContainers) : ownedContainers ? LoadedMapPreservation.CaptureOwnedContainers(snapshot, ownedRows, repairAssets, ownedStorage) : civicAssets ? LoadedMapPreservation.CaptureCivicAssets(snapshot, ownedRows, repairAssets, ownedStorage) : ownedStorage ? LoadedMapPreservation.CaptureOwnedStorage(snapshot, ownedRows, repairAssets) : repairAssets ? LoadedMapPreservation.CaptureRepairAssets(snapshot, ownedRows) : LoadedMapPreservation.CaptureAssets(snapshot, ownedRows);
         var visitorReferences = actors.Count == 0 && visitors.Count > 0 ? visitors.Select(ResidentMapVisitors.References).ToList() : null;
         if (visitorReferences != null)
         {

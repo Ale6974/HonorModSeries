@@ -557,4 +557,6 @@
   <RE_DamagedAssetReview>손상된 고정 자산 {0}개: 원 손상과 수리 가능 상태를 보존합니다. 소속을 이전해도 수리되지 않습니다.</RE_DamagedAssetReview>
   <RE_OwnedShelfReview>세력 소유 선반 {0}개: 원 물품·보관 칸·필터·우선순위·품질·공유 그룹을 유지합니다. 검토한 선반의 소속만 변경합니다.</RE_OwnedShelfReview>
   <RE_CivicAssetReview>같은 지도에서 주민과 재산을 함께 이전합니다. 주민 의료 설정과 자산별 처리 결과를 각각 보존하고, 양쪽 모두 확인한 뒤 도시 이전을 완료합니다.</RE_CivicAssetReview>
+<RE_OwnedContainerReview>소유 보관함: {0}개. 검토한 원 상자·보관함만 이전하고 내부 물품·슬롯 순서·상태·저장 설정을 유지합니다. 별도 검토하지 않은 내용물의 소속이나 개인 소유권은 변경하지 않습니다. 결과가 불확실한 호출은 명시적 복구에서도 보류합니다.</RE_OwnedContainerReview>
+<RE_HeldAssetReview>보관 중인 세력 재산: {0}개. 검토한 원 물품마다 원 소유자와 별도 정상 반환 기록을 확인합니다. 원 보관 주체·슬롯·상태·설정을 유지하고 꺼내기·재포장·부모 보관함에서의 권한 추정은 하지 않습니다.</RE_HeldAssetReview>
 </LanguageData>

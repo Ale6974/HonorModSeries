@@ -1,4 +1,19 @@
-# 1단계 개발 인수인계 — 0.3.93 / 2026-11-09
+# 1단계 개발 인수인계 — 0.3.94 / 2026-11-11
+
+## 0.3.94 — M2 부분 구현: 소유 상자·보관함의 실제 이전과 원 내용물 보존
+
+2026-11-11. 새 OwnedContainersV1=1/StockFormat16은 검토한 원 세력 소유의 정확한 기본 Building_Casket/Building_Crate를 실제 기존 Building.SetFaction·개별 자산 시작/정상 반환 journal·도시 호출·Scribe·명시적 복구에 연결한다. 새17은 같은 범위와 기존 적격 mapped clinical11 주민의 동시 이전이다. 기존 원 주민 census/의료/영역/수술/개별 호출과 자산별 호출은 독립적으로 유지하며, 주민→자산→도시 순서와 원 모든 Map/Pawn/Thing 참조 검사를 그대로 사용한다. 옛3~15/null bytes·중립 Capture·옛 권한은 확대하지 않는다.
+
+CaptureOwned는 별도 native 경로다. 원 ThingOwner<Thing>/Owner/각 child.holdingOwner, 모든 원 슬롯/물품/중첩 forest와 contentsKnown/openedSignal/기존 hack·glower 저장 설정, 원 HP/품질/style/원 최대 내구도·repair 등록을 대조한다. 내용물은 기존 적격 중립 물품만 지원하며 부모의 소유권으로 내용물의 private/foreign 권한을 추정하지 않는다. 소유 컨테이너는 ROOT만 허용한다. 원 저장 물품을 열기·꺼내기·재포장·운반·재생성·소속 변경하지 않으며 보관함/물품/owner를 중복 deep-save하지 않는다. 기본 Styleable/Quality/Hackable/Glower 외 컴포넌트와 진행 해킹 lastUser/autohack은 보류한다. 원 comp/def/parent와 native style/quality cache도 검토한다. 원 asset prefix의 정상 반환 없이 target 소유만으로 성공을 추정하지 않고 unknown started 호출은 재실행하지 않는다. 슬롯·내부 물품·해킹 설정·원 참조가 달라지면 원 기록을 보존하고 보류한다. 손상 건물/선반/whole owned group 및 적격 주민과의 조합은 같은 별도 marker를 사용한다.
+
+추가18/19: HeldAssetsV1=1은 원 검토 보관 forest 안의 세력 소유 기본 Thing/ThingWithComps/Building을 각각 실제 SetFaction 대상에 포함한다. 원 ROOT 또는 HELD 위치·부모/순서·전체 물품 참조와 해당 물품 자신의 source 권한을 묶으며,19는 별도 clinical11 주민과 함께 처리한다. 옛16/17 이하에는 held 권한을 소급하지 않는다. 원 held 물체는 같은 container에 계속 남고 호출은 배치·꺼내기·재포장 없이 기존 unspawned Thing/Building.SetFaction을 사용한다. 현재 native unspawned Building.SetFaction은 지도 건물 registry 분기를 실행하지 않으며 Thing.SetFaction의 quest tag 경계는 기존 무quest/patch 가드로 검토한다. 건강도·원 품질/style은 그대로이며 새 내부 물품의 normal-return도 원 ordered asset prefix에 따로 남긴다. 소유 held Casket/Crate·Minified holder 자체/커스텀 holder·개인/foreign 재산은 아직 보류한다. 지도상 객체의 faction 변경을 근거로 held 호출을 완료하지 않는다. 기본 held 소유 물체만 지원하고 일반 holder 전체 완성은 아니다.
+
+현재 설치 DLL SHA256D55AA8E47FA3C5463CA85B0ECCD51F195B4BBCD04F56DA3AF21C2F6688A81254는 직전과 같다. 현재 Casket/Crate/Hackable/Glower 전체 metadata 소스가 기존 검토 파일과 동일함을 확인했다(.local/m2-094-*.cs). Casket/Crate에는 SetFaction override가 없고 검토된 Building.SetFaction을 상속한다. 그 호출은 보관함 Open/CanOpen/EjectContents/CompSignal/내용물 변경을 실행하지 않는다. CanOpen의 lazy hackable 초기화는 호출하지 않는다. 새 소유 컨테이너 native 실행은 검토한5000/MVID6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e만 허용한다.1.6/net472의 고정 참조 빌드와 기존 경로는 유지하며 미검토 native 몸체를 허용하지 않는다. source/current representative/마지막 도시/provider/quest/평화/채무/제삼자 권리·무진행/무예약 가드는 그대로다.
+
+최종 검사: .local/m2-094-final16.log/final17.log 양 타깃 빌드 통과(Honor20,093/Contracts5,478,영한560키/인자 일치,컴파일 경고·오류0). OwnedContainerTests는 원 다중 슬롯/중첩 물품/빈 보관함/별도 held 재산,원 호출 부분 prefix/unknown 재실행 거부,marker 누락·변조/옛 scope 확대 거부,설정·순서 변경 거부,Prepared/Applied/Cancelled 복원과 mapped 동시 범위를 검사한다. LawfulFollowerMigrationTests는16~19 경로의 전체 법적 후손/별도 clinical census/물리 장부/원 map 복원을 검사한다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.94.zip SHA256C0916DF3265DB1B20709B16EA98271BD640557887A43A033A2E16923BB209A90. 기존 로컬 Preview를 .local/contracts-preview-a36f494fc654454e8f7e54f633e9f4de에 백업하고32파일 해시 일치·활성화/언어 불변으로 설치했다(.local/m2-094-install.log). Preview Steam 게시 없음. 다음 착수점: 원 진행 작업/예약·개별 권리 및 비별칭 시민의 실제 이전 권한/중단 복구,소유 nested holder/일반 커스텀 holder,복합 자산·도시 소실/귀환의 원 provenance 유지 경로. 미지원 상태를 삭제·초기화하지 않는다.
+
+M1 10/10,M2 전체 미완료0/18,전체10/100.1단계 잔여 노력31.5%/8묶음,2~6단계80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6 유지. 진행 작업/예약/병력/개인 권리,원 명부 alias 없는 시민,일반 커스텀·소유 nested holder,복합 소실/재탈환은 남아 있다. 자동 예약과 Preview Steam 게시는 없다.
+
 
 ## 0.3.93 — M2 부분 구현: 손상 자산·소유 선반·유휴 시민과 자산의 동시 이전
 

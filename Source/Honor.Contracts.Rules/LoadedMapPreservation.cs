@@ -26,6 +26,8 @@ public sealed record LoadedMapScope(string Town, string Map, int Width, int Heig
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? AssetRepairV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? OwnedStorageV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? CivicAssetsV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? OwnedContainersV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? HeldAssetsV1 { get; init; }
 }
 
 /// <summary>Original map custody. Actor affiliation requires separate clinical authority; bystanders grant no actor or property writes.</summary>
@@ -152,6 +154,27 @@ public static class LoadedMapPreservation
         var s = before with { OwnedAssets = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), CivicAssetsV1 = 1, AssetRepairV1 = repair ? 1 : null, OwnedStorageV1 = storage ? 1 : null, Proof = null };
         s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
+    public static string CaptureOwnedContainers(string original, IEnumerable<MapAsset> assets, bool repair, bool storage)
+    {
+        var before = Restore(original);
+        if (before.OwnedAssets != null || before.OwnedContainersV1 != null || before.ReadOnlyBystandersV1 != null || assets == null) throw new ArgumentException("Fresh original container property required.");
+        var rows = assets.Take(1001).ToArray();
+        if (rows.Any(r => r == null)) throw new ArgumentException("Missing original container property.");
+        var s = before with { OwnedAssets = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), OwnedContainersV1 = 1,
+            CivicAssetsV1 = before.NativeResidents == null ? null : 1, AssetRepairV1 = repair ? 1 : null, OwnedStorageV1 = storage ? 1 : null, Proof = null };
+        s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
+    public static string CaptureHeldAssets(string original, IEnumerable<MapAsset> assets, bool repair, bool storage, bool containers)
+    {
+        var before = Restore(original);
+        if (before.OwnedAssets != null || before.HeldAssetsV1 != null || before.ReadOnlyBystandersV1 != null || assets == null) throw new ArgumentException("Fresh original held property required.");
+        var rows = assets.Take(1001).ToArray();
+        if (rows.Any(r => r == null)) throw new ArgumentException("Missing original held property.");
+        var s = before with { OwnedAssets = rows.OrderBy(r => r.Id, StringComparer.Ordinal).ToArray(), HeldAssetsV1 = 1,
+            OwnedContainersV1 = containers ? 1 : null, CivicAssetsV1 = before.NativeResidents == null ? null : 1,
+            AssetRepairV1 = repair ? 1 : null, OwnedStorageV1 = storage ? 1 : null, Proof = null };
+        s = s with { Proof = Hash(s) }; string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
     public static LoadedMapScope Restore(string json)
     {
         if (json == null || json.Length > 3000000) throw new ArgumentException("Bounded original loaded-map scope required.");
@@ -263,10 +286,14 @@ public static class LoadedMapPreservation
                 !s.Visitors.Select(r => r.Id).SequenceEqual(s.Visitors.Select(r => r.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal))) throw new ArgumentException("Invalid original bystander scope.");
         }
         if (s.OwnedAssets != null && ((s.NativeResidents != null || s.Visitors != null) && s.CivicAssetsV1 != 1 || s.ReadOnlyBystandersV1 != null || s.OwnedAssets.Length is < 1 or > 1000 ||
-            s.OwnedAssets.Any(a => a == null || !Key(a.Id) || !Key(a.Owner) || !CityStockProof.Valid(a.Configuration) || !s.Things.Any(t => t.Id == a.Id) ||
-                s.OwnedStorageV1 != 1 && (s.Storage ?? []).Any(x => x.Id == a.Id) || (s.Containers ?? []).Any(x => x.Id == a.Id)) ||
+            s.OwnedAssets.Any(a => a == null || !Key(a.Id) || !Key(a.Owner) || !CityStockProof.Valid(a.Configuration) || !s.Things.Any(t => t.Id == a.Id) && (s.HeldAssetsV1 != 1 || !(s.Held ?? []).Any(r => r.Item.Id == a.Id)) ||
+                s.OwnedStorageV1 != 1 && (s.Storage ?? []).Any(x => x.Id == a.Id) || s.OwnedContainersV1 != 1 && (s.Containers ?? []).Any(x => x.Id == a.Id)) ||
             !s.OwnedAssets.Select(a => a.Id).SequenceEqual(s.OwnedAssets.Select(a => a.Id).Distinct().OrderBy(x => x, StringComparer.Ordinal))))
             throw new ArgumentException("Invalid or overlapping original fixed property scope.");
+        if (s.HeldAssetsV1 != null && (s.HeldAssetsV1 != 1 || s.OwnedAssets == null || s.Held == null || s.OwnedAssets.Any(a => s.Held.Any(r => r.Item.Id == a.Id) && (s.Containers ?? []).Any(c => c.Id == a.Id)) ||
+            !s.OwnedAssets.Any(a => s.Held.Any(r => r.Item.Id == a.Id)))) throw new ArgumentException("Unknown or incomplete original held property scope.");
+        if (s.OwnedContainersV1 != null && (s.OwnedContainersV1 != 1 || s.OwnedAssets == null || s.Containers == null ||
+            !s.OwnedAssets.Any(a => s.Containers.Any(c => c.Id == a.Id)))) throw new ArgumentException("Unknown or incomplete original owned container scope.");
         if (s.CivicAssetsV1 != null && (s.CivicAssetsV1 != 1 || s.NativeResidents == null || s.OwnedAssets == null || s.ReadOnlyBystandersV1 != null)) throw new ArgumentException("Unknown or incomplete civic/property scope.");
         if (s.OwnedStorageV1 != null)
         {
@@ -279,7 +306,7 @@ public static class LoadedMapPreservation
             if (s.AssetRepairV1 != 1 || s.OwnedAssets == null || !s.OwnedAssets.Any(a => a.Repair != null)) throw new ArgumentException("Unknown original repair scope.");
             foreach (var a in s.OwnedAssets.Where(a => a.Repair != null))
             {
-                var item = s.Things.Single(t => t.Id == a.Id);
+                var item = s.Things.Concat((s.Held ?? []).Select(r => r.Item)).Single(t => t.Id == a.Id);
                 if (a.Repair.Maximum <= 0 || item.HitPoints <= 0 || item.HitPoints > a.Repair.Maximum) throw new ArgumentException("Invalid original asset health.");
             }
         }
@@ -292,7 +319,7 @@ public static class LoadedMapPreservation
     }
     public static int Format(string json)
     {
-        var s = Restore(json); return s.CivicAssetsV1 == 1 ? 15 : s.OwnedStorageV1 == 1 ? 14 : s.AssetRepairV1 == 1 ? 13 : s.OwnedAssets != null ? 12 : s.ReadOnlyBystandersV1 == 1 ? 11 : s.NativeResidents != null ? 10 : s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
+        var s = Restore(json); return s.HeldAssetsV1 == 1 ? (s.CivicAssetsV1 == 1 ? 19 : 18) : s.OwnedContainersV1 == 1 ? (s.CivicAssetsV1 == 1 ? 17 : 16) : s.CivicAssetsV1 == 1 ? 15 : s.OwnedStorageV1 == 1 ? 14 : s.AssetRepairV1 == 1 ? 13 : s.OwnedAssets != null ? 12 : s.ReadOnlyBystandersV1 == 1 ? 11 : s.NativeResidents != null ? 10 : s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
     }
     public static void Pair(string json, string town, string proof, int format)
     {

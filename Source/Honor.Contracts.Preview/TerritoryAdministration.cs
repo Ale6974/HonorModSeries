@@ -42,6 +42,8 @@ public sealed record TerritoryAdministrationReview(string Charter, string City, 
     public int OwnedAssets { get; init; }
     public int DamagedAssets { get; init; }
     public int OwnedShelves { get; init; }
+    public int OwnedContainers { get; init; }
+    public int HeldAssets { get; init; }
     public int NativeResidents { get; init; }
     public int Visitors { get; init; }
     public bool MixedResidents { get; init; }
@@ -65,7 +67,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (matches.Length > 1) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (matches.Length == 0) return null;
         var r = matches[0]; var t = Ledger.Transfer(r.Id);
-        if (r.Residents.NativeMap != city.Map || r.LoadedMap?.Map != city.Map || r.Residents.LoadedMapScope != t.LoadedMap || t.StockFormat is not (10 or 15) || r.LoadedMap.Snapshot != t.LoadedMap)
+        if (r.Residents.NativeMap != city.Map || r.LoadedMap?.Map != city.Map || r.Residents.LoadedMapScope != t.LoadedMap || t.StockFormat is not (10 or 15 or 17 or 19) || r.LoadedMap.Snapshot != t.LoadedMap)
             throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         ResidentExecution.ValidateCensus(r.Residents, r.ResidentCensusProof, t.Territory, t.FromOwner, t.TargetOwner);
         return r.Residents;
@@ -77,7 +79,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (matches.Length > 1) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (matches.Length == 0) return null;
         var r = matches[0]; var t = Ledger.Transfer(r.Id);
-        if (r.From == null || r.Target == null || r.LoadedMap.Map != city.Map || r.LoadedMap.Snapshot != t.LoadedMap || t.StockFormat is not (12 or 13 or 14 or 15) ||
+        if (r.From == null || r.Target == null || r.LoadedMap.Map != city.Map || r.LoadedMap.Snapshot != t.LoadedMap || t.StockFormat is not (12 or 13 or 14 or 15 or 16 or 17 or 18 or 19) ||
             r.From.GetUniqueLoadID() != t.FromOwner || r.Target.GetUniqueLoadID() != t.TargetOwner) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, t.LoadedMap, t.FromOwner, t.TargetOwner);
         return r;
@@ -269,7 +271,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         var mapScope = c.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(c.Observation.LoadedMap);
         return new(id, c.City.Label, c.City.Faction.Name, c.Target.Name, c.Purpose,
             string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose, c.Observation.StockProof, c.Observation.ResidentProof),
-            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = mapScope == null ? null : mapScope.Things.Length + (mapScope.Held?.Length ?? 0), PackedThings = mapScope?.Held?.Length ?? 0, StorageShelves = mapScope?.Storage?.Length ?? 0, StorageGroups = mapScope?.Groups?.Length ?? 0, Stockpiles = mapScope?.Stockpiles?.Length ?? 0, GrowingZones = mapScope?.Growing?.Length ?? 0, Containers = mapScope?.Containers?.Length ?? 0, OwnedShelves = mapScope?.OwnedAssets?.Count(a => mapScope.Storage?.Any(s => s.Id == a.Id) == true) ?? 0, DamagedAssets = mapScope?.OwnedAssets?.Count(a => a.Repair != null && mapScope.Things.Single(t => t.Id == a.Id).HitPoints < a.Repair.Maximum) ?? 0, OwnedAssets = mapScope?.OwnedAssets?.Length ?? 0, NativeResidents = mapScope?.NativeResidents?.Length ?? 0, Visitors = mapScope?.Visitors?.Length ?? 0, MixedResidents = c.City.previouslyGeneratedInhabitants?.Any(p => p?.IsPrisoner == true) == true && (c.City.previouslyGeneratedInhabitants.Any(ResidentAreaRecords.HasRestrictions) || c.City.previouslyGeneratedInhabitants.Any(p => p?.Downed == true)) };
+            c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = mapScope == null ? null : mapScope.Things.Length + (mapScope.Held?.Length ?? 0), PackedThings = mapScope?.Held?.Length ?? 0, StorageShelves = mapScope?.Storage?.Length ?? 0, StorageGroups = mapScope?.Groups?.Length ?? 0, Stockpiles = mapScope?.Stockpiles?.Length ?? 0, GrowingZones = mapScope?.Growing?.Length ?? 0, Containers = mapScope?.Containers?.Length ?? 0, HeldAssets = mapScope?.OwnedAssets?.Count(a => mapScope.Held?.Any(s => s.Item.Id == a.Id) == true) ?? 0, OwnedContainers = mapScope?.OwnedAssets?.Count(a => mapScope.Containers?.Any(s => s.Id == a.Id) == true) ?? 0, OwnedShelves = mapScope?.OwnedAssets?.Count(a => mapScope.Storage?.Any(s => s.Id == a.Id) == true) ?? 0, DamagedAssets = mapScope?.OwnedAssets?.Count(a => a.Repair != null && mapScope.Things.Concat((mapScope.Held ?? []).Select(r => r.Item)).Single(t => t.Id == a.Id).HitPoints < a.Repair.Maximum) ?? 0, OwnedAssets = mapScope?.OwnedAssets?.Length ?? 0, NativeResidents = mapScope?.NativeResidents?.Length ?? 0, Visitors = mapScope?.Visitors?.Length ?? 0, MixedResidents = c.City.previouslyGeneratedInhabitants?.Any(p => p?.IsPrisoner == true) == true && (c.City.previouslyGeneratedInhabitants.Any(ResidentAreaRecords.HasRestrictions) || c.City.previouslyGeneratedInhabitants.Any(p => p?.Downed == true)) };
     }
     public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true)
     {
@@ -661,6 +663,8 @@ public sealed class TerritoryAdministrationWindow : Window
                 if (review.Containers > 0) list.Label("RE_ContainerMapReview".Translate(review.Containers));
                 if (review.OwnedAssets > 0) list.Label("RE_AssetReview".Translate(review.OwnedAssets));
                 if (review.OwnedAssets > 0 && review.NativeResidents > 0) list.Label("RE_CivicAssetReview".Translate());
+                if (review.HeldAssets > 0) list.Label("RE_HeldAssetReview".Translate(review.HeldAssets));
+                if (review.OwnedContainers > 0) list.Label("RE_OwnedContainerReview".Translate(review.OwnedContainers));
                 if (review.OwnedShelves > 0) list.Label("RE_OwnedShelfReview".Translate(review.OwnedShelves));
                 if (review.DamagedAssets > 0) list.Label("RE_DamagedAssetReview".Translate(review.DamagedAssets));
                 if (review.NativeResidents > 0) list.Label("RE_MapResidentReview".Translate(review.NativeResidents, review.Visitors));

@@ -18,12 +18,18 @@ internal static class ContainerMapEvidence
         return f.GetValue(owner);
     }
     internal static (ThingOwner Owner, NeutralMapContainer Evidence) Capture(Thing thing)
+        => CaptureCore(thing, false);
+    internal static (ThingOwner Owner, NeutralMapContainer Evidence) CaptureOwned(Thing thing)
+        => CaptureCore(thing, true);
+    private static (ThingOwner Owner, NeutralMapContainer Evidence) CaptureCore(Thing thing, bool owned)
     {
-        if (!Supported(thing) || thing.Faction != null || thing.stackCount != 1) throw new ResidentMoveBlocked("RE_ContainerMapUnavailable");
+        if (!Supported(thing) || (owned ? thing.Faction == null || thing.Faction.IsPlayer : thing.Faction != null) || thing.stackCount != 1) throw new ResidentMoveBlocked("RE_ContainerMapUnavailable");
         foreach (var method in new[] {
             AccessTools.Method(typeof(Building_Casket), nameof(Building_Casket.GetDirectlyHeldThings), []),
             AccessTools.Method(typeof(Building_Casket), nameof(Building_Casket.GetChildHolders), [typeof(List<IThingHolder>)]) })
             if (method == null || Harmony.GetPatchInfo(method)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_ContainerMapUnavailable");
+        // The original backing owner is reference-only; never access CanOpen or its lazy hackable cache.
+        if (owned && (typeof(Thing).Module.ModuleVersionId != new Guid("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e"))) throw new ResidentMoveBlocked("RE_ContainerMapUnavailable");
         var casket = (Building_Casket)thing; var owner = casket.GetDirectlyHeldThings();
         if (owner?.GetType() != typeof(ThingOwner<Thing>) || owner.Owner != thing || owner.Count > 10000 || owner.Any(t => t == null || t.holdingOwner != owner) || owner.Distinct().Count() != owner.Count)
             throw new ResidentMoveBlocked("RE_ContainerMapUnavailable");
