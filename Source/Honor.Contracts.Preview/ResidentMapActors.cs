@@ -11,10 +11,20 @@ namespace Honor.Contracts.Preview;
 internal static class ResidentMapActors
 {
     // Metadata-read installed assembly whose map faction-change body and reservation/event boundaries were audited.
-    private static readonly Guid[] AuditedModules = [new("20545414-6845-4afb-b0ca-63bce8627a4c"), new("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e")];
+    private static readonly Guid[] AuditedModules = [new("20545414-6845-4afb-b0ca-63bce8627a4c"), new("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e"), new("3523c04c-c298-43ae-9571-20caaef22acc")];
     internal static ResidentMapBinding Binding(Pawn p) => new(p.GetUniqueLoadID(), p.Spawned ? p.Map.GetUniqueLoadID() : null,
         p.Spawned ? p.Map.cellIndices.CellToIndex(p.Position) : -1, p.Spawned ? p.Rotation.AsInt : 0);
 
+    // New enrollment/wait scope reads the original spawned registry directly, never the recursive AllPawns holder walk.
+    internal static List<Pawn> SpawnedRoster(Map map)
+    {
+        var spawned = AccessTools.Field(typeof(MapPawns), "pawnsSpawned"); var owner = AccessTools.Field(typeof(MapPawns), "map");
+        if (!NativeTransferBodies.ExtendedReadBodies || map?.GetType() != typeof(Map) || map.mapPawns?.GetType() != typeof(MapPawns) ||
+            spawned?.FieldType != typeof(List<Pawn>) || owner?.FieldType != typeof(Map) || owner.GetValue(map.mapPawns) != map ||
+            spawned.GetValue(map.mapPawns) is not List<Pawn> rows || rows.Count > 10000 || rows.Any(p => p == null || p.GetType() != typeof(Pawn)) ||
+            rows.Distinct().Count() != rows.Count || rows.Any(p => !p.Spawned || p.Map != map)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        return rows.ToList();
+    }
     internal static void RequireHolders(Pawn p)
     {
         foreach (var pair in new (object Value, Type Type)[] { (p, typeof(Pawn)), (p.inventory, typeof(Pawn_InventoryTracker)),
@@ -81,18 +91,20 @@ internal static class ResidentMapActors
                 EmptyManager(value, map, field == "pawnDestinationReservationManager");
             }
     }
-    internal static void Require(Pawn p)
+    internal static void Require(Pawn p) => RequireCore(p, false);
+    internal static void RequireEnrollment(Pawn p) => RequireCore(p, true);
+    private static void RequireCore(Pawn p, bool enrollment)
     {
         if (!AuditedModules.Contains(typeof(Pawn).Module.ModuleVersionId)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (p?.Spawned != true || p.Map?.Parent is not Settlement city || p.Map.IsPlayerHome || !Find.Maps.Contains(p.Map) ||
-            city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count(x => ReferenceEquals(x, p)) != 1 ||
-            p.IsPrisoner || p.IsSlave || p.Drafted || p.CurJob != null || p.jobs == null || p.jobs.jobQueue.Count != 0 || p.jobs.startingNewJob ||
+            city.previouslyGeneratedInhabitants == null || (!enrollment && city.previouslyGeneratedInhabitants.Count(x => ReferenceEquals(x, p)) != 1) ||
+            p.IsPrisoner || p.IsSlave || p.Drafted || p.CurJob != null || p.jobs == null || p.jobs.curDriver != null || p.jobs.jobQueue.Count != 0 || p.jobs.startingNewJob ||
             p.pather == null || p.pather.Moving || p.mindState?.Active != true || p.workSettings != null || p.trader != null || p.mindState.wantsToTradeWithColony ||
             p.ownership?.OwnedBed != null || p.ownership?.AssignedDeathrestCasket != null || p.ownership?.AssignedThrone != null ||
             p.health?.surgeryBills?.Count != 0 || p.AllComps.Any(c => c is IThingHolder) ||
             p.inventory?.innerContainer.Any(t => t is IThingHolder || t is ThingWithComps c && c.AllComps.Any(x => x is IThingHolder)) == true)
             throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-        if (typeof(Pawn).Module.ModuleVersionId == new Guid("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e"))
+        if (NativeTransferBodies.ExtendedReadBodies)
         {
             // Current StopDead disposes pending asynchronous paths. No path/cancellation authority is inferred from Moving=false.
             foreach (string name in new[] { "curPath", "curPathRequest" })

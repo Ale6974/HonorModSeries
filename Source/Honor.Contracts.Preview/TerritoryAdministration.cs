@@ -85,7 +85,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, t.LoadedMap, t.FromOwner, t.TargetOwner);
         return r;
     }
-    internal bool ReservesResident(Pawn pawn) => references?.Any(r => r?.Residents?.Pawns?.Contains(pawn) == true &&
+    internal bool ReservesResident(Pawn pawn) => DeferredReserves(pawn) || residentEnrollments?.Any(r => !ResidentEnrollment.Restore(r.Journal).Verified && r.Residents?.Contains(pawn) == true) == true || references?.Any(r => r?.Residents?.Pawns?.Contains(pawn) == true &&
         (RestoreFailed || r.Residents.Started || Ledger.Transfers.Any(t => t.Id == r.Id && t.Phase == TerritoryTransferPhase.Prepared))) == true;
     internal string ResidentProgress(string id)
     {
@@ -107,6 +107,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         Scribe_Values.Look(ref snapshot, "honorTerritoryTransfersV1");
         Scribe_Collections.Look(ref references, "honorTerritoryTransferReferences", LookMode.Deep);
         ExposePendingTownLosses();
+        ExposeResidentEnrollments();
+        ExposeDeferredTowns();
         if (Scribe.mode != LoadSaveMode.PostLoadInit) return;
         references ??= [];
         try
@@ -126,6 +128,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         {
             if (Charters.RestoreFailed || Ledger.LastTick > Find.TickManager.TicksGame || Charters.Book.LastTick > Find.TickManager.TicksGame)
                 throw new ArgumentException("Invalid source book or clock.");
+            ValidateEnrollmentReferences();
             foreach (var t in Ledger.Transfers)
             {
                 var charter = Charters.Book.Charter(t.Charter); var entity = Charters.Book.Entity(t.Territory);
@@ -167,6 +170,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 if (t.Phase != TerritoryTransferPhase.Prepared && reference.LoadedMap != null &&
                     (t.Phase != TerritoryTransferPhase.Destroyed || reference.LoadedMap.AssetJournal == null)) LoadedMapRecords.Release(reference.LoadedMap);
             }
+            ValidateDeferredTowns();
             pendingTownLosses.ValidatePair(Charters.Book, Ledger);
             politicalTownLosses.ValidatePair(Charters.Book, Ledger);
             ValidatePoliticalLosses(Current.Game.GetComponent<PoliticalTransitionLedger>().Journal);
@@ -642,6 +646,8 @@ public sealed class TerritoryAdministrationWindow : Window
         Current.Game.GetComponent<LeaderJoinLedger>().Draw(list, charter);
         if (list.ButtonText("FM_Open".Translate())) Find.WindowStack.Add(new FactionMergerProposalWindow(charter));
         ledger.DrawPendingTownLosses(list, charter);
+        ledger.DrawResidentEnrollment(list, charter);
+        ledger.DrawDeferredTowns(list, charter);
         if (list.ButtonText("CA_Open".Translate())) ledger.OpenPreservationAudit(charter);
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());
         else

@@ -560,4 +560,22 @@ Review Honor contracts for settlement. This notice does not establish intent, di
 <RE_OwnedContainerReview>Owned containers: {0}. Transfer only the reviewed original crate or casket; keep every original contained item, slot order, condition and stored configuration. Unreviewed contents gain no faction or private ownership changes. Unknown calls remain blocked for explicit recovery.</RE_OwnedContainerReview>
 <RE_HeldAssetReview>Contained faction property: {0}. Each reviewed original item has its own source ownership and normal-return record. Preserve the original holder, slot, physical state and settings; do not unload, repack or infer permission from the container.</RE_HeldAssetReview>
 <RE_OwnedHolderForestReview>Original owned holder forest: review every container, package and contained property separately. Keep original objects, owners, ordered slots and configuration. No opening, unpacking or inferred ownership. Each faction call has an independent start and normal-return record; unknown calls are never replayed.</RE_OwnedHolderForestReview>
+<RE_EnrollmentReview>Review explicit registration of unlisted civilians</RE_EnrollmentReview>
+<RE_EnrollmentConfirm>{0}, represented by {1}, approves registration of these independently eligible civilians: {2}. Keep every existing resident and the same original people, health, equipment, care and location. This registers town membership only. Subsequent transfer requires a fresh full migration review. Continue?</RE_EnrollmentConfirm>
+<RE_EnrollmentCompleted>Original civilians registered without changing faction, health or equipment. Review the town transfer again to migrate them.</RE_EnrollmentCompleted>
+<RE_EnrollmentBlocked>Registration deferred: current representative, original references, civilian status, clinical state or an earlier journal is unavailable. No original state was reset.</RE_EnrollmentBlocked>
+<RE_EnrollmentRecover>Resume original civilian registration</RE_EnrollmentRecover>
+<RE_DeferredReview>Defer town transfer until work and reservations are clear</RE_DeferredReview>
+<RE_DeferredConfirm>Wait to transfer {0} to {1}, retaining the original scope of {2} people? Existing work, queued tasks and reservations continue and remain saved by the game. The current representative of {3} is {4}. Nothing is cancelled or reset. Only after a safe idle boundary will the current representative, original scope, civilian registration and full migration be reviewed again. Changed ownership/contracts stop this intent. A started call is never automatically retried.</RE_DeferredConfirm>
+<RE_DeferredQueued>Town transfer deferred. Native work and reservations continue unchanged; the original scope is saved.</RE_DeferredQueued>
+<RE_DeferredStopped>Deferred transfer stopped or needs original execution recovery. Scope/authority changed or a call already started; no work or health was reset.</RE_DeferredStopped>
+<RE_DeferredCompleted>Deferred transfer completed with its independent positive migration receipt.</RE_DeferredCompleted>
+<RE_DeferredRecover>Resolve the existing registration/migration journal first; current ownership alone cannot complete this intent.</RE_DeferredRecover>
+<RE_DeferredCancel>Cancel waiting intent without changing the town</RE_DeferredCancel>
+<RE_DeferredReconcile>Link the original completed migration receipt</RE_DeferredReconcile>
+<RE_Deferred_Waiting>Waiting for a safe idle and reservation-free boundary; native work continues.</RE_Deferred_Waiting>
+<RE_Deferred_Started>Execution started. Automatic retries disabled; use original registration/migration recovery.</RE_Deferred_Started>
+<RE_Deferred_Applied>Completed: independent applied migration receipt retained.</RE_Deferred_Applied>
+<RE_Deferred_Stopped>Stopped: original scope or authority changed; original evidence retained.</RE_Deferred_Stopped>
+<RE_Deferred_Cancelled>Waiting intent cancelled before execution; town untouched.</RE_Deferred_Cancelled>
 </LanguageData>

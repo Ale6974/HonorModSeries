@@ -12,7 +12,7 @@ namespace Honor.Contracts.Preview;
 
 internal static class MapAssetRecords
 {
-    private static readonly Guid[] AuditedModules = [new("bfbab472-0f01-4378-acdf-3bd92e3a67f8"), new("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e")];
+    private static readonly Guid[] AuditedModules = [new("bfbab472-0f01-4378-acdf-3bd92e3a67f8"), new("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e"), new("3523c04c-c298-43ae-9571-20caaef22acc")];
     private static bool Component(Type type, bool shelf, bool container = false) => type == typeof(CompStyleable) || (shelf || container) && type == typeof(CompQuality) || container && (type == typeof(CompHackable) || type == typeof(CompGlower));
     private static void Native(Type type, string name)
     {
@@ -27,7 +27,7 @@ internal static class MapAssetRecords
     }
     internal static void VerifyHolderRead(Thing thing)
     {
-        if (typeof(Thing).Module.ModuleVersionId != new Guid("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e")) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        if (!NativeTransferBodies.ExtendedReadBodies) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         Native(typeof(QualityUtility), "TryGetQuality"); Native(typeof(CompQuality), "get_Quality");
         if (thing.GetType() == typeof(MinifiedThing)) { Native(typeof(MinifiedThing), "get_InnerThing"); Native(typeof(MinifiedThing), "GetDirectlyHeldThings"); }
         if (thing is ThingWithComps comps && (Field(thing, "compQuality", typeof(CompQuality)) != comps.AllComps.OfType<CompQuality>().SingleOrDefault() ||
@@ -48,7 +48,7 @@ internal static class MapAssetRecords
         bool shelf = ownedStorage && t.GetType() == typeof(Building_Storage);
         if (held && t is Building heldBuilding && (heldBuilding.def?.building == null || heldBuilding.def.building.isNaturalRock || heldBuilding.def == ThingDefOf.CaravanPackingSpot)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         bool container = ownedContainers && ContainerMapEvidence.Supported(t);
-        if ((container || held || package) && typeof(Thing).Module.ModuleVersionId != new Guid("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e")) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        if ((container || held || package) && !NativeTransferBodies.ExtendedReadBodies) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (!AuditedModules.Contains(typeof(Thing).Module.ModuleVersionId) || (reviewedPawns == null ? map.mapPawns.AllPawns.Count != 0 : map.mapPawns.AllPawns.Count != reviewedPawns.Count || map.mapPawns.AllPawns.Any(p => !reviewedPawns.Contains(p))) || map.lordManager?.lords?.Count != 0 ||
             !package && !container && t.GetType() != typeof(Building) && (!ownedStorage || t.GetType() != typeof(Building_Storage)) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) ||
             !t.def.CanHaveFaction || t.def.GetType() != typeof(ThingDef) || DefDatabase<ThingDef>.GetNamedSilentFail(t.def.defName) != t.def ||

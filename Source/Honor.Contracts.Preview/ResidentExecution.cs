@@ -112,7 +112,7 @@ internal static class ResidentExecution
             throw new ArgumentException("Unavailable resident town.");
         if (loaded != null) LoadedMapRecords.VerifyScope(city, loaded);
     }
-    private static void Eligible(Pawn p, int profile, bool retainedLeader = false)
+    private static void Eligible(Pawn p, int profile, bool retainedLeader = false, bool enrollment = false)
     {
         if (p?.IsSlave == true) throw new ResidentMoveBlocked("RE_SlaveUnavailable");
         if (!retainedLeader && p != null && PawnUtility.IsFactionLeader(p)) throw new ResidentMoveBlocked("LR_LeaderBlocked");
@@ -137,7 +137,7 @@ internal static class ResidentExecution
         if (profile == 11)
         {
             if (p.IsPrisoner) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-            if (p.Spawned) ResidentMapActors.Require(p);
+            if (p.Spawned) { if (enrollment) ResidentMapActors.RequireEnrollment(p); else ResidentMapActors.Require(p); }
         }
         if (p.IsPrisoner) ResidentPrisoners.Eligible(p, profile);
         if (p.playerSettings != null && (Areas == null || Areas.IsStatic || Areas.FieldType != typeof(Dictionary<Map, Area>) ||
@@ -166,10 +166,10 @@ internal static class ResidentExecution
         => ReadJoiningLeader(p, profile, null);
     internal static ResidentMoveActual ReadJoiningLeader(Pawn p, int profile, ResidentSurgeryRecord surgery)
         => profile is 5 or 7 ? ReadInternal(p, profile, surgery, null, true) : throw new ArgumentException("Unsupported joining leader profile.");
-    private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader, ResidentAreaRecord area = null, bool captureAreas = false)
+    private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader, ResidentAreaRecord area = null, bool captureAreas = false, bool enrollment = false)
     {
         if (profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11)) throw new ArgumentException("Unknown resident profile.");
-        Eligible(p, profile, retainedLeader); var baseline = ResidentBaselineStore.Evidence(p);
+        Eligible(p, profile, retainedLeader, enrollment); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
             baseline.Id, baseline.Health, baseline.Gear,
@@ -199,6 +199,13 @@ internal static class ResidentExecution
         }
         // Faction in the shared move planner denotes the changing authority; prisoner affiliation is separately proof-bound.
         return new(baseline.Id, profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
+    }
+    // Separate affirmative enrollment decision; ordinary transfer capture still requires the original city alias.
+    internal static ResidentMoveActual ReadEnrollment(Pawn pawn)
+    {
+        if (!NativeTransferBodies.ExtendedReadBodies) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        var surgery = ResidentSurgery.Capture(pawn); var area = ResidentAreaRecords.Capture(pawn);
+        return ReadInternal(pawn, 11, surgery, null, false, area, true, true);
     }
     internal static ResidentExecutionRecord Capture(Settlement city, int profile = 7)
         => CaptureCore(city, profile, null);
