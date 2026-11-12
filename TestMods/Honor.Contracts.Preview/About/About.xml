@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.99</modVersion>
+  <modVersion>0.3.100</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.99: Explicitly approve the original destination as transit, then separately review a fresh follow-up handover to the current foreign master. Both legs keep independent original evidence/calls and a positive predecessor link; contracts, debts and player control remain unchanged.
+  <description>0.3.100: Explicit original civilian roster enrollment now accepts separate current council/titled-ruler mandates. Eligible union towns also support scoped idle-boundary waiting, fresh registration and existing migration. Native work, contracts, debts and player control stay intact. Royal migration and broader work/loss combinations remain unfinished.
+0.3.100: 연합 의결/현재 작위 지도자의 별도 결정으로 원 민간인 등록을 실행·저장·복구합니다. 적격 연합 도시의 원 작업·예약을 유지한 유휴 대기와 새 등록/기존 이전도 연결합니다. 귀족 세력의 소속 이전 등 미지원 조합은 유지합니다.
+0.3.99: Explicitly approve the original destination as transit, then separately review a fresh follow-up handover to the current foreign master. Both legs keep independent original evidence/calls and a positive predecessor link; contracts, debts and player control remain unchanged.
 0.3.99: 다른 목적지의 새 종주는 원 목적지 중간 인계를 승인하고 정상 완료 후 새 증거의 별도 후속 인계를 검토할 수 있습니다. 각 구간의 원 증거·호출과 선행 완료 연결을 따로 보존하며 계약·채무·플레이어 통제는 유지합니다.
 0.3.98: Current signed foreign-master rights can be explicitly retained while completing the SAME original destination custody. All current higher/third parties approve this exact action; player control, contracts, debts and original calls remain unchanged. Changed destinations or missing physical objects remain deferred.
 0.3.98: 현재 외부 종주·상위/제삼자 승인과 원 계약 증거를 같은 원 목적지의 실제 인계·저장·중단 복구에 연결합니다. 플레이어 통제·계약·채무·원 호출은 유지하며 다른 목적지나 소실된 물리 객체의 복구는 보류합니다.

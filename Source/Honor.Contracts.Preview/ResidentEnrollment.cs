@@ -64,6 +64,8 @@ public sealed partial class TerritoryAdministrationLedger
             Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges || Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges)
             throw new ArgumentException("Resolve existing authority/custody before a new explicit enrollment.");
     }
+    private static string CurrentEnrollmentGovernment(ResidentEnrollmentState state, Faction source)
+        => state.GovernmentDecisionV1 == null ? null : NativeNpcContractAuthority.ReviewResidentGovernment(ResidentEnrollment.DecisionScope(state), state.Tick, source);
     private void VerifyEnrollment(ResidentEnrollmentRecord r)
     {
         EnrollmentReady(); var state = ResidentEnrollment.Restore(r.Journal);
@@ -81,7 +83,7 @@ public sealed partial class TerritoryAdministrationLedger
         var charter = Charters.Book.Charter(state.Charter);
         if (charter.Phase != RecordedCharterPhase.Active || !Charters.Book.PlayerManaged(charter) || IndependentlyLostTerritory(charter.Terms.Subject) ||
             !Ledger.VerifiedOwner(charter.Terms.Subject, Charters.Book.Entity(charter.Terms.Subject).NativeOwner, state.Source)) throw new ArgumentException("Original active city contract required.");
-        ResidentEnrollment.Review(r.Journal, r.City.previouslyGeneratedInhabitants.Select(p => p.GetUniqueLoadID()), NpcDecisionAuthority.Read(r.Source), EnrollmentDigest(Charters.Book.Export()));
+        ResidentEnrollment.Review(r.Journal, r.City.previouslyGeneratedInhabitants.Select(p => p.GetUniqueLoadID()), NpcDecisionAuthority.Observe(r.Source), EnrollmentDigest(Charters.Book.Export()), CurrentEnrollmentGovernment(state, r.Source));
         foreach (var pawn in r.Residents)
         {
             if (pawn.Faction != r.Source || pawn.Map != r.Map || pawn.GetLord() != null || Find.QuestManager.IsReservedByAnyQuest(pawn)) throw new ArgumentException("Not an independently eligible current civilian.");
@@ -97,17 +99,21 @@ public sealed partial class TerritoryAdministrationLedger
         var charter = Charters.Book.Charter(charterId); var b = Charters.Binding(charter.Terms.Subject); var city = b.Settlement;
         if (charter.Phase != RecordedCharterPhase.Active || !Charters.Book.PlayerManaged(charter) || b.PlayerGroup || b.FactionGroup || city?.HasMap != true || city.previouslyGeneratedInhabitants == null)
             throw new ArgumentException("Current single city with a known original roster required.");
-        var source = Charters.SubcharterRepresentative(charter.Terms.Subject); var authority = NpcDecisionAuthority.Read(source);
+        var source = Charters.SubcharterRepresentative(charter.Terms.Subject); var authority = NpcDecisionAuthority.Observe(source);
         var candidates = ResidentMapActors.SpawnedRoster(city.Map).Where(p => p != null && p.Faction == source && !city.previouslyGeneratedInhabitants.Contains(p))
             .OrderBy(p => p.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         if (candidates.Count == 0 || candidates.Count + city.previouslyGeneratedInhabitants.Count > 128 || city.previouslyGeneratedInhabitants.Any(p => p == null)) throw new ArgumentException("No bounded selected civilian roster.");
         if (candidates.Any(p => ReservesResident(p) || Current.Game.GetComponent<LeaderJoinLedger>().ReservesResident(p) || Current.Game.GetComponent<LeaderRelocationLedger>().ReservesResident(p)))
             throw new ArgumentException("Another original execution owns this resident.");
         var rows = candidates.Select(p => { var a = ResidentExecution.ReadEnrollment(p); return new ResidentMoveEvidence(a.Id, a.Preserved, a.MedicalCare); }).ToArray();
+        long tick = Find.TickManager.TicksGame;
+        var draft = new ResidentEnrollmentState(charterId, "territory/" + city.GetUniqueLoadID(), city.Map.GetUniqueLoadID(), source.GetUniqueLoadID(),
+            EnrollmentDigest(Charters.Book.Export()), authority, city.previouslyGeneratedInhabitants.Select(p => p.GetUniqueLoadID()).ToArray(), rows, 0, false, false, false, tick, null);
+        string government = authority.Regime == NpcDecisionRegime.Ordinary ? null : NativeNpcContractAuthority.ReviewResidentGovernment(ResidentEnrollment.DecisionScope(draft), tick, source);
         var record = new ResidentEnrollmentRecord { City = city, Map = city.Map, Source = source, Representative = source.leader,
             Before = city.previouslyGeneratedInhabitants.ToList(), Residents = candidates,
             Journal = ResidentEnrollment.Prepare(charterId, "territory/" + city.GetUniqueLoadID(), city.Map.GetUniqueLoadID(), source.GetUniqueLoadID(),
-                EnrollmentDigest(Charters.Book.Export()), authority, city.previouslyGeneratedInhabitants.Select(p => p.GetUniqueLoadID()), rows, Find.TickManager.TicksGame) };
+                EnrollmentDigest(Charters.Book.Export()), authority, city.previouslyGeneratedInhabitants.Select(p => p.GetUniqueLoadID()), rows, tick, government) };
         VerifyEnrollment(record); return record;
     }
     private void ApplyEnrollment(ResidentEnrollmentRecord record, bool prepare)
@@ -122,7 +128,7 @@ public sealed partial class TerritoryAdministrationLedger
             {
                 VerifyEnrollment(record); var state = ResidentEnrollment.Restore(record.Journal);
                 if (Current.Game != originalGame || record.City.previouslyGeneratedInhabitants != roster) throw new ArgumentException("Original game/list changed.");
-                record.Journal = ResidentEnrollment.Begin(record.Journal, roster.Select(p => p.GetUniqueLoadID()), NpcDecisionAuthority.Read(record.Source), EnrollmentDigest(Charters.Book.Export()));
+                record.Journal = ResidentEnrollment.Begin(record.Journal, roster.Select(p => p.GetUniqueLoadID()), NpcDecisionAuthority.Observe(record.Source), EnrollmentDigest(Charters.Book.Export()), CurrentEnrollmentGovernment(state, record.Source));
                 // Exact native List.Add is callback-free. Preserve the same list and every original Pawn; never deep-save or recreate a person.
                 roster.Add(record.Residents[state.Added]);
                 record.Journal = ResidentEnrollment.Returned(record.Journal, roster.Select(p => p.GetUniqueLoadID()));
@@ -147,7 +153,9 @@ public sealed partial class TerritoryAdministrationLedger
             {
                 var r = ReviewEnrollment(charter);
                 string names = string.Join(", ", r.Residents.Select(p => p.Name?.ToStringFull ?? p.GetUniqueLoadID()));
-                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("RE_EnrollmentConfirm".Translate(r.Source.Name, r.Representative.Name?.ToStringFull, names), () => ApplyEnrollment(r, true)));
+                string text = "RE_EnrollmentConfirm".Translate(r.Source.Name, r.Representative.Name?.ToStringFull, names);
+                if (ResidentEnrollment.Restore(r.Journal).GovernmentDecisionV1 != null) text += "\n\n" + "RE_GovernedEnrollment".Translate();
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(text, () => ApplyEnrollment(r, true)));
             }
             catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Enrollment review unavailable: " + e.GetType().Name); Messages.Message("RE_EnrollmentBlocked".Translate(), MessageTypeDefOf.RejectInput); }
         }

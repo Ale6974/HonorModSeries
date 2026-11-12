@@ -69,3 +69,16 @@ Changed contracts, representatives or payments require a fresh review. A differe
 When the current master's realm differs, the current approval explicitly identifies the original destination as transit and binds the final realm. Finish that original handover with all current source, original target and higher/third-party consent. From its completed history, choose the separate follow-up review, review fresh current physical/clinical and contractual evidence, then confirm the new handover to the current master's realm.
 
 Each leg keeps separate original evidence and call facts. Recover the currently prepared leg after interruption; do not replay the completed predecessor or reapply old medical snapshots. Existing contracts, debts, lower rights and native player control remain. Peace, surviving source-base and existing supported preservation conditions still apply. This does not automatically negotiate new terms or recreate missing original objects.
+
+
+## 연합·귀족의 원 주민 등록 — 0.3.100
+
+원 주민 등록 검토는 현재 연합 의석의 해당 범위 의결 또는 현재 작위 대표의 별도 결정을 표시한다. 현재 의석·대표·작위·동의와 원 명부·인물/임상이 같아야 같은 Pawn 참조를 추가한다. 등록은 소속 이전/병력 권한이 아니며 이후 전체 이전은 따로 검토한다. 일부 추가 후 중단되면 같은 journal에서 복구하고, 불확실한 추가나 바뀐 동의는 보류한다.
+
+적격 연합 도시는 진행 작업·예약을 유지하는 유휴 대기를 사용할 수 있다. 대기 의결은 원 전체 인원·목적지에만 적용하고 실제 유휴 시점의 주민 등록·이전에는 각각 새 검토가 필요하다. 의석/대표가 바뀌면 원 증거를 보존하고 대기를 중단한다. 귀족 세력의 소속 이전 등 아직 지원되지 않는 경로를 대기로 우회하지 않는다.
+
+## Council and titled-ruler enrollment — English
+
+Explicit civilian enrollment can bind a separate current council decision or titled-ruler mandate to the original people, clinical/care evidence, roster and contracts. The same current seats, representative, title and decision are checked before each append and final verification. This registers the same Pawn references; it does not authorize faction or army changes.
+
+Eligible union towns can also wait with native work and reservations untouched. The waiting mandate has its own scope; later registration and full migration use independent fresh reviews. Changed seats or representatives stop the wait while retaining its evidence. Unknown appends and Started execution are never replayed. Existing royal-faction migration and other unsupported native paths remain deferred.

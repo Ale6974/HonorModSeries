@@ -1,5 +1,19 @@
 # 요구사항 상태 — 공개 0.2.1 / 호환성 0.2.2 / Contracts 개발판
 
+## 0.3.100 — M2 부분 구현: 연합·작위 결정의 원 주민 등록과 연합 유휴 대기 집행
+
+2026-11-12. 원 주민 등록을 일반 대표 전용에서 별도 현재 연합 의결/작위 지도자 결정으로 확장했다. 새 GovernmentDecisionV1은 원 charter/town/map/source/전체 Book hash/대표/원 명부 순서/선택 주민의 임상·의료 증거/시계에만 묶인다. ResidentRosterEnrollment/v1 scope는 진행 Added/Started/Verified를 바꿔도 같은 원 행동을 식별하되 다른 도시·인원·임상·계약·시계·행동으로는 재사용할 수 없다. native ReviewEnrollment는 실제 현재 연합 의석/대표·goodwill 또는 현재 대표 자신의 세력 작위/등급을 기존 검토된 NativeNpcContractAuthority에서 읽고 별도 결정으로 검토/확인한다. 각 List.Add 전과 최종 검증 전에 같은 현재 의석·대표·작위 결정을 다시 읽는다. 원 List/순서/같은 Pawn·임상·의료·별도 Started/Added/Verified와 reference-only Scribe·명시적 복구는 그대로다. 소속/건강/작업/병력 권한을 등록으로 추정하지 않는다.
+
+대기 이전에도 별도 DeferredTownIdleBoundary/v1 결정과 원 charter/town/map/source/target/Book/원 인원·작업 관찰/기존 물리 journal ID prefix/시계를 저장한다. 적격 연합 도시는 실제 대기→현재 결정 재검토→native 유휴/예약 없음→별도의 새 등록 결정/전체 이전 검토→기존 실제 Apply를 실행한다. 대기 의결을 등록 의결로 재사용하지 않는다. 진행 job/driver/queue/예약은 native가 계속 처리/저장하며 종료/복사/재시작하지 않는다. 의석·대표·작위/결정/범위 변경은 원 기록을 보존하고 대기를 중단한다. Started는 자동 재시도하지 않고 독립 Applied 영수증을 검증한다. 귀족 source의 기존 소속 이전 제한은 유지하며, 무한히 대기시키지 않도록 native 지원되지 않는 source/target의 신규 대기 준비를 거부한다. 작위 결정의 실제 등록은 가능하지만 귀족 세력 전체 이전까지 완료했다고 부르지 않는다.
+
+새 ResidentGovernment는 null이면 옛 일반 대표 Consent를 그대로 요구하고, nonnull이면 정확한 canonical 현재 scoped collective/royal 결정만 검증한다. 일반 대표를 꾸미거나 Royal/Union을 Ordinary로 다운캐스트하지 않는다. GovernmentDecisionV1은 optional null-omitted이며 옛0.3.96 enrollment/deferred 문서의 JSON bytes/기존 proof와 일반 전용 제한은 그대로 유지한다. 각 원 journal hash와 기존 Scribe/PostLoad/Finalize·명시적 중단 복구가 새 결정을 보존한다. 완료 기록은 원 역사적 결정의 scope를 검증하고 native 원 참조만 기존 방식으로 해제한다. unknown started append는 여전히 재실행하지 않는다.
+
+GovTests는 연합 현재 의결→실제 연결한 append 규칙의 시작/정상 반환→일부 저장 복원→최종 Verified, 귀족 작위/대표, 대기와 등록 행동 간 재사용 거부→별도 wait 결정→Started→독립 실제 이전 영수증 링크와 복원을 검사한다. 의석/대표/작위/임상/의료/계약/목적지 변화, old/null 권한 확대, 불확실 append/Started 재실행, 이미 완료한 journal 재사용을 거부하고 옛 일반/null enrollment·wait JSON bytes 불변을 확인한다. 기존 mapped clinical/census·임상/수술/의료·실제 custody 회귀도 유지한다. 현재 설치5005 DLL SHA25682387F78262461E53BB06A67C3945912B876D1FDB07235122BBB6E59D073F125가 감사본과 같음을 확인했으며 새 native API/unknown1.6 몸체 권한은 추가하지 않았다.
+
+최종 검증: .local/m2-100-build16.log 및 .local/m2-100-final17.log 양 타깃 전체 빌드·규칙·XML/서식 검사 통과. Honor20,093/Contracts5,650(합25,743),영한589키/인자 일치,컴파일 경고·오류0. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.100.zip SHA256E2A195F82A08BF9EB791335ED3FB69C68F8B2CA2C45FE5081B8A43141515FB49. 기존 로컬 Preview는 .local/contracts-preview-c8c9e5b270d74132bc8ec9edc9913b80에 백업하고32파일 해시 일치·활성화/언어 불변으로 설치했다(.local/m2-100-install.log).
+
+남은 범위: 소실·재생성 원 지도/주민/자산의 복합 복구, 귀족 source 소속 이전, 전쟁·개인/군사 권리·일반 진행 작업/예약의 소속 변경 너머 보존·커스텀 holder 및 미지원 역할 조합. 이들을 등록/대기 승인으로 허용하거나 기존 보호 조건을 지워 완료로 처리하지 않는다. M1 10/10,M2 전체 미완료0/18,전체10/100;1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6. Preview Steam 게시·외부 자동 예약 없음.
+
 ## 0.3.99 — M2 부분 구현: 다른 목적지의 현 종주와 두 구간 인계 복구
 
 2026-11-12. TransitDestinationV1은 현재 새 종주의 소속이 원 target과 다를 때 원 인계를 중간 구간으로 마치는 별도 행동별 승인을 추가한다. 새 종주·모든 상위/연결 제삼자·원 source와 원 target 대표가 정확한 Book/payment/physical/foreign-rights/최종 목적지 범위에 동의해야 한다. 원 target이나 원 clinical/map/자산/호출 journal을 새 목적지로 덮어쓰지 않는다. 원 구간은 기존 실제 주민/자산/도시 호출·독립 정상 반환·명시적 복구로 완료한다. 불명확한 원 호출은 여전히 보류하고 target 소유만으로 완료하지 않는다.

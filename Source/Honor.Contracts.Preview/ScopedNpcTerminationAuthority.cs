@@ -24,6 +24,8 @@ internal static class NativeNpcContractAuthority
     internal static ScopedNpcContractDecision[] ReviewSuccessionParties(TownSuccessionMandate w, IEnumerable<Faction> realms)
         => Build(TownSuccessionMandates.Scope(w), w.Plan.Tick, realms);
     internal static ScopedNpcContractDecision[] ReviewCustody(string scope, long tick, IEnumerable<Faction> realms) => Build(scope, tick, realms);
+    internal static string ReviewResidentGovernment(string scope, long tick, Faction realm)
+        => System.Text.Json.JsonSerializer.Serialize(Build(scope, tick, [realm])?.Single());
     private static ScopedNpcContractDecision[] Build(string scope, long tick, IEnumerable<Faction> actualRealms)
     {
         var decisions = new List<ScopedNpcContractDecision>();

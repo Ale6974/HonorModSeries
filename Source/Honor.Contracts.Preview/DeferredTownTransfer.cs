@@ -55,6 +55,8 @@ public sealed partial class TerritoryAdministrationLedger
             }
         }
     }
+    private static string CurrentDeferredGovernment(DeferredTownState state, Faction source)
+        => state.GovernmentDecisionV1 == null ? null : NativeNpcContractAuthority.ReviewResidentGovernment(DeferredTownTransfer.DecisionScope(state), state.Tick, source);
     private void DeferredContext(DeferredTownRecord r, bool initial)
     {
         EnrollmentReady();
@@ -65,7 +67,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (s.Tick > Find.TickManager.TicksGame) throw new ArgumentException("Future deferred intent.");
         if (!NativeTransferBodies.WorkObservationBodies || r.City == null || r.City.GetType() != typeof(Settlement) || r.City.Destroyed || !Find.WorldObjects.AllWorldObjects.Contains(r.City) ||
             !r.City.HasMap || r.City.Map != r.Map || r.Map?.Parent != r.City || r.Map.GetType() != typeof(Map) || r.Map.IsPlayerHome || !Find.Maps.Contains(r.Map) || r.City.Faction != r.Source || r.Source == r.Target ||
-            r.Source == null || r.Target == null || r.Target.IsPlayer || !Find.FactionManager.AllFactionsListForReading.Contains(r.Target) || r.Source.HostileTo(r.Target) || r.Target.HostileTo(r.Source) ||
+            r.Source == null || r.Target == null || !Eligible(r.Source) || !Eligible(r.Target) || r.Target.IsPlayer || !Find.FactionManager.AllFactionsListForReading.Contains(r.Target) || r.Source.HostileTo(r.Target) || r.Target.HostileTo(r.Source) ||
             s.Town != "territory/" + r.City.GetUniqueLoadID() || s.Map != r.Map.GetUniqueLoadID() || s.Source != r.Source.GetUniqueLoadID() || s.Target != r.Target.GetUniqueLoadID() ||
             r.Before == null || r.People == null || r.Before.Any(p => p == null) || r.People.Any(p => p == null || p.Destroyed || p.Dead || p.Faction != r.Source) ||
             !r.Before.Select(p => p.GetUniqueLoadID()).SequenceEqual(s.Before) || !r.People.Select(p => p.GetUniqueLoadID()).SequenceEqual(s.People.Select(p => p.Id)) ||
@@ -77,7 +79,7 @@ public sealed partial class TerritoryAdministrationLedger
             throw new ArgumentException("Original ordinary active charter/target changed.");
         var actualPeople = r.Before.Concat(ResidentMapActors.SpawnedRoster(r.Map).Where(p => p != null && p.Faction == r.Source)).Distinct().OrderBy(p => p.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         if (!actualPeople.SequenceEqual(r.People)) throw new ArgumentException("Deferred resident scope changed; never add late people silently.");
-        DeferredTownTransfer.Review(r.Journal, EnrollmentDigest(Charters.Book.Export()), NpcDecisionAuthority.Read(r.Source), actualPeople.Select(p => p.GetUniqueLoadID()));
+        DeferredTownTransfer.Review(r.Journal, EnrollmentDigest(Charters.Book.Export()), NpcDecisionAuthority.Observe(r.Source), actualPeople.Select(p => p.GetUniqueLoadID()), CurrentDeferredGovernment(s, r.Source));
         if (!Ledger.Transfers.Select(t => t.Id).SequenceEqual(s.PreviousTransfers)) throw new ArgumentException("Original physical ledger changed while waiting.");
         if (initial && r.People.Any(p => ReservesResident(p) || Current.Game.GetComponent<LeaderJoinLedger>().ReservesResident(p) || Current.Game.GetComponent<LeaderRelocationLedger>().ReservesResident(p)))
             throw new ArgumentException("Another execution owns these people.");
@@ -91,6 +93,7 @@ public sealed partial class TerritoryAdministrationLedger
         var c = Charters.Book.Charter(charter); var city = Charters.Binding(c.Terms.Subject).Settlement;
         if (city?.HasMap != true || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Any(p => p == null)) throw new ArgumentException("Current loaded NPC town required.");
         var source = Charters.SubcharterRepresentative(c.Terms.Subject); var target = Current.Game.GetComponent<PlayerPoliticsLedger>().TerritoryAuthority();
+        if (!Eligible(source) || !Eligible(target)) throw new ArgumentException("Existing native migration eligibility still applies to a deferred intent.");
         var people = city.previouslyGeneratedInhabitants.Concat(ResidentMapActors.SpawnedRoster(city.Map).Where(p => p?.Faction == source)).Distinct().OrderBy(p => p.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         if (people.Count > 128 || people.Any(p => p == null || p.GetType() != typeof(Pawn) || p.jobs?.GetType() != typeof(Pawn_JobTracker) || p.jobs.curJob != null && p.jobs.curJob.GetType() != typeof(Job))) throw new ArgumentException("Unsupported work owner.");
         var r = new DeferredTownRecord { City = city, Map = city.Map, Source = source, Target = target, Before = city.previouslyGeneratedInhabitants.ToList(), People = people };
@@ -101,8 +104,13 @@ public sealed partial class TerritoryAdministrationLedger
         var currentJobRead = AccessTools.PropertyGetter(typeof(Pawn), nameof(Pawn.CurJob));
         if (jobRead == null || currentJobRead == null || Harmony.GetPatchInfo(jobRead)?.Owners.Any() == true || Harmony.GetPatchInfo(currentJobRead)?.Owners.Any() == true) throw new ArgumentException("Unknown job observation.");
         var evidence = people.Select(p => new DeferredTownPerson(p.GetUniqueLoadID(), p.jobs.curJob?.GetUniqueLoadID(), EnrollmentDigest(System.Text.Json.JsonSerializer.Serialize(ResidentBaselineStore.Evidence(p))))).ToArray();
-        r.Journal = DeferredTownTransfer.Prepare("deferred-" + Guid.NewGuid().ToString("N"), charter, "territory/" + city.GetUniqueLoadID(), city.Map.GetUniqueLoadID(), source.GetUniqueLoadID(), target?.GetUniqueLoadID(),
-            EnrollmentDigest(Charters.Book.Export()), NpcDecisionAuthority.Read(source), r.Before.Select(p => p.GetUniqueLoadID()), Ledger.Transfers.Select(t => t.Id), evidence, Find.TickManager.TicksGame);
+        string id = "deferred-" + Guid.NewGuid().ToString("N"); long tick = Find.TickManager.TicksGame;
+        var authority = NpcDecisionAuthority.Observe(source);
+        var draft = new DeferredTownState(id, charter, "territory/" + city.GetUniqueLoadID(), city.Map.GetUniqueLoadID(), source.GetUniqueLoadID(), target?.GetUniqueLoadID(),
+            EnrollmentDigest(Charters.Book.Export()), authority, r.Before.Select(p => p.GetUniqueLoadID()).ToArray(), Ledger.Transfers.Select(t => t.Id).ToArray(), evidence, tick, DeferredTownPhase.Waiting, null, null);
+        string government = authority.Regime == NpcDecisionRegime.Ordinary ? null : NativeNpcContractAuthority.ReviewResidentGovernment(DeferredTownTransfer.DecisionScope(draft), tick, source);
+        r.Journal = DeferredTownTransfer.Prepare(id, charter, "territory/" + city.GetUniqueLoadID(), city.Map.GetUniqueLoadID(), source.GetUniqueLoadID(), target?.GetUniqueLoadID(),
+            EnrollmentDigest(Charters.Book.Export()), authority, r.Before.Select(p => p.GetUniqueLoadID()), Ledger.Transfers.Select(t => t.Id), evidence, tick, government);
         DeferredContext(r, true); return r;
     }
     private void EnqueueDeferredTown(DeferredTownRecord r)
@@ -136,7 +144,7 @@ public sealed partial class TerritoryAdministrationLedger
             }
             catch (ArgumentException) { return; }
             var original = DeferredTownTransfer.Restore(r.Journal);
-            r.Journal = DeferredTownTransfer.Begin(r.Journal, EnrollmentDigest(Charters.Book.Export()), NpcDecisionAuthority.Read(r.Source), r.People.Select(p => p.GetUniqueLoadID()));
+            r.Journal = DeferredTownTransfer.Begin(r.Journal, EnrollmentDigest(Charters.Book.Export()), NpcDecisionAuthority.Observe(r.Source), r.People.Select(p => p.GetUniqueLoadID()), CurrentDeferredGovernment(original, r.Source));
             if (enrollment != null)
             {
                 ApplyEnrollment(enrollment, true);
@@ -177,7 +185,13 @@ public sealed partial class TerritoryAdministrationLedger
         if (RestoreFailed) return;
         if (list.ButtonText("RE_DeferredReview".Translate()))
         {
-            try { var r = ReviewDeferredTown(charter); Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("RE_DeferredConfirm".Translate(r.City.Label, r.Target.Name, r.People.Count, r.Source.Name, r.Source.leader.Name?.ToStringFull), () => EnqueueDeferredTown(r))); }
+            try
+            {
+                var r = ReviewDeferredTown(charter);
+                string text = "RE_DeferredConfirm".Translate(r.City.Label, r.Target.Name, r.People.Count, r.Source.Name, r.Source.leader.Name?.ToStringFull);
+                if (DeferredTownTransfer.Restore(r.Journal).GovernmentDecisionV1 != null) text += "\n\n" + "RE_GovernedWait".Translate();
+                Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(text, () => EnqueueDeferredTown(r)));
+            }
             catch (ArgumentException) { Messages.Message("RE_EnrollmentBlocked".Translate(), MessageTypeDefOf.RejectInput); }
         }
         foreach (var r in (deferredTowns ?? []).Where(r => DeferredTownTransfer.Restore(r.Journal).Charter == charter).ToArray())
