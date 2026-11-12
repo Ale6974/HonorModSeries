@@ -24,6 +24,7 @@ public sealed record TerritoryTransfer(string Id, string Territory, string Basel
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool CityCallJournalV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string PreviousTransferV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string RoyalResidentsV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string LoadedMap { get; init; }
 }
 public sealed record TerritoryTransfersSave(int Version, long LastTick, TerritoryTransfer[] Transfers);
@@ -61,7 +62,7 @@ public sealed class TerritoryTransferLedger
         string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration = null, string releasedRoot = null)
         => PrepareCore(id, book, charterId, observed, target, verifiedAuthority, verifiedUnion, purpose, now, verifiedAdministration, releasedRoot, true);
     private TerritoryTransfer PrepareCore(string id, CharterBook book, string charterId, TerritoryTransferObservation observed,
-        string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration, string releasedRoot, bool loaded, string previous = null)
+        string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration, string releasedRoot, bool loaded, string previous = null, string royalResidents = null)
     {
         RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(observed);
         Require(loaded ? observed.HasMap && observed.LoadedMap != null && observed.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 : observed.LoadedMap == null && !observed.HasMap, "Loaded custody requires a separately scoped preparation.");
@@ -97,7 +98,7 @@ public sealed class TerritoryTransferLedger
                 charter.NpcAuthority != null && charter.Phase == RecordedCharterPhase.Active && !book.PlayerManaged(charter), "Positive original handover and current foreign contract required.");
         }
         var result = new TerritoryTransfer(id, subject.Id, subject.NativeOwner, observed.Owner, target, charterId, purpose, now,
-            StockProof: observed.StockProof, StockFormat: observed.StockFormat, ReleasedRoot: releasedRoot, ResidentProof: observed.ResidentProof) { LoadedMap = observed.LoadedMap, CityCallJournalV1 = loaded, PreviousTransferV1 = previous };
+            StockProof: observed.StockProof, StockFormat: observed.StockFormat, ReleasedRoot: releasedRoot, ResidentProof: observed.ResidentProof) { LoadedMap = observed.LoadedMap, CityCallJournalV1 = loaded, PreviousTransferV1 = previous, RoyalResidentsV1 = royalResidents };
         if (JsonSerializer.Serialize(new TerritoryTransfersSave(Version, now, transfers.Append(result).ToArray())).Length > 4000000)
             throw new ArgumentException("Original physical journal capacity; retain existing history unchanged.");
         transfers.Add(result); LastTick = now; return result;
@@ -117,9 +118,16 @@ public sealed class TerritoryTransferLedger
         var paired = prepared with { CityCallJournalV1 = true }; transfers[transfers.Count - 1] = paired; return paired;
     }
     // Preparation is not execution permission: the native adapter must separately stage current scoped consent before calling native setters.
-    public TerritoryTransfer PrepareForeignContinuation(string id, string previous, CharterBook book, string charter, TerritoryTransferObservation observed, string target, long now, string administration = null)
+    public TerritoryTransfer PrepareForeignContinuation(string id, string previous, CharterBook book, string charter, TerritoryTransferObservation observed, string target, long now, string administration = null, string royalResidents = null)
     {
-        var t = PrepareCore(id, book, charter, observed, target, target, null, TerritoryTransferPurpose.ActiveCharter, now, administration, null, observed.HasMap, previous);
+        Require(royalResidents == null || CityStockProof.Valid(royalResidents), "Invalid royal continuation proof.");
+        var t = PrepareCore(id, book, charter, observed, target, target, null, TerritoryTransferPurpose.ActiveCharter, now, administration, null, observed.HasMap, previous, royalResidents);
+        var paired = t with { CityCallJournalV1 = true }; transfers[transfers.Count - 1] = paired; return paired;
+    }
+    public TerritoryTransfer PrepareRoyalJournaled(string id, CharterBook book, string charter, TerritoryTransferObservation observed, string target, string royalResidents, long now, string administration = null)
+    {
+        Require(CityStockProof.Valid(royalResidents), "Exact original royal civilian evidence required.");
+        var t = PrepareCore(id, book, charter, observed, target, target, null, TerritoryTransferPurpose.ActiveCharter, now, administration, null, observed.HasMap, royalResidents: royalResidents);
         var paired = t with { CityCallJournalV1 = true }; transfers[transfers.Count - 1] = paired; return paired;
     }
     public void Confirm(string id, TerritoryTransferObservation actual, long now)
@@ -133,7 +141,7 @@ public sealed class TerritoryTransferLedger
     public void CancelUnmoved(string id, TerritoryTransferObservation actual, long now)
     {
         RuntimeCompat.NotNull(actual); Time(now); var transfer = Transfer(id);
-        Require(transfer.Phase == TerritoryTransferPhase.Prepared && actual.Territory == transfer.Territory && actual.Exists &&
+        Require(transfer.RoyalResidentsV1 == null && transfer.Phase == TerritoryTransferPhase.Prepared && actual.Territory == transfer.Territory && actual.Exists &&
             actual.Owner == transfer.FromOwner && !actual.Player && actual.LoadedMap == transfer.LoadedMap && actual.StockFormat == transfer.StockFormat && Preserved(actual, transfer.StockProof, transfer.ResidentProof),
             "Only verified unmoved ownership with unchanged stock can cancel a transfer.");
         transfers[transfers.IndexOf(transfer)] = transfer with { Phase = TerritoryTransferPhase.Cancelled, ResolvedTick = now }; LastTick = now;
@@ -142,7 +150,7 @@ public sealed class TerritoryTransferLedger
     internal void ResolveDestroyed(string id, TerritoryTransferDestruction loss, long now)
     {
         RuntimeCompat.NotNull(loss); Time(now); var t = Transfer(id);
-        Require(t.Phase == TerritoryTransferPhase.Prepared && t.Purpose == TerritoryTransferPurpose.ActiveCharter && t.ReleasedRoot == null &&
+        Require(t.RoyalResidentsV1 == null && t.Phase == TerritoryTransferPhase.Prepared && t.Purpose == TerritoryTransferPurpose.ActiveCharter && t.ReleasedRoot == null &&
             t.ResidentProof == null && t.StockFormat == 0 && CityStockProof.Valid(loss.Proof) && (loss.Owner == t.FromOwner || loss.Owner == t.TargetOwner) &&
             loss.LossTick >= t.PreparedTick && loss.ObservedTick >= loss.LossTick && now >= loss.ObservedTick, "Exact observed empty-city destruction required.");
         transfers[transfers.IndexOf(t)] = t with { Phase = TerritoryTransferPhase.Destroyed, ResolvedTick = now, Destruction = loss }; LastTick = now;
@@ -188,6 +196,7 @@ public sealed class TerritoryTransferLedger
                 (item.Destruction.Owner == item.FromOwner || item.Destruction.Owner == item.TargetOwner) && item.Destruction.LossTick >= item.PreparedTick &&
                 item.Destruction.ObservedTick >= item.Destruction.LossTick && item.ResolvedTick >= item.Destruction.ObservedTick : item.Destruction == null,
                 "Invalid destruction terminal state.");
+            Require(item.RoyalResidentsV1 == null || CityStockProof.Valid(item.RoyalResidentsV1) && item.Phase is TerritoryTransferPhase.Prepared or TerritoryTransferPhase.Applied && item.CityCallJournalV1 && item.Purpose == TerritoryTransferPurpose.ActiveCharter && item.ReleasedRoot == null, "Invalid royal custody provenance.");
             if (item.PreviousTransferV1 != null)
             {
                 var prior = result.Transfer(item.PreviousTransferV1);

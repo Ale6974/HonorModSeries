@@ -1,5 +1,23 @@
 # 요구사항 상태 — 공개 0.2.1 / 호환성 0.2.2 / Contracts 개발판
 
+## 0.3.101 — M2 부분 구현: 현재 작위 승인에 의한 귀족 세력 민간인 도시 이전
+
+2026-11-13. 새 RoyalResidentsV1 원 물리 marker와 RoyalCustodyV1 별도 행동별 합의를 추가했다. 원 Eligible의 귀족 제외를 제거하지 않고, 새 ‘귀족 세력 민간인 이전의 별도 작위 승인 검토’에서 유효한 Active/player-managed 단일 도시의 source 또는 target이 귀족 세력인 경우만 별도로 준비한다. 현재 source/target·전체 연결된 상위/하위·제삼자 대표를 기존 원 Book/공납/물리/주민 census/지도·자산 scope와 RoyalCivilianCustody/v1에 묶는다. 실제 현재 대표 자신의 소속 세력 작위가 등록된 같은 RoyalTitleDef 참조·seniority와 일치해야 하며 원 title getter/helper chain을 unpatched 상태로 검토한다. 왕실 소속이라는 이유만으로 주민별 개인 권리나 제삼자 동의를 추정하지 않는다.
+
+실행은 전체 clinical/census/care/수술/영역·지도/자산 증거와 독립 주민/자산/도시 호출을 사전 staging하고 현재 승인 archive/reference를 연결한 다음 기존 Recover/ResidentExecution.Apply/MapAssetRecords.Apply/Settlement.SetFaction으로 이어진다. 각 주민·자산 처리 전과 도시 호출 전후에 현재 작위·대표·제삼자 결정·Book/payment·원 왕실 민간인 증거를 재검토한다. 기존 주민/Map/Thing을 이동·재생성하지 않고 의료 reset은 기존 양성 정상 반환 journal의 일회 복구만 사용한다. source/target은 NPC이며 플레이어 native 세력·식민지 지휘·계약 조건/서명·공납/채무·하위 권리를 변경하지 않는다. 왕실 목적지의 별도 후속 이전에도 fresh 임상/지도/자산과 새 current mandate를 요구하며 기존 PreviousTransferV1 정상 완료 연결을 유지한다.
+
+민간인 권리 범위: 동일한 원 Pawn_RoyaltyTracker의 owner/실제 저장 필드를 검토한다. titles/favor/highestTitles/heirs/factionPermits/abilities는 모두 실제 기본 List/Dictionary의 빈 상태여야 하며 개인 작위·호의·후계·허가·왕실 능력이 있으면 별도 권리 경로가 필요하여 보류한다. lastDecreeTicks/allowRoomRequirements/allowApparelRequirements는 각 원 Pawn ID와 immutable hash로 보존하고 호출 전후/복구에 대조한다. lazy getter·왕실 tracker 생성·title/favor/permit setter·권리 삭제를 사용하지 않는다. quest에 예약된 주민과 기존 지도자/노예/Lord/진행 작업·예약/미지원 역할·물리 조합 가드는 유지한다.
+
+저장/중단 복구: RoyalResidentsV1은 Transfer의 optional null-omitted 값이며 별도 RoyalCustodyV1은 Agreement의 default-omitted bool이다. 옛0.3.97~100 JSON/Scope/hash는 유지하고 옛 기록에 marker/권한을 소급하지 않는다. 독립 시작/정상 반환/의료·영역·자산·city journal과 원 royal proof/current mandate를 Scribe/PostLoad/Finalize/명시적 Recover 및 terminal archive에 보존한다. 필수 current approval marker가 없으면 옛 복구/취소 경로로 우회할 수 없다. 바뀐 작위/대표/권리·원 임상·재산 또는 unknown call은 raw와 참조를 유지하고 재실행/수리/초기화하지 않는다.
+
+현재 설치1.7.5005 rev1082의 DLL SHA25682387F78262461E53BB06A67C3945912B876D1FDB07235122BBB6E59D073F125/MVID3523c04c-c298-43ae-9571-20caaef22acc가 직전과 같다. metadata로 RimWorld.Pawn_RoyaltyTracker 전체와 RimWorld.PawnComponentsUtility 및 Faction을 다시 읽었다(.local/m2-101-royalty.cs/components.cs/faction.cs). 처음 잘못 지정한 Verse.PawnComponentsUtility의 실패 출력은 감사 근거가 아니며 올바른 RimWorld 타입으로 다시 읽었다. GetCurrentTitle→GetCurrentTitleInFaction→FindFactionTitleIndex(default false)는 원 titles를 읽고 새 title을 만들지 않는다. AllTitlesInEffectForReading은 원 titles 또는 EmptyTitles를 반환한다. Pawn.SetFaction은 별도 royalty 변경 호출이 없고 NPC→NPC의 AddAndRemoveDynamicComponents는 Royal def 분기로 tracker를 재작성하지 않는다. Faction.Notify_PawnJoined는 이념 통지/일반 humanlike 검사이며 title을 부여하지 않는다. 기존 필요 상태 titleRequiredAny 분기도 titleless scope를 적용하며 원 임상 proof가 그대로여야 한다. 새 RoyalCustodyBodies는 검토5005만 허용하고 unknown1.6/그 외 모듈에는 실행 권한을 주지 않는다. 양 타깃 분리 빌드/기존 경로는 유지한다.
+
+검사는 원 signed root/유효 하위 계약·납부/미납 공납→새 royal 물리 준비→현재 자신의 작위 대표/제삼자 승인→원 clinical/census/독립 의료 call/asset prefix 저장 복원→완료 history와, 첫 구간 불변인 다른 귀족 목적지 후속 인계의 새 승인/저장/복구를 연결한다. 작위/등급/대표 누락·무관한 등록 승인 재사용·제삼자 거부/누락·마지막 source 기지·원 personal-right proof 변경·옛 physical 권한 확대를 거부한다.
+
+최종 검증: .local/m2-101-build16.log 및 .local/m2-101-final17.log 양 타깃 전체 빌드·XML/영한 검사, .local/m2-101-final-rules.log 마지막 규칙과 .local/m2-101-final-native16.log/17.log 마지막 양 native 컴파일 통과. Honor20,093/Contracts5,670(합25,763),영한592키/인자 일치,경고·오류0. 새 royal journal은 Prepared/Applied만 허용하고 옛 unmoved 취소/empty destruction API로 원 왕실 호출 기록을 종료 처리하지 못하게 한다. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.101.zip SHA2566354808D2BAF8401CE97D489EF8ED574D0BBE5DF987FC9AAF59BF9544CFD104C. 기존 로컬 Preview를 .local/contracts-preview-4ba5b21fac034c5c81fd8ad80a63ab4d에 백업하고32파일 해시 일치·활성화/언어 불변으로 설치했다(.local/m2-101-install.log).
+
+아직 미완료: 개인 왕실 작위/호의/허가/후계/능력의 보존·이전, 귀족 전체 정치 가입/합병/전시·개인/군사 권리, 일반 진행 작업/예약·커스텀 holder 조합과 원 지도/주민/자산 소실·재생성 복합 복구. 이번 실제 경로는 기존 지원되는 민간인/물리 상태의 평시 단일 도시와 연결된 후속 인계이며 전체 M2/M3/M5/M6/M8 완료가 아니다. M1 10/10,M2 전체 미완료0/18,전체10/100;1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6. Preview Steam 게시·자동 예약 없음.
+
 ## 0.3.100 — M2 부분 구현: 연합·작위 결정의 원 주민 등록과 연합 유휴 대기 집행
 
 2026-11-12. 원 주민 등록을 일반 대표 전용에서 별도 현재 연합 의결/작위 지도자 결정으로 확장했다. 새 GovernmentDecisionV1은 원 charter/town/map/source/전체 Book hash/대표/원 명부 순서/선택 주민의 임상·의료 증거/시계에만 묶인다. ResidentRosterEnrollment/v1 scope는 진행 Added/Started/Verified를 바꿔도 같은 원 행동을 식별하되 다른 도시·인원·임상·계약·시계·행동으로는 재사용할 수 없다. native ReviewEnrollment는 실제 현재 연합 의석/대표·goodwill 또는 현재 대표 자신의 세력 작위/등급을 기존 검토된 NativeNpcContractAuthority에서 읽고 별도 결정으로 검토/확인한다. 각 List.Add 전과 최종 검증 전에 같은 현재 의석·대표·작위 결정을 다시 읽는다. 원 List/순서/같은 Pawn·임상·의료·별도 Started/Added/Verified와 reference-only Scribe·명시적 복구는 그대로다. 소속/건강/작업/병력 권한을 등록으로 추정하지 않는다.

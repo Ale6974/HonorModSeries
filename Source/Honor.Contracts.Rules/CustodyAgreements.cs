@@ -9,6 +9,7 @@ public sealed record CustodyAgreement(string Id, string Transfer, string Book, s
 {
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string ForeignRightsV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string TransitDestinationV1 { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool RoyalCustodyV1 { get; init; }
 }
 public sealed record CustodyAgreementReceipt(CustodyAgreement Witness, string Proof);
 public sealed record CustodyAgreementSave(int Version, CustodyAgreementReceipt[] Records);
@@ -21,7 +22,8 @@ public sealed class CustodyAgreements
     private static string Hash(object value) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(value))));
     private static string LegacyScope(CustodyAgreement w) => Hash(new { Action = "CurrentCustodyCompletion/v1", w.Id, w.Transfer, w.Book, w.Payments, w.Physical, w.Custody, w.Parties, w.Observations, w.Realms, w.Tick });
     private static string ForeignScope(CustodyAgreement w) => w.ForeignRightsV1 == null ? LegacyScope(w) : Hash(new { Action = "ForeignMasterCustodyCompletion/v1", Original = LegacyScope(w), w.ForeignRightsV1 });
-    public static string Scope(CustodyAgreement w) => w.TransitDestinationV1 == null ? ForeignScope(w) : Hash(new { Action = "TransitCustodyCompletion/v1", Original = ForeignScope(w), w.TransitDestinationV1 });
+    private static string TransitScope(CustodyAgreement w) => w.TransitDestinationV1 == null ? ForeignScope(w) : Hash(new { Action = "TransitCustodyCompletion/v1", Original = ForeignScope(w), w.TransitDestinationV1 });
+    public static string Scope(CustodyAgreement w) => w.RoyalCustodyV1 ? Hash(new { Action = "RoyalCivilianCustody/v1", Original = TransitScope(w) }) : TransitScope(w);
     /// <summary>Descriptor only: current scoped representative decisions must independently approve it.</summary>
     public static string CaptureForeignRights(CharterBook book, TerritoryTransfer t, CustodyParty[] parties, string transitDestination = null)
     {
@@ -85,6 +87,8 @@ public sealed class CustodyAgreements
         if (book.Charters.Any(c => book.Phase(c, w.Tick) == RecordedCharterPhase.Offered && (scope.Contains(c.Terms.Subject) || scope.Contains(c.Terms.Liege)))) throw new ArgumentException("Competing current party offers.");
         string[] realms = w.Parties.Where(p => !p.Player).Select(p => p.Realm).Concat([t.FromOwner, t.TargetOwner]).Distinct().OrderBy(r => r, StringComparer.Ordinal).ToArray();
         if (!w.Realms.Select(r => r?.Realm).SequenceEqual(realms)) throw new ArgumentException("Each current source, target and third-party representative must consent.");
+        if (w.RoyalCustodyV1 != (t.RoyalResidentsV1 != null) || w.RoyalCustodyV1 && !w.Realms.Any(r => (r.Realm == t.FromOwner || r.Realm == t.TargetOwner) && r.Regime == NpcDecisionRegime.Royal))
+            throw new ArgumentException("New original royal custody and current own-realm title mandate required; no legacy permission expansion.");
         ScopedNpcTerminationAuthority.ValidateDecisions(w.Realms, w.Regimes, Scope(w), w.Tick);
         foreach (var account in payments.Accounts)
             if (book.Charter(account.CharterId).Terms != account.Terms) throw new ArgumentException("Original obligation terms changed.");

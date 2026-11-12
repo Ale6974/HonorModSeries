@@ -82,3 +82,16 @@ Each leg keeps separate original evidence and call facts. Recover the currently 
 Explicit civilian enrollment can bind a separate current council decision or titled-ruler mandate to the original people, clinical/care evidence, roster and contracts. The same current seats, representative, title and decision are checked before each append and final verification. This registers the same Pawn references; it does not authorize faction or army changes.
 
 Eligible union towns can also wait with native work and reservations untouched. The waiting mandate has its own scope; later registration and full migration use independent fresh reviews. Changed seats or representatives stop the wait while retaining its evidence. Unknown appends and Started execution are never replayed. Existing royal-faction migration and other unsupported native paths remain deferred.
+
+
+## 귀족 세력 민간인 도시 이전 — 0.3.101
+
+도시 이전 창에서 ‘귀족 세력 민간인 이전의 별도 작위 승인 검토’를 선택한다. 현재 자신의 세력 작위를 가진 대표와 연결 당사자·제삼자를 표시하고 현재 도시/주민·의료/수술·영역·재산·계약/채무를 검토한다. 확인하면 기존 실제 이전을 실행한다. 중단되면 같은 Prepared 기록에서 복구하며 바뀐 작위/대표/권리는 새 전체 검토가 필요하다. 귀족 목적지의 별도 후속 인계도 새 승인과 원 첫 구간 정상 완료가 필요하다.
+
+개인 작위·호의·후계·허가·왕실 능력이 있는 주민은 별도 권리 보존 구현이 필요하므로 보류한다. 기존 민간인/Lord/진행 작업/예약/역할·지도·기지 보존 조건도 유지한다. 귀족 세력의 전체 합병이나 전시 가입을 이 승인으로 처리하지 않는다. 플레이어 세력·지휘·기존 계약과 채무는 그대로다.
+
+## Royal-faction civilian transfer — English
+
+The town window has a separate titled-ruler transfer review. It shows the current own-realm titled representatives and connected/third parties, then reviews the original people, clinical/care/surgery/area evidence, assets, contracts and debts. Confirm to use the existing native executor. Recover the same prepared record after interruption; changed title, ruler or rights require a fresh complete review. Royal foreign continuations also need new current approval and a positive completed predecessor.
+
+Residents with personal titles, favor, heirs, permits or royal abilities need a separate preservation path and remain deferred. Existing civilian, lord, active-work/reservation, map and surviving source-base guards remain. This does not grant whole-realm merger, wartime or army authority; native player control, contracts and debts remain unchanged.

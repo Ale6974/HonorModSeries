@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.100</modVersion>
+  <modVersion>0.3.101</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.100: Explicit original civilian roster enrollment now accepts separate current council/titled-ruler mandates. Eligible union towns also support scoped idle-boundary waiting, fresh registration and existing migration. Native work, contracts, debts and player control stay intact. Royal migration and broader work/loss combinations remain unfinished.
+  <description>0.3.101: A NEW current titled-ruler and complete connected-party mandate can execute a supported royal-faction civilian town transfer and royal foreign continuation. Original clinical, medical, asset, contract and debt records remain paired through native calls, saving and recovery. Personal royal titles/favor/heirs/permits/abilities require a separate rights path.
+0.3.101: 현재 작위 대표·연결된 제삼자의 새 별도 승인으로 지원되는 귀족 세력 민간인 도시 이전과 귀족 목적지 후속 인계를 실행·저장·복구합니다. 원 임상/의료·재산·계약·채무를 보존하며 개인 왕실 권리 보유 주민은 별도 경로가 필요합니다.
+0.3.100: Explicit original civilian roster enrollment now accepts separate current council/titled-ruler mandates. Eligible union towns also support scoped idle-boundary waiting, fresh registration and existing migration. Native work, contracts, debts and player control stay intact. Royal migration and broader work/loss combinations remain unfinished.
 0.3.100: 연합 의결/현재 작위 지도자의 별도 결정으로 원 민간인 등록을 실행·저장·복구합니다. 적격 연합 도시의 원 작업·예약을 유지한 유휴 대기와 새 등록/기존 이전도 연결합니다. 귀족 세력의 소속 이전 등 미지원 조합은 유지합니다.
 0.3.99: Explicitly approve the original destination as transit, then separately review a fresh follow-up handover to the current foreign master. Both legs keep independent original evidence/calls and a positive predecessor link; contracts, debts and player control remain unchanged.
 0.3.99: 다른 목적지의 새 종주는 원 목적지 중간 인계를 승인하고 정상 완료 후 새 증거의 별도 후속 인계를 검토할 수 있습니다. 각 구간의 원 증거·호출과 선행 완료 연결을 따로 보존하며 계약·채무·플레이어 통제는 유지합니다.

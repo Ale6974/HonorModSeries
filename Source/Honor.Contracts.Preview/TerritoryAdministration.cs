@@ -143,7 +143,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     throw new ArgumentException("City call cannot precede its recorded resident execution.");
                 if (t.Phase == TerritoryTransferPhase.Applied)
                     TerritoryCallGuard.RequireStartedForTarget(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
-                if (t.PreviousTransferV1 != null && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation is missing its independent current approval.");
+                if ((t.PreviousTransferV1 != null || t.RoyalResidentsV1 != null) && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation is missing its independent current approval.");
                 if (entity.Player || binding.PlayerGroup || binding.FactionGroup || entity.NativeOwner != t.BaselineOwner ||
                     charter.Terms.Subject != t.Territory || !Charters.Book.Entity(charter.Terms.Liege).Player && charter.NpcAuthority == null ||
                     !charter.PlayerSignedTick.HasValue || !charter.NpcSignedTick.HasValue ||
@@ -435,7 +435,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (political.Journal.Pending && political.Journal.Current?.LawfulFollowerMigration == true)
                 political.VerifyLawfulPhysicalRecovery();
             var item = Ledger.Transfer(id); var reference = references.Single(r => r.Id == id);
-            if (item.PreviousTransferV1 != null && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation cannot use legacy recovery permission.");
+            if ((item.PreviousTransferV1 != null || item.RoyalResidentsV1 != null) && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation cannot use legacy recovery permission.");
             ValidateMapReference(item, reference, true);
             if (reference.LoadedMap != null && reference.CityCallStarted && !reference.CityCallReturned) throw new ArgumentException("Unknown loaded-map call; never replay or infer normal return.");
             if (item.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
@@ -560,6 +560,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         var charter = Charters.Book.Charter(item.Charter);
         bool currentCustody = reference.CustodyAgreementV1 != null;
         if (currentCustody) RequireCurrentCustody(reference);
+        bool royalCustody = currentCustody && item.RoyalResidentsV1 != null && custodyAgreements.Record(reference.CustodyAgreementV1).Witness.RoyalCustodyV1;
         bool foreignCustody = currentCustody && custodyAgreements.Record(reference.CustodyAgreementV1).Witness.ForeignRightsV1 != null;
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (payments.RestoreFailed || payments.Ledger.Receipts.Any(r => r.Phase == TributeReceiptPhase.Prepared) ||
@@ -584,7 +585,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 charter.Phase != RecordedCharterPhase.Released || !charter.PlayerReleaseTick.HasValue || !charter.NpcReleaseTick.HasValue)
                 throw new ArgumentException("Original release intent changed.");
         }
-        if (destination != reference.Target || !Eligible(destination) || !Eligible(reference.From, releasedSource) ||
+        if (destination != reference.Target || !(royalCustody ? RoyalEligible(destination) : Eligible(destination)) || !(royalCustody ? RoyalEligible(reference.From) : Eligible(reference.From, releasedSource)) ||
             !Find.FactionManager.AllFactionsListForReading.Contains(destination)) throw new ArgumentException("Current recovery destination or diplomacy changed.");
         if (reference.From.HostileTo(destination) && reference.From.GetUniqueLoadID() != releasedSource ||
             item.Purpose == TerritoryTransferPurpose.ReleasedToUnion && Find.FactionManager.AllFactionsListForReading.Any(f => f != Faction.OfPlayer && f != reference.From && f != destination &&
@@ -668,6 +669,7 @@ public sealed class TerritoryAdministrationWindow : Window
         if (list.ButtonText("FM_Open".Translate())) Find.WindowStack.Add(new FactionMergerProposalWindow(charter));
         ledger.DrawPendingTownLosses(list, charter);
         ledger.DrawResidentEnrollment(list, charter);
+        ledger.DrawRoyalTransfer(list, charter);
         ledger.DrawDeferredTowns(list, charter);
         if (list.ButtonText("CA_Open".Translate())) ledger.OpenPreservationAudit(charter);
         if (ledger.RestoreFailed) list.Label("HCP_RestoreFailed".Translate());

@@ -21,9 +21,11 @@ public sealed partial class TerritoryAdministrationLedger
         if (Charters.Book.PlayerManaged(current) || current.NpcAuthority == null) throw new ArgumentException("Current signed foreign master required.");
         var liege = Charters.Binding(current.Terms.Liege);
         var target = liege.FactionGroup ? liege.OriginalFaction : liege.Settlement?.Faction;
-        if (target == null || target == original.City.Faction || !Eligible(target)) throw new ArgumentException("A distinct current eligible destination is required.");
+        bool royal = original.City.Faction?.def.royalTitleTags?.Count > 0 || target?.def.royalTitleTags?.Count > 0;
+        if (target == null || target == original.City.Faction || !(royal ? RoyalEligible(target) && RoyalEligible(original.City.Faction) : Eligible(target))) throw new ArgumentException("A distinct current eligible destination is required.");
         var city = original.City; var source = city.Faction;
         var observed = Observe(city, prior.Territory, target, residentProfile: original.Residents?.Profile ?? 7);
+        if (royal) observed = observed with { Eligible = true, TargetEligible = true };
         var residents = observed.HasInhabitants ? ResidentExecution.CaptureForTransfer(city) : null;
         var loaded = observed.LoadedMap == null ? null : LoadedMapRecords.Capture(city);
         if (residents?.Set().Proof != observed.ResidentProof || loaded?.Snapshot != observed.LoadedMap || residents != null && residents.LoadedMapScope != observed.LoadedMap)
@@ -32,7 +34,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (loaded != null) MapAssetRecords.Prepare(loaded, source, target);
         long tick = reviewedTick ?? Find.TickManager.TicksGame; id ??= "continuation-" + Guid.NewGuid().ToString("N");
         var physical = TerritoryTransferLedger.Restore(Ledger.Export());
-        physical.PrepareForeignContinuation(id, previous, Charters.Book, current.Id, observed, target.GetUniqueLoadID(), tick, AdministrationId);
+        physical.PrepareForeignContinuation(id, previous, Charters.Book, current.Id, observed, target.GetUniqueLoadID(), tick, AdministrationId, royal ? RoyalResidentProof(residents?.Pawns) : null);
         var reference = new TerritoryTransferReference { Id = id, City = city, From = source, Target = target, Residents = residents,
             ResidentCareJournalRequired = residents != null, ResidentCensusProof = residents == null ? null : ResidentTransferCensus.Restore(residents.Census).Proof,
             CityCallV1 = true, LoadedMap = loaded };
@@ -62,7 +64,7 @@ public sealed partial class TerritoryAdministrationLedger
         try
         {
             var reviewed = ReviewContinuation(previous);
-            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("RE_ContinuationConfirm".Translate(reviewed.Reference.City.Label, reviewed.Reference.From.Name, reviewed.Reference.Target.Name), () => CommitContinuation(reviewed)));
+            Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation("RE_ContinuationConfirm".Translate(reviewed.Reference.City.Label, reviewed.Reference.From.Name, reviewed.Reference.Target.Name).ToString() + (reviewed.Witness.RoyalCustodyV1 ? "\n\n" + "RE_RoyalContinuation".Translate().ToString() : ""), () => CommitContinuation(reviewed)));
         }
         catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Follow-up review blocked: " + e.GetType().Name); Messages.Message("RE_CustodyBlocked".Translate(), MessageTypeDefOf.RejectInput); }
     }
