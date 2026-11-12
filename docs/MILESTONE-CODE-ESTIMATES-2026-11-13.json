@@ -202,7 +202,14 @@
       "legacy_stage1_weight": 10,
       "depends_on": "기존 감사",
       "implementation": "기존 CharterBook/PersonalFealty/승계·대표 장부 유지",
-      "completion": "M1-COMPLETION-AUDIT.md의 5개 기준 유지; 새 변경의 회귀 확인"
+      "completion": "M1-COMPLETION-AUDIT.md의 5개 기준 유지; 새 변경의 회귀 확인",
+      "parts": [
+        "B04",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -220,7 +227,13 @@
       "legacy_stage1_weight": 1,
       "depends_on": "M1",
       "implementation": "ResidentExecution/ResidentTransferCensus/ResidentEnrollment 범위 재대조",
-      "completion": "원 도시/모든 Pawn/실제 소속/중복 및 예약을 실제 준비·저장·복구에서 동일하게 대조"
+      "completion": "원 도시/모든 Pawn/실제 소속/중복 및 예약을 실제 준비·저장·복구에서 동일하게 대조",
+      "parts": [
+        "B01"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -238,7 +251,15 @@
       "legacy_stage1_weight": 1,
       "depends_on": "M2.1",
       "implementation": "기존 care/area/authority-call 연동의 남은 조합 보완",
-      "completion": "정상 반환/초기화 관측/복구 소비를 구분; unknown 호출은 반복하지 않고 원 자료 유지"
+      "completion": "정상 반환/초기화 관측/복구 소비를 구분; unknown 호출은 반복하지 않고 원 자료 유지",
+      "parts": [
+        "B01",
+        "B02",
+        "B03"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -260,7 +281,16 @@
       "integrates_with": [
         "M3",
         "M4"
-      ]
+      ],
+      "parts": [
+        "B01",
+        "B02",
+        "B04",
+        "B05"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -278,7 +308,15 @@
       "legacy_stage1_weight": 3,
       "depends_on": "M2.2, M3.1",
       "implementation": "작업 소유/자원/driver/queue/reservation 검토와 검증된 native 인계 구현",
-      "completion": "유휴 대기를 넘는 원 진행도 보존 경로; 미확인 job을 복제·재시작하거나 가드만 제거하지 않음"
+      "completion": "유휴 대기를 넘는 원 진행도 보존 경로; 미확인 job을 복제·재시작하거나 가드만 제거하지 않음",
+      "parts": [
+        "B01",
+        "B03",
+        "B06"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -299,7 +337,16 @@
       "completion": "집단·개별 권리를 도시 대표 승인으로 대체하지 않고 각 실제 인계와 중단 복구를 연결",
       "integrates_with": [
         "M6"
-      ]
+      ],
+      "parts": [
+        "B01",
+        "B04",
+        "B06",
+        "B08"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -317,7 +364,15 @@
       "legacy_stage1_weight": 2,
       "depends_on": "M2.1, M2.2",
       "implementation": "기존 stock formats/holder forest 확장 및 확인된 커스텀 holder 어댑터",
-      "completion": "원 부모·슬롯·모든 물건·소유권·설정을 보존; 임의 외부 모드 전체 지원을 추정하지 않음"
+      "completion": "원 부모·슬롯·모든 물건·소유권·설정을 보존; 임의 외부 모드 전체 지원을 추정하지 않음",
+      "parts": [
+        "B01",
+        "B03",
+        "B07"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -335,7 +390,18 @@
       "legacy_stage1_weight": 3,
       "depends_on": "M2.2, M2.6, M7.1",
       "implementation": "주민/물품/지도/도시의 여러 중단 이력과 원 참조 재결합",
-      "completion": "같은 원 객체의 실제 귀환 증거가 있을 때 현재 승인과 원 양성 호출 prefix로 재개"
+      "completion": "같은 원 객체의 실제 귀환 증거가 있을 때 현재 승인과 원 양성 호출 prefix로 재개",
+      "parts": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B07",
+        "B10"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -353,7 +419,16 @@
       "legacy_stage1_weight": 2,
       "depends_on": "M2.7, M7.2",
       "implementation": "누락/제거/확정 파괴/부활이 아닌 새 객체를 구분하는 보존·후속 처리",
-      "completion": "null만으로 파괴/완료 추정 금지; 확정 소실은 M7의 합법적 정리로 연결, 원 객체를 임의 재생성하지 않음"
+      "completion": "null만으로 파괴/완료 추정 금지; 확정 소실은 M7의 합법적 정리로 연결, 원 객체를 임의 재생성하지 않음",
+      "parts": [
+        "B01",
+        "B03",
+        "B10",
+        "B11"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -375,7 +450,16 @@
       "integrates_with": [
         "M5",
         "M6"
-      ]
+      ],
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -396,7 +480,24 @@
       "completion": "개별 행의 실행·저장·복구 근거를 전부 연결; 테스트 수나 버전 증가로 대체하지 않음",
       "integrates_with": [
         "M8"
-      ]
+      ],
+      "parts": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B06",
+        "B07",
+        "B08",
+        "B09",
+        "B10",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -414,7 +515,17 @@
       "legacy_stage1_weight": 3,
       "depends_on": "M2.2",
       "implementation": "ResidentSurgery/SurgeryCustody와 실제 bill/재료/부위의 인계",
-      "completion": "원 지시 순서·설정·결박 자원·부분 수행을 보존하고 원본 중복 없이 복구"
+      "completion": "원 지시 순서·설정·결박 자원·부분 수행을 보존하고 원본 중복 없이 복구",
+      "parts": [
+        "B01",
+        "B02",
+        "B03",
+        "B08",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -432,7 +543,17 @@
       "legacy_stage1_weight": 3,
       "depends_on": "M3.1",
       "implementation": "ResidentPrisoners의 downed/area/혼합 관리 조합",
-      "completion": "개인 소속/저항·의지·모집·진행을 유지하고 관측한 reset만 일회 복구"
+      "completion": "개인 소속/저항·의지·모집·진행을 유지하고 관측한 reset만 일회 복구",
+      "parts": [
+        "B01",
+        "B02",
+        "B03",
+        "B08",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -450,7 +571,17 @@
       "legacy_stage1_weight": 4,
       "depends_on": "M2.1",
       "implementation": "노예 신분/억압/관계/관리 설정 원본과 native 변경 어댑터",
-      "completion": "자동 해방/개종/신분 변환 없이 실제 이전·저장·중단 복구"
+      "completion": "자동 해방/개종/신분 변환 없이 실제 이전·저장·중단 복구",
+      "parts": [
+        "B01",
+        "B02",
+        "B03",
+        "B08",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -468,7 +599,17 @@
       "legacy_stage1_weight": 2,
       "depends_on": "M3.1~M3.3",
       "implementation": "혼합 census와 각 개별 journal의 coordinator",
-      "completion": "복합 주민의 일부 성공/중단에도 원 지시·신분·의료 중복·누락 없음"
+      "completion": "복합 주민의 일부 성공/중단에도 원 지시·신분·의료 중복·누락 없음",
+      "parts": [
+        "B01",
+        "B02",
+        "B03",
+        "B08",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -489,7 +630,19 @@
       "completion": "도시 동의와 개인 합류 분리; 거절 인물을 강제 합류/소거하지 않음",
       "integrates_with": [
         "M3.4"
-      ]
+      ],
+      "parts": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B09",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -507,7 +660,19 @@
       "legacy_stage1_weight": 3,
       "depends_on": "M4.1, M1",
       "implementation": "native 후임 선택과 원 개인 서약/현재 직위 journal",
-      "completion": "후임과 실제 소속 변경 각각의 정상 반환·중단을 독립 보존"
+      "completion": "후임과 실제 소속 변경 각각의 정상 반환·중단을 독립 보존",
+      "parts": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B09",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -526,7 +691,19 @@
       "depends_on": "M4.1, M4.2, M3.4",
       "implementation": "지도자 수술/권리/이주와 도시 이전의 교차 복구",
       "completion": "개인 합류를 전체 세력 합병 승인으로 재해석하지 않음",
-      "integrates_with": []
+      "integrates_with": [],
+      "parts": [
+        "B01",
+        "B02",
+        "B03",
+        "B04",
+        "B05",
+        "B09",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -544,7 +721,20 @@
       "legacy_stage1_weight": 5,
       "depends_on": "M1, M4",
       "implementation": "보호 거부 증거/권리 행사/종료·공납 cutoff coordinator",
-      "completion": "별도 사유와 현재 승인 재검토; 원 서명/채무·제삼자 조건 보존"
+      "completion": "별도 사유와 현재 승인 재검토; 원 서명/채무·제삼자 조건 보존",
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B07",
+        "B08",
+        "B09",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -563,7 +753,20 @@
       "depends_on": "M2.1~M2.9, M3.4, M5.1",
       "implementation": "LawfulFollowerMigration의 모든 원 도시 실행 연결",
       "completion": "원 전체 후손을 actual executor에 연결; 일부 도시 누락으로 완료 처리 금지",
-      "integrates_with": []
+      "integrates_with": [],
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B07",
+        "B08",
+        "B09",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -582,7 +785,20 @@
       "depends_on": "M5.2, M7.3",
       "implementation": "정치/물리/재협상 journal 원 범위의 현재 재검토",
       "completion": "옛 동의 확대·이미 끝난 도시 호출 재생 없이 전체 범위 복구",
-      "integrates_with": []
+      "integrates_with": [],
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B07",
+        "B08",
+        "B09",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -601,7 +817,20 @@
       "depends_on": "M2.1~M2.9, M3.4, M4.3",
       "implementation": "정치 전환/기존 종주 정리/새 계약/전체 후손 coordinator",
       "completion": "현재 소속·외교·하위 권리·플레이어 native 통제를 일관되게 유지",
-      "integrates_with": []
+      "integrates_with": [],
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B07",
+        "B08",
+        "B09",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -619,7 +848,20 @@
       "legacy_stage1_weight": 4,
       "depends_on": "M6.1",
       "implementation": "전쟁별 별도 수락, 집단 표결/작위 mandate의 실제 적용",
-      "completion": "현재 대표 하나의 동의로 집단/기존 전쟁의 별도 동의를 대신하지 않음"
+      "completion": "현재 대표 하나의 동의로 집단/기존 전쟁의 별도 동의를 대신하지 않음",
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B07",
+        "B08",
+        "B09",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -640,7 +882,20 @@
       "completion": "이적 중 소실·대표 교체에서도 원 참전/권리 이력을 유지",
       "integrates_with": [
         "M7.3"
-      ]
+      ],
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B07",
+        "B08",
+        "B09",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -659,7 +914,18 @@
       "depends_on": "M2.1",
       "implementation": "확정 파괴/소유권 변경/원 객체 귀환 각각의 native 관찰",
       "completion": "정상 반환·순서·원 시점 분리; 누락을 성공/파괴로 추정하지 않음",
-      "integrates_with": []
+      "integrates_with": [],
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B10",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -677,7 +943,18 @@
       "legacy_stage1_weight": 4,
       "depends_on": "M7.1, M1",
       "implementation": "중첩 소실·현재 승인·생존자/개인 서약 권리 coordinator",
-      "completion": "옛 계약을 부활시키거나 채무/원 서명을 삭제하지 않는 실제 정리"
+      "completion": "옛 계약을 부활시키거나 채무/원 서명을 삭제하지 않는 실제 정리",
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B10",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -696,7 +973,18 @@
       "depends_on": "M7.2, M2.1~M2.9, M6.2",
       "implementation": "개별 반환/상위 소실/다른 종주와 현재 합의의 실제 연결",
       "completion": "원 반환 사실을 새 실행 허가로 확대하지 않고 새 동의로 이어감",
-      "integrates_with": []
+      "integrates_with": [],
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B10",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -714,7 +1002,21 @@
       "legacy_stage1_weight": 3,
       "depends_on": "M1, M4, M6",
       "implementation": "모든 도시/주민/지도자/외교/제삼자 권리 범위와 별도 결정",
-      "completion": "도시 한 곳/지도자 한 명의 동의로 전체 합병을 추정하지 않음"
+      "completion": "도시 한 곳/지도자 한 명의 동의로 전체 합병을 추정하지 않음",
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B07",
+        "B08",
+        "B09",
+        "B10",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -733,7 +1035,21 @@
       "depends_on": "M8.1, M2.1~M2.9, M3.4",
       "implementation": "현 DLL 기준 last-base/세력 종료의 별도 안전 집행",
       "completion": "원 주민·자산·후계·소속/전쟁/채무의 주체를 잃지 않고 실제 종료 처리",
-      "integrates_with": []
+      "integrates_with": [],
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B07",
+        "B08",
+        "B09",
+        "B10",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -752,7 +1068,21 @@
       "depends_on": "M8.2, M7.3",
       "implementation": "합병 단계별 원 결과와 현재 결정의 coordinator",
       "completion": "일부 도시/개인 실패 후 전체 원 범위를 보존하며 중복 실행 방지",
-      "integrates_with": []
+      "integrates_with": [],
+      "parts": [
+        "B01",
+        "B03",
+        "B04",
+        "B07",
+        "B08",
+        "B09",
+        "B10",
+        "B11",
+        "B12"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -771,7 +1101,15 @@
       "depends_on": "M2.10, M3.4, M4.3, M5.3, M6.3, M7.3, M8.3",
       "implementation": "공통 archive/짝/크기/버전·용량 처리와 과거 저장 fixture",
       "completion": "옛 null bytes와 원 자료 보존, 모든 새 상태의 중단 복구 연결",
-      "integrates_with": []
+      "integrates_with": [],
+      "parts": [
+        "B12",
+        "B19",
+        "B20"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 1,
@@ -789,7 +1127,15 @@
       "legacy_stage1_weight": 2,
       "depends_on": "M9.1",
       "implementation": "공통 화면/설정/양 타깃·패키지와 독립 실행 종합 대조",
-      "completion": "미확인 native 몸체/외부 권한을 실행 허가로 간주하지 않음"
+      "completion": "미확인 native 몸체/외부 권한을 실행 허가로 간주하지 않음",
+      "parts": [
+        "B12",
+        "B19",
+        "B20"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 2,
@@ -807,7 +1153,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "1단계 계약/채무 안정화",
       "implementation": "valuation adapter/정산 snapshot",
-      "completion": "현재 거래 가치 근거와 배율을 보존, 별도 평판 화폐 없음"
+      "completion": "현재 거래 가치 근거와 배율을 보존, 별도 평판 화폐 없음",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 2,
@@ -825,7 +1180,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "E1",
       "implementation": "징수 요청/상단/수령 선택지",
-      "completion": "계약 운송 방식·비용 공제·실제 물품 영수증 연결"
+      "completion": "계약 운송 방식·비용 공제·실제 물품 영수증 연결",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 2,
@@ -843,7 +1207,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "E2",
       "implementation": "caravan/transport custody+receipt",
-      "completion": "같은 물품 중복 지급·수령 방지, 부분 인수와 중단 복구"
+      "completion": "같은 물품 중복 지급·수령 방지, 부분 인수와 중단 복구",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 2,
@@ -861,7 +1234,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "E1, E3",
       "implementation": "NPC town economy adapter",
-      "completion": "고정 계약을 성장만으로 자동 인상하지 않고 실제/추상 자원 장부 분리"
+      "completion": "고정 계약을 성장만으로 자동 인상하지 않고 실제/추상 자원 장부 분리",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 2,
@@ -879,7 +1261,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "E4, 전쟁 어댑터 인터페이스",
       "implementation": "의무 요청/이행/능력 기반 성과 ledger",
-      "completion": "파견과 직접 수행을 구분하고 같은 실적 이중 계산 금지"
+      "completion": "파견과 직접 수행을 구분하고 같은 실적 이중 계산 금지",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 2,
@@ -897,7 +1288,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "E1~E5",
       "implementation": "billing/arrears/exceptions coordinator",
-      "completion": "기존 미납·지급 이력·계약 종료 이후 의무를 유지"
+      "completion": "기존 미납·지급 이력·계약 종료 이후 의무를 유지",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 3,
@@ -915,7 +1315,18 @@
       "legacy_stage1_weight": null,
       "depends_on": "1단계, E5",
       "implementation": "월드 scheduler/event queue",
-      "completion": "중복 tick·부분 처리·저장 후 이벤트 재실행 방지"
+      "completion": "중복 tick·부분 처리·저장 후 이벤트 재실행 방지",
+      "parts": [
+        "B03",
+        "B04",
+        "B10",
+        "B12",
+        "B14",
+        "B15"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 3,
@@ -933,7 +1344,18 @@
       "legacy_stage1_weight": null,
       "depends_on": "W1, E5",
       "implementation": "army/provider/native pawn custody",
-      "completion": "같은 병력을 지도와 월드 장부에 중복 생성하지 않음"
+      "completion": "같은 병력을 지도와 월드 장부에 중복 생성하지 않음",
+      "parts": [
+        "B03",
+        "B04",
+        "B10",
+        "B12",
+        "B14",
+        "B15"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 3,
@@ -951,7 +1373,18 @@
       "legacy_stage1_weight": null,
       "depends_on": "W2",
       "implementation": "siege/defense quest adapter",
-      "completion": "실제 공격/지원과 계약상 보호 이행을 연결"
+      "completion": "실제 공격/지원과 계약상 보호 이행을 연결",
+      "parts": [
+        "B03",
+        "B04",
+        "B10",
+        "B12",
+        "B14",
+        "B15"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 3,
@@ -969,7 +1402,18 @@
       "legacy_stage1_weight": null,
       "depends_on": "W3, M6",
       "implementation": "capitulation/current consent",
-      "completion": "항복 조건과 원 주민·채무·기존 권리를 실제 계약으로 연결"
+      "completion": "항복 조건과 원 주민·채무·기존 권리를 실제 계약으로 연결",
+      "parts": [
+        "B03",
+        "B04",
+        "B10",
+        "B12",
+        "B14",
+        "B15"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 3,
@@ -987,7 +1431,18 @@
       "legacy_stage1_weight": null,
       "depends_on": "W3, M2, M7",
       "implementation": "native combat outcome/occupation adapter",
-      "completion": "전투 결과의 양성 증거 이후에만 새 권한·이전 집행"
+      "completion": "전투 결과의 양성 증거 이후에만 새 권한·이전 집행",
+      "parts": [
+        "B03",
+        "B04",
+        "B10",
+        "B12",
+        "B14",
+        "B15"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 3,
@@ -1005,7 +1460,18 @@
       "legacy_stage1_weight": null,
       "depends_on": "W3~W5",
       "implementation": "rescue pledge/quest parts",
-      "completion": "자유도시·저명예 영지 조건과 실제 성공·현 종주 권리 반영"
+      "completion": "자유도시·저명예 영지 조건과 실제 성공·현 종주 권리 반영",
+      "parts": [
+        "B03",
+        "B04",
+        "B10",
+        "B12",
+        "B14",
+        "B15"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 3,
@@ -1023,7 +1489,18 @@
       "legacy_stage1_weight": null,
       "depends_on": "W2, W5, E5",
       "implementation": "outcome journal/casualty/equipment custody",
-      "completion": "자동 파견/직접 지휘 차이와 사전 고지 위험·실제 귀환 처리"
+      "completion": "자동 파견/직접 지휘 차이와 사전 고지 위험·실제 귀환 처리",
+      "parts": [
+        "B03",
+        "B04",
+        "B10",
+        "B12",
+        "B14",
+        "B15"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 4,
@@ -1041,7 +1518,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "E6, W7",
       "implementation": "Honor event adapter",
-      "completion": "개인 Need와 세력 명예를 구분하고 바닐라 사회 기억 활용"
+      "completion": "개인 Need와 세력 명예를 구분하고 바닐라 사회 기억 활용",
+      "parts": [
+        "B04",
+        "B12",
+        "B13",
+        "B16"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 4,
@@ -1059,7 +1545,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "P1, M7",
       "implementation": "trust/stability event pipeline",
-      "completion": "명예 하락→신뢰·이탈 압력의 방향·한도·중복 적용 관리"
+      "completion": "명예 하락→신뢰·이탈 압력의 방향·한도·중복 적용 관리",
+      "parts": [
+        "B04",
+        "B12",
+        "B13",
+        "B16"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 4,
@@ -1077,7 +1572,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "E5, P1",
       "implementation": "contribution/influence ledger",
-      "completion": "큰 세력의 낮은 기여도 상한과 간접 계약 이행 평가"
+      "completion": "큰 세력의 낮은 기여도 상한과 간접 계약 이행 평가",
+      "parts": [
+        "B04",
+        "B12",
+        "B13",
+        "B16"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 4,
@@ -1095,7 +1599,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "P3, M6.2",
       "implementation": "council/royal/ordinary political motions",
-      "completion": "실제 제안·투표·결정 집행, 기존 행동별 mandate를 일반 의회로 오인하지 않음"
+      "completion": "실제 제안·투표·결정 집행, 기존 행동별 mandate를 일반 의회로 오인하지 않음",
+      "parts": [
+        "B04",
+        "B12",
+        "B13",
+        "B16"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 4,
@@ -1113,7 +1626,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "P4, W1",
       "implementation": "political motion/diplomacy executor",
-      "completion": "현재 계약상 외교권과 전쟁별 동의·제재를 구분"
+      "completion": "현재 계약상 외교권과 전쟁별 동의·제재를 구분",
+      "parts": [
+        "B04",
+        "B12",
+        "B13",
+        "B16"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 4,
@@ -1131,7 +1653,16 @@
       "legacy_stage1_weight": null,
       "depends_on": "P4, Honor.Core",
       "implementation": "mediation/duel outcome adapter",
-      "completion": "결투 결과를 실제 분쟁 조건·계약·명예에 일회 반영"
+      "completion": "결투 결과를 실제 분쟁 조건·계약·명예에 일회 반영",
+      "parts": [
+        "B04",
+        "B12",
+        "B13",
+        "B16"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 5,
@@ -1149,7 +1680,20 @@
       "legacy_stage1_weight": null,
       "depends_on": "1단계, P1",
       "implementation": "company registry/recruitment UI",
-      "completion": "개인별 계약 대신 용병단 단위, 병과별 자격과 제공 세력 책임"
+      "completion": "개인별 계약 대신 용병단 단위, 병과별 자격과 제공 세력 책임",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13",
+        "B14",
+        "B16",
+        "B17",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 5,
@@ -1167,7 +1711,20 @@
       "legacy_stage1_weight": null,
       "depends_on": "C1, E1",
       "implementation": "contract/escrow/quote",
-      "completion": "부상·장비 로스·기간·구원 조항·비용을 합의 시 고정"
+      "completion": "부상·장비 로스·기간·구원 조항·비용을 합의 시 고정",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13",
+        "B14",
+        "B16",
+        "B17",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 5,
@@ -1185,7 +1742,20 @@
       "legacy_stage1_weight": null,
       "depends_on": "C2, W2",
       "implementation": "off-map assignment/custody",
-      "completion": "능력 기반 성과·실패, 원 장비와 치료/안정화된 귀환"
+      "completion": "능력 기반 성과·실패, 원 장비와 치료/안정화된 귀환",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13",
+        "B14",
+        "B16",
+        "B17",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 5,
@@ -1203,7 +1773,20 @@
       "legacy_stage1_weight": null,
       "depends_on": "C2, W2, W5",
       "implementation": "native controller/withdrawal jobs",
-      "completion": "새 공격 제한과 자위/구조/안전 철수·대여 장비 반환"
+      "completion": "새 공격 제한과 자위/구조/안전 철수·대여 장비 반환",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13",
+        "B14",
+        "B16",
+        "B17",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 5,
@@ -1221,7 +1804,20 @@
       "legacy_stage1_weight": null,
       "depends_on": "C3, C4",
       "implementation": "settlement/renewal/termination",
-      "completion": "마지막 날 명시 선택, 원금/비례 종료금/반환과 원인별 해지 구분"
+      "completion": "마지막 날 명시 선택, 원금/비례 종료금/반환과 원인별 해지 구분",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13",
+        "B14",
+        "B16",
+        "B17",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 5,
@@ -1239,7 +1835,20 @@
       "legacy_stage1_weight": null,
       "depends_on": "C3~C5, W6",
       "implementation": "ransom/rescue responsibility",
-      "completion": "최소/최대 고용주 부담·초과분·대납/상환·기한/면책 보존"
+      "completion": "최소/최대 고용주 부담·초과분·대납/상환·기한/면책 보존",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13",
+        "B14",
+        "B16",
+        "B17",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 5,
@@ -1257,7 +1866,20 @@
       "legacy_stage1_weight": null,
       "depends_on": "C5, C6, P1",
       "implementation": "rare event/provider sanctions",
-      "completion": "징후·빈도·회수/처벌, 제공 세력의 자동 대납/기지 총격 배신 금지"
+      "completion": "징후·빈도·회수/처벌, 제공 세력의 자동 대납/기지 총격 배신 금지",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13",
+        "B14",
+        "B16",
+        "B17",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 5,
@@ -1275,7 +1897,20 @@
       "legacy_stage1_weight": null,
       "depends_on": "M1, E5, P1",
       "implementation": "personal duty/Oaths adapter",
-      "completion": "이미 구현된 서약·후계 보존을 재개발하지 않고 실제 의무/의식·칭호에 연결"
+      "completion": "이미 구현된 서약·후계 보존을 재개발하지 않고 실제 의무/의식·칭호에 연결",
+      "parts": [
+        "B03",
+        "B07",
+        "B12",
+        "B13",
+        "B14",
+        "B16",
+        "B17",
+        "B18"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 6,
@@ -1293,7 +1928,15 @@
       "legacy_stage1_weight": null,
       "depends_on": "1~5단계 포맷",
       "implementation": "initialization/migrations",
-      "completion": "중복 세력/계약/주민 생성 없이 기존 저장에 도입"
+      "completion": "중복 세력/계약/주민 생성 없이 기존 저장에 도입",
+      "parts": [
+        "B12",
+        "B19",
+        "B20"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 6,
@@ -1311,7 +1954,15 @@
       "legacy_stage1_weight": null,
       "depends_on": "전 단계",
       "implementation": "verified body adapters/fixtures",
-      "completion": "컴파일과 native 실행 권한을 구분, 미확인 1.6 몸체를 가정하지 않음"
+      "completion": "컴파일과 native 실행 권한을 구분, 미확인 1.6 몸체를 가정하지 않음",
+      "parts": [
+        "B12",
+        "B19",
+        "B20"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 6,
@@ -1329,7 +1980,15 @@
       "legacy_stage1_weight": null,
       "depends_on": "R1, W2, E4",
       "implementation": "explicit ownership/authority provider adapters",
-      "completion": "독립 실행 유지, 확인된 API만 사용하고 Honor 장부 우회 금지"
+      "completion": "독립 실행 유지, 확인된 API만 사용하고 Honor 장부 우회 금지",
+      "parts": [
+        "B12",
+        "B19",
+        "B20"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 6,
@@ -1347,7 +2006,15 @@
       "legacy_stage1_weight": null,
       "depends_on": "전 단계",
       "implementation": "scheduler budgets/archive capacity/diagnostics",
-      "completion": "대규모 기록에서도 원 자료 삭제·묵시 완료 없이 명확한 보류/회복"
+      "completion": "대규모 기록에서도 원 자료 삭제·묵시 완료 없이 명확한 보류/회복",
+      "parts": [
+        "B12",
+        "B19",
+        "B20"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 6,
@@ -1365,7 +2032,15 @@
       "legacy_stage1_weight": null,
       "depends_on": "P1, P6, C8",
       "implementation": "Core/Society/Nobility/Diplomacy/Oaths 요구사항 대조",
-      "completion": "배포 이력과 Contracts 완료를 구분; 최초 결투/사회/작위/외교/맹세 명세의 누락 보완"
+      "completion": "배포 이력과 Contracts 완료를 구분; 최초 결투/사회/작위/외교/맹세 명세의 누락 보완",
+      "parts": [
+        "B12",
+        "B19",
+        "B20"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     },
     {
       "stage": 6,
@@ -1383,12 +2058,202 @@
       "legacy_stage1_weight": null,
       "depends_on": "R1~R5",
       "implementation": "release manifests/install/docs/artwork",
-      "completion": "정식 6개 모드와 선택 연동을 명확히 표시; Preview Steam 금지 유지"
+      "completion": "정식 6개 모드와 선택 연동을 명확히 표시; Preview Steam 금지 유지",
+      "parts": [
+        "B12",
+        "B19",
+        "B20"
+      ],
+      "part_evidence": [],
+      "assembly_evidence": [],
+      "integration_evidence": []
     }
   ],
   "estimate_uncertainty": {
     "ordinary": "약 ±40~60%; 계획 범위이며 통계적 신뢰구간 아님",
     "native_and_external": "확인 결과에 따라 상한의2배 이상 가능",
     "tests": "제품 하한×0.5/상한×0.85를50줄 단위 반올림한 초기 예산; 독립 실측 아님"
-  }
+  },
+  "workflow": {
+    "confirmed_by_user": "2026-11-13",
+    "approach": "재사용 부품 제작→기능별 조립→교차 통합 검사; 부품 완료와 기능 완료를 구분",
+    "submilestone_structure_accepted": true,
+    "scoring": "기존 배점·현재 점수 유지. 세부 점수를 자동 부여하지 않고 부품·조립·통합 근거로 보고",
+    "part_states": [
+      "설계",
+      "구현 중",
+      "부품 검증 완료",
+      "기능 조립 중",
+      "통합 검증 완료"
+    ],
+    "feature_states": [
+      "미연결",
+      "부분 조립",
+      "실제 실행 연결",
+      "저장·복구 통합 완료",
+      "완료 감사 통과"
+    ]
+  },
+  "parts": [
+    {
+      "id": "B01",
+      "name": "원 객체·전체 범위",
+      "owner": "M2.1",
+      "contract": "Pawn/Map/Thing 원 참조·명부·ID·중복/누락·버전",
+      "consumers": "M2,M3,M4,M5,M6,M7,M8",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B02",
+      "name": "임상·의료·영역 보존",
+      "owner": "M2.2",
+      "contract": "원 임상/care/area와 관측 reset·복구 소비",
+      "consumers": "M2,M3,M4,M5,M7,M8",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B03",
+      "name": "호출과 결과 기록",
+      "owner": "M2.2",
+      "contract": "호출 전 시작/실제 정상 반환/불확실 결과·일회 소비",
+      "consumers": "M2,M3,M4,M5,M6,M7,M8",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B04",
+      "name": "현재 승인·권리 범위",
+      "owner": "M1/M2.9",
+      "contract": "현재 대표/작위/의석·전체 제삼자/원 계약·채무·행동 scope",
+      "consumers": "M2,M4,M5,M6,M7,M8,P4",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B05",
+      "name": "개인 왕실 권리",
+      "owner": "M2.3",
+      "contract": "작위/호의/후계/허가/능력의 원본·현재 권한",
+      "consumers": "M2,M4,M7,M8,C8",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B06",
+      "name": "작업·예약·집단 인계",
+      "owner": "M2.4/M2.5",
+      "contract": "job/driver/queue/자원 예약/Lord·개별 관리 권한",
+      "consumers": "M2,M3,M6,M7,M8,W2",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B07",
+      "name": "물품·보관 계층",
+      "owner": "M2.6",
+      "contract": "원 holder/슬롯/그룹/재산 소속·설정·품목",
+      "consumers": "M2,M5,M7,M8,E3,C4",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B08",
+      "name": "수술·포로·노예",
+      "owner": "M3",
+      "contract": "원 지시/부위/재료·신분/관리·진행",
+      "consumers": "M2,M3,M4,M5,M7,M8",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B09",
+      "name": "지도자·후임·전출",
+      "owner": "M4",
+      "contract": "개인 동의와 도시 동의 분리·원 직위/후임·개인 이동",
+      "consumers": "M2,M4,M6,M7,M8",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B10",
+      "name": "소실·귀환 사실",
+      "owner": "M7.1",
+      "contract": "누락/확정 파괴/정상 소유권 변경/같은 원 객체 귀환 증거",
+      "consumers": "M2.7,M2.8,M5,M6,M7,M8",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B11",
+      "name": "계약·계층·채무 정리",
+      "owner": "M7.2",
+      "contract": "원 조건/서명/채무·생존 후손·재계약을 보존하는 정리",
+      "consumers": "M5,M6,M7,M8,E6",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B12",
+      "name": "단계별 저장·복구 계약",
+      "owner": "M9.1",
+      "contract": "version/짝/용량/진행 상태·참조 해제 규칙; 단일 만능 executor 아님",
+      "consumers": "전체",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B13",
+      "name": "가치·공납·운송·의무",
+      "owner": "E1~E6",
+      "contract": "valuation/물품 영수증/의무·실적·지연/미납",
+      "consumers": "E1~E6,W7,P3,C2,C5,C6",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B14",
+      "name": "병력 소유·파견·귀환",
+      "owner": "W2",
+      "contract": "같은 원 병력/장비·원정 custody와 귀환",
+      "consumers": "W2~W7,C3,C4,C6",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B15",
+      "name": "월드 턴·사건 스케줄",
+      "owner": "W1",
+      "contract": "정확한 순서·중복 방지·실행 예산·지연 이벤트",
+      "consumers": "E4,W1~W7,P2,C3,C7",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B16",
+      "name": "명예·신뢰·의결·분쟁",
+      "owner": "P1~P6",
+      "contract": "Honor 사건/계약 신뢰·기여·외교 제안/정치 결과",
+      "consumers": "P1~P6,E6,C1,C5,C7,C8",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B17",
+      "name": "용병단 계약·정산·책임",
+      "owner": "C1~C7",
+      "contract": "단체 ID·시작/종료금·연장/해지·포로/몸값·제공 세력 책임",
+      "consumers": "C1~C7",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B18",
+      "name": "개인 서약·후계·의무",
+      "owner": "M1/C8",
+      "contract": "기존 개인 서약/승계를 유지하고 의무·의식/칭호 연결",
+      "consumers": "M4,M7,C8",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B19",
+      "name": "버전·선택 제공자 어댑터",
+      "owner": "R2/R3",
+      "contract": "검토한 native body/API·외부 실제 소유/집행 책임",
+      "consumers": "전체; Hegemony/WD2는 선택",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    },
+    {
+      "id": "B20",
+      "name": "초기화·용량·배포",
+      "owner": "R1/R4/R5/R6",
+      "contract": "기존 저장 편입·예산/로그·기존5모드 요구 대조·정식6모드 산출물",
+      "consumers": "전체",
+      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+    }
+  ]
 }
