@@ -56,3 +56,16 @@ Recover through the same original history after interruption. Positive normal re
 The current custody review now also shows a new foreign master's signed contract. The master, all current higher parties and connected third parties must approve this exact action; the higher chain's actual realm must match the SAME original destination. Existing contracts, lower rights, arrears and paid evidence remain. The player keeps native faction and colony control.
 
 Changed contracts, representatives or payments require a fresh review. A different destination needs a separate contractual and physical transition and remains deferred. Missing original maps, people or goods and uncertain native returns are not recreated or replayed by this approval.
+
+
+## 다른 목적지로의 두 구간 인계 — 0.3.99
+
+현재 종주 세력이 원 목적지와 다르면 현재 승인 창에 최종 목적지와 ‘원 목적지까지의 중간 인계’를 표시한다. 새 종주·원 목적지 세력·관련 당사자가 동의한 뒤 원 인계를 먼저 정상 완료한다. 완료 이력에서 ‘현 외부 종주로의 별도 후속 인계 검토’를 선택하고 새 현재 상태를 검토·확인하면 현재 종주 목적지로의 새 인계를 시작한다. 이미 체결된 계약과 하위 권리·채무는 유지한다.
+
+각 구간은 별도 원본·호출 기록을 저장한다. 후속 처리 중 멈추면 그 Prepared 기록에서 복구한다. 완료한 앞 구간을 반복하거나 옛 의료·물품 상태를 다시 쓰지 않는다. 후속 인계는 현재 평화·남을 source 기지와 기존 물리 보존 조건을 만족해야 한다. 자동 재계약이나 사라진 원 객체의 재생성을 하지 않는다.
+
+## Two-leg continuation — English
+
+When the current master's realm differs, the current approval explicitly identifies the original destination as transit and binds the final realm. Finish that original handover with all current source, original target and higher/third-party consent. From its completed history, choose the separate follow-up review, review fresh current physical/clinical and contractual evidence, then confirm the new handover to the current master's realm.
+
+Each leg keeps separate original evidence and call facts. Recover the currently prepared leg after interruption; do not replay the completed predecessor or reapply old medical snapshots. Existing contracts, debts, lower rights and native player control remain. Peace, surviving source-base and existing supported preservation conditions still apply. This does not automatically negotiate new terms or recreate missing original objects.

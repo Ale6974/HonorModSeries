@@ -175,3 +175,19 @@
 최종 검증: .local/m2-098-build16.log 및 .local/m2-098-final17.log 양 타깃 전체 빌드·규칙·XML/양식 검사 통과. Honor20,093/Contracts5,614(합25,707),영한584키/인자 일치,양 타깃 컴파일 경고·오류0. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.98.zip SHA256B1680EA11129B7141274BA3E0AAA1CF891EA3866C95FBE5727B7D2830415AA8E. 기존 로컬 Preview를 .local/contracts-preview-6e35c7431beb4a70a252555a8cd10828에 백업하고32파일 해시 일치·활성화/언어 불변으로 설치했다(.local/m2-098-install.log).
 
 범위: 새 종주의 실제 소속과 SAME 원 목적지가 일치하는 인계의 실제 실행·저장·중단 복구를 연결했다. 새 종주가 다른 목적지를 요구하는 경우의 별도 계약 재편/해약과 물리 목적지 변경은 원 임상/호출 journal을 바꿔 처리하지 않으며 보류한다. 소실·재생성된 원 지도/주민/물품, 미확인 정상 반환, 달라진 임상/재고, 개인/병력 권리·일반 진행 작업/예약·커스텀 holder의 전체 복합 복원도 남아 있다. M1 10/10,M2 전체 미완료0/18,전체10/100;1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6. 작업군 전체 점수와 실제 부분 실행 구현을 구분한다. Preview Steam 게시·외부 예약 없음.
+
+## 0.3.99 — M2 부분 구현: 다른 목적지의 현 종주와 두 구간 인계 복구
+
+2026-11-12. TransitDestinationV1은 현재 새 종주의 소속이 원 target과 다를 때 원 인계를 중간 구간으로 마치는 별도 행동별 승인을 추가한다. 새 종주·모든 상위/연결 제삼자·원 source와 원 target 대표가 정확한 Book/payment/physical/foreign-rights/최종 목적지 범위에 동의해야 한다. 원 target이나 원 clinical/map/자산/호출 journal을 새 목적지로 덮어쓰지 않는다. 원 구간은 기존 실제 주민/자산/도시 호출·독립 정상 반환·명시적 복구로 완료한다. 불명확한 원 호출은 여전히 보류하고 target 소유만으로 완료하지 않는다.
+
+원 구간의 독립 Applied/native 정상 반환을 확인한 뒤 창의 ‘현 외부 종주로의 별도 후속 인계 검토’에서 새 현재 계약·대표·임상·주민 census/의료/수술/영역·지도/재산 증거를 검토하고 확인한다. Native ReviewContinuation은 같은 원 도시 참조·마지막 실제 완료 이력·원 임상/자산/도시 완료 사실과 현재 새 NPC 계약을 확인하고, 기존 CaptureForTransfer/LoadedMapRecords.Capture/PrepareCareJournal/MapAssetRecords.Prepare를 이용한다. 새 현재 증거를 옛 의료 reset으로 쓰지 않으며 이미 체결된 현재 계약에 근거한다. 새 계약 조건을 임의 생성하거나 옛 계약을 재활성화/해약/재서명하지 않는다.
+
+후속 TerritoryTransfer.PreviousTransferV1은 원 Applied ID/같은 town/baseline/이전 target=새 source/정상 시계를 별도로 저장한다. PrepareForeignContinuation은 원 Prepared/Destroyed/다른 도시·소유자 이력에 연결할 수 없다. 새 actual reference/census/care/asset/city 호출과 현재 CustodyAgreement를 모두 사전 staging하고 callback 없는 대입으로 연결한 뒤 기존 Recover를 실행한다. 새 승인은 이전 구간 완료를 다음 호출 권한으로 재사용하는 것이 아니며 각 구간에 독립 원본/권한이 있다. 기존 Scribe/PostLoad/Finalize/explicit recovery와 terminal archive에 두 구간을 보존하고, 후속 승인 marker가 없으면 옛 복구/취소 경로로 우회하지 못한다. 플레이어 native 소속/식민지 지휘·기존 계약/하위 권리·채무/납부 실적은 변경하지 않는다. 중단은 현재 Prepared 구간에서 복구하며 이미 완료된 첫 구간은 재실행하지 않는다.
+
+옛0.3.97/98 null JSON/Scope/권한은 유지한다. Transit은 별도 TransitCustodyCompletion/v1이고 후속 record는 optional null-omitted PreviousTransferV1이다. 현재 설치5005 DLL SHA25682387F78262461E53BB06A67C3945912B876D1FDB07235122BBB6E59D073F125가 직전 감사본과 같음을 확인했다. 새 native API/검토하지 않은1.6 몸체 권한은 추가하지 않았다. 기존 provider/quest/평화/마지막 source 도시/clinical·복잡 holder·진행 작업/예약 제한을 유지한다.
+
+검사는 실제 원 signed root→부분 asset 반환→해약→다른 목적지 NPC 계약 서명→별도 transit 승인/현재 원 target 대표 포함→첫 구간 정상 완료→fresh 별도 원본/다른 target의 후속 준비→archive/물리 journal 저장 복원→독립 두 번째 asset prefix/정상 완료→전체 이력 복원을 연결한다. 원 구간 JSON 불변, 계약·하위 권리·납부/미납 불변, 첫 구간 미완료의 후속 준비 거부와 서로 다른 승인/목적지·호출 scope를 검사한다.
+
+최종 검증: .local/m2-099-build16.log/최종 .local/m2-099-final17.log 전체 양 타깃 빌드·XML/영한 검사, .local/m2-099-final-rules.log 최종 규칙, .local/m2-099-final-native16.log/17.log 마지막 양 native 컴파일 통과. Honor20,093/Contracts5,624(합25,717),영한587키/인자 일치,최종 양 native 경고·오류0. 패키지 artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.99.zip SHA256E2ECDEA7F52D6A6C0D9F1585F7E947195AE9A6670AEB559B0454AB7F025A1C97. 기존 로컬 Preview를 .local/contracts-preview-541d99557349408cab83cd849824e84c에 백업하고32파일 해시 일치·활성화/언어 불변으로 설치했다(.local/m2-099-install.log).
+
+아직 미완료: 소실/재생성된 원 지도·주민·자산의 복합 복구, 전쟁·개인/군사 권리·일반 진행 작업/예약 및 커스텀 holder 조합. 이번 후속 인계도 기존 지원 가능한 원 물리 상태와 현재 평화/마지막 기지 보존이 필요하며 원 객체를 만들거나 상태를 초기화하지 않는다. 두 구간 사이의 후속 검토는 별도 명시적 확인이며 자동 재계약/자동 강제 인계가 아니다. M1 10/10,M2 전체 미완료0/18,전체10/100;1단계 잔여31.5%/8묶음,2~6단계 잔여80/95/90/100/70%,묶음5~7/6~8/5~7/6~8/4~6. Preview Steam 게시/외부 예약 없음.

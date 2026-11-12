@@ -128,6 +128,46 @@ internal static class CustodyAgreementTests
         Check(CustodyAgreements.Validate(higherWitness) == original);
         Reject(() => CustodyAgreements.Validate(higherWitness with { Parties = higherWitness.Parties.Where(p => p.Party != "overlord").ToArray() }));
         Reject(() => CustodyAgreements.CaptureForeignRights(higherBook, original, higherWitness.Parties.Select(p => p.Party == "overlord" ? p with { Realm = "third" } : p).ToArray()));
+        // Different destination: explicitly approve finishing the first leg as transit, then append a fresh second leg.
+        var nextBook = CharterBook.Restore(endedBook); nextBook.Register(new("next-master", "final", false), now + 3);
+        var nextObs = observations.Append(new TerritoryObservation("next-master", "final", true, false, true)).ToArray();
+        nextBook.OfferNpc("next-root", new("next-master", "town", 55, PoliticalWorld.Day, 0, TributeTransport.SubjectDelivery, 0), new("final-ruler", "source-ruler"), now + 4, PoliticalWorld.Day, nextObs);
+        nextBook.SignNpc("next-root", "next-master", "final-ruler", now + 5, nextObs); nextBook.SignNpc("next-root", "town", "source-ruler", now + 6, nextObs);
+        var transit = witness with { Id = "transit", Book = nextBook.Export(), Tick = now + 7,
+            Parties = [new("child", "third", false), new("next-master", "final", false), new("p", "player", true), new("town", "source", false)],
+            Observations = [observations[2], nextObs.Last(), observations[0], observations[1]], Realms = [Realm("final"), Realm("source"), Realm("target"), Realm("third")] };
+        Reject(() => CustodyAgreements.CaptureForeignRights(nextBook, original, transit.Parties));
+        transit = transit with { TransitDestinationV1 = "final" };
+        transit = transit with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(nextBook, original, transit.Parties, transit.TransitDestinationV1) };
+        Check(CustodyAgreements.Validate(transit) == original);
+        Reject(() => CustodyAgreements.Validate(transit with { TransitDestinationV1 = null }));
+        Reject(() => CustodyAgreements.Validate(transit with { Realms = transit.Realms.Where(r => r.Realm != "target").ToArray() }));
+        var twoLegs = TerritoryTransferLedger.Restore(physical.Export()); var transitHistory = new CustodyAgreements(); transitHistory.Add(transit);
+        Reject(() => twoLegs.PrepareForeignContinuation("too-early", "move", nextBook, "next-root", actual, "final", now + 8));
+        twoLegs.Confirm("move", actual with { Owner = "target" }, now + 8);
+        string firstCompleted = JsonSerializer.Serialize(twoLegs.Transfer("move"));
+        string nextMap = LoadedMapPreservation.CaptureAssets(rootMap, [new("asset-a", "target", Hash("a")), new("asset-b", "target", Hash("b"))]);
+        var nextScope = LoadedMapPreservation.Restore(nextMap);
+        var nextActual = actual with { Owner = "target", LoadedMap = nextMap, StockProof = nextScope.Proof, ResidentProof = Hash("fresh-clinical-after-positive-first-leg") };
+        var nextTransfer = twoLegs.PrepareForeignContinuation("next-move", "move", nextBook, "next-root", nextActual, "final", now + 9);
+        var nextWitness = transit with { Id = "next-consent", Transfer = "next-move", Tick = now + 9, Physical = twoLegs.Export(), Custody = Hash("fresh-original-second-leg-references"), TransitDestinationV1 = null,
+            Parties = [new("child", "third", false), new("next-master", "final", false), new("town", "target", false)],
+            Observations = [observations[2], nextObs.Last(), observations[1]], Realms = [Realm("final"), Realm("target"), Realm("third")] };
+        nextWitness = nextWitness with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(nextBook, nextTransfer, nextWitness.Parties) };
+        Check(CustodyAgreements.Validate(nextWitness) == nextTransfer);
+        transitHistory.Add(nextWitness); string chainSaved = transitHistory.Export();
+        twoLegs = TerritoryTransferLedger.Restore(twoLegs.Export()); transitHistory = CustodyAgreements.Restore(chainSaved);
+        Reject(() => TerritoryTransferLedger.Restore(twoLegs.Export().Replace("\"PreviousTransferV1\":\"move\"", "\"PreviousTransferV1\":\"next-move\"")));
+        transitHistory.RequireCurrent("next-consent", twoLegs.Transfer("next-move"), nextBook.Export(), paidBefore, nextWitness.Custody);
+        string nextCalls = MapAssetTransfers.Prepare(nextMap, "target", "final");
+        nextCalls = MapAssetTransfers.Returned(MapAssetTransfers.Begin(nextCalls, "asset-a", "target"), "asset-a", "final");
+        Check(MapAssetTransfers.ExpectedOwner(nextCalls, "asset-b") == "target");
+        nextCalls = MapAssetTransfers.Returned(MapAssetTransfers.Begin(nextCalls, "asset-b", "target"), "asset-b", "final");
+        MapAssetTransfers.Pair(nextCalls, nextMap, "target", "final", true);
+        twoLegs.Confirm("next-move", nextActual with { Owner = "final" }, now + 10);
+        transitHistory.ValidateHistory(nextBook, TerritoryTransferLedger.Restore(twoLegs.Export()), payments);
+        Check(JsonSerializer.Serialize(twoLegs.Transfer("move")) == firstCompleted && twoLegs.Transfer("next-move").PreviousTransferV1 == "move");
+        Check(nextBook.Charter("next-root").Phase == RecordedCharterPhase.Active && nextBook.Charter("lower").Phase == RecordedCharterPhase.Active && payments.Export() == paidBefore);
         // Revocation/change needs a new complete approval; historical normal-return facts stay untouched.
         foreignBook.ConsentNpcRelease("foreign-root", "master", now + 9, foreignObs);
         foreignBook.ConsentNpcRelease("foreign-root", "town", now + 10, foreignObs);

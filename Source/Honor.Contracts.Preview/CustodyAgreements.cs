@@ -55,9 +55,10 @@ public sealed partial class TerritoryAdministrationLedger
             actual.StockProof == null && actual.Visited || actual.Owner == t.FromOwner && actual.SourceSettlements < 2 && t.FromOwner != AdministrationId)
             throw new ArgumentException("Original stock/map/source base changed; current consent grants no restoration.");
     }
-    private CustodyAgreement CurrentCustodyWitness(string transfer, string id, long tick, CustodyAgreement previous = null)
+    private CustodyAgreement CurrentCustodyWitness(string transfer, string id, long tick, CustodyAgreement previous = null, TerritoryTransferLedger proposed = null, TerritoryTransferReference proposedReference = null)
     {
-        var t = Ledger.Transfer(transfer); var r = references.Single(r => r.Id == transfer); CustodyBasis(t, r);
+        var physical = proposed ?? Ledger;
+        var t = physical.Transfer(transfer); var r = proposedReference ?? references.Single(r => r.Id == transfer); CustodyBasis(t, r);
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (payments.RestoreFailed || payments.Ledger.Receipts.Any(p => p.Phase == TributeReceiptPhase.Prepared)) throw new ArgumentException("Original liabilities unavailable.");
         string[] parties = CustodyAgreements.PartiesFor(Charters.Book, t);
@@ -82,8 +83,11 @@ public sealed partial class TerritoryAdministrationLedger
         string[] realmIds = actualParties.Where(p => !p.Player).Select(p => p.Realm).Concat([t.FromOwner, t.TargetOwner]).Distinct().OrderBy(s => s, StringComparer.Ordinal).ToArray();
         var realms = realmIds.Select(id => { var matches = Find.FactionManager.AllFactionsListForReading.Where(f => f.GetUniqueLoadID() == id).ToArray(); if (matches.Length != 1) throw new ArgumentException("Missing current party realm."); return matches[0]; }).ToArray();
         var evidence = realms.Select(NpcDecisionAuthority.Observe).ToArray();
-        var w = new CustodyAgreement(id, transfer, Charters.Book.Export(), payments.Ledger.Export(), Ledger.Export(), CustodyFingerprint(t, r), actualParties.ToArray(), observations.ToArray(), evidence, tick);
-        w = w with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(Charters.Book, t, w.Parties) };
+        var w = new CustodyAgreement(id, transfer, Charters.Book.Export(), payments.Ledger.Export(), physical.Export(), CustodyFingerprint(t, r), actualParties.ToArray(), observations.ToArray(), evidence, tick);
+        var foreign = Charters.Book.Charters.SingleOrDefault(c => c.Phase == RecordedCharterPhase.Active && c.Terms.Subject == t.Territory && !Charters.Book.PlayerManaged(c));
+        string next = foreign == null ? null : w.Parties.Single(p => p.Party == foreign.Terms.Liege).Realm;
+        if (t.PreviousTransferV1 == null && next != null && next != t.TargetOwner) w = w with { TransitDestinationV1 = next };
+        w = w with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(Charters.Book, t, w.Parties, w.TransitDestinationV1) };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };
         _ = CustodyAgreements.Validate(w); return w;
     }
@@ -152,6 +156,8 @@ public sealed partial class TerritoryAdministrationLedger
                 var liege = Charters.Binding(right.Liege);
                 text += "\n\n" + "RE_CustodyForeign".Translate(liege.Settlement?.Label ?? liege.OriginalFaction?.Name ?? right.Liege, right.Charter);
             }
+            if (reviewed.Witness.TransitDestinationV1 != null)
+                text += "\n\n" + "RE_Transit".Translate(Find.FactionManager.AllFactionsListForReading.Single(f => f.GetUniqueLoadID() == reviewed.Witness.TransitDestinationV1).Name);
             Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(text, () => CommitCustodyAgreement(reviewed)));
         }
         catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Custody completion review unavailable; original state retained: " + e.GetType().Name); Messages.Message("RE_CustodyBlocked".Translate(), MessageTypeDefOf.RejectInput); }

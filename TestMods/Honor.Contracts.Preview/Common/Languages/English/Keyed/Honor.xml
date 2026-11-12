@@ -583,4 +583,7 @@ Review Honor contracts for settlement. This notice does not establish intent, di
 <RE_CustodyApproved>Current custody agreement recorded. Continuing only the original verified remaining handover.</RE_CustodyApproved>
 <RE_CustodyBlocked>Current custody completion is deferred: original physical evidence, representatives, third-party rights or current authority changed. Original journals and ended contracts remain intact.</RE_CustodyBlocked>
 <RE_CustodyForeign>Current foreign master: {0}. Its signed contract {1}, subordinate rights, arrears and payment evidence remain in force. Approval only finishes the SAME original destination handover; it does not release this contract or redirect custody.</RE_CustodyForeign>
+<RE_Continuation>{0}: Review a separate handover to the current foreign master</RE_Continuation>
+<RE_ContinuationConfirm>Review {0}: a NEW handover from {1} to {2}? The original handover remains completed and unchanged. Fresh current clinical, assets, representatives and all connected rights must match. Contracts, debts and player control remain unchanged.</RE_ContinuationConfirm>
+<RE_Transit>This approval finishes the ORIGINAL destination as an intermediate handover. Final current master realm: {0}. After positive completion, separately review the follow-up transfer with fresh evidence; it is not automatic.</RE_Transit>
 </LanguageData>

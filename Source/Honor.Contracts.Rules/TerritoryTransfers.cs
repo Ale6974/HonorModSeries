@@ -23,6 +23,7 @@ public sealed record TerritoryTransfer(string Id, string Territory, string Basel
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     public bool CityCallJournalV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string PreviousTransferV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string LoadedMap { get; init; }
 }
 public sealed record TerritoryTransfersSave(int Version, long LastTick, TerritoryTransfer[] Transfers);
@@ -60,7 +61,7 @@ public sealed class TerritoryTransferLedger
         string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration = null, string releasedRoot = null)
         => PrepareCore(id, book, charterId, observed, target, verifiedAuthority, verifiedUnion, purpose, now, verifiedAdministration, releasedRoot, true);
     private TerritoryTransfer PrepareCore(string id, CharterBook book, string charterId, TerritoryTransferObservation observed,
-        string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration, string releasedRoot, bool loaded)
+        string target, string verifiedAuthority, string verifiedUnion, TerritoryTransferPurpose purpose, long now, string verifiedAdministration, string releasedRoot, bool loaded, string previous = null)
     {
         RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(observed);
         Require(loaded ? observed.HasMap && observed.LoadedMap != null && observed.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 : observed.LoadedMap == null && !observed.HasMap, "Loaded custody requires a separately scoped preparation.");
@@ -73,7 +74,7 @@ public sealed class TerritoryTransferLedger
             "Resolve open proposals before changing the NPC authority that granted consent.");
         bool subtree = releasedRoot != null && SubtreeRelease.Authorizes(book, releasedRoot, charterId);
         Require(releasedRoot == null || subtree && purpose == TerritoryTransferPurpose.ReleasedToUnion, "Invalid released subtree scope.");
-        Require(RuntimeCompat.IsDefined(purpose) && !subject.Player && (book.PlayerManaged(charter) || subtree) &&
+        Require(RuntimeCompat.IsDefined(purpose) && !subject.Player && (book.PlayerManaged(charter) || subtree || previous != null) &&
             observed.Territory == subject.Id && charter.PlayerSignedTick.HasValue && charter.NpcSignedTick.HasValue &&
             now >= Math.Max(charter.PlayerSignedTick.Value, charter.NpcSignedTick.Value), "A mutually signed NPC charter below the player is required.");
         if (purpose == TerritoryTransferPurpose.ActiveCharter)
@@ -89,8 +90,14 @@ public sealed class TerritoryTransferLedger
             "Only unloaded nonplayer cities with verified stock/resident preservation and a surviving source base can move.");
         Require(VerifiedOwner(subject.Id, subject.NativeOwner, observed.Owner) && transfers.Count < Capacity &&
             !transfers.Any(t => t.Id == id || t.Phase == TerritoryTransferPhase.Prepared), "Resolve prior transfers and verify current ownership first.");
+        if (previous != null)
+        {
+            var prior = Transfer(previous);
+            Require(prior.Phase == TerritoryTransferPhase.Applied && prior.Territory == subject.Id && transfers.Last(t => t.Territory == subject.Id).Id == previous && prior.TargetOwner == observed.Owner &&
+                charter.NpcAuthority != null && charter.Phase == RecordedCharterPhase.Active && !book.PlayerManaged(charter), "Positive original handover and current foreign contract required.");
+        }
         var result = new TerritoryTransfer(id, subject.Id, subject.NativeOwner, observed.Owner, target, charterId, purpose, now,
-            StockProof: observed.StockProof, StockFormat: observed.StockFormat, ReleasedRoot: releasedRoot, ResidentProof: observed.ResidentProof) { LoadedMap = observed.LoadedMap, CityCallJournalV1 = loaded };
+            StockProof: observed.StockProof, StockFormat: observed.StockFormat, ReleasedRoot: releasedRoot, ResidentProof: observed.ResidentProof) { LoadedMap = observed.LoadedMap, CityCallJournalV1 = loaded, PreviousTransferV1 = previous };
         if (JsonSerializer.Serialize(new TerritoryTransfersSave(Version, now, transfers.Append(result).ToArray())).Length > 4000000)
             throw new ArgumentException("Original physical journal capacity; retain existing history unchanged.");
         transfers.Add(result); LastTick = now; return result;
@@ -108,6 +115,12 @@ public sealed class TerritoryTransferLedger
     {
         var prepared = PrepareLoaded(id, book, charterId, observed, target, verifiedAuthority, verifiedUnion, purpose, now, verifiedAdministration, releasedRoot);
         var paired = prepared with { CityCallJournalV1 = true }; transfers[transfers.Count - 1] = paired; return paired;
+    }
+    // Preparation is not execution permission: the native adapter must separately stage current scoped consent before calling native setters.
+    public TerritoryTransfer PrepareForeignContinuation(string id, string previous, CharterBook book, string charter, TerritoryTransferObservation observed, string target, long now, string administration = null)
+    {
+        var t = PrepareCore(id, book, charter, observed, target, target, null, TerritoryTransferPurpose.ActiveCharter, now, administration, null, observed.HasMap, previous);
+        var paired = t with { CityCallJournalV1 = true }; transfers[transfers.Count - 1] = paired; return paired;
     }
     public void Confirm(string id, TerritoryTransferObservation actual, long now)
     {
@@ -175,6 +188,13 @@ public sealed class TerritoryTransferLedger
                 (item.Destruction.Owner == item.FromOwner || item.Destruction.Owner == item.TargetOwner) && item.Destruction.LossTick >= item.PreparedTick &&
                 item.Destruction.ObservedTick >= item.Destruction.LossTick && item.ResolvedTick >= item.Destruction.ObservedTick : item.Destruction == null,
                 "Invalid destruction terminal state.");
+            if (item.PreviousTransferV1 != null)
+            {
+                var prior = result.Transfer(item.PreviousTransferV1);
+                Require(prior.Phase == TerritoryTransferPhase.Applied && prior.Territory == item.Territory && result.transfers.Last(t => t.Territory == item.Territory).Id == item.PreviousTransferV1 && prior.TargetOwner == item.FromOwner &&
+                    prior.ResolvedTick <= item.PreparedTick && item.CityCallJournalV1 && item.Purpose == TerritoryTransferPurpose.ActiveCharter && item.ReleasedRoot == null,
+                    "Invalid original continuation provenance.");
+            }
             result.transfers.Add(item); result.LastTick = item.ResolvedTick ?? item.PreparedTick;
         }
         result.LastTick = save.LastTick; return result;

@@ -143,6 +143,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     throw new ArgumentException("City call cannot precede its recorded resident execution.");
                 if (t.Phase == TerritoryTransferPhase.Applied)
                     TerritoryCallGuard.RequireStartedForTarget(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
+                if (t.PreviousTransferV1 != null && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation is missing its independent current approval.");
                 if (entity.Player || binding.PlayerGroup || binding.FactionGroup || entity.NativeOwner != t.BaselineOwner ||
                     charter.Terms.Subject != t.Territory || !Charters.Book.Entity(charter.Terms.Liege).Player && charter.NpcAuthority == null ||
                     !charter.PlayerSignedTick.HasValue || !charter.NpcSignedTick.HasValue ||
@@ -434,6 +435,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (political.Journal.Pending && political.Journal.Current?.LawfulFollowerMigration == true)
                 political.VerifyLawfulPhysicalRecovery();
             var item = Ledger.Transfer(id); var reference = references.Single(r => r.Id == id);
+            if (item.PreviousTransferV1 != null && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation cannot use legacy recovery permission.");
             ValidateMapReference(item, reference, true);
             if (reference.LoadedMap != null && reference.CityCallStarted && !reference.CityCallReturned) throw new ArgumentException("Unknown loaded-map call; never replay or infer normal return.");
             if (item.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
@@ -631,6 +633,8 @@ public sealed class FollowerTransfersWindow : Window
                         (review.Moves.Contains(entry.Charter) ? "FB_Move" : "FB_Already").Translate()));
                 if (review.Moves.Count > 0 && list.ButtonText("FB_Confirm".Translate())) { ledger.ApplyFollowers(review); review = null; }
             }
+            foreach (var completed in ledger.Ledger.Transfers.Where(t => t.Phase == TerritoryTransferPhase.Applied).ToArray())
+                ledger.DrawContinuation(list, completed.Id);
             foreach (var pending in ledger.Ledger.Transfers.Where(t => t.Phase == TerritoryTransferPhase.Prepared).ToArray())
             {
                 list.Label("FB_Pending".Translate(ledger.FollowerLabel(pending.Charter)));
@@ -703,6 +707,7 @@ public sealed class TerritoryAdministrationWindow : Window
                 list.Label("CT_Record".Translate(ledger.OwnerLabel(item.FromOwner), ledger.OwnerLabel(item.TargetOwner), ("CT_" + item.Phase).Translate()));
                 var progress = ledger.ResidentProgress(item.Id); if (progress != null) list.Label(progress);
                 if (item.Phase == TerritoryTransferPhase.Prepared) ledger.DrawCustodyAgreement(list, item.Id);
+                if (item.Phase == TerritoryTransferPhase.Applied) ledger.DrawContinuation(list, item.Id);
                 if (item.Phase == TerritoryTransferPhase.Prepared && list.ButtonText("CT_Recover".Translate())) ledger.Recover(item.Id);
             }
         }
