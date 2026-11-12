@@ -21,12 +21,15 @@ public sealed partial class TerritoryAdministrationLedger
         if (Charters.Book.PlayerManaged(current) || current.NpcAuthority == null) throw new ArgumentException("Current signed foreign master required.");
         var liege = Charters.Binding(current.Terms.Liege);
         var target = liege.FactionGroup ? liege.OriginalFaction : liege.Settlement?.Faction;
-        bool royal = original.City.Faction?.def.royalTitleTags?.Count > 0 || target?.def.royalTitleTags?.Count > 0;
+        bool royal = original.City.Faction?.def.royalTitleTags?.Count > 0 || target?.def.royalTitleTags?.Count > 0 || original.City.previouslyGeneratedInhabitants?.Any(RoyalRightsAdapter.HasTitles) == true;
         if (target == null || target == original.City.Faction || !(royal ? RoyalEligible(target) && RoyalEligible(original.City.Faction) : Eligible(target))) throw new ArgumentException("A distinct current eligible destination is required.");
         var city = original.City; var source = city.Faction;
-        var observed = Observe(city, prior.Territory, target, residentProfile: original.Residents?.Profile ?? 7);
+        bool titledWorld = royal && !city.HasMap && city.previouslyGeneratedInhabitants?.Any(RoyalRightsAdapter.HasTitles) == true;
+        var observed = Observe(city, prior.Territory, target, residentProfile: titledWorld ? 12 : original.Residents?.Profile ?? 7);
         if (royal) observed = observed with { Eligible = true, TargetEligible = true };
-        var residents = observed.HasInhabitants ? ResidentExecution.CaptureForTransfer(city) : null;
+        var residents = observed.HasInhabitants ? (titledWorld ? ResidentExecution.CaptureRoyalWorld(city) : ResidentExecution.CaptureForTransfer(city)) : null;
+        var privateRights = royal ? RoyalRightsAdapter.Capture(residents?.Pawns) : null;
+        if (privateRights != null) RoyalRightsAdapter.Attach(residents, privateRights);
         var loaded = observed.LoadedMap == null ? null : LoadedMapRecords.Capture(city);
         if (residents?.Set().Proof != observed.ResidentProof || loaded?.Snapshot != observed.LoadedMap || residents != null && residents.LoadedMapScope != observed.LoadedMap)
             throw new ArgumentException("Fresh complete clinical/map evidence changed.");
@@ -34,7 +37,8 @@ public sealed partial class TerritoryAdministrationLedger
         if (loaded != null) MapAssetRecords.Prepare(loaded, source, target);
         long tick = reviewedTick ?? Find.TickManager.TicksGame; id ??= "continuation-" + Guid.NewGuid().ToString("N");
         var physical = TerritoryTransferLedger.Restore(Ledger.Export());
-        physical.PrepareForeignContinuation(id, previous, Charters.Book, current.Id, observed, target.GetUniqueLoadID(), tick, AdministrationId, royal ? RoyalResidentProof(residents?.Pawns) : null);
+        if (privateRights != null) physical.PreparePrivateRoyalContinuation(id, previous, Charters.Book, current.Id, observed, target.GetUniqueLoadID(), privateRights.Document, tick, AdministrationId);
+        else physical.PrepareForeignContinuation(id, previous, Charters.Book, current.Id, observed, target.GetUniqueLoadID(), tick, AdministrationId);
         var reference = new TerritoryTransferReference { Id = id, City = city, From = source, Target = target, Residents = residents,
             ResidentCareJournalRequired = residents != null, ResidentCensusProof = residents == null ? null : ResidentTransferCensus.Restore(residents.Census).Proof,
             CityCallV1 = true, LoadedMap = loaded };

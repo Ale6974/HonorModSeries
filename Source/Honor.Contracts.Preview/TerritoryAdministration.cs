@@ -87,7 +87,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, t.LoadedMap, t.FromOwner, t.TargetOwner);
         return r;
     }
-    internal bool ReservesResident(Pawn pawn) => DeferredReserves(pawn) || residentEnrollments?.Any(r => !ResidentEnrollment.Restore(r.Journal).Verified && r.Residents?.Contains(pawn) == true) == true || references?.Any(r => r?.Residents?.Pawns?.Contains(pawn) == true &&
+    internal bool ReservesResident(Pawn pawn) => DeferredReserves(pawn) || residentEnrollments?.Any(r => !ResidentEnrollment.Restore(r.Journal).Verified && r.Residents?.Contains(pawn) == true) == true || references?.Any(r => (r?.Residents?.Pawns?.Contains(pawn) == true || r?.Residents?.RoyalHeirs?.Contains(pawn) == true) &&
         (RestoreFailed || r.Residents.Started || Ledger.Transfers.Any(t => t.Id == r.Id && t.Phase == TerritoryTransferPhase.Prepared))) == true;
     internal string ResidentProgress(string id)
     {
@@ -143,6 +143,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     throw new ArgumentException("City call cannot precede its recorded resident execution.");
                 if (t.Phase == TerritoryTransferPhase.Applied)
                     TerritoryCallGuard.RequireStartedForTarget(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
+                if ((reference.Residents?.Profile == 12 || reference.Residents?.RoyalRightsDocument != null) && (t.RoyalRightsV2 == null || t.RoyalRightsV2 != reference.Residents.RoyalRightsDocument)) throw new ArgumentException("Private royal clinical scope has no matching original transfer.");
                 if ((t.PreviousTransferV1 != null || t.RoyalResidentsV1 != null) && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation is missing its independent current approval.");
                 if (entity.Player || binding.PlayerGroup || binding.FactionGroup || entity.NativeOwner != t.BaselineOwner ||
                     charter.Terms.Subject != t.Territory || !Charters.Book.Entity(charter.Terms.Liege).Player && charter.NpcAuthority == null ||

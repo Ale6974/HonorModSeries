@@ -28,6 +28,10 @@ public sealed class ResidentExecutionRecord : IExposable
     public string LoadedMapScope;
     public Map NativeMap;
     public string MapBindings;
+    public string RoyalRightsDocument;
+    public List<Faction> RoyalFactions;
+    public List<Pawn> RoyalHeirs;
+    public List<Ability> RoyalAbilities;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Snapshot, "preservationV1"); Scribe_Values.Look(ref Started, "started");
@@ -43,9 +47,13 @@ public sealed class ResidentExecutionRecord : IExposable
         Scribe_Values.Look(ref LoadedMapScope, "residentOriginalNeutralMapV1");
         Scribe_References.Look(ref NativeMap, "originalNativeResidentMapV1");
         Scribe_Values.Look(ref MapBindings, "originalNativeResidentBindingsV1");
+        Scribe_Values.Look(ref RoyalRightsDocument, "originalPrivateRoyalRightsV2");
+        Scribe_Collections.Look(ref RoyalFactions, "originalRoyalFactionsV2", LookMode.Reference);
+        Scribe_Collections.Look(ref RoyalHeirs, "originalRoyalHeirsV2", LookMode.Reference);
+        Scribe_Collections.Look(ref RoyalAbilities, "originalRoyalAbilitiesV2", LookMode.Reference);
         if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; Prisoners ??= []; }
     }
-    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
+    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
     public void PrepareCareJournal(Faction source, Faction target)
     {
         if (Started || CareJournalV1 || CareJournal != null || source == null || target == null) throw new ArgumentException("New resident preparation required.");
@@ -114,6 +122,7 @@ internal static class ResidentExecution
     }
     private static void Eligible(Pawn p, int profile, bool retainedLeader = false, bool enrollment = false)
     {
+        if (profile == 12 && (!NativeTransferBodies.RoyalCustodyBodies || p == null || p.Spawned || p.IsPrisoner || p.Downed)) throw new ArgumentException("New world royal clinical scope only.");
         if (p?.IsSlave == true) throw new ResidentMoveBlocked("RE_SlaveUnavailable");
         if (!retainedLeader && p != null && PawnUtility.IsFactionLeader(p)) throw new ResidentMoveBlocked("LR_LeaderBlocked");
         if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || p.RaceProps.body == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || (profile == 11 && p.Spawned ? p.Map == null : p.Spawned || !p.IsWorldPawn()) ||
@@ -122,7 +131,7 @@ internal static class ResidentExecution
             (!retainedLeader && PawnUtility.IsFactionLeader(p)) || p.InMentalState || p.Downed && (profile < 8 || p.IsPrisoner || retainedLeader) || profile == 9 && p.IsPrisoner || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
             p.GetLord() != null || profile < 3 && p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
             p.HasExtraHomeFaction() || p.HasExtraMiniFaction() || p.GetExtraHostFaction() != null || p.questTags?.Count > 0 ||
-            (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || profile < 7 && (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
+            profile != 12 && (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || profile < 7 && (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
             p.health?.surgeryBills == null || profile == 1 && p.health.surgeryBills.Count != 0 || p.health.hediffSet?.hediffs == null || p.needs?.AllNeeds == null || p.relations?.DirectRelations == null ||
             p.relations.DirectRelations.Count > 1000 || p.relations.DirectRelations.Any(r => r == null || r.def == null || r.otherPawn == null) ||
             (p.needs.mood?.thoughts?.memories?.Memories.Count ?? 0) > 1000 ||
@@ -168,7 +177,7 @@ internal static class ResidentExecution
         => profile is 5 or 7 ? ReadInternal(p, profile, surgery, null, true) : throw new ArgumentException("Unsupported joining leader profile.");
     private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader, ResidentAreaRecord area = null, bool captureAreas = false, bool enrollment = false)
     {
-        if (profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11)) throw new ArgumentException("Unknown resident profile.");
+        if (profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12)) throw new ArgumentException("Unknown resident profile.");
         Eligible(p, profile, retainedLeader, enrollment); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
@@ -227,6 +236,8 @@ internal static class ResidentExecution
             MapBindings = profile == 11 ? ResidentMapped.Prepare(pawns.Select(ResidentMapActors.Binding)) : null };
     }
     // Explicit new clinical format; legacy Capture/Read/profile7 bytes and restrictions remain unchanged.
+    internal static ResidentExecutionRecord CaptureRoyalWorld(Settlement city)
+    { if (city?.HasMap != false) throw new ArgumentException("Royal clinical12 is a new unloaded scope."); return CaptureCore(city, 12, null); }
     internal static ResidentExecutionRecord CaptureForTransfer(Settlement city)
     {
         // Inspect the complete original roster. Choosing a format never bypasses each resident's eligibility checks.
@@ -265,8 +276,10 @@ internal static class ResidentExecution
         if (record == null || record.Pawns == null || record.Set().Proof != proof || record.Pawns.Count != record.Set().Residents.Count ||
             record.Pawns.Any(p => p == null) || !record.Pawns.Select(p => p.GetUniqueLoadID()).SequenceEqual(record.Set().Residents.Select(r => r.Id)))
             throw new ArgumentException("Resident execution reference registry mismatch.");
+        if (record.Profile == 12 && record.RoyalRightsDocument == null) throw new ArgumentException("Royal clinical12 needs independent original rights.");
         if (record.Profile == 11 && record.NativeMap != city.Map) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         CheckTown(city, record.LoadedMapScope);
+        if (record.RoyalRightsDocument != null) RoyalRightsAdapter.Verify(record, record.RoyalRightsDocument, RoyalRights.Proof(record.RoyalRightsDocument));
         ValidateAreas(record, false);
         if (record.Profile is 9 or 10 or 11)
             for (int i = 0; i < record.Pawns.Count; i++)
@@ -466,6 +479,7 @@ internal static class ResidentExecution
         if (record.Prisoners == null || record.Prisoners.Any(r => r == null || r.ResetSnapshot != null))
             throw new ArgumentException("Never discard an unfinished native custody reset.");
         if (record.AreaRecords?.Any(r => r.Maps == null || r.Areas == null) == true) throw new ArgumentException("Malformed retained original area references.");
+        record.RoyalFactions?.Clear(); record.RoyalHeirs?.Clear(); record.RoyalAbilities?.Clear();
         record.Pawns.Clear(); record.Surgery.Clear(); record.Prisoners.Clear(); record.NativeMap = null;
         if (record.AreaRecords != null) foreach (var area in record.AreaRecords) { area.Pawn = null; area.Maps.Clear(); area.Areas.Clear(); }
     }

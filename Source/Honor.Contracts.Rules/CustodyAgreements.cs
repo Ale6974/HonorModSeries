@@ -10,6 +10,7 @@ public sealed record CustodyAgreement(string Id, string Transfer, string Book, s
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string ForeignRightsV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string TransitDestinationV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool RoyalCustodyV1 { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string[] RoyalStakeholdersV2 { get; init; }
 }
 public sealed record CustodyAgreementReceipt(CustodyAgreement Witness, string Proof);
 public sealed record CustodyAgreementSave(int Version, CustodyAgreementReceipt[] Records);
@@ -23,7 +24,8 @@ public sealed class CustodyAgreements
     private static string LegacyScope(CustodyAgreement w) => Hash(new { Action = "CurrentCustodyCompletion/v1", w.Id, w.Transfer, w.Book, w.Payments, w.Physical, w.Custody, w.Parties, w.Observations, w.Realms, w.Tick });
     private static string ForeignScope(CustodyAgreement w) => w.ForeignRightsV1 == null ? LegacyScope(w) : Hash(new { Action = "ForeignMasterCustodyCompletion/v1", Original = LegacyScope(w), w.ForeignRightsV1 });
     private static string TransitScope(CustodyAgreement w) => w.TransitDestinationV1 == null ? ForeignScope(w) : Hash(new { Action = "TransitCustodyCompletion/v1", Original = ForeignScope(w), w.TransitDestinationV1 });
-    public static string Scope(CustodyAgreement w) => w.RoyalCustodyV1 ? Hash(new { Action = "RoyalCivilianCustody/v1", Original = TransitScope(w) }) : TransitScope(w);
+    private static string RoyalScope(CustodyAgreement w) => w.RoyalCustodyV1 ? Hash(new { Action = "RoyalCivilianCustody/v1", Original = TransitScope(w) }) : TransitScope(w);
+    public static string Scope(CustodyAgreement w) => w.RoyalStakeholdersV2 == null ? RoyalScope(w) : Hash(new { Action = "RoyalPrivateRightsCustody/v2", Original = RoyalScope(w), w.RoyalStakeholdersV2 });
     /// <summary>Descriptor only: current scoped representative decisions must independently approve it.</summary>
     public static string CaptureForeignRights(CharterBook book, TerritoryTransfer t, CustodyParty[] parties, string transitDestination = null)
     {
@@ -85,9 +87,11 @@ public sealed class CustodyAgreements
         foreach (var active in book.Charters.Where(c => c.Phase == RecordedCharterPhase.Active && scope.Contains(c.Terms.Subject)))
         { book.ValidateCurrent(active.Id, w.Observations); }
         if (book.Charters.Any(c => book.Phase(c, w.Tick) == RecordedCharterPhase.Offered && (scope.Contains(c.Terms.Subject) || scope.Contains(c.Terms.Liege)))) throw new ArgumentException("Competing current party offers.");
-        string[] realms = w.Parties.Where(p => !p.Player).Select(p => p.Realm).Concat([t.FromOwner, t.TargetOwner]).Distinct().OrderBy(r => r, StringComparer.Ordinal).ToArray();
+        string[] royalStakeholders = t.RoyalRightsV2 == null ? null : RoyalRights.Realms(t.RoyalRightsV2);
+        if (royalStakeholders == null ? w.RoyalStakeholdersV2 != null : w.RoyalStakeholdersV2 == null || !royalStakeholders.SequenceEqual(w.RoyalStakeholdersV2)) throw new ArgumentException("Exact original private royal claimants required.");
+        string[] realms = w.Parties.Where(p => !p.Player).Select(p => p.Realm).Concat([t.FromOwner, t.TargetOwner]).Concat(royalStakeholders ?? []).Distinct().OrderBy(r => r, StringComparer.Ordinal).ToArray();
         if (!w.Realms.Select(r => r?.Realm).SequenceEqual(realms)) throw new ArgumentException("Each current source, target and third-party representative must consent.");
-        if (w.RoyalCustodyV1 != (t.RoyalResidentsV1 != null) || w.RoyalCustodyV1 && !w.Realms.Any(r => (r.Realm == t.FromOwner || r.Realm == t.TargetOwner) && r.Regime == NpcDecisionRegime.Royal))
+        if (w.RoyalCustodyV1 != (t.RoyalResidentsV1 != null) || w.RoyalCustodyV1 && !w.Realms.Any(r => (r.Realm == t.FromOwner || r.Realm == t.TargetOwner || royalStakeholders?.Contains(r.Realm) == true) && r.Regime == NpcDecisionRegime.Royal))
             throw new ArgumentException("New original royal custody and current own-realm title mandate required; no legacy permission expansion.");
         ScopedNpcTerminationAuthority.ValidateDecisions(w.Realms, w.Regimes, Scope(w), w.Tick);
         foreach (var account in payments.Accounts)

@@ -25,6 +25,7 @@ public sealed record TerritoryTransfer(string Id, string Territory, string Basel
     public bool CityCallJournalV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string PreviousTransferV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string RoyalResidentsV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string RoyalRightsV2 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string LoadedMap { get; init; }
 }
 public sealed record TerritoryTransfersSave(int Version, long LastTick, TerritoryTransfer[] Transfers);
@@ -130,6 +131,16 @@ public sealed class TerritoryTransferLedger
         var t = PrepareCore(id, book, charter, observed, target, target, null, TerritoryTransferPurpose.ActiveCharter, now, administration, null, observed.HasMap, royalResidents: royalResidents);
         var paired = t with { CityCallJournalV1 = true }; transfers[transfers.Count - 1] = paired; return paired;
     }
+    public TerritoryTransfer PreparePrivateRoyalContinuation(string id, string previous, CharterBook book, string charter, TerritoryTransferObservation observed, string target, string rights, long now, string administration = null)
+    {
+        var t = PrepareForeignContinuation(id, previous, book, charter, observed, target, now, administration, RoyalRights.Proof(rights));
+        var paired = t with { RoyalRightsV2 = rights }; transfers[transfers.Count - 1] = paired; return paired;
+    }
+    public TerritoryTransfer PreparePrivateRoyalJournaled(string id, CharterBook book, string charter, TerritoryTransferObservation observed, string target, string rights, long now, string administration = null)
+    {
+        var t = PrepareRoyalJournaled(id, book, charter, observed, target, RoyalRights.Proof(rights), now, administration);
+        var paired = t with { RoyalRightsV2 = rights }; transfers[transfers.Count - 1] = paired; return paired;
+    }
     public void Confirm(string id, TerritoryTransferObservation actual, long now)
     {
         RuntimeCompat.NotNull(actual); Time(now); var transfer = Transfer(id);
@@ -196,6 +207,7 @@ public sealed class TerritoryTransferLedger
                 (item.Destruction.Owner == item.FromOwner || item.Destruction.Owner == item.TargetOwner) && item.Destruction.LossTick >= item.PreparedTick &&
                 item.Destruction.ObservedTick >= item.Destruction.LossTick && item.ResolvedTick >= item.Destruction.ObservedTick : item.Destruction == null,
                 "Invalid destruction terminal state.");
+            if (item.RoyalRightsV2 != null && RoyalRights.Proof(item.RoyalRightsV2) != item.RoyalResidentsV1) throw new ArgumentException("Unpaired private royal rights.");
             Require(item.RoyalResidentsV1 == null || CityStockProof.Valid(item.RoyalResidentsV1) && item.Phase is TerritoryTransferPhase.Prepared or TerritoryTransferPhase.Applied && item.CityCallJournalV1 && item.Purpose == TerritoryTransferPurpose.ActiveCharter && item.ReleasedRoot == null, "Invalid royal custody provenance.");
             if (item.PreviousTransferV1 != null)
             {

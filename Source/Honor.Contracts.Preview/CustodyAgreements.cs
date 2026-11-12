@@ -50,7 +50,8 @@ public sealed partial class TerritoryAdministrationLedger
             ResidentExecution.ReviewCustody(r.Residents, r.City, r.From, r.Target, t.ResidentProof);
         }
         else if (t.ResidentProof != null || r.City.previouslyGeneratedInhabitants == null || r.City.previouslyGeneratedInhabitants.Count != 0) throw new ArgumentException("Original resident custody unavailable.");
-        if (t.RoyalResidentsV1 != null && RoyalResidentProof(r.Residents?.Pawns) != t.RoyalResidentsV1) throw new ArgumentException("Original royal civilian rights changed.");
+        if (t.RoyalRightsV2 != null) RoyalRightsAdapter.Verify(r.Residents, t.RoyalRightsV2, t.RoyalResidentsV1);
+        else if (t.RoyalResidentsV1 != null && RoyalResidentProof(r.Residents?.Pawns) != t.RoyalResidentsV1) throw new ArgumentException("Original royal civilian rights changed.");
         var actual = Observe(r.City, t.Territory, r.Target, residentProfile: r.Residents?.Profile ?? 7);
         if (!actual.Exists || actual.StockFormat != t.StockFormat || actual.LoadedMap != t.LoadedMap || actual.StockProof != t.StockProof ||
             actual.StockProof == null && actual.Visited || actual.Owner == t.FromOwner && actual.SourceSettlements < 2 && t.FromOwner != AdministrationId)
@@ -81,7 +82,7 @@ public sealed partial class TerritoryAdministrationLedger
                 actualParties.Add(new(party, realm, entity.Player)); observations.Add(observation);
             }
         }
-        string[] realmIds = actualParties.Where(p => !p.Player).Select(p => p.Realm).Concat([t.FromOwner, t.TargetOwner]).Distinct().OrderBy(s => s, StringComparer.Ordinal).ToArray();
+        string[] realmIds = actualParties.Where(p => !p.Player).Select(p => p.Realm).Concat([t.FromOwner, t.TargetOwner]).Concat(t.RoyalRightsV2 == null ? [] : RoyalRights.Realms(t.RoyalRightsV2)).Distinct().OrderBy(s => s, StringComparer.Ordinal).ToArray();
         var realms = realmIds.Select(id => { var matches = Find.FactionManager.AllFactionsListForReading.Where(f => f.GetUniqueLoadID() == id).ToArray(); if (matches.Length != 1) throw new ArgumentException("Missing current party realm."); return matches[0]; }).ToArray();
         if (t.RoyalResidentsV1 != null) RoyalReadBoundaries();
         var evidence = realms.Select(NpcDecisionAuthority.Observe).ToArray();
@@ -90,7 +91,7 @@ public sealed partial class TerritoryAdministrationLedger
         string next = foreign == null ? null : w.Parties.Single(p => p.Party == foreign.Terms.Liege).Realm;
         if (t.PreviousTransferV1 == null && next != null && next != t.TargetOwner) w = w with { TransitDestinationV1 = next };
         w = w with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(Charters.Book, t, w.Parties, w.TransitDestinationV1) };
-        w = w with { RoyalCustodyV1 = t.RoyalResidentsV1 != null };
+        w = w with { RoyalCustodyV1 = t.RoyalResidentsV1 != null, RoyalStakeholdersV2 = t.RoyalRightsV2 == null ? null : RoyalRights.Realms(t.RoyalRightsV2) };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };
         if (w.RoyalCustodyV1)
         {
