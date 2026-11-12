@@ -1,5 +1,9 @@
 # Honor Mod Series — RimWorld 1.6 / 1.7
 
+현재 Contracts 개발판은 **0.3.103**입니다. [최신 구현 범위와 남은 M2 작업](docs/M2-PARTS-AUDIT-0.3.103.md)을 먼저 확인하세요. 지원 지도 주민의 왕실 개인 권리와 진행 중 지면 휴식·같은 작업의 현재 칸 예약을 실제 이전/저장/복구에 연결했습니다. M2 전체·M3 진입은 미완료이며 아래 버전별 기록의 과거 추정치는 당시 이력입니다. 개발판 Steam 게시는 하지 않습니다.
+
+Contracts development preview **0.3.103** preserves supported mapped royal rights and original ongoing ground-rest jobs/current-cell reservations through the existing native transfer/save/recovery paths. Broader work, military/private-property and compound recovery cases remain unfinished. See the current scope audit above.
+
 ## 0.3.63 — 하위 영지를 동반하는 정당한 독립의 초기 실제 집행
 
 계약상 보호의 고의 거부로 정당한 독립을 선택할 때, 저장된 주민이 없는 직속 영지와 그 아래 영지 전체가 원 종주 세력에 있고 원 세력과 자유도시연합이 서로 적대하지 않는 범위의 실제 연합 가입·도시 이전을 연결했다. 원 전체 계약·거부·정치·이전 장부와 모든 하위 영지의 원 소유자·재고 증거를 검토에 묶고, 실제 연합 대표와 구성 도시의 수락 후 원 계약 종료·공납 마감·정치 journal을 함께 적용한다. 이후 기존 도시별 native 이전·공유 외교·명시적 중단 복구를 이용한다. 종주의 해약 서명을 만들거나 플레이어 native 세력을 바꾸지 않는다.

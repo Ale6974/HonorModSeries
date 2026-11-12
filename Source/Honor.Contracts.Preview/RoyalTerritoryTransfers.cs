@@ -55,12 +55,14 @@ public sealed partial class TerritoryAdministrationLedger
         if (source == target || !RoyalEligible(source) || !RoyalEligible(target) || source.HostileTo(target) || target.HostileTo(source)) throw new ArgumentException("Explicit current royal source/destination and reciprocal peace required.");
         Charters.Book.ValidateCurrent(charter, Charters.ObserveForMigration(null));
         bool titledWorld = !city.HasMap && city.previouslyGeneratedInhabitants?.Any(RoyalRightsAdapter.HasTitles) == true;
-        var residents = city.previouslyGeneratedInhabitants?.Count > 0 ? (titledWorld ? ResidentExecution.CaptureRoyalWorld(city) : ResidentExecution.CaptureForTransfer(city)) : null;
+        bool titledMap = city.HasMap && city.previouslyGeneratedInhabitants?.Any(RoyalRightsAdapter.HasTitles) == true;
+        var originalMap = titledMap ? LoadedMapRecords.Capture(city, true) : null;
+        var residents = city.previouslyGeneratedInhabitants?.Count > 0 ? (titledMap ? ResidentExecution.CaptureRoyalMapped(city, originalMap.Snapshot) : titledWorld ? ResidentExecution.CaptureRoyalWorld(city) : ResidentExecution.CaptureForTransfer(city)) : null;
         var rights = RoyalRightsAdapter.Capture(residents?.Pawns);
         RoyalRightsAdapter.Attach(residents, rights);
         int profile = residents?.Profile ?? 7;
         var observed = Observe(city, c.Terms.Subject, target, residentProfile: profile) with { Eligible = true, TargetEligible = true };
-        var loaded = observed.LoadedMap == null ? null : LoadedMapRecords.Capture(city);
+        var loaded = observed.LoadedMap == null ? null : LoadedMapRecords.Capture(city, titledMap);
         if (residents?.Set().Proof != observed.ResidentProof || loaded?.Snapshot != observed.LoadedMap || residents != null && residents.LoadedMapScope != observed.LoadedMap)
             throw new ArgumentException("Original full clinical/map proof changed.");
         string royal = RoyalRights.Proof(rights.Document);

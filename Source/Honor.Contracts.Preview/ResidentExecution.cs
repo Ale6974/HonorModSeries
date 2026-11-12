@@ -4,6 +4,7 @@ using System.Text.Json;
 using HarmonyLib;
 using Honor.Contracts.Rules;
 using RimWorld;
+using Verse.AI;
 using RimWorld.Planet;
 using Verse;
 using Verse.AI.Group;
@@ -28,6 +29,7 @@ public sealed class ResidentExecutionRecord : IExposable
     public string LoadedMapScope;
     public Map NativeMap;
     public string MapBindings;
+    public List<Job> GroundRestJobs;
     public string RoyalRightsDocument;
     public List<Faction> RoyalFactions;
     public List<Pawn> RoyalHeirs;
@@ -47,13 +49,14 @@ public sealed class ResidentExecutionRecord : IExposable
         Scribe_Values.Look(ref LoadedMapScope, "residentOriginalNeutralMapV1");
         Scribe_References.Look(ref NativeMap, "originalNativeResidentMapV1");
         Scribe_Values.Look(ref MapBindings, "originalNativeResidentBindingsV1");
+        Scribe_Collections.Look(ref GroundRestJobs, "originalNativeGroundRestJobsV1", LookMode.Reference);
         Scribe_Values.Look(ref RoyalRightsDocument, "originalPrivateRoyalRightsV2");
         Scribe_Collections.Look(ref RoyalFactions, "originalRoyalFactionsV2", LookMode.Reference);
         Scribe_Collections.Look(ref RoyalHeirs, "originalRoyalHeirsV2", LookMode.Reference);
         Scribe_Collections.Look(ref RoyalAbilities, "originalRoyalAbilitiesV2", LookMode.Reference);
         if (Scribe.mode == LoadSaveMode.PostLoadInit) { Pawns ??= []; Surgery ??= []; Prisoners ??= []; }
     }
-    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
+    public ResidentMoveSet Set() => Profile is 1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 ? ResidentMoveSet.Restore(Snapshot) : throw new ArgumentException("Unsupported resident execution profile.");
     public void PrepareCareJournal(Faction source, Faction target)
     {
         if (Started || CareJournalV1 || CareJournal != null || source == null || target == null) throw new ArgumentException("New resident preparation required.");
@@ -89,16 +92,16 @@ internal static class ResidentExecution
             if (method == null || Harmony.GetPatchInfo(method)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_MobilityUnavailable");
         return ResidentMoveProfiles.BindMobility(previous, status, p.Downed);
     }
-    internal static NativeMapResident MapActor(Pawn p, ResidentExecutionRecord record)
+    internal static NativeMapResident MapActor(Pawn p, ResidentExecutionRecord record, bool royal = false, bool groundRest = false)
     {
         if (record == null)
         {
             if (p.Faction != p.Map?.Parent?.Faction) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
             var surgery = ResidentSurgery.Capture(p); var area = ResidentAreaRecords.Capture(p);
-            var fresh = ReadWithAreas(p, 11, surgery, null, area, true);
+            var fresh = ReadWithAreas(p, groundRest ? 14 : royal ? 13 : 11, surgery, null, area, true);
             return new(fresh.Id, fresh.Preserved);
         }
-        if (record.Profile != 11 || record.NativeMap != p.Map || record.Census == null) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (record.Profile is not (11 or 13 or 14) || record.NativeMap != p.Map || record.Census == null) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var census = ResidentTransferCensus.Restore(record.Census);
         ValidateCensus(record, census.Proof, census.Town, census.Source, census.Target);
         ResidentTransferCensus.RequireRecoverable(record.AuthorityJournal, record.CareJournal);
@@ -106,7 +109,7 @@ internal static class ResidentExecution
         if (i < 0) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var call = ResidentTransferCensus.Call(record.AuthorityJournal[i]);
         if (p.Faction?.GetUniqueLoadID() != (call.Started ? census.Target : census.Source)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-        var actual = ReadWithAreas(p, 11, record.Surgery[i], null, record.AreaRecords[i]);
+        var actual = ReadWithAreas(p, record.Profile, record.Surgery[i], null, record.AreaRecords[i]);
         if (actual.Preserved != record.Set().Residents[i].Preserved) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         return new(actual.Id, actual.Preserved);
     }
@@ -122,16 +125,18 @@ internal static class ResidentExecution
     }
     private static void Eligible(Pawn p, int profile, bool retainedLeader = false, bool enrollment = false)
     {
+        if (profile == 14) { if (!NativeTransferBodies.WorkObservationBodies) throw new ArgumentException("Unreviewed native ongoing-work bodies."); _ = ResidentGroundRest.Capture(p); }
+        if (profile == 13 && !NativeTransferBodies.RoyalCustodyBodies) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (profile == 12 && (!NativeTransferBodies.RoyalCustodyBodies || p == null || p.Spawned || p.IsPrisoner || p.Downed)) throw new ArgumentException("New world royal clinical scope only.");
         if (p?.IsSlave == true) throw new ResidentMoveBlocked("RE_SlaveUnavailable");
         if (!retainedLeader && p != null && PawnUtility.IsFactionLeader(p)) throw new ResidentMoveBlocked("LR_LeaderBlocked");
-        if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || p.RaceProps.body == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || (profile == 11 && p.Spawned ? p.Map == null : p.Spawned || !p.IsWorldPawn()) ||
-            (p.holdingOwner != null && (profile != 11 || !p.Spawned || p.holdingOwner != p.Map.GetDirectlyHeldThings())) || p.Faction == null || p.Faction.IsPlayer ||
+        if (p == null || p.GetType() != typeof(Pawn) || p.kindDef == null || p.Name == null || p.ageTracker == null || p.RaceProps.body == null || !p.RaceProps.Humanlike || p.Dead || p.Destroyed || (profile is 11 or 13 or 14 && p.Spawned ? p.Map == null : p.Spawned || !p.IsWorldPawn()) ||
+            (p.holdingOwner != null && (profile is not (11 or 13 or 14) || !p.Spawned || p.holdingOwner != p.Map.GetDirectlyHeldThings())) || p.Faction == null || p.Faction.IsPlayer ||
             (profile < 4 || !p.IsPrisoner) && (p.HostFaction != null || p.IsPrisoner) || p.IsSlave ||
-            (!retainedLeader && PawnUtility.IsFactionLeader(p)) || p.InMentalState || p.Downed && (profile < 8 || p.IsPrisoner || retainedLeader) || profile == 9 && p.IsPrisoner || p.CurJob != null || p.carryTracker?.CarriedThing != null ||
+            (!retainedLeader && PawnUtility.IsFactionLeader(p)) || p.InMentalState || p.Downed && (profile < 8 || p.IsPrisoner || retainedLeader) || profile == 9 && p.IsPrisoner || p.CurJob != null && profile != 14 || p.carryTracker?.CarriedThing != null ||
             p.GetLord() != null || profile < 3 && p.Ideo != null || p.mechanitor != null || p.creepjoiner != null || p.IsMutant ||
             p.HasExtraHomeFaction() || p.HasExtraMiniFaction() || p.GetExtraHostFaction() != null || p.questTags?.Count > 0 ||
-            profile != 12 && (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || profile < 7 && (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
+            profile is not (12 or 13) && (p.royalty?.AllTitlesInEffectForReading.Count ?? 0) > 0 || profile < 7 && (p.genes?.GenesListForReading.Count ?? 0) > 0 ||
             p.health?.surgeryBills == null || profile == 1 && p.health.surgeryBills.Count != 0 || p.health.hediffSet?.hediffs == null || p.needs?.AllNeeds == null || p.relations?.DirectRelations == null ||
             p.relations.DirectRelations.Count > 1000 || p.relations.DirectRelations.Any(r => r == null || r.def == null || r.otherPawn == null) ||
             (p.needs.mood?.thoughts?.memories?.Memories.Count ?? 0) > 1000 ||
@@ -143,14 +148,14 @@ internal static class ResidentExecution
             p.needs.AllNeeds.Any(n => n == null || !RuntimeCompat.IsFinite(n.CurLevel) ||
                 n.GetType().Assembly != typeof(Pawn).Assembly && n.GetType().Assembly.GetName().Name != "Honor.Core"))
             throw new ArgumentException("Unsupported resident status or pending surgery.");
-        if (profile == 11)
+        if (profile is 11 or 13 or 14)
         {
             if (p.IsPrisoner) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-            if (p.Spawned) { if (enrollment) ResidentMapActors.RequireEnrollment(p); else ResidentMapActors.Require(p); }
+            if (p.Spawned) { if (enrollment) ResidentMapActors.RequireEnrollment(p); else ResidentMapActors.Require(p, profile == 14); }
         }
         if (p.IsPrisoner) ResidentPrisoners.Eligible(p, profile);
         if (p.playerSettings != null && (Areas == null || Areas.IsStatic || Areas.FieldType != typeof(Dictionary<Map, Area>) ||
-            Areas.GetValue(p.playerSettings) is not IDictionary areas || (profile != 9 && profile != 10 && profile != 11 || profile == 10 && p.IsPrisoner) && areas.Count != 0 || p.playerSettings.Master != null))
+            Areas.GetValue(p.playerSettings) is not IDictionary areas || (profile != 9 && profile != 10 && profile is not (11 or 13 or 14) || profile == 10 && p.IsPrisoner) && areas.Count != 0 || p.playerSettings.Master != null))
             throw new ArgumentException("Unsupported persistent resident restrictions.");
     }
     internal static ResidentMoveActual Read(Pawn p, int profile = 1, ResidentSurgeryRecord surgery = null, ResidentPrisonerRecord prisoner = null)
@@ -177,7 +182,7 @@ internal static class ResidentExecution
         => profile is 5 or 7 ? ReadInternal(p, profile, surgery, null, true) : throw new ArgumentException("Unsupported joining leader profile.");
     private static ResidentMoveActual ReadInternal(Pawn p, int profile, ResidentSurgeryRecord surgery, ResidentPrisonerRecord prisoner, bool retainedLeader, ResidentAreaRecord area = null, bool captureAreas = false, bool enrollment = false)
     {
-        if (profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12)) throw new ArgumentException("Unknown resident profile.");
+        if (profile is not (1 or 2 or 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14)) throw new ArgumentException("Unknown resident profile.");
         Eligible(p, profile, retainedLeader, enrollment); var baseline = ResidentBaselineStore.Evidence(p);
         var settings = p.playerSettings;
         string preserved = Digest(new {
@@ -195,7 +200,7 @@ internal static class ResidentExecution
             profile >= 3 ? ResidentIdeology.Proof(p) : null, profile >= 4 ? ResidentPrisoners.Proof(p, prisoner, profile) : null,
             profile >= 7 ? ResidentGenes.Proof(p) : null);
         if (profile >= 8) preserved = Mobility(p, preserved, baseline.Status);
-        if (profile is 9 or 10 or 11)
+        if (profile is 9 or 10 or 11 or 13 or 14)
         {
             if (area != null)
             {
@@ -204,8 +209,9 @@ internal static class ResidentExecution
             }
             preserved = ResidentMoveProfiles.BindAreas(preserved, ResidentAreaRecords.Proof(p, area));
             if (profile == 10) preserved = ResidentMoveProfiles.BindMixedAreas(preserved);
-            if (profile == 11) preserved = ResidentMapped.Bind(preserved, ResidentMapActors.Binding(p));
+            if (profile is 11 or 13 or 14) preserved = profile == 13 ? ResidentMapped.BindRoyal(preserved, ResidentMapActors.Binding(p)) : ResidentMapped.Bind(preserved, ResidentMapActors.Binding(p));
         }
+        if (profile == 14) preserved = GroundRest.Bind(preserved, ResidentGroundRest.Capture(p));
         // Faction in the shared move planner denotes the changing authority; prisoner affiliation is separately proof-bound.
         return new(baseline.Id, profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction.GetUniqueLoadID(), preserved, settings == null ? null : (int)settings.medCare);
     }
@@ -221,21 +227,24 @@ internal static class ResidentExecution
     private static ResidentExecutionRecord CaptureCore(Settlement city, int profile, string loaded)
     {
         EnsureRetention();
-        if (profile == 11 && (loaded == null || city?.Map == null || LoadedMapPreservation.Restore(loaded).NativeResidents == null)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (profile == 14 && (loaded == null || LoadedMapPreservation.Restore(loaded).GroundRestV1 == null)) throw new ArgumentException("Original native rest map required.");
+        if (profile == 13 && (!NativeTransferBodies.RoyalCustodyBodies || loaded == null || LoadedMapPreservation.Restore(loaded).RoyalMappedV1 != 1)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (profile is 11 or 13 or 14 && (loaded == null || city?.Map == null || LoadedMapPreservation.Restore(loaded).NativeResidents == null)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         CheckTown(city, loaded); var pawns = city.previouslyGeneratedInhabitants.OrderBy(p => p?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         foreach (var pawn in pawns) Eligible(pawn, profile);
         var surgery = profile >= 2 ? pawns.Select(ResidentSurgery.Capture).ToList() : [];
         var prisoners = profile >= 4 ? pawns.Where(ResidentPrisoners.IsPrisoner).Select(p => ResidentPrisoners.Capture(p, profile)).ToList() : [];
-        var areaRecords = profile is 9 or 10 or 11 ? pawns.Select(ResidentAreaRecords.Capture).ToList() : null;
+        var areaRecords = profile is 9 or 10 or 11 or 13 or 14 ? pawns.Select(ResidentAreaRecords.Capture).ToList() : null;
         SurgeryOrderSet.ValidateDistinctOwners(surgery.Select(s => s.Set()));
         var rows = pawns.Select((p, i) => ReadWithAreas(p, profile, profile >= 2 ? surgery[i] : null, prisoners.SingleOrDefault(r => r.Pawn == p), areaRecords?[i], true)).ToArray();
         if (rows.Any(r => r.Faction != city.Faction.GetUniqueLoadID())) throw new ArgumentException("Resident source faction mismatch.");
         var set = ResidentMoveSet.Capture(rows.Select(r => new ResidentMoveEvidence(r.Id, r.Preserved, r.MedicalCare)));
         CheckLocations(city, set);
-        return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners, AreaRecords = areaRecords, LoadedMapScope = loaded, NativeMap = profile == 11 ? city.Map : null,
-            MapBindings = profile == 11 ? ResidentMapped.Prepare(pawns.Select(ResidentMapActors.Binding)) : null };
+        return new() { Snapshot = set.Export(), Pawns = pawns, Profile = profile, Surgery = surgery, Prisoners = prisoners, AreaRecords = areaRecords, LoadedMapScope = loaded, NativeMap = profile is 11 or 13 or 14 ? city.Map : null,
+            MapBindings = profile is 11 or 13 or 14 ? ResidentMapped.Prepare(pawns.Select(ResidentMapActors.Binding)) : null, GroundRestJobs = profile == 14 ? pawns.Where(p => p.CurJob != null).Select(p => p.jobs.curJob).ToList() : null };
     }
     // Explicit new clinical format; legacy Capture/Read/profile7 bytes and restrictions remain unchanged.
+    internal static ResidentExecutionRecord CaptureRoyalMapped(Settlement city, string loaded) => CaptureCore(city, 13, loaded);
     internal static ResidentExecutionRecord CaptureRoyalWorld(Settlement city)
     { if (city?.HasMap != false) throw new ArgumentException("Royal clinical12 is a new unloaded scope."); return CaptureCore(city, 12, null); }
     internal static ResidentExecutionRecord CaptureForTransfer(Settlement city)
@@ -243,7 +252,7 @@ internal static class ResidentExecution
         // Inspect the complete original roster. Choosing a format never bypasses each resident's eligibility checks.
         var roster = city?.previouslyGeneratedInhabitants;
         string loaded = city?.HasMap == true ? LoadedMapRecords.Capture(city).Snapshot : null;
-        int profile = loaded != null && LoadedMapPreservation.Restore(loaded).NativeResidents != null ? 11 : ResidentMoveProfiles.SelectTownClinical(roster?.Any(ResidentAreaRecords.HasRestrictions) == true,
+        int profile = loaded != null && LoadedMapPreservation.Restore(loaded).NativeResidents != null ? (LoadedMapPreservation.Restore(loaded).GroundRestV1 != null ? 14 : 11) : ResidentMoveProfiles.SelectTownClinical(roster?.Any(ResidentAreaRecords.HasRestrictions) == true,
             roster?.Any(p => p?.Downed == true) == true, roster?.Any(p => p?.IsPrisoner == true) == true);
         return CaptureCore(city, profile, loaded);
     }
@@ -252,7 +261,7 @@ internal static class ResidentExecution
     {
         try
         {
-            var record = profile == 7 ? CaptureForTransfer(city) : CaptureCore(city, profile, city?.HasMap == true ? LoadedMapRecords.Capture(city).Snapshot : null);
+            var record = profile == 7 ? CaptureForTransfer(city) : CaptureCore(city, profile, city?.HasMap == true ? LoadedMapRecords.Capture(city, profile == 13).Snapshot : null);
             if (target != null && target != city.Faction)
                 foreach (var prisoner in record.Prisoners) ResidentPrisoners.NeedsRestore(prisoner, city.Faction, target, profile);
             return record.Set().Proof;
@@ -276,12 +285,13 @@ internal static class ResidentExecution
         if (record == null || record.Pawns == null || record.Set().Proof != proof || record.Pawns.Count != record.Set().Residents.Count ||
             record.Pawns.Any(p => p == null) || !record.Pawns.Select(p => p.GetUniqueLoadID()).SequenceEqual(record.Set().Residents.Select(r => r.Id)))
             throw new ArgumentException("Resident execution reference registry mismatch.");
-        if (record.Profile == 12 && record.RoyalRightsDocument == null) throw new ArgumentException("Royal clinical12 needs independent original rights.");
-        if (record.Profile == 11 && record.NativeMap != city.Map) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (record.Profile is 12 or 13 && record.RoyalRightsDocument == null) throw new ArgumentException("Royal clinical12 needs independent original rights.");
+        if (record.Profile is 11 or 13 or 14 && record.NativeMap != city.Map) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         CheckTown(city, record.LoadedMapScope);
         if (record.RoyalRightsDocument != null) RoyalRightsAdapter.Verify(record, record.RoyalRightsDocument, RoyalRights.Proof(record.RoyalRightsDocument));
+        ResidentGroundRest.Validate(record);
         ValidateAreas(record, false);
-        if (record.Profile is 9 or 10 or 11)
+        if (record.Profile is 9 or 10 or 11 or 13 or 14)
             for (int i = 0; i < record.Pawns.Count; i++)
             {
                 if (record.AreaRecords[i].Pawn != record.Pawns[i]) throw new ArgumentException("Original area record belongs to another pawn reference.");
@@ -327,7 +337,9 @@ internal static class ResidentExecution
     internal static void ValidateCensus(ResidentExecutionRecord record, string expected, string town, string source, string target, bool complete = false)
     {
         ValidateAreas(record, complete);
-        if (record.Profile == 11) ResidentMapped.Pair(record.MapBindings, record.Set(), record.LoadedMapScope);
+        if (record.Profile == 14 && (record.LoadedMapScope == null || LoadedMapPreservation.Restore(record.LoadedMapScope).GroundRestV1 == null || record.GroundRestJobs == null)) throw new ArgumentException("Original rest clinical/job provenance missing.");
+        if (record.Profile == 13 && (record.RoyalRightsDocument == null || record.LoadedMapScope == null || LoadedMapPreservation.Restore(record.LoadedMapScope).RoyalMappedV1 != 1)) throw new ArgumentException("Royal clinical/map/private provenance missing.");
+        if (record.Profile is 11 or 13 or 14) ResidentMapped.Pair(record.MapBindings, record.Set(), record.LoadedMapScope);
         else if (record.MapBindings != null || record.NativeMap != null) throw new ArgumentException("Map bindings cannot backfill an old resident profile.");
         if (record.Census == null)
         { if (expected != null || record.AuthorityJournal != null || record.Profile >= 8) throw new ArgumentException("Missing original resident census."); return; }
@@ -336,7 +348,7 @@ internal static class ResidentExecution
     }
     private static void ValidateAreas(ResidentExecutionRecord record, bool complete)
     {
-        if (record.Profile is not (9 or 10 or 11)) { if (record.AreaRecords != null) throw new ArgumentException("Area evidence cannot backfill a legacy resident profile."); return; }
+        if (record.Profile is not (9 or 10 or 11 or 13 or 14)) { if (record.AreaRecords != null) throw new ArgumentException("Area evidence cannot backfill a legacy resident profile."); return; }
         var set = record.Set();
         if (record.AreaRecords == null || record.AreaRecords.Count != set.Residents.Count) throw new ArgumentException("Missing original area scope.");
         if (record.AuthorityJournal != null && record.AuthorityJournal.Count != set.Residents.Count) throw new ArgumentException("Incomplete original area/call scope.");
@@ -345,7 +357,8 @@ internal static class ResidentExecution
             var r = record.AreaRecords[i]; var state = ResidentAreas.Restore(r?.Journal);
             string original = ResidentMoveProfiles.BindAreas(r.Previous, ResidentAreas.Proof(r.Journal));
             if (record.Profile == 10) original = ResidentMoveProfiles.BindMixedAreas(original);
-            if (record.Profile == 11) original = ResidentMapped.Bind(original, ResidentMapped.Restore(record.MapBindings)[i]);
+            if (record.Profile is 11 or 13 or 14) original = record.Profile == 13 ? ResidentMapped.BindRoyal(original, ResidentMapped.Restore(record.MapBindings)[i]) : ResidentMapped.Bind(original, ResidentMapped.Restore(record.MapBindings)[i]);
+            if (record.Profile == 14) original = GroundRest.Bind(original, LoadedMapPreservation.Restore(record.LoadedMapScope).GroundRestV1.SingleOrDefault(row => row.Pawn == set.Residents[i].Id));
             if (state.Id != set.Residents[i].Id || original != set.Residents[i].Preserved ||
                 !record.Started && state.Started || complete && !state.Consumed) throw new ArgumentException("Original resident/area evidence changed or incomplete.");
             if (record.AuthorityJournal != null)
@@ -369,6 +382,7 @@ internal static class ResidentExecution
         if (executionGame == null || Current.ProgramState != ProgramState.Playing)
             throw new ArgumentException("Resident execution requires the current game.");
         EnsureRetention();
+
         ValidateReferences(record, city, proof);
         ValidateCareJournal(record, source, target);
         if (record.Profile >= 8 && record.Census == null) throw new ArgumentException("Clinical resident execution requires original independent call and medical evidence.");
@@ -390,7 +404,7 @@ internal static class ResidentExecution
             var p = record.Pawns[i];
             var surgery = record.Profile >= 2 ? record.Surgery[i] : null;
             var prisoner = record.Prisoners.SingleOrDefault(r => r.Pawn == p);
-            var area = record.Profile is 9 or 10 or 11 ? record.AreaRecords[i] : null;
+            var area = record.Profile is 9 or 10 or 11 or 13 or 14 ? record.AreaRecords[i] : null;
             var action = set.ActionFor(ReadWithAreas(p, record.Profile, surgery, prisoner, area), source.GetUniqueLoadID(), target.GetUniqueLoadID(), true);
             var care = !record.CareJournalV1 ? null : ResidentCareJournal.Restore(record.CareJournal[i]);
             if (care != null && action == ResidentMoveAction.ChangeFaction && care.State.Started)
@@ -461,7 +475,7 @@ internal static class ResidentExecution
         if (record.Surgery.Any(s => s.Detached.Count != 0)) throw new ArgumentException("Cannot complete with detached orders.");
     }
     private static ResidentMoveActual[] ReadAll(ResidentExecutionRecord record) => record.Pawns.Select((p, i) =>
-        ReadWithAreas(p, record.Profile, record.Profile >= 2 ? record.Surgery[i] : null, record.Prisoners.SingleOrDefault(r => r.Pawn == p), record.Profile is 9 or 10 or 11 ? record.AreaRecords[i] : null)).ToArray();
+        ReadWithAreas(p, record.Profile, record.Profile >= 2 ? record.Surgery[i] : null, record.Prisoners.SingleOrDefault(r => r.Pawn == p), record.Profile is 9 or 10 or 11 or 13 or 14 ? record.AreaRecords[i] : null)).ToArray();
     internal static void EnsureRetention()
     {
         if (GcMethod == null || GcMethod.ReturnType != typeof(string) || Harmony.GetPatchInfo(GcMethod)?.Owners.Contains("honor.series.contracts.preview") != true)
@@ -479,7 +493,7 @@ internal static class ResidentExecution
         if (record.Prisoners == null || record.Prisoners.Any(r => r == null || r.ResetSnapshot != null))
             throw new ArgumentException("Never discard an unfinished native custody reset.");
         if (record.AreaRecords?.Any(r => r.Maps == null || r.Areas == null) == true) throw new ArgumentException("Malformed retained original area references.");
-        record.RoyalFactions?.Clear(); record.RoyalHeirs?.Clear(); record.RoyalAbilities?.Clear();
+        record.GroundRestJobs?.Clear(); record.RoyalFactions?.Clear(); record.RoyalHeirs?.Clear(); record.RoyalAbilities?.Clear();
         record.Pawns.Clear(); record.Surgery.Clear(); record.Prisoners.Clear(); record.NativeMap = null;
         if (record.AreaRecords != null) foreach (var area in record.AreaRecords) { area.Pawn = null; area.Maps.Clear(); area.Areas.Clear(); }
     }

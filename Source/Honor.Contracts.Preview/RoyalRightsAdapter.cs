@@ -24,6 +24,7 @@ internal static class RoyalRightsAdapter
     {
         if (!NativeTransferBodies.RoyalCustodyBodies || !ModsConfig.RoyaltyActive) throw new ArgumentException("Unreviewed private royal bodies.");
         Unpatched(typeof(RoyalTitle), nameof(RoyalTitle.ExposeData)); Unpatched(typeof(FactionPermit), nameof(FactionPermit.ExposeData));
+        Unpatched(typeof(Pawn_RoyaltyTracker), "AssignHeirIfNone"); Unpatched(typeof(RoyalTitleDef), "get_Awardable");
         Unpatched(typeof(Pawn_RoyaltyTracker), nameof(Pawn_RoyaltyTracker.ExposeData)); Unpatched(typeof(Pawn_RoyaltyTracker), nameof(Pawn_RoyaltyTracker.UpdateAvailableAbilities));
         var factions = new Dictionary<string, Faction>(StringComparer.Ordinal); var heirs = new Dictionary<string, Pawn>(StringComparer.Ordinal); var abilities = new Dictionary<string, Ability>(StringComparer.Ordinal);
         var rows = new List<RoyalRightRow>();
@@ -41,7 +42,7 @@ internal static class RoyalRightsAdapter
             var permits = Field<List<FactionPermit>>(r, typeof(Pawn_RoyaltyTracker), "factionPermits");
             var spells = Field<List<Ability>>(r, typeof(Pawn_RoyaltyTracker), "abilities");
             if (new[] { titles.Count, favor.Count, highest.Count, inherited.Count, permits.Count, spells.Count }.Any(n => n > 256)) throw new ArgumentException("Royal scope capacity.");
-            if (titles.Any(t => t == null || t.GetType() != typeof(RoyalTitle) || t.pawn != pawn || !inherited.ContainsKey(t.faction)) || titles.Select(t => t.faction).Distinct().Count() != titles.Count) throw new ArgumentException("Original title/explicit heir entry required; never generate heirs on load.");
+            if (titles.Any(t => t == null || t.GetType() != typeof(RoyalTitle) || t.pawn != pawn || !inherited.ContainsKey(t.faction) && (t.def == null || t.def.favorCost > 0)) || titles.Select(t => t.faction).Distinct().Count() != titles.Count) throw new ArgumentException("Original title/load-stable heir entry required; never generate heirs on load.");
             var titleData = titles.Select(t => new { Faction = Realm(t.faction), Def = Registered(t.def).defName, t.receivedTick, t.wasInherited, t.conceited }).ToArray();
             var favorData = favor.OrderBy(e => e.Key.GetUniqueLoadID(), StringComparer.Ordinal).Select(e => new { Faction = Realm(e.Key), Value = e.Value }).ToArray();
             var highestData = highest.OrderBy(e => e.Key.GetUniqueLoadID(), StringComparer.Ordinal).Select(e => new { Faction = Realm(e.Key), Def = Registered(e.Value).defName }).ToArray();
@@ -59,7 +60,7 @@ internal static class RoyalRightsAdapter
             var expected = titles.SelectMany(t => t.def.grantedAbilities ?? throw new ArgumentException("Ability definition list unavailable.")).Distinct().ToArray();
             if (spells.Select(a => a?.def).Distinct().Count() != spells.Count || !new HashSet<AbilityDef>(expected).SetEquals(spells.Select(a => a?.def))) throw new ArgumentException("Native load would add/remove royal abilities.");
             var spellData = spells.Select(a => {
-                if (a?.GetType() != typeof(Ability) || a.pawn != pawn || a.Id < 0 || a.sourcePrecept != null) throw new ArgumentException("Only original basic royal ability ownership is reviewed.");
+                if ((a?.GetType() != typeof(Ability) && a?.GetType() != typeof(Psycast)) || a.pawn != pawn || a.Id < 0 || a.sourcePrecept != null) throw new ArgumentException("Only original basic royal ability ownership is reviewed.");
                 Registered(a.def); Unpatched(typeof(Ability), nameof(Ability.ExposeData)); Unpatched(typeof(Ability), nameof(Ability.GetUniqueLoadID)); Unpatched(typeof(Ability), nameof(Ability.Initialize));
                 string id = a.GetUniqueLoadID(); if (abilities.ContainsKey(id)) throw new ArgumentException("Duplicate original ability ID."); abilities[id] = a; ownedAbilities.Add(id);
                 return AbilityData(a, pawn);
@@ -75,6 +76,12 @@ internal static class RoyalRightsAdapter
     }
     private static object AbilityData(Ability a, Pawn pawn)
     {
+        if (a.GetType() == typeof(Psycast))
+        {
+            if (Raw(a, typeof(Psycast), "moteCast") != null || AccessTools.Method(typeof(Psycast), nameof(Ability.ExposeData))?.DeclaringType != typeof(Ability)) throw new ArgumentException("Psycast has active or unknown saved state.");
+            foreach (var ctor in typeof(Psycast).GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic))
+                if (Harmony.GetPatchInfo(ctor)?.Owners.Any() == true) throw new ArgumentException("Unknown Psycast load constructor.");
+        }
         foreach (string name in new[] { "warmupMote", "warmupEffecter", "soundCast" }) if (Raw(a, typeof(Ability), name) != null) throw new ArgumentException("Active royal ability effect.");
         foreach (string name in new[] { "preCastActions", "maintainedEffecters", "customWarmupMotes" }) if (Raw(a, typeof(Ability), name) is not ICollection list || list.Count != 0) throw new ArgumentException("Active or unknown ability work.");
         if (Field<bool>(a, typeof(Ability), "wasCastingOnPrevTick")) throw new ArgumentException("Ability cast in progress.");
@@ -103,7 +110,8 @@ internal static class RoyalRightsAdapter
                 return new { v.loadID, State = (int)v.state, Burst = Field<int>(v, typeof(Verb), "burstShotsLeft"), Next = Field<int>(v, typeof(Verb), "ticksToNextBurstShot"), Last = Field<int>(v, typeof(Verb), "lastShotTick"), Surprise = Field<bool>(v, typeof(Verb), "surpriseAttack"), NonTarget = Field<bool>(v, typeof(Verb), "canHitNonTargetPawnsNow"), v.preventFriendlyFire, Self = Field<bool>(v, typeof(Verb), "nonInterruptingSelfCast") };
             }).ToArray();
         }
-        return new { a.Id, Def = a.def.defName, a.maxCharges, a.lastCastTick, Cooldown = Field<bool>(a, typeof(Ability), "inCooldown"), End = Field<int>(a, typeof(Ability), "cooldownEndTick"), Duration = Field<int>(a, typeof(Ability), "cooldownDuration"), Charges = Field<int>(a, typeof(Ability), "charges"), Comps = compData, Verbs = verbs };
+        var savedAbility = new { a.Id, Def = a.def.defName, a.maxCharges, a.lastCastTick, Cooldown = Field<bool>(a, typeof(Ability), "inCooldown"), End = Field<int>(a, typeof(Ability), "cooldownEndTick"), Duration = Field<int>(a, typeof(Ability), "cooldownDuration"), Charges = Field<int>(a, typeof(Ability), "charges"), Comps = compData, Verbs = verbs };
+        return a.GetType() == typeof(Ability) ? savedAbility : (object)new { Class = typeof(Psycast).FullName, Saved = savedAbility };
     }
     internal static void Attach(ResidentExecutionRecord record, RoyalRightsCapture capture)
     { if (record == null) return; record.RoyalRightsDocument = capture.Document; record.RoyalFactions = capture.Factions; record.RoyalHeirs = capture.Heirs; record.RoyalAbilities = capture.Abilities; }

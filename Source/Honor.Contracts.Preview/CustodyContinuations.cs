@@ -25,12 +25,14 @@ public sealed partial class TerritoryAdministrationLedger
         if (target == null || target == original.City.Faction || !(royal ? RoyalEligible(target) && RoyalEligible(original.City.Faction) : Eligible(target))) throw new ArgumentException("A distinct current eligible destination is required.");
         var city = original.City; var source = city.Faction;
         bool titledWorld = royal && !city.HasMap && city.previouslyGeneratedInhabitants?.Any(RoyalRightsAdapter.HasTitles) == true;
-        var observed = Observe(city, prior.Territory, target, residentProfile: titledWorld ? 12 : original.Residents?.Profile ?? 7);
+        bool titledMap = royal && city.HasMap && city.previouslyGeneratedInhabitants?.Any(RoyalRightsAdapter.HasTitles) == true;
+        var originalMap = titledMap ? LoadedMapRecords.Capture(city, true) : null;
+        var observed = Observe(city, prior.Territory, target, residentProfile: titledMap ? 13 : titledWorld ? 12 : original.Residents?.Profile ?? 7);
         if (royal) observed = observed with { Eligible = true, TargetEligible = true };
-        var residents = observed.HasInhabitants ? (titledWorld ? ResidentExecution.CaptureRoyalWorld(city) : ResidentExecution.CaptureForTransfer(city)) : null;
+        var residents = observed.HasInhabitants ? (titledMap ? ResidentExecution.CaptureRoyalMapped(city, originalMap.Snapshot) : titledWorld ? ResidentExecution.CaptureRoyalWorld(city) : ResidentExecution.CaptureForTransfer(city)) : null;
         var privateRights = royal ? RoyalRightsAdapter.Capture(residents?.Pawns) : null;
         if (privateRights != null) RoyalRightsAdapter.Attach(residents, privateRights);
-        var loaded = observed.LoadedMap == null ? null : LoadedMapRecords.Capture(city);
+        var loaded = observed.LoadedMap == null ? null : LoadedMapRecords.Capture(city, titledMap);
         if (residents?.Set().Proof != observed.ResidentProof || loaded?.Snapshot != observed.LoadedMap || residents != null && residents.LoadedMapScope != observed.LoadedMap)
             throw new ArgumentException("Fresh complete clinical/map evidence changed.");
         if (residents != null) residents.PrepareCareJournal(source, target, city);

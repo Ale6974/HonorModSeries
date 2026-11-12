@@ -3,7 +3,7 @@ using System.Text.Json;
 using Honor.Contracts.Rules;
 internal static class PrivateRoyalRightsTests
 {
-    public static int Run()
+    public static int Run(bool mapped = false)
     {
         int n = 0; void Check(bool b) { n++; if (!b) throw new Exception("Private royal rights regression."); }
         void Reject(Action a) { bool rejected = false; try { a(); } catch (ArgumentException) { rejected = true; } Check(rejected); }
@@ -23,13 +23,26 @@ internal static class PrivateRoyalRightsTests
         long now = PoliticalWorld.Day * 2 + 10;
         string unchangedBook = book.Export(), unchangedPayments = payments.Export();
         ResidentMoveEvidence[] residents = [new("civilian-a", Hash("original-health-gear-social-a"), 3), new("civilian-b", Hash("original-health-gear-social-b"), null)];
+        if (mapped) residents = residents.Select((r, i) => r with { Preserved = ResidentMapped.BindRoyal(r.Preserved, new(r.Id, "map", i + 10, 0)) }).ToArray();
         var set = ResidentMoveSet.Capture(residents);
         string map = LoadedMapPreservation.Capture("town", "map", 20, 20, Hash("same-grid"), CityStockProof.Capture(true, false, -1, []), 0, [new("wall", "Wall", "Wood", 1, 100, 1, 1, null)]);
         map = LoadedMapPreservation.CaptureAssets(map, [new("wall", "royal", Hash("original-asset"))]);
+        if (mapped)
+        {
+            string neutral = LoadedMapPreservation.Capture("town", "map", 20, 20, Hash("same-grid"), CityStockProof.Capture(true, false, -1, []), 0, [new("wall", "Wall", "Wood", 1, 100, 1, 1, null)]);
+            string civic = LoadedMapPreservation.CaptureResidents(neutral, residents.Select(r => new NativeMapResident(r.Id, r.Preserved)));
+            map = LoadedMapPreservation.CaptureRoyalMapped(LoadedMapPreservation.CaptureCivicAssets(civic, [new("wall", "royal", Hash("original-asset"))], false, false));
+            Check(LoadedMapPreservation.Format(map) == 22 && !civic.Contains("RoyalMappedV1"));
+            ResidentMapped.Pair(ResidentMapped.Prepare(residents.Select((r, i) => new ResidentMapBinding(r.Id, "map", i + 10, 0))), set, map);
+            string finalMap = map;
+            Reject(() => LoadedMapPreservation.Pair(finalMap, "town", LoadedMapPreservation.Restore(finalMap).Proof, 15));
+            Reject(() => LoadedMapPreservation.CaptureRoyalMapped(finalMap));
+        }
         var scope = LoadedMapPreservation.Restore(map);
         var actual = new TerritoryTransferObservation("town", "royal", 2, HasInhabitants: true, ResidentProof: set.Proof);
+        if (mapped) actual = actual with { HasMap = true, Visited = true, StockProof = scope.Proof, StockFormat = 22, LoadedMap = map };
         var physical = new TerritoryTransferLedger();
-        string rights = RoyalRights.Capture(residents.Select(p => new RoyalRightRow(p.Id, "{\"Favor\":17,\"Title\":\"Count\",\"PermitLastUsed\":120,\"AbilityCooldown\":300}", ["grantor"], ["heir"], ["Ability_9"])));
+        string rights = RoyalRights.Capture(residents.Select(p => new RoyalRightRow(p.Id, "{\"Favor\":17,\"Title\":\"Count\",\"PermitLastUsed\":120,\"AbilityCooldown\":300}", ["grantor"], ["heir"], ["Ability_9" + p.Id])));
         string royalty = RoyalRights.Proof(rights);
         RoyalRights.Pair(rights, royalty, residents.Select(p => p.Id));
         Check(RoyalRights.Restore(rights).Rows.Length == 2 && RoyalRights.Realms(rights).SequenceEqual(new[] { "grantor" }));
@@ -40,11 +53,13 @@ internal static class PrivateRoyalRightsTests
             string changed = field.All(char.IsDigit) ? rights.Replace(field, "999") : rights.Replace(field, field + "changed");
             Reject(() => RoyalRights.RequireOriginal(rights, changed));
         }
+        Reject(() => RoyalRights.Capture([new("a", "{}", [], [], ["Ability_1"]), new("b", "{}", [], [], ["Ability_1"])]));
         Reject(() => RoyalRights.Restore(rights + " "));
         Reject(() => RoyalRights.Capture([new("a", "{}", ["z", "a"], [], [])]));
         Reject(() => RoyalRights.Capture([new("a", "{}", [], [], []), new("a", "{}", [], [], [])]));
         var original = physical.PreparePrivateRoyalJournaled("royal-move", book, "root", actual, "target", rights, now);
         Reject(() => physical.CancelUnmoved("royal-move", actual, now));
+        if (mapped) Reject(() => new TerritoryTransferLedger().PrepareRoyalJournaled("old-marker", book, "root", actual, "target", royalty, now));
         NpcRealmDecisionEvidence Realm(string id) => new(id, id + "-ruler", NpcDecisionRegime.Ordinary, true, true, true, true, true, true);
         var royalRealm = Realm("royal") with { Regime = NpcDecisionRegime.Royal };
         var witness = new CustodyAgreement("royal-consent", original.Id, book.Export(), payments.Export(), physical.Export(), Hash("same-refs-census-map-royal-rights"),
@@ -69,10 +84,11 @@ internal static class PrivateRoyalRightsTests
         Reject(() => new TerritoryTransferLedger().PrepareRoyalJournaled("last-base", book, "root", actual with { SourceSettlements = 1 }, "target", royalty, now));
         var history = new CustodyAgreements(); history.Add(witness);
         Check(TerritoryTransferLedger.Restore(physical.Export()).Transfer(original.Id).RoyalRightsV2 == rights);
-        string census = ResidentTransferCensus.Prepare("town", "royal", "target", 12, set);
+        string census = ResidentTransferCensus.Prepare("town", "royal", "target", mapped ? 13 : 12, set);
         var calls = residents.Select(p => JsonSerializer.Serialize(new ResidentAuthorityState(p.Id))).ToArray();
         var care = residents.Select(p => ResidentCareJournal.Prepare(p.Id, "royal", "target", p.MedicalCare)).ToArray();
 
+        string assetCalls = mapped ? MapAssetTransfers.Prepare(map, "royal", "target") : null;
         history = CustodyAgreements.Restore(history.Export()); physical = TerritoryTransferLedger.Restore(physical.Export());
         history.RequireCurrent(witness.Id, physical.Transfer(original.Id), unchangedBook, unchangedPayments, witness.Custody);
         for (int i = 0; i < residents.Length; i++)
@@ -84,15 +100,24 @@ internal static class PrivateRoyalRightsTests
             care[i].RecordReturn("target", reset);
             if (care[i].MayRestore("target", reset)) care[i].Consume("target", reset); else care[i].SealUnchanged("target", reset);
             // Save between residents without inferring any result from ownership.
-            history = CustodyAgreements.Restore(history.Export()); physical = TerritoryTransferLedger.Restore(physical.Export());
+
+        history = CustodyAgreements.Restore(history.Export()); physical = TerritoryTransferLedger.Restore(physical.Export());
             calls = JsonSerializer.Deserialize<string[]>(JsonSerializer.Serialize(calls));
             care = care.Select(c => ResidentCareJournal.Restore(c.Export())).ToArray();
             history.RequireCurrent(witness.Id, physical.Transfer(original.Id), unchangedBook, unchangedPayments, witness.Custody);
             Check(physical.Transfer(original.Id).RoyalRightsV2 == rights);
         }
-        ResidentTransferCensus.Check(census, ResidentTransferCensus.Restore(census).Proof, "town", "royal", "target", 12, set, calls, care.Select(c => c.Export()).ToArray(), true, true);
+        ResidentTransferCensus.Check(census, ResidentTransferCensus.Restore(census).Proof, "town", "royal", "target", mapped ? 13 : 12, set, calls, care.Select(c => c.Export()).ToArray(), true, true);
 
 
+        if (mapped)
+        {
+            assetCalls = MapAssetTransfers.Begin(assetCalls, "wall", "royal");
+            string uncertain = assetCalls;
+            Reject(() => MapAssetTransfers.Begin(uncertain, "wall", "royal"));
+            assetCalls = MapAssetTransfers.Returned(assetCalls, "wall", "target");
+            MapAssetTransfers.Pair(assetCalls, map, "royal", "target", true);
+        }
         physical.Confirm(original.Id, actual with { Owner = "target" }, now + 1);
         history.ValidateHistory(CharterBook.Restore(unchangedBook), TerritoryTransferLedger.Restore(physical.Export()), TributeLedger.Restore(unchangedPayments));
         Check(book.Export() == unchangedBook && payments.Export() == unchangedPayments && payments.IsPaid("debt", 1) && payments.Bill("debt", 2).Principal == 100);

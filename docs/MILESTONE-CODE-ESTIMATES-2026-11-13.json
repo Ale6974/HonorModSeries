@@ -279,7 +279,7 @@
       "stage": 1,
       "id": "M2.3",
       "title": "귀족 개인 권리의 보존",
-      "status": "실제 실행·저장·복구 부분 조립; 지도/특수 능력/후속 통합 미완료",
+      "status": "지도·지원 원 권리 실제 조립; 특수 능력/개인 관리/M3·M4 조합 미완료",
       "production_kloc": [
         0.6,
         1.2
@@ -303,21 +303,24 @@
         "B05"
       ],
       "part_evidence": [
-        "docs/M2-PARTS-AUDIT-0.3.102.md"
+        "docs/M2-PARTS-AUDIT-0.3.102.md",
+        "docs/M2-PARTS-AUDIT-0.3.103.md"
       ],
       "assembly_evidence": [
+        "Source/Honor.Contracts.Preview/RoyalTerritoryTransfers.cs",
         "Source/Honor.Contracts.Preview/ResidentExecution.cs",
-        "Source/Honor.Contracts.Preview/RoyalTerritoryTransfers.cs"
+        "Source/Honor.Contracts.Preview/ResidentGroundRest.cs"
       ],
       "integration_evidence": [
-        "Tests/Honor.Contracts.Tests/PrivateRoyalRightsTests.cs"
+        "Tests/Honor.Contracts.Tests/PrivateRoyalRightsTests.cs",
+        "Tests/Honor.Contracts.Tests/GroundRestTests.cs"
       ]
     },
     {
       "stage": 1,
       "id": "M2.4",
       "title": "진행 작업·예약의 이전 경계",
-      "status": "부분·대기만 연결",
+      "status": "원 LayDown·자기 칸 예약 실제 조립; 일반 작업/물품 예약/진행 후 복구 미완료",
       "production_kloc": [
         1,
         2
@@ -335,9 +338,19 @@
         "B03",
         "B06"
       ],
-      "part_evidence": [],
-      "assembly_evidence": [],
-      "integration_evidence": []
+      "part_evidence": [
+        "docs/M2-PARTS-AUDIT-0.3.102.md",
+        "docs/M2-PARTS-AUDIT-0.3.103.md"
+      ],
+      "assembly_evidence": [
+        "Source/Honor.Contracts.Preview/RoyalTerritoryTransfers.cs",
+        "Source/Honor.Contracts.Preview/ResidentExecution.cs",
+        "Source/Honor.Contracts.Preview/ResidentGroundRest.cs"
+      ],
+      "integration_evidence": [
+        "Tests/Honor.Contracts.Tests/PrivateRoyalRightsTests.cs",
+        "Tests/Honor.Contracts.Tests/GroundRestTests.cs"
+      ]
     },
     {
       "stage": 1,
@@ -2122,7 +2135,7 @@
       "owner": "M2.1",
       "contract": "Pawn/Map/Thing 원 참조·명부·ID·중복/누락·버전",
       "consumers": "M2,M3,M4,M5,M6,M7,M8",
-      "status": "지원 범위 재검수 및 부분 조립; docs/M2-PARTS-AUDIT-0.3.102.md 참조, 전체 조합 완료 아님"
+      "status": "지원 범위 재검수·부분 실제 조립; docs/M2-PARTS-AUDIT-0.3.103.md 참조; 전체 조합 완료 아님"
     },
     {
       "id": "B02",
@@ -2130,7 +2143,7 @@
       "owner": "M2.2",
       "contract": "원 임상/care/area와 관측 reset·복구 소비",
       "consumers": "M2,M3,M4,M5,M7,M8",
-      "status": "지원 범위 재검수 및 부분 조립; docs/M2-PARTS-AUDIT-0.3.102.md 참조, 전체 조합 완료 아님"
+      "status": "지원 범위 재검수·부분 실제 조립; docs/M2-PARTS-AUDIT-0.3.103.md 참조; 전체 조합 완료 아님"
     },
     {
       "id": "B03",
@@ -2138,7 +2151,7 @@
       "owner": "M2.2",
       "contract": "호출 전 시작/실제 정상 반환/불확실 결과·일회 소비",
       "consumers": "M2,M3,M4,M5,M6,M7,M8",
-      "status": "지원 범위 재검수 및 부분 조립; docs/M2-PARTS-AUDIT-0.3.102.md 참조, 전체 조합 완료 아님"
+      "status": "지원 범위 재검수·부분 실제 조립; docs/M2-PARTS-AUDIT-0.3.103.md 참조; 전체 조합 완료 아님"
     },
     {
       "id": "B04",
@@ -2146,7 +2159,7 @@
       "owner": "M1/M2.9",
       "contract": "현재 대표/작위/의석·전체 제삼자/원 계약·채무·행동 scope",
       "consumers": "M2,M4,M5,M6,M7,M8,P4",
-      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+      "status": "지원 범위 재검수·부분 실제 조립; docs/M2-PARTS-AUDIT-0.3.103.md 참조; 전체 조합 완료 아님"
     },
     {
       "id": "B05",
@@ -2154,7 +2167,7 @@
       "owner": "M2.3",
       "contract": "작위/호의/후계/허가/능력의 원본·현재 권한",
       "consumers": "M2,M4,M7,M8,C8",
-      "status": "지원 범위 재검수 및 부분 조립; docs/M2-PARTS-AUDIT-0.3.102.md 참조, 전체 조합 완료 아님"
+      "status": "지원 범위 재검수·부분 실제 조립; docs/M2-PARTS-AUDIT-0.3.103.md 참조; 전체 조합 완료 아님"
     },
     {
       "id": "B06",
@@ -2162,7 +2175,7 @@
       "owner": "M2.4/M2.5",
       "contract": "job/driver/queue/자원 예약/Lord·개별 관리 권한",
       "consumers": "M2,M3,M6,M7,M8,W2",
-      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+      "status": "지원 범위 재검수·부분 실제 조립; docs/M2-PARTS-AUDIT-0.3.103.md 참조; 전체 조합 완료 아님"
     },
     {
       "id": "B07",

@@ -49,7 +49,7 @@ internal static class ResidentMapActors
         var methods = AccessTools.GetDeclaredMethods(type).Where(m => m.Name == name).ToArray();
         if (methods.Length == 0 || methods.Any(m => Harmony.GetPatchInfo(m)?.Owners.Any() == true)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
     }
-    private static void EmptyManager(object manager, Map expectedMap, bool destinations = false)
+    private static void EmptyManager(object manager, Map expectedMap, bool destinations = false, bool groundRest = false)
     {
         if (manager == null || manager.GetType().Assembly != typeof(Pawn).Assembly) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         string[] names = manager.GetType().FullName switch {
@@ -66,6 +66,7 @@ internal static class ResidentMapActors
             var f = AccessTools.Field(manager.GetType(), name);
             if (f == null || !f.FieldType.IsGenericType || f.FieldType.GetGenericTypeDefinition() != typeof(List<>) && f.FieldType.GetGenericTypeDefinition() != typeof(Dictionary<,>) ||
                 f.GetValue(manager) is not ICollection collection) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+            if (groundRest && manager.GetType() == typeof(Verse.AI.ReservationManager) && f.Name == "reservations") { ResidentGroundRest.RequireReservations(expectedMap, collection); continue; }
             if (destinations && f.Name == "reservedDestinations" && collection is IDictionary dictionary)
             {
                 foreach (object value in dictionary.Values)
@@ -78,7 +79,7 @@ internal static class ResidentMapActors
             else if (collection.Count != 0) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         }
     }
-    internal static void RequireEmptyReservations(Map source, Guid? auditedModule = null)
+    internal static void RequireEmptyReservations(Map source, Guid? auditedModule = null, bool groundRest = false)
     {
         if ((auditedModule.HasValue ? typeof(Pawn).Module.ModuleVersionId != auditedModule.Value : !AuditedModules.Contains(typeof(Pawn).Module.ModuleVersionId)) || source == null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         foreach (var map in Find.Maps)
@@ -88,22 +89,23 @@ internal static class ResidentMapActors
                 if (f == null) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
                 var value = f.GetValue(map);
                 if (value?.GetType() != f.FieldType) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-                EmptyManager(value, map, field == "pawnDestinationReservationManager");
+                EmptyManager(value, map, field == "pawnDestinationReservationManager", groundRest && map == source);
             }
     }
-    internal static void Require(Pawn p) => RequireCore(p, false);
+    internal static void Require(Pawn p, bool groundRest = false) => RequireCore(p, false, groundRest);
     internal static void RequireEnrollment(Pawn p) => RequireCore(p, true);
-    private static void RequireCore(Pawn p, bool enrollment)
+    private static void RequireCore(Pawn p, bool enrollment, bool groundRest = false)
     {
         if (!AuditedModules.Contains(typeof(Pawn).Module.ModuleVersionId)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (p?.Spawned != true || p.Map?.Parent is not Settlement city || p.Map.IsPlayerHome || !Find.Maps.Contains(p.Map) ||
             city.previouslyGeneratedInhabitants == null || (!enrollment && city.previouslyGeneratedInhabitants.Count(x => ReferenceEquals(x, p)) != 1) ||
-            p.IsPrisoner || p.IsSlave || p.Drafted || p.CurJob != null || p.jobs == null || p.jobs.curDriver != null || p.jobs.jobQueue.Count != 0 || p.jobs.startingNewJob ||
+            p.IsPrisoner || p.IsSlave || p.Drafted || !groundRest && p.CurJob != null || p.jobs == null || !groundRest && p.jobs.curDriver != null || p.jobs.jobQueue.Count != 0 || p.jobs.startingNewJob ||
             p.pather == null || p.pather.Moving || p.mindState?.Active != true || p.workSettings != null || p.trader != null || p.mindState.wantsToTradeWithColony ||
             p.ownership?.OwnedBed != null || p.ownership?.AssignedDeathrestCasket != null || p.ownership?.AssignedThrone != null ||
             p.health?.surgeryBills?.Count != 0 || p.AllComps.Any(c => c is IThingHolder) ||
             p.inventory?.innerContainer.Any(t => t is IThingHolder || t is ThingWithComps c && c.AllComps.Any(x => x is IThingHolder)) == true)
             throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (groundRest && p.CurJob != null) _ = ResidentGroundRest.Capture(p);
         if (NativeTransferBodies.ExtendedReadBodies)
         {
             // Current StopDead disposes pending asynchronous paths. No path/cancellation authority is inferred from Moving=false.
@@ -164,7 +166,7 @@ internal static class ResidentMapActors
             var getterMethod = AccessTools.PropertyGetter(p.pather.GetType(), name);
             if (getterMethod == null || Harmony.GetPatchInfo(getterMethod)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         }
-        RequireEmptyReservations(p.Map);
+        RequireEmptyReservations(p.Map, groundRest: groundRest);
         var getter = AccessTools.PropertyGetter(typeof(DesignationManager), "AllDesignations");
         if (getter == null || Harmony.GetPatchInfo(getter)?.Owners.Any() == true || p.Map.designationManager?.GetType() != typeof(DesignationManager) ||
             getter.Invoke(p.Map.designationManager, null) is not IEnumerable designations || designations.Cast<object>().Any()) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");

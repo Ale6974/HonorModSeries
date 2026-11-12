@@ -29,6 +29,8 @@ public static class ResidentMapped
         if (!CityStockProof.Valid(originalAreas)) throw new ArgumentException("Original clinical/area proof required.");
         return RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Profile = 11, Previous = originalAreas, Binding = binding }))));
     }
+    public static string BindRoyal(string originalAreas, ResidentMapBinding binding)
+        => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Profile = 13, Original = Bind(originalAreas, binding) }))));
     public static void Pair(string json, ResidentMoveSet set, string originalMap)
     {
         var rows = Restore(json); var map = LoadedMapPreservation.Restore(originalMap);

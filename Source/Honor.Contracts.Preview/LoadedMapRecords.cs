@@ -81,7 +81,7 @@ internal static class LoadedMapRecords
             throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         return container;
     }
-    internal static LoadedMapRecord Capture(Settlement city)
+    internal static LoadedMapRecord Capture(Settlement city, bool royal = false)
     {
         Ready(city); var map = city.Map; var things = map.listerThings.AllThings.OrderBy(t => t?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         if (things.Count > 10000 || map.Size.x is < 1 or > 500 || map.Size.z is < 1 or > 500) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
@@ -103,7 +103,12 @@ internal static class LoadedMapRecords
             actors.Count > 0 && things.Any(t => t is not Pawn && t.Faction != null);
         if (actors.Count > 128 || actors.Any(p => !p.Spawned || p.Map != map || city.previouslyGeneratedInhabitants == null || city.previouslyGeneratedInhabitants.Count(x => ReferenceEquals(x, p)) != 1)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var originalResidents = actors.Count == 0 ? null : Current.Game.GetComponent<TerritoryAdministrationLedger>().MapResidentOriginal(city);
-        var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents)).ToArray();
+        royal |= originalResidents?.Profile == 13;
+        if (royal && (!NativeTransferBodies.RoyalCustodyBodies || actors.Count == 0)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        bool groundRest = originalResidents?.Profile == 14 || !royal && actors.Any(p => p.jobs?.curJob != null);
+        if (royal && groundRest) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        var work = groundRest ? actors.Where(p => p.jobs?.curJob != null).Select(ResidentGroundRest.Capture).ToArray() : null;
+        var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents, royal, groundRest)).ToArray();
         if (visitors.Count > 128) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var visitorRows = visitors.Select(ResidentMapVisitors.Capture).ToArray();
         var rootThings = things.Where(t => t is not Pawn).ToList();
@@ -172,6 +177,8 @@ internal static class LoadedMapRecords
         if (actors.Count > 0) snapshot = LoadedMapPreservation.CaptureResidents(snapshot, actorRows, visitorRows);
         else if (visitors.Count > 0) snapshot = LoadedMapPreservation.CaptureBystanders(snapshot, visitorRows);
         if (ownedRows.Count > 0) snapshot = ownedForest ? LoadedMapPreservation.CaptureOwnedHolderForest(snapshot, ownedRows, repairAssets, ownedStorage, ownedContainers, heldAssets) : heldAssets ? LoadedMapPreservation.CaptureHeldAssets(snapshot, ownedRows, repairAssets, ownedStorage, ownedContainers) : ownedContainers ? LoadedMapPreservation.CaptureOwnedContainers(snapshot, ownedRows, repairAssets, ownedStorage) : civicAssets ? LoadedMapPreservation.CaptureCivicAssets(snapshot, ownedRows, repairAssets, ownedStorage) : ownedStorage ? LoadedMapPreservation.CaptureOwnedStorage(snapshot, ownedRows, repairAssets) : repairAssets ? LoadedMapPreservation.CaptureRepairAssets(snapshot, ownedRows) : LoadedMapPreservation.CaptureAssets(snapshot, ownedRows);
+        if (groundRest) snapshot = LoadedMapPreservation.CaptureGroundRest(snapshot, work);
+        if (royal) snapshot = LoadedMapPreservation.CaptureRoyalMapped(snapshot);
         var visitorReferences = actors.Count == 0 && visitors.Count > 0 ? visitors.Select(ResidentMapVisitors.References).ToList() : null;
         if (visitorReferences != null)
         {
@@ -191,7 +198,7 @@ internal static class LoadedMapRecords
     internal static void Verify(Settlement city, LoadedMapRecord original)
     {
         if (original == null || original.Map != city.Map || original.Things == null) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
-        var fresh = Capture(city);
+        var fresh = Capture(city, LoadedMapPreservation.Restore(original.Snapshot).RoyalMappedV1 == 1);
         if (LoadedMapPreservation.Restore(original.Snapshot).ReadOnlyBystandersV1 == 1)
         {
             if (original.BystanderReferencesV1 == null || original.Visitors == null || original.BystanderReferencesV1.Count != original.Visitors.Count) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
@@ -207,7 +214,7 @@ internal static class LoadedMapRecords
     }
     internal static void VerifyScope(Settlement city, string scope)
     {
-        if (Capture(city).Snapshot != scope) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        if (Capture(city, LoadedMapPreservation.Restore(scope).RoyalMappedV1 == 1).Snapshot != scope) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
     }
     internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); r.Growing?.Clear(); r.MapResidents?.Clear(); r.Visitors?.Clear(); r.BystanderReferencesV1?.Clear(); }
 }

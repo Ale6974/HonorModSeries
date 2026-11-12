@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.102</modVersion>
+  <modVersion>0.3.103</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.102: Original world-resident titles, favor, heirs, permits and supported basic abilities retain separate evidence and grantor approval through transfer, saving and recovery. Loaded titled residents, missing heir entries and stateful/custom abilities remain deferred.
+  <description>0.3.103: Supported mapped titled civilians now retain original private rights. Verified inactive Psycasts and nonawardable missing-heir states are preserved. Supported ongoing ground-rest jobs and their same-job current-cell reservations retain the same native Job, saved progress and posture through transfer and recovery; no job restart or reservation rebuilding. Broader work, army and private-property combinations remain unfinished.
+0.3.103: 지원되는 지도 위 작위 주민의 개인 권리와 검토된 비시전 Psycast·비수여 작위의 후계 누락 상태를 보존합니다. 지원 지면 휴식은 같은 원 Job·저장 진행도·자세로 실제 이전·복구하며 작업을 재시작하거나 예약을 재생성하지 않습니다. 일반 작업·군사·사유 재산 조합은 미완료입니다.
+0.3.102: Original world-resident titles, favor, heirs, permits and supported basic abilities retain separate evidence and grantor approval through transfer, saving and recovery. Loaded titled residents, missing heir entries and stateful/custom abilities remain deferred.
 0.3.102: 월드 주민의 원 작위·호의·후계·허가·지원 기본 능력을 별도 증거와 수여 세력 승인으로 실제 이전·저장·복구에 연결했습니다. 지도 위 작위 주민·후계 항목 누락·상태 보유 특수 능력은 보류됩니다.
 0.3.101: A NEW current titled-ruler and complete connected-party mandate can execute a supported royal-faction civilian town transfer and royal foreign continuation. Original clinical, medical, asset, contract and debt records remain paired through native calls, saving and recovery. Personal royal titles/favor/heirs/permits/abilities require a separate rights path.
 0.3.101: 현재 작위 대표·연결된 제삼자의 새 별도 승인으로 지원되는 귀족 세력 민간인 도시 이전과 귀족 목적지 후속 인계를 실행·저장·복구합니다. 원 임상/의료·재산·계약·채무를 보존하며 개인 왕실 권리 보유 주민은 별도 경로가 필요합니다.

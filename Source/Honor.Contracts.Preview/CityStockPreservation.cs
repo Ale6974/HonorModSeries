@@ -41,12 +41,12 @@ internal static class CityStockPreservation
         thing.TryGetQuality(out var quality) ? (int)quality : null);
     internal static string Capture(Settlement city, out int format)
         => Capture(city, out format, out _);
-    internal static string Capture(Settlement city, out int format, out string loaded)
+    internal static string Capture(Settlement city, out int format, out string loaded, bool royalMapped = false)
     {
         loaded = null;
         if (city?.HasMap != true) return CaptureUnloadedStock(city, out format);
         format = 0;
-        try { loaded = LoadedMapRecords.Capture(city).Snapshot; format = LoadedMapPreservation.Format(loaded); return LoadedMapPreservation.Restore(loaded).Proof; }
+        try { loaded = LoadedMapRecords.Capture(city, royalMapped).Snapshot; format = LoadedMapPreservation.Format(loaded); return LoadedMapPreservation.Restore(loaded).Proof; }
         catch (ArgumentException) { return null; }
     }
     internal static string CaptureUnloadedStock(Settlement city, out int format)

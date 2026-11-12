@@ -80,7 +80,7 @@ internal static class MapAssetRecords
             var f = AccessTools.Field(events.GetType(), name);
             if (f == null || !typeof(Delegate).IsAssignableFrom(f.FieldType) || f.GetValue(events) != null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         }
-        ResidentMapActors.RequireEmptyReservations(map, typeof(Thing).Module.ModuleVersionId);
+        ResidentMapActors.RequireEmptyReservations(map, typeof(Thing).Module.ModuleVersionId, reviewedPawns?.Any(p => p?.jobs?.curJob != null) == true);
         var designations = map.designationManager;
         Native(typeof(DesignationManager), "get_AllDesignations");
         if (designations?.GetType() != typeof(DesignationManager) || designations.AllDesignations.Any()) throw new ResidentMoveBlocked("RE_AssetUnavailable");

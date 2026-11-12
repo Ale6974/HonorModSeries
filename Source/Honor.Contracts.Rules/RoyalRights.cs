@@ -17,6 +17,8 @@ public static class RoyalRights
         if (state?.Version != 2 || state.Rows == null || state.Rows.Length > 128 || state.Rows.Any(r => r == null || !Key(r.Pawn) || r.Data == null || r.Data.Length > 200000) ||
             !state.Rows.Select(r => r.Pawn).SequenceEqual(state.Rows.Select(r => r.Pawn).Distinct().OrderBy(s => s, StringComparer.Ordinal))) throw new ArgumentException("Original royal census invalid.");
         foreach (var r in state.Rows) { IDs(r.Realms); IDs(r.Heirs); IDs(r.Abilities); using var data = JsonDocument.Parse(r.Data); if (data.RootElement.ValueKind != JsonValueKind.Object) throw new ArgumentException("Saved royal fields required."); }
+        var abilities = state.Rows.SelectMany(r => r.Abilities).ToArray();
+        if (abilities.Distinct(StringComparer.Ordinal).Count() != abilities.Length) throw new ArgumentException("One original ability cannot belong to multiple resident trackers.");
         if (JsonSerializer.Serialize(state) != json) throw new ArgumentException("Canonical immutable royal document required.");
         return state;
     }
