@@ -20,7 +20,7 @@ internal static class ResidentActiveWork
     }
     private static void KnownFamily(Type type)
     {
-        if (type.Assembly != typeof(Pawn).Assembly || AccessTools.GetDeclaredMethods(type).Any(m => Harmony.GetPatchInfo(m)?.Owners.Any() == true)) throw new ArgumentException("Patched native work/toil family.");
+        if (type.Assembly != typeof(Pawn).Assembly || AccessTools.GetDeclaredMethods(type).Any(m => Harmony.GetPatchInfo(m)?.Owners.Any() == true && !WorkProgressHooks.IsExactRecipeObserver(m,Harmony.GetPatchInfo(m)))) throw new ArgumentException("Patched native work/toil family.");
         foreach (var nested in type.GetNestedTypes(BindingFlags.Public | BindingFlags.NonPublic)) KnownFamily(nested);
     }
     internal static object Raw(object value, Type owner, string name)
@@ -310,7 +310,7 @@ internal static class ResidentActiveWork
             throw new ArgumentException("Original work toils unavailable.");
         foreach (var callback in toils.SelectMany(t => typeof(Toil).GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).Select(f => f.GetValue(t))).OfType<Delegate>()
             .Concat(driver.globalFailConditions).Concat(driver.globalFinishActions))
-            foreach (var d in callback.GetInvocationList()) if (d.Method.Module.Assembly != typeof(Pawn).Assembly || Harmony.GetPatchInfo(d.Method)?.Owners.Any() == true)
+            foreach (var d in callback.GetInvocationList()) if (d.Method.Module.Assembly != typeof(Pawn).Assembly || Harmony.GetPatchInfo(d.Method)?.Owners.Any() == true && !WorkProgressHooks.IsExactRecipeObserver(d.Method,Harmony.GetPatchInfo(d.Method)))
                 throw new ArgumentException("External native work callback.");
         var saved = JsonSerializer.Serialize(new { Jobs = jobs.Select(j => JobState(j, pawn)).ToArray(), Tags = Queue(pawn).Select(q => q.tag.HasValue ? (int?)q.tag.Value : null).ToArray(),
             Driver = Fields(driver, typeof(JobDriver), ResidentGroundRest.DriverFields, pawn),

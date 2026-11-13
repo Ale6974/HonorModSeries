@@ -40,6 +40,7 @@ public sealed class LoadedMapRecord : IExposable
 
 internal static class LoadedMapRecords
 {
+    internal static void RequireProgressBoundary(Settlement city) => Ready(city);
     private static void Ready(Settlement city)
     {
         if (UnionWarCouncil.HasExternalProvider) throw new ResidentMoveBlocked("WU_Provider");

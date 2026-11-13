@@ -61,13 +61,13 @@ internal static class WorktableEvidence
             Disallowed = special.Select(d => d.defName).OrderBy(n => n, StringComparer.Ordinal).ToArray(), Hp = new[] { hp.min, hp.max }, Mental = new[] { mental.min, mental.max },
             Quality = new[] { (int)quality.min, (int)quality.max }, Root = root?.defName, Only = (bool)Raw(filter, typeof(ThingFilter), "onlySpecialFilters") });
     }
-    private static object BillState(Bill bill)
+    private static object BillState(Bill bill, bool progress = false)
     {
         if (bill.GetType() != typeof(Bill_Production) && bill.GetType() != typeof(Bill_ProductionWithUft) || Raw(bill, typeof(Bill), "loadID") is not int id || id < 0 ||
             bill.recipe?.GetType() != typeof(RecipeDef) || DefDatabase<RecipeDef>.GetNamedSilentFail(bill.recipe.defName) != bill.recipe || bill.recipe.workerClass?.Assembly != typeof(Pawn).Assembly ||
             Raw(bill, typeof(Bill), "pawnRestriction") != null || bill.deleted || bill.precept != null || bill.xenogerm != null || (bool)Raw(bill, typeof(Bill), "slavesOnly") || (bool)Raw(bill, typeof(Bill), "mechsOnly") ||
             Raw(bill, typeof(Bill_Production), "storeGroup") != null || Raw(bill, typeof(Bill_Production), "includeGroup") != null ||
-            bill.GetType() == typeof(Bill_ProductionWithUft) && Raw(bill, typeof(Bill_ProductionWithUft), "boundUftInt") != null)
+            !progress && bill.GetType() == typeof(Bill_ProductionWithUft) && Raw(bill, typeof(Bill_ProductionWithUft), "boundUftInt") != null)
             throw new ArgumentException("Basic production bills only; private labor/unfinished products require separate authority.");
         ResidentActiveWork.Known(typeof(Bill_Production), "ExposeData"); ResidentActiveWork.Known(typeof(Bill), "ValidateSettings");
         if (bill.GetType() == typeof(Bill_ProductionWithUft)) ResidentActiveWork.Known(typeof(Bill_ProductionWithUft), "ExposeData");
@@ -102,10 +102,12 @@ internal static class WorktableEvidence
     internal static NativeWorktable Capture(Building_WorkTable table)
     {
         var bills = Bills(table);
-        var states = bills.Select(BillState).ToArray();
+        var states = bills.Select(b=>BillState(b)).ToArray();
         if (bills.Select(b => b.GetUniqueLoadID()).Distinct().Count() != bills.Count) throw new ArgumentException("Duplicate original production bill IDs.");
         return new(table.GetUniqueLoadID(), Hash(new { Class=table.GetType().FullName, Bills=states, Comps=table.AllComps.Select(c=>new { Type=c.GetType().FullName,
             Forbidden=c.GetType()==typeof(CompForbiddable)?(bool?)Raw(c,typeof(CompForbiddable),"forbiddenInt"):null }).ToArray() }), bills.Select(b => b.GetUniqueLoadID()).ToArray());
     }
+    internal static NativeWorktable ObserveProgress(Building_WorkTable table)
+    { var bills=Bills(table); return new(table.GetUniqueLoadID(),Hash(new {Class=table.GetType().FullName,Bills=bills.Select(b=>new {State=BillState(b,true),Bound=b.GetType()==typeof(Bill_ProductionWithUft)?(Raw(b,typeof(Bill_ProductionWithUft),"boundUftInt") as Thing)?.GetUniqueLoadID():null}).ToArray()}),bills.Select(b=>b.GetUniqueLoadID()).ToArray()); }
     private static string Hash(object value) => RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(value))));
 }

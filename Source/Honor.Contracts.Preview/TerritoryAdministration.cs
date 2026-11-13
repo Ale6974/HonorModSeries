@@ -17,6 +17,7 @@ public sealed class TerritoryTransferReference : IExposable
     public LoadedMapRecord LoadedMap;
     public bool CityCallV1, CityCallStarted, CityCallReturned;
     public string CustodyAgreementV1;
+    public string WorkProgressV1;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Id, "id"); Scribe_References.Look(ref City, "city");
@@ -29,6 +30,7 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Values.Look(ref CityCallStarted, "cityCallStartedV1", false);
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
         Scribe_Values.Look(ref CustodyAgreementV1, "currentCustodyCompletionAgreementV1");
+        Scribe_Values.Look(ref WorkProgressV1, "verifiedNativeWorkProgressV1");
     }
 }
 public sealed record TerritoryAdministrationReview(string Charter, string City, string From, string Target,
@@ -140,9 +142,10 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             {
                 var charter = Charters.Book.Charter(t.Charter); var entity = Charters.Book.Entity(t.Territory);
                 var binding = Charters.Binding(t.Territory); var reference = references.Single(r => r.Id == t.Id);
+                ValidateWorkCompletion(t,reference);
                 if (t.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
                 TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
-                bool unstartedGivenWork = KeepsUnstartedGivenWork(t,reference) || KeepsUnstartedActiveWork(t,reference);
+                bool unstartedGivenWork = KeepsUnstartedGivenWork(t,reference) || KeepsUnstartedActiveWork(t,reference) || RetainsSealedWork(t,reference);
                 ValidateMapReference(t, reference, t.Phase == TerritoryTransferPhase.Prepared && !unstartedGivenWork);
                 if ((t.UnstartedWorkAbortV1 != null || t.UnstartedActiveWorkAbortV1 != null) && (reference.CityCallStarted || reference.CityCallReturned || reference.Residents?.Started != false || reference.CustodyAgreementV1 != null)) throw new ArgumentException("No-start receipt conflicts with actual native calls.");
                 if (reference.CityCallV1 && reference.CityCallStarted && reference.Residents != null && !reference.Residents.Started)
@@ -349,6 +352,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before city ownership call.");
             if (loaded != null) ValidateMapReference(Ledger.Transfer(id), reference, true);
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before preserved map call.");
+            SealWorkBoundary(reference);
             TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
             reference.CityCallStarted = true;
             c.City.SetFaction(c.Target);
@@ -449,6 +453,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (political.Journal.Pending && political.Journal.Current?.LawfulFollowerMigration == true)
                 political.VerifyLawfulPhysicalRecovery();
             var item = Ledger.Transfer(id); var reference = references.Single(r => r.Id == id);
+            if(reference.CustodyAgreementV1!=null && custodyAgreements.Record(reference.CustodyAgreementV1).Witness.WorkProgressV1!=null){RecoverWorkProgress(item,reference,executionGame);return;}
             if ((item.PreviousTransferV1 != null || item.RoyalResidentsV1 != null) && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation cannot use legacy recovery permission.");
             ValidateMapReference(item, reference, true);
             if (reference.LoadedMap != null && reference.CityCallStarted && !reference.CityCallReturned) throw new ArgumentException("Unknown loaded-map call; never replay or infer normal return.");
@@ -499,7 +504,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before loaded map recovery.");
                     if (reference.City.Faction == reference.From)
                     {
-                        TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
+                        SealWorkBoundary(reference);
+            TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
                         if (reference.CityCallV1) reference.CityCallStarted = true;
                         reference.City.SetFaction(reference.Target);
                         if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed during city recovery; intent retained.");
@@ -552,6 +558,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (Current.Game != game || Current.ProgramState != ProgramState.Playing) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (reference.City.Faction == reference.From)
         {
+            SealWorkBoundary(reference);
             TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
             reference.CityCallStarted = true;
             reference.City.SetFaction(reference.Target);
@@ -726,7 +733,7 @@ public sealed class TerritoryAdministrationWindow : Window
                 var progress = ledger.ResidentProgress(item.Id); if (progress != null) list.Label(progress);
                 if (item.Phase == TerritoryTransferPhase.Prepared) ledger.DrawCustodyAgreement(list, item.Id);
                 if (item.Phase == TerritoryTransferPhase.Applied) ledger.DrawContinuation(list, item.Id);
-                if (item.Phase == TerritoryTransferPhase.Prepared) { ledger.DrawUnstartedGivenWork(list,item.Id); ledger.DrawUnstartedActiveWork(list,item.Id); }
+                if (item.Phase == TerritoryTransferPhase.Prepared) { ledger.DrawUnstartedGivenWork(list,item.Id); ledger.DrawUnstartedActiveWork(list,item.Id); ledger.DrawWorkProgress(list,item.Id); }
                 if (item.Phase == TerritoryTransferPhase.Prepared && list.ButtonText("CT_Recover".Translate())) ledger.Recover(item.Id);
             }
         }

@@ -1,4 +1,14 @@
-# 1단계 개발 인수인계 — 0.3.105 / 2026-11-13
+# 1단계 개발 인수인계 — 0.3.106 / 2026-11-13
+
+## 0.3.106 — 양성 인계 뒤 자연 진행의 현재 승인·원 도시 복구
+
+[부품·실제 연결·검사·제약](M2-PARTS-AUDIT-0.3.106.md). WorkProgress 규칙/관측 훅/현재 survey/별도 승인 UI/RecoverWorkProgress/Scribe/terminal 영수증을 연결했다. 원 standalone25의 모든 주민/care/area/asset 양성 완료 후 seal을 만들고 원 Frame/recipe/Job 성공 종료와 자재 소실·산출물을 별도 기록한다. 새 현재 전체 당사자 승인으로 이미 끝난 주민·asset 호출은 건너뛰고 동일 원 도시 호출만 실행/확인한다. 원 기록은 교체하지 않는다. unknown started/미확인 출력/미지원 현재 물체는 보류하고 native 작업을 재실행하지 않는다.
+
+양 타깃 전체 빌드와 최종 native 컴파일, Honor20093/Contracts5895, EN/KO600 통과. 최종 패키지·설치 결과는 아래 배포 기록에 추가한다. 미확인1.6 본문 권한 없음. Preview Steam/자동 예약 없음.
+
+**다음 착수점**: 일부 주민만 반환했거나 care/area/asset 확인 중 진행한 더 이른 경계의 독립 사실 seal·객체별 출력/소비 lineage를 만들고 실제 미완료 호출과 조립한다. 새 .106 seal을 과거 .105 중단 기록에 소급하지 않는다. 그 뒤 운반 merge/split·더 넓은 driver/설비/개별 권리와 부모 follower/정치·후손 조립. M2.4 미완료, 노력 추정40–55%/큰3묶음; M1 10/10,M2 0/18,전체10/100 유지. 다른 여섯 단계의 과거 추정은 재측정하지 않았다.
+
+배포 기록: 최종 native16/17 컴파일 경고·오류0. 패키지 `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.106.zip` SHA256 `C48B718666120D1B9AAFA3F587D292765CCD5E7F0E1E507AAD5F4D0ED9AF1A83`, 양 버전 DLL allowlist 통과. 기존 .105 로컬 모드 원본은 `.local/contracts-preview-62c5f5cf0c694457b1da1a6fbd23dfa1`에 백업했다. 현재 작업량·이동 진행 필드 보강 후 최종 설치 전 백업은 `.local/contracts-preview-685ddca706d94cbdb8841308fcfcfda5`; 최종32개 파일 일치 설치 및 ModsConfig.xml/Prefs.xml hash 불변 확인. 게임 DLL hash도 이전5005와 일치한다.
 
 ## 0.3.105 — 일반 작업·자재·예약의 실제 보존 인계
 

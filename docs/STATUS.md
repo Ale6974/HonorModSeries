@@ -1,5 +1,13 @@
 # 요구사항 상태 — 공개 0.2.1 / 호환성 0.2.2 / Contracts 개발판
 
+## 0.3.106 — 작업 종료·자재 소비의 별도 증거와 현재 승인 복구
+
+2026-11-13. [실제 실행·저장·복구 및 남은 범위](M2-PARTS-AUDIT-0.3.106.md). 모든 주민/care/area/재산 호출이 확인된 standalone25에 별도 원 seal을 기록하고, 원 Job의 native 공사·제작·성공 종료를 시작/본문 반환/검증 출력으로 나누어 저장한다. 현재 지도·물체·임상·예약 조사와 현재 전체 당사자 승인으로 이미 끝난 주민/재산 호출을 반복하지 않고 동일 원 도시 인계만 마친다. 원 임상/지도/호출/계약/채무는 유지한다. 새 영수증을 Scribe·로딩·명시 복구에 연결했고 옛 동의·소유권만으로 완료하지 않는다.
+
+M2.4 **미완료**: 더 이른 일부 주민/care/재산 시작 후 진행, 넓은 작업/운반 merge·설비·개별 권리, 부모 follower/정치·후손 조립이 남았다. 남은 노력 계획 추정40–55%/큰3묶음이며 실측 완료율은 아니다. M1 10/10,M2 0/18,전체10/100 유지. 여섯 단계의 과거 잔여 추정(31.5/80/95/90/100/70%)은 이번 변경의 새 측정값이 아니다.
+
+양 타깃 전체 빌드와 최종 native 컴파일 경고·오류0, Honor20093/Contracts5895, EN/KO600 검사 통과. 새 관측 권한은 검토한5005만 허용하며 미확인1.6 본문은 보류한다. 패키지 allowlist 통과, 백업 후 로컬32개 파일 일치 및 활성화·언어 설정 hash 불변 확인. 패키지 hash·백업 위치는 같은 커밋의 인수인계에 기록한다. Preview Steam 게시·반복 예약 없음.
+
 ## 0.3.105 — 일반 작업·자재·예약의 실제 보존 인계
 
 2026-11-13. [구현·저장/복구·검사·남은3묶음](M2-PARTS-AUDIT-0.3.105.md). 새 map25/clinical16으로 원 HaulToCell, 프레임 공급 HaulToContainer, ConstructFinishFrame, 기본 DoBill의 원 Job/driver/toil/queue/이동/우선순위/thinkData/화물 및 일반·목적지·물리·enroute 예약을 실제 resident/asset/city 호출과 Scribe/명시 Recover에 연결했다. 검토한 native SetFaction의 private reverse copy는 정확히 두 정리 경계만 바꾸며 원 전역 메서드/소속 필드를 패치·raw-write하지 않는다. 원 Frame 자재/진행, 기본 WorkTable/Bill/필터와 same-reference/native sole deep save를 보존한다. 정상 반환과 의료/area output을 후속 보존 확인보다 먼저 기록한다. 별도 UI 단독 미실행 intent만 준비 취소/원 이력 보관이 가능하다.

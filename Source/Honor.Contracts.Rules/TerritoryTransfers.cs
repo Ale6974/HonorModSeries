@@ -30,6 +30,7 @@ public sealed record TerritoryTransfer(string Id, string Territory, string Basel
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public bool StandaloneWorkV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public bool StandaloneActiveWorkV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string UnstartedActiveWorkAbortV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string WorkCompletionV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string LoadedMap { get; init; }
 }
 public sealed record TerritoryTransfersSave(int Version, long LastTick, TerritoryTransfer[] Transfers);
@@ -155,6 +156,15 @@ public sealed class TerritoryTransferLedger
             "Applied transfer needs actual intended nonplayer ownership and matching preserved stock evidence.");
         transfers[transfers.IndexOf(transfer)] = transfer with { Phase = TerritoryTransferPhase.Applied, ResolvedTick = now }; LastTick = now;
     }
+    public void ConfirmWorkProgress(string id,string approval,CustodyAgreementReceipt agreement,string actualOwner,bool cityStarted,bool cityReturned,long now)
+    {
+        var t=Transfer(id);var a=WorkProgress.Approval(t,approval);
+        Require(agreement!=null && agreement.Proof==WorkProgress.Hash(agreement.Witness) && agreement.Witness.WorkProgressV1==approval && CustodyAgreements.Validate(agreement.Witness)==WorkProgress.Original(t),"Exact full current party agreement required.");
+        Require(t.Phase==TerritoryTransferPhase.Prepared && actualOwner==t.TargetOwner && cityStarted && cityReturned && now>=a.Tick,"Current approval and positive original city return required.");
+        var result=t with{Phase=TerritoryTransferPhase.Applied,ResolvedTick=now,WorkCompletionV1=System.Text.Json.JsonSerializer.Serialize(new WorkCompletionReceipt(approval,agreement.Proof,now))};
+        if(JsonSerializer.Serialize(new TerritoryTransfersSave(Version,now,transfers.Select(row=>row.Id==id?result:row).ToArray())).Length>4000000)throw new ArgumentException("Progress completion capacity; original retained.");
+        Time(now);transfers[transfers.IndexOf(t)]=result;LastTick=now;
+    }
     public void CancelUnmoved(string id, TerritoryTransferObservation actual, long now)
     {
         RuntimeCompat.NotNull(actual); Time(now); var transfer = Transfer(id);
@@ -248,6 +258,7 @@ public sealed class TerritoryTransferLedger
             if (item.UnstartedWorkAbortV1 != null) { Require(item.Phase == TerritoryTransferPhase.Cancelled, "No-start proof is only a cancelled intent."); GroundRestAbort.Validate(item,item.UnstartedWorkAbortV1); }
             Require(!item.StandaloneActiveWorkV1 || item.StockFormat==25 && !item.StandaloneWorkV1 && item.Purpose==TerritoryTransferPurpose.ActiveCharter && item.PreviousTransferV1==null && item.ReleasedRoot==null && item.RoyalResidentsV1==null,"Invalid standalone active-work origin.");
             if(item.UnstartedActiveWorkAbortV1!=null) { Require(item.Phase==TerritoryTransferPhase.Cancelled,"Active-work no-start proof requires cancelled intent."); ActiveWorkAbort.Validate(item,item.UnstartedActiveWorkAbortV1); }
+            if(item.WorkCompletionV1!=null){var receipt=JsonSerializer.Deserialize<WorkCompletionReceipt>(item.WorkCompletionV1);Require(item.Phase==TerritoryTransferPhase.Applied && receipt!=null && receipt.Tick==item.ResolvedTick && CityStockProof.Valid(receipt.Agreement),"Invalid work completion receipt.");_ = WorkProgress.Approval(item,receipt.Approval);}
             if (item.RoyalRightsV2 != null && RoyalRights.Proof(item.RoyalRightsV2) != item.RoyalResidentsV1) throw new ArgumentException("Unpaired private royal rights.");
             Require(item.RoyalResidentsV1 == null || CityStockProof.Valid(item.RoyalResidentsV1) && item.Phase is TerritoryTransferPhase.Prepared or TerritoryTransferPhase.Applied && item.CityCallJournalV1 && item.Purpose == TerritoryTransferPurpose.ActiveCharter && item.ReleasedRoot == null, "Invalid royal custody provenance.");
             if (item.PreviousTransferV1 != null)

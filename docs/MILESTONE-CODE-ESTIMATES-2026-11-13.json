@@ -320,7 +320,7 @@
       "stage": 1,
       "id": "M2.4",
       "title": "진행 작업·예약의 이전 경계",
-      "status": "네 종류 native 작업/queue/자재/네 종류 예약/호출·저장·명시 복구 실제 부분 조립; 시작 후 자연 진행/복합 설비/부모 조합 미완료",
+      "status": "원 주민/재산 양성 인계 뒤 native 종료·소비 증거/현재 승인/원 도시 실행·저장·복구 부분 조립; 더 이른 부분 인계/넓은 작업/부모 조합 미완료",
       "production_kloc": [
         1,
         2
@@ -341,7 +341,8 @@
       "part_evidence": [
         "docs/M2-PARTS-AUDIT-0.3.103.md",
         "docs/M2-PARTS-AUDIT-0.3.104.md",
-        "docs/M2-PARTS-AUDIT-0.3.105.md"
+        "docs/M2-PARTS-AUDIT-0.3.105.md",
+        "docs/M2-PARTS-AUDIT-0.3.106.md"
       ],
       "assembly_evidence": [
         "Source/Honor.Contracts.Preview/GroundRestGivers.cs",
@@ -352,11 +353,16 @@
         "Source/Honor.Contracts.Preview/NativeWorkFactionCall.cs",
         "Source/Honor.Contracts.Preview/ConstructionEvidence.cs",
         "Source/Honor.Contracts.Preview/WorktableEvidence.cs",
-        "Source/Honor.Contracts.Preview/ActiveWorkAbort.cs"
+        "Source/Honor.Contracts.Preview/ActiveWorkAbort.cs",
+        "Source/Honor.Contracts.Rules/WorkProgress.cs",
+        "Source/Honor.Contracts.Preview/WorkProgressHooks.cs",
+        "Source/Honor.Contracts.Preview/WorkProgressSurvey.cs",
+        "Source/Honor.Contracts.Preview/WorkProgressRecovery.cs"
       ],
       "integration_evidence": [
         "Tests/Honor.Contracts.Tests/GroundRestTests.cs",
-        "Tests/Honor.Contracts.Tests/ActiveWorkTests.cs"
+        "Tests/Honor.Contracts.Tests/ActiveWorkTests.cs",
+        "Tests/Honor.Contracts.Tests/WorkProgressTests.cs"
       ]
     },
     {

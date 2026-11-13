@@ -22,7 +22,7 @@ public sealed partial class TerritoryAdministrationLedger
     {
         if (r.Id != t.Id || t.Phase == TerritoryTransferPhase.Prepared && (r.City == null || r.From == null || r.Target == null ||
             "territory/" + r.City.GetUniqueLoadID() != t.Territory || r.From.GetUniqueLoadID() != t.FromOwner || r.Target.GetUniqueLoadID() != t.TargetOwner)) throw new ArgumentException("Original custody reference mismatch.");
-        return EnrollmentDigest(JsonSerializer.Serialize(new { Transfer = t with { Phase = TerritoryTransferPhase.Prepared, ResolvedTick = null, Destruction = null },
+        return EnrollmentDigest(JsonSerializer.Serialize(new { Transfer = t with { Phase = TerritoryTransferPhase.Prepared, ResolvedTick = null, Destruction = null, WorkCompletionV1=null },
             City = t.Territory, From = t.FromOwner, Target = t.TargetOwner, r.ResidentCensusProof,
             Residents = r.Residents?.Snapshot, Census = r.Residents?.Census, Map = r.LoadedMap?.Snapshot }));
     }
@@ -57,10 +57,11 @@ public sealed partial class TerritoryAdministrationLedger
             actual.StockProof == null && actual.Visited || actual.Owner == t.FromOwner && actual.SourceSettlements < 2 && t.FromOwner != AdministrationId)
             throw new ArgumentException("Original stock/map/source base changed; current consent grants no restoration.");
     }
-    private CustodyAgreement CurrentCustodyWitness(string transfer, string id, long tick, CustodyAgreement previous = null, TerritoryTransferLedger proposed = null, TerritoryTransferReference proposedReference = null)
+    private CustodyAgreement CurrentCustodyWitness(string transfer, string id, long tick, CustodyAgreement previous = null, TerritoryTransferLedger proposed = null, TerritoryTransferReference proposedReference = null, string workProgress = null)
     {
         var physical = proposed ?? Ledger;
-        var t = physical.Transfer(transfer); var r = proposedReference ?? references.Single(r => r.Id == transfer); CustodyBasis(t, r);
+        var t = physical.Transfer(transfer); var r = proposedReference ?? references.Single(r => r.Id == transfer);
+        if(workProgress==null) CustodyBasis(t,r); else { _=WorkProgressBasis(t,r,true); if(workProgress!=CurrentWorkApproval(t,r,tick))throw new ArgumentException("Current work observation changed."); ValidateMapReference(t,r,false); }
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (payments.RestoreFailed || payments.Ledger.Receipts.Any(p => p.Phase == TributeReceiptPhase.Prepared)) throw new ArgumentException("Original liabilities unavailable.");
         string[] parties = CustodyAgreements.PartiesFor(Charters.Book, t);
@@ -92,6 +93,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (t.PreviousTransferV1 == null && next != null && next != t.TargetOwner) w = w with { TransitDestinationV1 = next };
         w = w with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(Charters.Book, t, w.Parties, w.TransitDestinationV1) };
         w = w with { RoyalCustodyV1 = t.RoyalResidentsV1 != null, RoyalStakeholdersV2 = t.RoyalRightsV2 == null ? null : RoyalRights.Realms(t.RoyalRightsV2) };
+        w = w with { WorkProgressV1=workProgress };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };
         if (w.RoyalCustodyV1)
         {
@@ -117,7 +119,7 @@ public sealed partial class TerritoryAdministrationLedger
         try
         {
             if (review?.Context != Current.Game || nativeExecutionDepth != 0) throw new ArgumentException("Review the current game first.");
-            var fresh = CurrentCustodyWitness(review.Witness.Transfer, review.Witness.Id, review.Witness.Tick);
+            var fresh = CurrentCustodyWitness(review.Witness.Transfer, review.Witness.Id, review.Witness.Tick, workProgress:review.Witness.WorkProgressV1);
             if (JsonSerializer.Serialize(fresh) != JsonSerializer.Serialize(review.Witness)) throw new ArgumentException("Current party decisions or original custody changed.");
             var staged = CustodyAgreements.Restore(custodyAgreements.Export()); staged.Add(fresh);
             staged.ValidateHistory(Charters.Book, Ledger, Current.Game.GetComponent<TributePaymentLedger>().Ledger);
@@ -133,7 +135,7 @@ public sealed partial class TerritoryAdministrationLedger
     {
         if (r.CustodyAgreementV1 == null) return;
         var t = Ledger.Transfer(r.Id); var original = custodyAgreements.Record(r.CustodyAgreementV1);
-        var fresh = CurrentCustodyWitness(r.Id, original.Witness.Id, original.Witness.Tick, original.Witness);
+        var fresh = CurrentCustodyWitness(r.Id, original.Witness.Id, original.Witness.Tick, original.Witness, workProgress:original.Witness.WorkProgressV1);
         custodyAgreements.RequireCurrent(r.CustodyAgreementV1, t, Charters.Book.Export(), Current.Game.GetComponent<TributePaymentLedger>().Ledger.Export(), CustodyFingerprint(t, r));
         if (JsonSerializer.Serialize(fresh) != JsonSerializer.Serialize(original.Witness)) throw new ArgumentException("Fresh current representative/third-party mandate changed.");
     }
