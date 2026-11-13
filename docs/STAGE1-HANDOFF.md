@@ -1,4 +1,12 @@
-# 1단계 개발 인수인계 — 0.3.108 / 2026-11-13
+# 1단계 개발 인수인계 — 0.3.109 / 2026-11-13
+
+## 0.3.109 — 새 현재 작업의 관측과 운반 합쳐짐
+
+[부품·실제 연결·저장/복구·API 근거](M2-PARTS-AUDIT-0.3.109.md). 현재 승인 JobsV4 → StageWorkObservations → 원 Pawn/현재 Job/Def/startTick 참조+원문/동의 grant → 새 작업 frame/recipe/job-end 사건 → 기존 주민/의료/영역/재산/도시 완료와 Scribe/load/명시 복구로 연결했다. 현재 작업만 등록하고 queued/new future task는 자동 등록하지 않는다. carry native 두 overload의 true/false 정상 반환을 먼저 저장한 뒤 haul-place 입력/ID 변화/현재 survey를 검증한다. 복구에서 배치·분할·합침·job 실행은 하지 않는다. grant archive와 실제 동의 연결 및 완료 후 추가 참조 해제를 유지한다.
+
+**다음 착수**: source 소유 프레임이 재산 호출 전에 완공되어 새 source 소유 건물로 바뀐 경우의 별도 후계 재산 기록/새 현재 권리/실제 호출·복구. 사라진 원 asset call을 반환한 것으로 바꾸거나 새 건물을 옛 참조로 재연결하지 않는다. 그 뒤 더 넓은 driver/설비·특수 역할 및 부모 follower/정치·후손 조립. M2.4 전체 미완료, 잔여 노력 계획 추정30–45%/큰3묶음. M1 10/10,M2 0/18,전체10/100 유지. 여섯 단계의 과거 잔여 추정은 새 측정값이 아니다.
+
+배포 확인: 양 타깃 전체 빌드·최종 native 컴파일 경고/오류0, Honor20093/Contracts5944, ENKO605, 양 타깃 DLL allowlist 통과. 패키지 `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.109.zip` SHA256 `86EB118D1BD4D05F28FB06D931F1A2FE632D3B7AB1A6D365A66B1653A5A34A3A`. 이전 로컬 모드는 `.local/contracts-preview-d0dbeba8961a4f878f6bee6c3385081b`에 백업 후 최종32개 파일 일치 설치, 활성화·언어 설정 hash 불변 확인. 게임 DLL5005 hash도 기존 검토 값과 일치한다. 미확인1.6 본문 권한 없음. Preview Steam·자동 예약 없음.
 
 ## 0.3.108 — 주민별 호출·의료·영역 부분 복구
 

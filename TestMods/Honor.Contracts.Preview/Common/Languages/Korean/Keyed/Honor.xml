@@ -603,4 +603,5 @@
   <RE_WorkAssetConfirm>{0} 검토: {1}. 작업 사건 {2}건. 변경되지 않은 다음 원 기본 재산 하나만 승인합니다. 완료된 주민·재산 호출은 반복하지 않습니다. 이 단계 뒤 새 현재 검토가 필요합니다.</RE_WorkAssetConfirm>
   <RE_WorkClinicalProgress>주민 호출 또는 임상 복원 한 단계를 기록했습니다. 다음 단계에는 현재 동의를 다시 검토하세요.</RE_WorkClinicalProgress>
   <RE_WorkClinicalConfirm>{0} 검토: {1}. 작업 사건 {2}건. 다음 주민 호출 또는 관측된 의료·영역 복원 한 단계를 승인합니다. 미시작 주민은 별도 기록한 현재 임상 증거를 사용합니다. 반환한 호출은 반복하지 않으며 다음 단계에는 새 동의가 필요합니다.</RE_WorkClinicalConfirm>
+  <RE_WorkJobConsent>현재 지원 작업 {0}건의 종료·자재 소비 관측도 이 승인에 연결합니다. 작업은 그대로 진행하며 새로 실행하거나 재시작하지 않습니다.</RE_WorkJobConsent>
 </LanguageData>

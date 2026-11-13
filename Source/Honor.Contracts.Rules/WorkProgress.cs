@@ -3,7 +3,11 @@ using System.Text.Json;
 namespace Honor.Contracts.Rules;
 
 public sealed record WorkProgressSeal(string Original, string Census, string CensusProof, string[] Calls, string[] Care, string[] Areas, string Assets, long Tick,string Survey,string[] Objects);
-public sealed record WorkProgressEvent(int Sequence, string Kind, string Actor, string Job, string[] Inputs, string Before, long Started, string[] Removed = null, string[] Added = null, string After = null, long? Returned = null,long? BodyReturned = null);
+public sealed record WorkProgressEvent(int Sequence, string Kind, string Actor, string Job, string[] Inputs, string Before, long Started, string[] Removed = null, string[] Added = null, string After = null, long? Returned = null,long? BodyReturned = null)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkEventGrantV4 GrantV4 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public bool? PlacementResultV4 { get; init; }
+}
 public sealed record WorkProgressSave(int Version, WorkProgressSeal Seal, WorkProgressEvent[] Events)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string[] RosterV3 { get; init; }
@@ -12,6 +16,7 @@ public sealed record WorkPendingResident(string Pawn,string Proof);
 public sealed record WorkProgressApproval(string Progress, string Current, long Tick)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkPendingResident[] PendingV3 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public ActiveWorkRow[] JobsV4 { get; init; }
 }
 public sealed record WorkCompletionReceipt(string Approval,string Agreement,long Tick)
 {
@@ -68,23 +73,29 @@ public static partial class WorkProgress
         for(int i=0;i<s.Events.Length;i++)
         {
             var e=s.Events[i];
-            if(e==null || e.Sequence!=i || e.Kind is not ("frame" or "job-end" or "recipe") || !actors.TryGetValue(e.Actor,out var owner) || !owner.Jobs.Contains(e.Job) ||
+            if(e==null || e.Sequence!=i || e.Kind is not ("frame" or "job-end" or "recipe" or "haul-place") ||
+                !(actors.TryGetValue(e.Actor,out var owner)&&owner.Jobs.Contains(e.Job) || e.GrantV4!=null&&s.Version==3&&set.Residents.Any(p=>p.Id==e.Actor)) ||
                 e.Inputs==null || e.Inputs.Length>10000 || e.Inputs.Any(id=>!Key(id)) || e.Inputs.Distinct().Count()!=e.Inputs.Length || !CityStockProof.Valid(e.Before) ||
                 e.Started<previous || e.Started>int.MaxValue || !e.Returned.HasValue && i!=s.Events.Length-1)throw new ArgumentException("Original ordered native progress start is invalid.");
+            if(e.GrantV4!=null){if(s.Version!=3)throw new ArgumentException("Legacy events grant no new work authority.");WorkJobObservations.Check(e.GrantV4,e.Actor,e.Job,s.Seal.Tick,e.Started);}
+            if(e.Kind=="haul-place"&&(e.GrantV4==null||e.Inputs.Length!=1) || e.PlacementResultV4.HasValue&&(e.Kind!="haul-place"||!e.BodyReturned.HasValue))throw new ArgumentException("Explicit native placement grant/result required.");
             if(e.BodyReturned.HasValue && (e.BodyReturned<e.Started || e.BodyReturned>int.MaxValue))throw new ArgumentException("Invalid native progress body-return clock.");
             if(!e.Returned.HasValue){if(e.Removed!=null || e.Added!=null || e.After!=null)throw new ArgumentException("Unverified progress output cannot contain results.");previous=e.Started;continue;}
             if(!e.BodyReturned.HasValue || e.BodyReturned<e.Started || e.Returned<e.BodyReturned || e.Returned>int.MaxValue || e.Removed==null || e.Added==null || !CityStockProof.Valid(e.After) || e.Removed.Length>10000 || e.Added.Length>10000 ||
                 e.Removed.Any(id=>!Key(id)||!e.Inputs.Contains(id)||!removed.Add(id)) || e.Removed.Distinct().Count()!=e.Removed.Length || e.Added.Any(id=>!Key(id)||removed.Contains(id)) || e.Added.Distinct().Count()!=e.Added.Length ||
                 e.Kind=="job-end" && (e.Removed.Length!=0 || e.Added.Length!=0) || e.Kind=="frame" && (e.Inputs.Length==0 || e.Removed.Length!=e.Inputs.Length || e.Added.Length>1))
                 throw new ArgumentException("Native progress normal return has invalid object lineage.");
+            if(e.Kind=="haul-place" && (!e.PlacementResultV4.HasValue || e.PlacementResultV4==false&&(e.Removed.Length!=0||e.Added.Length!=0)))throw new ArgumentException("Failed placement cannot prove physical identity changes.");
             previous=e.Returned.Value;
         }
         if(JsonSerializer.Serialize(s)!=json)throw new ArgumentException("Canonical original progress archive required.");return s;
     }
     public static string Begin(TerritoryTransfer t,string json,string kind,string actor,string job,string[] inputs,string before,long tick)
+        =>Begin(t,json,kind,actor,job,inputs,before,tick,null);
+    public static string Begin(TerritoryTransfer t,string json,string kind,string actor,string job,string[] inputs,string before,long tick,WorkEventGrantV4 grant)
     {
         var s=Validate(t,json);if(s.Events.LastOrDefault()?.Returned==null && s.Events.Length!=0)throw new ArgumentException("Unknown progress operation is never replayed.");
-        string next=JsonSerializer.Serialize(s with {Events=s.Events.Append(new(s.Events.Length,kind,actor,job,inputs,before,tick)).ToArray()});Validate(t,next);return next;
+        string next=JsonSerializer.Serialize(s with {Events=s.Events.Append(new WorkProgressEvent(s.Events.Length,kind,actor,job,inputs,before,tick){GrantV4=grant}).ToArray()});Validate(t,next);return next;
     }
     public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick)
     {
@@ -96,17 +107,26 @@ public static partial class WorkProgress
         var s=Validate(t,json);var last=s.Events.LastOrDefault();if(last==null || last.Sequence!=sequence || last.BodyReturned.HasValue || tick<last.Started || tick>int.MaxValue)throw new ArgumentException("Exact original native progress return required.");
         var rows=s.Events.ToArray();rows[rows.Length-1]=last with{BodyReturned=tick};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
     }
+    public static string ObservePlacementReturn(TerritoryTransfer t,string json,int sequence,long tick,bool placed)
+    {
+        var s=Validate(t,json);if(s.Events.LastOrDefault()?.Kind!="haul-place")throw new ArgumentException("Exact native placement start required.");
+        var returned=Validate(t,ObserveReturn(t,json,sequence,tick));var rows=returned.Events.ToArray();rows[rows.Length-1]=rows[rows.Length-1] with{PlacementResultV4=placed};
+        string next=JsonSerializer.Serialize(returned with{Events=rows});Validate(t,next);return next;
+    }
     public static string Approve(TerritoryTransfer t,string progress,string current,long tick)=>Approve(t,progress,current,tick,null);
     public static string Approve(TerritoryTransfer t,string progress,string current,long tick,WorkPendingResident[] pending)
+        =>Approve(t,progress,current,tick,pending,null);
+    public static string Approve(TerritoryTransfer t,string progress,string current,long tick,WorkPendingResident[] pending,ActiveWorkRow[] jobs)
     {
         var s=Validate(t,progress);if(s.Events.Any(e=>!e.Returned.HasValue)||!CityStockProof.Valid(current)||tick<s.Seal.Tick||s.Events.Any(e=>e.Returned>tick))throw new ArgumentException("Only positive completed progress and a current survey may be approved.");
         if(s.Version==3){var ids=ResidentMoveSet.Restore(ResidentTransferCensus.Restore(s.Seal.Census).Residents).Residents.Select(r=>r.Id).ToArray();if(pending==null || pending.Length>ids.Length || pending.Any(p=>p==null||!ids.Contains(p.Pawn)||!CityStockProof.Valid(p.Proof))||pending.Select(p=>p.Pawn).Distinct().Count()!=pending.Length)throw new ArgumentException("Exact current pending resident proofs required.");}
         else if(pending!=null)throw new ArgumentException("Legacy approval grants no new current resident authority.");
-        return JsonSerializer.Serialize(new WorkProgressApproval(progress,current,tick){PendingV3=pending});
+        if(jobs!=null){if(s.Version!=3)throw new ArgumentException("Current work observations require the explicit clinical scope.");if(jobs.Length!=0)ActiveWork.Validate(jobs,ResidentMoveSet.Restore(ResidentTransferCensus.Restore(s.Seal.Census).Residents).Residents.Select(p=>p.Id));}
+        return JsonSerializer.Serialize(new WorkProgressApproval(progress,current,tick){PendingV3=pending,JobsV4=jobs});
     }
     public static WorkProgressApproval Approval(TerritoryTransfer t,string json)
     {
         if(json==null || json.Length>4500000)throw new ArgumentException("Bounded current progress approval required.");var a=JsonSerializer.Deserialize<WorkProgressApproval>(json);
-        if(a==null || Approve(t,a.Progress,a.Current,a.Tick,a.PendingV3)!=json)throw new ArgumentException("Current progress approval differs.");return a;
+        if(a==null || Approve(t,a.Progress,a.Current,a.Tick,a.PendingV3,a.JobsV4)!=json)throw new ArgumentException("Current progress approval differs.");return a;
     }
 }

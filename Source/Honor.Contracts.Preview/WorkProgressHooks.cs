@@ -20,10 +20,10 @@ internal static class WorkProgressHooks
         }
         catch(Exception e){Log.Warning("[Honor.Contracts.Preview] Native work observation not started: "+e.GetType().Name);return null;}
     }
-    internal static void End(WorkObservationState state)
+    internal static void End(WorkObservationState state,bool? placed=null)
     {
         if(state==null)return;
-        try{state.Ledger.EndWorkObservation(state);}
+        try{state.Ledger.EndWorkObservation(state,placed);}
         catch(Exception e){Log.Warning("[Honor.Contracts.Preview] Original native progress start retained without a verified return: "+e.GetType().Name);}
         finally{Depth--;}
     }
@@ -44,8 +44,10 @@ internal static class WorkProgressHooks
     }
     internal static void RequireObservers()
     {
-        foreach(var pair in new[]{(AccessTools.Method(typeof(Frame),nameof(Frame.CompleteConstruction)),typeof(WorkFrameObservation)),
-            (AccessTools.Method(typeof(Pawn_JobTracker),nameof(Pawn_JobTracker.EndCurrentJob)),typeof(WorkJobObservation)),(RecipeMethod() as MethodInfo,typeof(WorkRecipeObservation))})
+        var pairs=new[]{(AccessTools.Method(typeof(Frame),nameof(Frame.CompleteConstruction)),typeof(WorkFrameObservation)),
+            (AccessTools.Method(typeof(Pawn_JobTracker),nameof(Pawn_JobTracker.EndCurrentJob)),typeof(WorkJobObservation)),(RecipeMethod() as MethodInfo,typeof(WorkRecipeObservation))}.ToList();
+        pairs.AddRange(CarryMethods().Select(m=>(m,typeof(WorkHaulPlacementObservation))));
+        foreach(var pair in pairs)
         {
             var info=Harmony.GetPatchInfo(pair.Item1);
             if(info==null || info.Transpilers.Count!=0 || info.Prefixes.Count!=1 || info.Postfixes.Count!=1 || info.Finalizers.Count!=1 ||
@@ -53,6 +55,15 @@ internal static class WorkProgressHooks
                 info.Prefixes[0].PatchMethod!=AccessTools.Method(pair.Item2,"Prefix") || info.Postfixes[0].PatchMethod!=AccessTools.Method(pair.Item2,"Postfix") || info.Finalizers[0].PatchMethod!=AccessTools.Method(pair.Item2,"Finalizer"))
                 throw new ArgumentException("Reviewed sole native progress observers required.");
         }
+    }
+    internal static MethodInfo[] CarryMethods()
+    {
+        if(!NativeTransferBodies.WorkObservationBodies)return [];
+        var rows=AccessTools.GetDeclaredMethods(typeof(Pawn_CarryTracker)).Where(m=>m.Name==nameof(Pawn_CarryTracker.TryDropCarriedThing)).OrderBy(m=>m.GetParameters().Length).ToArray();
+        Type[][] expected=[[typeof(IntVec3),typeof(ThingPlaceMode),typeof(Thing).MakeByRefType(),typeof(Action<Thing,int>)],
+            [typeof(IntVec3),typeof(int),typeof(ThingPlaceMode),typeof(Thing).MakeByRefType(),typeof(Action<Thing,int>)]];
+        if(rows.Length!=2 || rows.Where((m,i)=>m.ReturnType!=typeof(bool)||!m.GetParameters().Select(p=>p.ParameterType).SequenceEqual(expected[i])).Any())throw new ArgumentException("Reviewed native placement boundaries changed.");
+        return rows;
     }
 }
 [HarmonyPatch(typeof(Frame),nameof(Frame.CompleteConstruction))]

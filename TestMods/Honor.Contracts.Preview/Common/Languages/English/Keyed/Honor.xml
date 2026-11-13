@@ -603,4 +603,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <RE_WorkAssetConfirm>Review {0}: {1}. Recorded work events: {2}. Approve only the next unchanged original basic asset. Completed resident and asset calls are not repeated. A new current review is required after this step.</RE_WorkAssetConfirm>
   <RE_WorkClinicalProgress>One resident call or clinical restoration step was recorded. Review current consent again for the next step.</RE_WorkClinicalProgress>
   <RE_WorkClinicalConfirm>Review {0}: {1}. Recorded work events: {2}. Approve the next resident call or observed medical/area restoration. Pending residents use separately recorded current clinical proofs. Returned calls are never repeated; the next step requires fresh consent.</RE_WorkClinicalConfirm>
+  <RE_WorkJobConsent>This consent also records completion and material-consumption observations for {0} supported current jobs. The jobs continue as they are; this does not start or restart them.</RE_WorkJobConsent>
 </LanguageData>

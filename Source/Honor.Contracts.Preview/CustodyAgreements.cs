@@ -124,8 +124,10 @@ public sealed partial class TerritoryAdministrationLedger
             var staged = CustodyAgreements.Restore(custodyAgreements.Export()); staged.Add(fresh);
             staged.ValidateHistory(Charters.Book, Ledger, Current.Game.GetComponent<TributePaymentLedger>().Ledger);
             var r = references.Single(r => r.Id == fresh.Transfer);
+            var observations=StageWorkObservations(r,staged.Record(fresh.Id));
             // No original contract, obligation, medical state, call facts or physical object is replaced.
             custodyAgreements = staged; r.CustodyAgreementV1 = fresh.Id;
+            r.WorkJobObservationsV4=observations;
             Messages.Message("RE_CustodyApproved".Translate(), MessageTypeDefOf.NeutralEvent);
             Recover(fresh.Transfer);
         }
