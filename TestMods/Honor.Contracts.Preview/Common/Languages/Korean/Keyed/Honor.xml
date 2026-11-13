@@ -599,4 +599,6 @@
 <RE_WorkProgressPending>원 주민·재산 인계의 보존 확인이 끝난 기록입니다. 이후 작업 변화는 별도의 현재 합의로 검토하며 원 기록을 그대로 보관합니다.</RE_WorkProgressPending>
 <RE_WorkProgressReview>현재 작업을 검토하고 원 도시 인계 마치기</RE_WorkProgressReview>
 <RE_WorkProgressConfirm>{0}의 원 인계를 현재 작업 관측과 다음 당사자의 현재 합의로 마칠까요? {1}. 확인한 작업 사건: {2}개. 원 주민·재산·채무·호출 기록은 변경하지 않습니다. 아직 시작하지 않은 도시 인계만 실행하며 이전 호출은 반복하지 않습니다.</RE_WorkProgressConfirm>
+  <RE_WorkAssetProgress>원 재산 호출이 반환되고 보존 확인을 마쳤습니다. 다음 재산 또는 도시 단계에는 현재 동의를 다시 검토하세요.</RE_WorkAssetProgress>
+  <RE_WorkAssetConfirm>{0} 검토: {1}. 작업 사건 {2}건. 변경되지 않은 다음 원 기본 재산 하나만 승인합니다. 완료된 주민·재산 호출은 반복하지 않습니다. 이 단계 뒤 새 현재 검토가 필요합니다.</RE_WorkAssetConfirm>
 </LanguageData>

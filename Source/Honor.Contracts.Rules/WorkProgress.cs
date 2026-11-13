@@ -6,7 +6,10 @@ public sealed record WorkProgressSeal(string Original, string Census, string Cen
 public sealed record WorkProgressEvent(int Sequence, string Kind, string Actor, string Job, string[] Inputs, string Before, long Started, string[] Removed = null, string[] Added = null, string After = null, long? Returned = null,long? BodyReturned = null);
 public sealed record WorkProgressSave(int Version, WorkProgressSeal Seal, WorkProgressEvent[] Events);
 public sealed record WorkProgressApproval(string Progress, string Current, long Tick);
-public sealed record WorkCompletionReceipt(string Approval,string Agreement,long Tick);
+public sealed record WorkCompletionReceipt(string Approval,string Agreement,long Tick)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string AssetCallsV2 { get; init; }
+}
 /// <summary>Append-only post-handover observations. Never replaces original clinical/map/call proofs.</summary>
 public static class WorkProgress
 {
@@ -18,12 +21,25 @@ public static class WorkProgress
         var s=new WorkProgressSave(1,new(Hash(Original(t)),census,censusProof,calls,care,areas,assets,tick,survey,objects),[]);
         string json=JsonSerializer.Serialize(s); Validate(t,json);return json;
     }
+    public static string PrepareBeforeAssets(TerritoryTransfer t,string census,string censusProof,string[] calls,string[] care,string[] areas,string assets,long tick,string survey,string[] objects)
+    {
+        var s=new WorkProgressSave(2,new(Hash(Original(t)),census,censusProof,calls,care,areas,assets,tick,survey,objects),[]);
+        string json=JsonSerializer.Serialize(s);Validate(t,json);return json;
+    }
+    public static void AssetAdvance(TerritoryTransfer t,string progress,string current,bool complete=false)
+    {
+        var s=Validate(t,progress);
+        if(s.Version==1){if(current!=s.Seal.Assets)throw new ArgumentException("Original complete asset seal changed.");return;}
+        MapAssetTransfers.Pair(current,t.LoadedMap,t.FromOwner,t.TargetOwner,complete);
+        var before=MapAssetTransfers.Restore(s.Seal.Assets);var after=MapAssetTransfers.Restore(current);
+        if(after.Calls.Where((c,i)=>c.Started&&!c.Returned || before.Calls[i].Returned&&!c.Returned).Any())throw new ArgumentException("Unknown or regressed original asset calls.");
+    }
     public static WorkProgressSave Validate(TerritoryTransfer t,string json)
     {
         if(json==null || json.Length>4000000 || t.StockFormat!=25 || !t.StandaloneActiveWorkV1 || t.Purpose!=TerritoryTransferPurpose.ActiveCharter || t.PreviousTransferV1!=null || t.RoyalResidentsV1!=null || !t.CityCallJournalV1)
             throw new ArgumentException("New standalone original work custody required.");
         var s=JsonSerializer.Deserialize<WorkProgressSave>(json);
-        if(s?.Version!=1 || s.Seal==null || s.Events==null || s.Events.Length>256 || s.Seal.Original!=Hash(Original(t)) || s.Seal.Tick<t.PreparedTick || s.Seal.Tick>int.MaxValue)
+        if(s?.Version is not (1 or 2) || s.Seal==null || s.Events==null || s.Events.Length>256 || s.Seal.Original!=Hash(Original(t)) || s.Seal.Tick<t.PreparedTick || s.Seal.Tick>int.MaxValue)
             throw new ArgumentException("Original verified work boundary is unpaired.");
         if(!CityStockProof.Valid(s.Seal.Survey)||s.Seal.Objects==null||s.Seal.Objects.Length>10000||s.Seal.Objects.Any(id=>!Key(id))||!s.Seal.Objects.SequenceEqual(s.Seal.Objects.Distinct().OrderBy(id=>id,StringComparer.Ordinal)))throw new ArgumentException("Original verified physical identity set required.");
         var c=ResidentTransferCensus.Restore(s.Seal.Census);var set=ResidentMoveSet.Restore(c.Residents);
@@ -32,7 +48,8 @@ public static class WorkProgress
         for(int i=0;i<set.Residents.Count;i++){var a=ResidentAreas.Restore(s.Seal.Areas[i]);if(a.Id!=set.Residents[i].Id || !a.Consumed)throw new ArgumentException("Original area preservation is incomplete.");}
         var map=LoadedMapPreservation.Restore(t.LoadedMap);
         if(map.OwnedAssets==null){if(s.Seal.Assets!=null)throw new ArgumentException("Unexpected asset calls.");}
-        else MapAssetTransfers.Pair(s.Seal.Assets,t.LoadedMap,t.FromOwner,t.TargetOwner,true);
+        else MapAssetTransfers.Pair(s.Seal.Assets,t.LoadedMap,t.FromOwner,t.TargetOwner,s.Version==1);
+        if(s.Version==2 && (map.OwnedAssets==null || MapAssetTransfers.Restore(s.Seal.Assets).Calls.Any(c=>c.Started&&!c.Returned)))throw new ArgumentException("Known partial original assets required.");
         var actors=map.ActiveWorkV1?.ToDictionary(r=>r.Pawn,StringComparer.Ordinal)??throw new ArgumentException("Original active work missing.");
         long previous=s.Seal.Tick;var removed=new HashSet<string>(StringComparer.Ordinal);
         for(int i=0;i<s.Events.Length;i++)

@@ -18,6 +18,7 @@ public sealed class TerritoryTransferReference : IExposable
     public bool CityCallV1, CityCallStarted, CityCallReturned;
     public string CustodyAgreementV1;
     public string WorkProgressV1;
+    public List<string> WorkAssetVerifiedV2;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Id, "id"); Scribe_References.Look(ref City, "city");
@@ -31,6 +32,7 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
         Scribe_Values.Look(ref CustodyAgreementV1, "currentCustodyCompletionAgreementV1");
         Scribe_Values.Look(ref WorkProgressV1, "verifiedNativeWorkProgressV1");
+        Scribe_Collections.Look(ref WorkAssetVerifiedV2,"verifiedPartialWorkAssetsV2",LookMode.Value);
     }
 }
 public sealed record TerritoryAdministrationReview(string Charter, string City, string From, string Target,
@@ -341,6 +343,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (loaded?.AssetJournal != null)
             {
                 ValidateResidentRecovery(Ledger.Transfer(id), reference);
+                SealWorkBoundary(reference,beforeAssets:true);
                 MapAssetRecords.Apply(reference);
                 ValidateResidentRecovery(Ledger.Transfer(id), reference);
             }

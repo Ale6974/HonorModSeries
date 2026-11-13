@@ -172,7 +172,34 @@ internal static class MapAssetRecords
             if (Current.Game != game || Current.ProgramState != ProgramState.Playing) throw new ResidentMoveBlocked("RE_AssetUnavailable");
             r.LoadedMap.AssetJournal = MapAssetTransfers.Returned(r.LoadedMap.AssetJournal, asset.Id, thing.Faction?.GetUniqueLoadID());
             LoadedMapRecords.Verify(r.City, r.LoadedMap);
+            if(r.WorkAssetVerifiedV2!=null && !r.WorkAssetVerifiedV2.Contains(asset.Id))r.WorkAssetVerifiedV2.Add(asset.Id);
         }
         MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, r.LoadedMap.Snapshot, r.From.GetUniqueLoadID(), r.Target.GetUniqueLoadID(), true);
+    }
+    internal static void ApplyProgressNext(TerritoryTransferReference r)
+    {
+        var ledger=Current.Game.GetComponent<TerritoryAdministrationLedger>();var game=Current.Game;
+        ledger.RequireCurrentCustody(r);
+        var map=LoadedMapPreservation.Restore(r.LoadedMap.Snapshot);
+        MapAssetTransfers.Pair(r.LoadedMap.AssetJournal,r.LoadedMap.Snapshot,r.From.GetUniqueLoadID(),r.Target.GetUniqueLoadID());
+        var call=MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.First(c=>!c.Returned);
+        if(call.Started)throw new ArgumentException("Unknown original asset call never replays.");
+        var asset=map.OwnedAssets.Single(a=>a.Id==call.Id);var row=map.Things.SingleOrDefault(t=>t.Id==call.Id);
+        var thing=r.LoadedMap.Things.SingleOrDefault(t=>t!=null&&t.GetUniqueLoadID()==call.Id);
+        if(row==null || thing==null || thing.GetType()!=typeof(Thing) && thing.GetType()!=typeof(ThingWithComps) && thing.GetType()!=typeof(Building) ||
+            thing is IThingHolder || thing.Faction!=r.From || thing.Destroyed || !thing.Spawned || thing.Map!=r.City.Map || thing.def.defName!=row.Def || thing.Stuff?.defName!=row.Stuff ||
+            thing.stackCount!=row.Count || thing.HitPoints!=row.HitPoints || thing.Rotation.AsInt!=row.Rotation || r.City.Map.cellIndices.CellToIndex(thing.Position)!=row.Cell)
+            throw new ArgumentException("Same unchanged original basic pending asset required.");
+        var peers=(r.LoadedMap.MapResidents??[]).Concat(r.LoadedMap.Visitors??[]).ToArray();
+        if(Capture(thing,r.City,r,map.AssetRepairV1==1,reviewedPawns:peers)!=asset)throw new ArgumentException("Original pending asset configuration/rights changed.");
+        ledger.RequireCurrentCustody(r);
+        r.LoadedMap.AssetJournal=MapAssetTransfers.Begin(r.LoadedMap.AssetJournal,call.Id,thing.Faction.GetUniqueLoadID());
+        thing.SetFaction(r.Target);
+        if(Current.Game!=game || Current.ProgramState!=ProgramState.Playing)throw new ArgumentException("Changed game during original asset call.");
+        r.LoadedMap.AssetJournal=MapAssetTransfers.Returned(r.LoadedMap.AssetJournal,call.Id,thing.Faction?.GetUniqueLoadID());
+        if(thing.Destroyed || !thing.Spawned || thing.Map!=r.City.Map || thing.def.defName!=row.Def || thing.Stuff?.defName!=row.Stuff || thing.stackCount!=row.Count ||
+            thing.HitPoints!=row.HitPoints || thing.Rotation.AsInt!=row.Rotation || r.City.Map.cellIndices.CellToIndex(thing.Position)!=row.Cell ||
+            Capture(thing,r.City,r,map.AssetRepairV1==1,reviewedPawns:peers)!=asset)throw new ArgumentException("Original asset returned but preservation verification failed.");
+        if(!r.WorkAssetVerifiedV2.Contains(asset.Id))r.WorkAssetVerifiedV2.Add(asset.Id);
     }
 }

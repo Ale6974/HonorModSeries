@@ -44,10 +44,12 @@ internal static class WorkProgressSurvey
         LoadedMapRecords.RequireProgressBoundary(r.City);
         ResidentMapActors.RequireEmptyReservations(r.City.Map,typeof(Pawn).Module.ModuleVersionId,activeWork:true);
         var map=r.City.Map;var ids=new HashSet<string>(StringComparer.Ordinal);var rows=new List<object>();
+        bool partial=r.WorkProgressV1==null || WorkProgress.Validate(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfer(r.Id),r.WorkProgressV1).Version==2;
+        var assetOwners=partial&&r.LoadedMap.AssetJournal!=null?MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.ToDictionary(c=>c.Id,c=>MapAssetTransfers.ExpectedOwner(r.LoadedMap.AssetJournal,c.Id)):null;
         void Thing(Thing t,string owner,int slot,int depth=0)
         {
             if(depth>8 || t==null || t.Destroyed || t.GetType().Assembly!=typeof(Pawn).Assembly || !ids.Add(t.GetUniqueLoadID()) || ids.Count>10000 ||
-                t.Faction!=null && t.Faction!=r.Target)throw new ArgumentException("Current objects have missing, duplicate or foreign rights.");
+                t.Faction!=null && t.Faction!=r.Target && !(assetOwners?.TryGetValue(t.GetUniqueLoadID(),out var expected)==true && t.Faction.GetUniqueLoadID()==expected && r.LoadedMap.Things.Contains(t)))throw new ArgumentException("Current objects have missing, duplicate or foreign rights.");
             if(t is Pawn)throw new ArgumentException("Current actors must retain original identity.");
             var type=t.GetType();
             if(type!=typeof(Thing) && type!=typeof(ThingWithComps) && type!=typeof(Building) && type!=typeof(Building_Storage) && type!=typeof(Plant) && type!=typeof(Filth) &&
@@ -97,6 +99,6 @@ internal static class WorkProgressSurvey
         foreach(var t in map.listerThings.AllThings.Where(t=>t is not Pawn).OrderBy(t=>t.GetUniqueLoadID(),StringComparer.Ordinal))Thing(t,map.GetUniqueLoadID(),-1);
         var grid=map.AllCells.Select(c=>new {Terrain=map.terrainGrid.TerrainAt(c)?.defName,Under=map.terrainGrid.UnderTerrainAt(c)?.defName,Roof=map.roofGrid.RoofAt(c)?.defName}).ToArray();
         var reservations=new {Regular=ResidentActiveWork.ReservationState(map),Physical=ResidentActiveWork.PhysicalState(map),Enroute=ResidentActiveWork.EnrouteState(map),Destination=ResidentActiveWork.DestinationState(map)};
-        string proof=WorkProgress.Hash(new {Map=map.GetUniqueLoadID(),Size=new[]{map.Size.x,map.Size.z},Grid=grid,Reservations=reservations,Rows=rows});return new(proof,ids.OrderBy(id=>id,StringComparer.Ordinal).ToArray());
+        string proof=WorkProgress.Hash(new {Map=map.GetUniqueLoadID(),Size=new[]{map.Size.x,map.Size.z},Grid=grid,Reservations=reservations,Rows=rows,AssetCalls=partial?r.LoadedMap.AssetJournal:null});return new(proof,ids.OrderBy(id=>id,StringComparer.Ordinal).ToArray());
     }
 }

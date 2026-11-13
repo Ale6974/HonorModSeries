@@ -1,4 +1,12 @@
-# 1단계 개발 인수인계 — 0.3.106 / 2026-11-13
+# 1단계 개발 인수인계 — 0.3.107 / 2026-11-13
+
+## 0.3.107 — 재산 부분 인계 경계
+
+[실행·저장·복구 근거와 한계](M2-PARTS-AUDIT-0.3.107.md). 새 version2 원 seal을 주민/care/area 전체 완료 후 asset 호출 전에 저장한다. 원 seal AssetJournal은 고정, 실제 asset journal은 양성 prefix만 전진한다. 새 현재 동의로 다음 원 기본 재산 하나만 SetFaction/반환/독립 보존 확인까지 실행한다. 현재 survey가 바뀌므로 다음 asset/city에는 새 현재 동의가 필요하다. 별도 WorkAssetVerifiedV2 Scribe·로딩·terminal 검증이 연결됐다. .106의 새 도시 완료 경로와 조립하며 과거/unknown 호출 권한을 만들지 않는다.
+
+다음 착수점은 **일부 주민 및 의료/area 미완료** 경계다. 이번 버전은 이 부분을 구현하지 않았다. 원 주민별 authority/care/area 시작·출력·복원·확인과 새 현재 진행을 분리하고, 미시작 원 주민의 실제 native 호출 권한을 유지하는 per-resident 실행 조립이 필요하다. 원 임상/작업을 새 값으로 덮거나 전체 검사를 무조건 생략하지 않는다. M2.4 전체 미완료, 잔여 추정40–55%/큰3묶음 유지. M1 10/10,M2 0/18,전체10/100.
+
+배포 확인: 양 타깃 전체 빌드 경고/오류0, Honor20093/Contracts5904, ENKO602, DLL allowlist 통과. 패키지 `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.107.zip` SHA256 `CDA55E148E440D35A9B2854D9DA7BC0274681E95E89375C1082770AF7C07926E`. 이전 로컬 모드 백업 `.local/contracts-preview-0c5d791e058540d8a681dbf2e72b725a` 후32개 파일 일치 설치, 활성화/언어 설정 hash 불변. 미확인1.6 본문 권한 없음. Preview Steam 게시/자동 예약 없음.
 
 ## 0.3.106 — 양성 인계 뒤 자연 진행의 현재 승인·원 도시 복구
 
