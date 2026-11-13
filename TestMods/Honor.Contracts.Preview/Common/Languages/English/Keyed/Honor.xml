@@ -604,4 +604,6 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <RE_WorkClinicalProgress>One resident call or clinical restoration step was recorded. Review current consent again for the next step.</RE_WorkClinicalProgress>
   <RE_WorkClinicalConfirm>Review {0}: {1}. Recorded work events: {2}. Approve the next resident call or observed medical/area restoration. Pending residents use separately recorded current clinical proofs. Returned calls are never repeated; the next step requires fresh consent.</RE_WorkClinicalConfirm>
   <RE_WorkJobConsent>This consent also records completion and material-consumption observations for {0} supported current jobs. The jobs continue as they are; this does not start or restart them.</RE_WorkJobConsent>
+  <RE_WorkSuccessorConfirm>Review {0}: {1}. Recorded work events: {2}. Original frame calls remain unchanged. Approve the next actual successor or unchanged remainder property step, or the original city handover after every property is verified. Unknown calls are never repeated.</RE_WorkSuccessorConfirm>
+  <RE_WorkSuccessorProgress>The separate actual-property call or preservation verification was recorded. Review fresh current consent for the next step; original frame calls remain untouched.</RE_WorkSuccessorProgress>
 </LanguageData>

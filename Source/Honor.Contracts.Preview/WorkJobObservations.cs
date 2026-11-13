@@ -75,7 +75,7 @@ public sealed partial class TerritoryAdministrationLedger
             if(!r.WorkJobObservationsV4.Any(record=>JsonSerializer.Deserialize<WorkEventGrantV4>(record.Grant)==e.GrantV4))throw new ArgumentException("Native event lost its exact approved observation record.");
     }
     private static void ReleaseWorkObservationReferences(TerritoryTransferReference r)
-    {foreach(var record in r.WorkJobObservationsV4??[]){record.Pawn=null;record.Job=null;}}
+    {foreach(var record in r.WorkJobObservationsV4??[]){record.Pawn=null;record.Job=null;}ReleaseAssetResolutionReferences(r);}
     private static void RequireWorkJobIdentity()
     {
         if(!NativeTransferBodies.WorkObservationBodies)throw new ArgumentException("Reviewed native work identity required.");

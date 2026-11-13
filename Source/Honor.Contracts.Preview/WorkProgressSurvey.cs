@@ -37,7 +37,7 @@ internal static class WorkProgressSurvey
         throw new ArgumentException("Unreviewed current progress field: "+type.FullName);
     }
     private static object SavedFields(object obj,Type type,string names) => names.Split(' ').Select(n=>new {Name=n,Value=Value(ResidentActiveWork.Raw(obj,type,n))}).ToArray();
-    internal static WorkSurvey Capture(TerritoryTransferReference r)
+    internal static WorkSurvey Capture(TerritoryTransferReference r,WorkAssetReferenceV5 provisional=null)
     {
         if(!NativeTransferBodies.WorkObservationBodies || r.City?.HasMap!=true || r.LoadedMap?.Map!=r.City.Map || r.Residents?.Profile!=16 || r.Residents.NativeMap!=r.City.Map)
             throw new ArgumentException("Same original map and residents required for current progress survey.");
@@ -49,7 +49,8 @@ internal static class WorkProgressSurvey
         void Thing(Thing t,string owner,int slot,int depth=0)
         {
             if(depth>8 || t==null || t.Destroyed || t.GetType().Assembly!=typeof(Pawn).Assembly || !ids.Add(t.GetUniqueLoadID()) || ids.Count>10000 ||
-                t.Faction!=null && t.Faction!=r.Target && !(assetOwners?.TryGetValue(t.GetUniqueLoadID(),out var expected)==true && t.Faction.GetUniqueLoadID()==expected && r.LoadedMap.Things.Contains(t)))throw new ArgumentException("Current objects have missing, duplicate or foreign rights.");
+                t.Faction!=null && t.Faction!=r.Target && !(assetOwners?.TryGetValue(t.GetUniqueLoadID(),out var expected)==true && t.Faction.GetUniqueLoadID()==expected && r.LoadedMap.Things.Contains(t)) &&
+                !TerritoryAdministrationLedger.KnownResolutionOwner(r,t) && !(ReferenceEquals(provisional?.Actual,t)&&t.Faction==r.From))throw new ArgumentException("Current objects have missing, duplicate or foreign rights.");
             if(t is Pawn)throw new ArgumentException("Current actors must retain original identity.");
             var type=t.GetType();
             if(type!=typeof(Thing) && type!=typeof(ThingWithComps) && type!=typeof(Building) && type!=typeof(Building_Storage) && type!=typeof(Plant) && type!=typeof(Filth) &&

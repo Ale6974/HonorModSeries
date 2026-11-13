@@ -320,7 +320,7 @@
       "stage": 1,
       "id": "M2.4",
       "title": "진행 작업·예약의 이전 경계",
-      "status": "주민별 부분 복구와 새 작업의 현재 승인 관측·운반 합쳐짐/분할 반환 증거까지 실제 조립; 후계 재산·설비 확대/특수 역할/부모 조합 미완료",
+      "status": "주민별 부분 복구·새 작업 관측·운반 및 자연 완공한 실제 후계/원 재산의 별도 인계·저장·복구 조립; 특수/연속 재산·역할·부모 조합 미완료",
       "production_kloc": [
         1,
         2
@@ -345,7 +345,8 @@
         "docs/M2-PARTS-AUDIT-0.3.106.md",
         "docs/M2-PARTS-AUDIT-0.3.107.md",
         "docs/M2-PARTS-AUDIT-0.3.108.md",
-        "docs/M2-PARTS-AUDIT-0.3.109.md"
+        "docs/M2-PARTS-AUDIT-0.3.109.md",
+        "docs/M2-PARTS-AUDIT-0.3.110.md"
       ],
       "assembly_evidence": [
         "Source/Honor.Contracts.Preview/GroundRestGivers.cs",
@@ -365,7 +366,9 @@
         "Source/Honor.Contracts.Preview/WorkClinicalRecovery.cs",
         "Source/Honor.Contracts.Rules/WorkJobObservations.cs",
         "Source/Honor.Contracts.Preview/WorkJobObservations.cs",
-        "Source/Honor.Contracts.Preview/WorkHaulPlacementObservation.cs"
+        "Source/Honor.Contracts.Preview/WorkHaulPlacementObservation.cs",
+        "Source/Honor.Contracts.Rules/WorkAssetResolutions.cs",
+        "Source/Honor.Contracts.Preview/WorkAssetResolutions.cs"
       ],
       "integration_evidence": [
         "Tests/Honor.Contracts.Tests/GroundRestTests.cs",

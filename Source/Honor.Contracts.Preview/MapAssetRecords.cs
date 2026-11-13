@@ -121,7 +121,7 @@ internal static class MapAssetRecords
             if (map.mapDrawer?.GetType() != typeof(MapDrawer) || Field(map.mapDrawer, "map", typeof(Map)) != map) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         }
     }
-    internal static MapAsset Capture(Thing t, Settlement city, TerritoryTransferReference original, bool repairAssets = false, bool ownedStorage = false, IReadOnlyCollection<Pawn> reviewedPawns = null, bool ownedContainers = false, bool heldAssets = false, bool ownedForest = false)
+    internal static MapAsset Capture(Thing t, Settlement city, TerritoryTransferReference original, bool repairAssets = false, bool ownedStorage = false, IReadOnlyCollection<Pawn> reviewedPawns = null, bool ownedContainers = false, bool heldAssets = false, bool ownedForest = false, Faction independentOwner = null)
     {
         Boundary(t, city.Map, repairAssets, ownedStorage, reviewedPawns, ownedContainers, heldAssets, ownedForest);
         string owner = t.Faction.GetUniqueLoadID();
@@ -132,7 +132,7 @@ internal static class MapAssetRecords
             if (MapAssetTransfers.ExpectedOwner(original.LoadedMap.AssetJournal, t.GetUniqueLoadID()) != owner) throw new ResidentMoveBlocked("RE_AssetUnavailable");
             owner = original.From.GetUniqueLoadID();
         }
-        else if (t.Faction != city.Faction) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        else if (t.Faction != (independentOwner??city.Faction)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         var style = (t as ThingWithComps)?.AllComps.OfType<CompStyleable>().SingleOrDefault();
         var preceptGetter = AccessTools.PropertyGetter(typeof(CompStyleable), nameof(CompStyleable.SourcePrecept));
         if (preceptGetter == null || Harmony.GetPatchInfo(preceptGetter)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_AssetUnavailable");

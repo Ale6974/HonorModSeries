@@ -604,4 +604,6 @@
   <RE_WorkClinicalProgress>주민 호출 또는 임상 복원 한 단계를 기록했습니다. 다음 단계에는 현재 동의를 다시 검토하세요.</RE_WorkClinicalProgress>
   <RE_WorkClinicalConfirm>{0} 검토: {1}. 작업 사건 {2}건. 다음 주민 호출 또는 관측된 의료·영역 복원 한 단계를 승인합니다. 미시작 주민은 별도 기록한 현재 임상 증거를 사용합니다. 반환한 호출은 반복하지 않으며 다음 단계에는 새 동의가 필요합니다.</RE_WorkClinicalConfirm>
   <RE_WorkJobConsent>현재 지원 작업 {0}건의 종료·자재 소비 관측도 이 승인에 연결합니다. 작업은 그대로 진행하며 새로 실행하거나 재시작하지 않습니다.</RE_WorkJobConsent>
+  <RE_WorkSuccessorConfirm>{0} 검토: {1}. 작업 사건 {2}건. 원 프레임 호출은 그대로 보존합니다. 다음 실제 후계 건물·변경 없는 원 재산 한 단계 또는 모든 재산 확인 후 원 도시 인계를 승인합니다. 불확실한 호출은 반복하지 않습니다.</RE_WorkSuccessorConfirm>
+  <RE_WorkSuccessorProgress>별도 실제 재산의 호출 또는 보존 확인을 기록했습니다. 다음 단계에는 새 현재 동의를 검토하세요. 원 프레임 호출은 그대로 유지됩니다.</RE_WorkSuccessorProgress>
 </LanguageData>

@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.109</modVersion>
+  <modVersion>0.3.110</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.109: Current consent can explicitly register supported new native jobs for completion and material-consumption observations. Original records stay intact; exact job identity and independent normal-return evidence bind save/recovery. No job is started or replayed by this observation permission. M2.4 remains incomplete.
+  <description>0.3.110: Naturally completed source frames can retain their original unstarted calls while fresh current consent transfers the separately observed actual successor building. Separate call/return/preservation records cover successor and unchanged remainder property through save and explicit recovery. M2.4 remains incomplete for broader property and role combinations.
+0.3.110: 자연 완공된 원 프레임의 미실행 호출을 보존하고 새 현재 승인으로 실제 후계 건물을 별도 인계합니다. 후계·남은 원 재산의 호출·반환·보존 확인을 저장·복구까지 연결했습니다. 더 넓은 재산·역할 조합과 M2.4 전체는 미완료입니다.
+0.3.109: Current consent can explicitly register supported new native jobs for completion and material-consumption observations. Original records stay intact; exact job identity and independent normal-return evidence bind save/recovery. No job is started or replayed by this observation permission. M2.4 remains incomplete.
 0.3.109: 새 현재 승인으로 지원하는 새 작업의 종료·자재 소비 관측을 등록합니다. 원 기록과 실제 작업 신원·정상 반환 증거를 저장·복구에 연결하며 작업을 새로 실행하거나 반복하지 않습니다. M2.4 전체는 미완료입니다.
 0.3.108: Adds individually approved resident call, medical-output and original-area recovery with independent original journals and fresh pending-resident clinical proofs. Completed calls are never repeated. Broader M2.4 combinations remain unfinished.
 0.3.108: 주민별 호출·의료 출력·원 영역 복구를 원 기록과 새 현재 주민 증거·승인에 연결합니다. 반환한 호출을 반복하지 않으며 M2.4의 넓은 조합은 미완료입니다.

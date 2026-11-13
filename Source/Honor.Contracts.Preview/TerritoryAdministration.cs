@@ -22,6 +22,8 @@ public sealed class TerritoryTransferReference : IExposable
     public List<string> WorkResidentStartsV3;
     public List<Pawn> WorkNativeRosterV3;
     public List<WorkJobObservationRecord> WorkJobObservationsV4;
+    public string WorkAssetResolutionV5;
+    public List<WorkAssetReferenceV5> WorkAssetReferencesV5;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Id, "id"); Scribe_References.Look(ref City, "city");
@@ -39,6 +41,8 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Collections.Look(ref WorkResidentStartsV3,"currentResidentCallStartsV3",LookMode.Value);
         Scribe_Collections.Look(ref WorkNativeRosterV3,"originalOrderedClinicalRosterV3",LookMode.Reference);
         Scribe_Collections.Look(ref WorkJobObservationsV4,"currentNativeWorkObservationsV4",LookMode.Deep);
+        Scribe_Values.Look(ref WorkAssetResolutionV5,"actualPropertyResolutionsV5");
+        Scribe_Collections.Look(ref WorkAssetReferencesV5,"separateActualPropertyReferencesV5",LookMode.Deep);
     }
 }
 public sealed record TerritoryAdministrationReview(string Charter, string City, string From, string Target,
@@ -231,7 +235,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (map.OwnedAssets != null)
         {
             if (r.LoadedMap.AssetJournal == null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
-            MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, t.LoadedMap, t.FromOwner, t.TargetOwner, t.Phase == TerritoryTransferPhase.Applied || r.CityCallStarted);
+            if(r.WorkAssetResolutionV5==null)MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, t.LoadedMap, t.FromOwner, t.TargetOwner, t.Phase == TerritoryTransferPhase.Applied || r.CityCallStarted);
+            else WorkProgress.AssetAdvance(t,r.WorkProgressV1,r.LoadedMap.AssetJournal,t.Phase==TerritoryTransferPhase.Applied||r.CityCallStarted,r.WorkAssetResolutionV5);
             if (t.Phase == TerritoryTransferPhase.Cancelled && MapAssetTransfers.Started(r.LoadedMap.AssetJournal)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         }
         else if (r.LoadedMap.AssetJournal != null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
@@ -465,6 +470,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 political.VerifyLawfulPhysicalRecovery();
             var item = Ledger.Transfer(id); var reference = references.Single(r => r.Id == id);
             if(reference.CustodyAgreementV1!=null && custodyAgreements.Record(reference.CustodyAgreementV1).Witness.WorkProgressV1!=null){RecoverWorkProgress(item,reference,executionGame);return;}
+            if(reference.WorkAssetResolutionV5!=null)throw new ArgumentException("Actual successor property requires separate current resolution approval.");
             if(reference.WorkJobObservationsV4!=null)ValidateWorkObservations(item,reference);
             if ((item.PreviousTransferV1 != null || item.RoyalResidentsV1 != null) && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation cannot use legacy recovery permission.");
             ValidateMapReference(item, reference, true);
