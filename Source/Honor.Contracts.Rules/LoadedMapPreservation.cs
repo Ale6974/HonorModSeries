@@ -12,7 +12,11 @@ public sealed record NativeMapResident(string Id, string Preserved);
 public sealed record NeutralMapContainer(string Id, string Kind, string Configuration, int Count);
 public sealed record NeutralMapGrowing(string Id, string Configuration, int[] Cells);
 public sealed record NativeWorktable(string Id, string Configuration, string[] Bills);
-public sealed record NativeWorkFrame(string Id, string Configuration, string[] Resources);
+public sealed record NativeWorkFrame(string Id, string Configuration, string[] Resources)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string StorageV7 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string TerrainV8 { get; init; }
+}
 public sealed record LoadedMapScope(string Town, string Map, int Width, int Height, string Grid, string Stock, int StockFormat, NeutralMapThing[] Things, string Proof)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public ActiveWorkRow[] ActiveWorkV1 { get; init; }
@@ -299,7 +303,7 @@ public static class LoadedMapPreservation
         {
             if (s.ActiveWorkV1 == null || s.WorkFramesV1.Length is < 1 or > 1000 || s.WorkFramesV1.Any(f => f == null || !Key(f.Id) || !CityStockProof.Valid(f.Configuration) ||
                 !s.Things.Any(r => r.Id == f.Id) || s.OwnedAssets?.Any(r => r.Id == f.Id) != true || s.WorktablesV1?.Any(t => t.Id == f.Id) == true ||
-                f.Resources == null || f.Resources.Length > 10000 || f.Resources.Any(id => !Key(id))) ||
+                f.Resources == null || f.Resources.Length > 10000 || f.Resources.Any(id => !Key(id)) || f.StorageV7!=null&&!CityStockProof.Valid(f.StorageV7) || f.TerrainV8!=null&&(!Key(f.TerrainV8)||f.StorageV7!=null)) ||
                 !s.WorkFramesV1.Select(f => f.Id).SequenceEqual(s.WorkFramesV1.Select(f => f.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal))) throw new ArgumentException("Original owned construction frames required.");
             var occupied = new HashSet<string>(s.Things.Select(t => t.Id).Concat((s.Held ?? []).Select(r => r.Item.Id)).Concat((s.NativeResidents ?? []).Select(r => r.Id)).Concat((s.Visitors ?? []).Select(r => r.Id)), StringComparer.Ordinal);
             foreach (var resource in s.WorkFramesV1.SelectMany(f => f.Resources)) if (!occupied.Add(resource) || occupied.Count > 10000) throw new ArgumentException("Duplicated/oversized original construction resource scope.");

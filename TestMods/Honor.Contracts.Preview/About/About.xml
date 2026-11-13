@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.111</modVersion>
+  <modVersion>0.3.112</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.111: Separately observed successor and unchanged original basic worktables now preserve their actual production-bill references, filters and settings through current approval, native handover, save and explicit recovery. Powered, fueled, linked-facility and custom worktables require separate support. M2.4 remains incomplete.
+  <description>0.3.112: Ungrouped source shelf frames retain explicit original storage settings. Their actual completed shelf and unchanged original shelves retain settings, cells and the same goods through current approval, handover, save and explicit recovery. Standard floor completion has separate current acceptance linked to the final city handover, without an invented faction call. No goods are hauled or refactioned by this scope. M2.4 remains incomplete for wider combinations.
+0.3.112: 비연결 원 선반 프레임의 보관 설정과 실제 완공 선반·남은 원 선반의 설정·칸·같은 물품을 현재 승인, 인계, 저장·명시 복구에 연결했습니다. 일반 바닥 완공은 별도 현재 승인과 마지막 도시 인계에 연결하며 소속 변경 호출을 만들지 않습니다. 이 범위로 물품을 운반하거나 소속을 바꾸지 않습니다. 더 넓은 조합과 M2.4 전체는 미완료입니다.
+0.3.111: Separately observed successor and unchanged original basic worktables now preserve their actual production-bill references, filters and settings through current approval, native handover, save and explicit recovery. Powered, fueled, linked-facility and custom worktables require separate support. M2.4 remains incomplete.
 0.3.111: 별도 관측한 후계·변경 없는 원 일반 제작대의 실제 제작 주문 참조와 필터·설정을 현재 승인, 실제 인계, 저장·명시 복구에 연결했습니다. 전력·연료·연결 시설·사용자 제작대는 별도 지원이 필요합니다. M2.4 전체는 미완료입니다.
 0.3.110: Naturally completed source frames can retain their original unstarted calls while fresh current consent transfers the separately observed actual successor building. Separate call/return/preservation records cover successor and unchanged remainder property through save and explicit recovery. M2.4 remains incomplete for broader property and role combinations.
 0.3.110: 자연 완공된 원 프레임의 미실행 호출을 보존하고 새 현재 승인으로 실제 후계 건물을 별도 인계합니다. 후계·남은 원 재산의 호출·반환·보존 확인을 저장·복구까지 연결했습니다. 더 넓은 재산·역할 조합과 M2.4 전체는 미완료입니다.

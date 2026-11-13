@@ -37,7 +37,8 @@ public sealed partial class TerritoryAdministrationLedger
         string resolution=r.WorkAssetResolutionV5;var actualRefs=r.WorkAssetReferencesV5;
         if(candidate!=null)
         {
-            resolution=WorkAssetResolutions.AddSuccessor(t,next,resolution,r.LoadedMap.AssetJournal,candidate.Reference.Original,state.Sequence,candidate.Asset,candidate.Physical,candidate.Worktable);
+            resolution=candidate.Terrain==null?WorkAssetResolutions.AddSuccessor(t,next,resolution,r.LoadedMap.AssetJournal,candidate.Reference.Original,state.Sequence,candidate.Asset,candidate.Physical,candidate.Worktable,candidate.Storage):
+                WorkAssetResolutions.AddTerrain(t,next,resolution,r.LoadedMap.AssetJournal,candidate.Reference.Original,state.Sequence,candidate.Terrain);
             actualRefs=(actualRefs??[]).Append(candidate.Reference).ToList();
         }
         r.WorkProgressV1=next;r.WorkAssetResolutionV5=resolution;r.WorkAssetReferencesV5=actualRefs;

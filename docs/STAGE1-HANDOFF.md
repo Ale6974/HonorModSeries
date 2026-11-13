@@ -1,4 +1,14 @@
-# 1단계 개발 인수인계 — 0.3.111 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.112 / 2026-11-14
+
+## 0.3.112 — 원 선반 설정·같은 물품 및 일반 바닥 수락
+
+[실행·권한·저장/중단 복구·검사](M2-PARTS-AUDIT-0.3.112.md). 새 원 storage Frame tag/원 settings proof → 양성 실제 완공 → 같은 source 선반/슬롯/설정/실제 물품 참조 → 현재 전체 동의 → 실제 SetFaction/독립 반환/확인으로 연결했다. 원 선반 remainder는 원 LoadedMapRecord.Things에서 물품 참조를 가져온다. 내용물에는 별도 소속 변경/운반 권한을 만들지 않는다.
+
+일반 바닥은 새 원 TerrainV8 tag → 원 Frame/자재의 양성 완공/새 Thing 없음 → 실제 동일 cell/terrain/under/roof → 현재 전체 동의/별도 Accepted 기록 → 원 도시 인계/마지막 receipt로 연결했다. 실제 property call이 없는 항목은 Started/Returned/Verified/Actual/Asset를 가질 수 없으며 건물 호출을 꾸미지 않는다. native terrain/roof owner와 foundation/temp/color 비어 있음 및 읽기 dispatch를 확인한다. 두 경로 모두 Scribe/load/명시 복구/최종 원 호출·계약·채무 보존과 연결했다. old null JSON/API/권한은 유지한다.
+
+배포 확인: 양 타깃 전체 빌드 및 최종1.7 native 재컴파일 경고/오류0, Honor20093/Contracts6010, ENKO608, 양 타깃 package DLL allowlist 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.112.zip` SHA256 `FFEDD25DCDB457D292A658EBC2D3216036A653704728B66C607D37E31632307B`. 이전 로컬 Preview는 `.local/contracts-preview-3d3f2e9e90574141a589ec85eda18f99`에 백업 후 최종32파일 일치 설치했다. 활성화·언어 설정 hash 불변. 현재5005 DLL hash는 검토 값과 동일; 새 미확인1.6 native 실행 허가는 없다. Preview Steam·자동 예약 없음.
+
+다음 착수: 복합 지형(층/채색/임시·다리), 연결 shelf group/전력·연료·시설 및 연속 소실/변형·물품 소비, 더 넓은 작업/특수 역할·개인 권리, 부모 follower/정치·후손/M2.10 실제 조립. M2.4 전체 미완료. 옛 참조/원 settings/지형을 현재 값으로 바꾸거나 실제 중단된 호출을 replay하지 않는다. 잔여 노력 계획 추정25–40%/큰3묶음은 부분 지원 확장만으로 재산정하지 않았다. M1 10/10,M2 0/18,전체10/100 유지. 여섯 단계의 과거 추정은 새 측정값이 아니다.
 
 ## 0.3.111 — 실제 일반 제작대 후계·원 주문 보존
 

@@ -11,9 +11,10 @@ internal static class ConstructionEvidence
     internal static List<Thing> Resources(Frame frame)
     {
         if (!NativeTransferBodies.WorkObservationBodies || frame?.GetType() != typeof(Frame) || !frame.Spawned || frame.Destroyed || frame.resourceContainer?.GetType() != typeof(ThingOwner<Thing>) ||
-            frame.resourceContainer.Owner != frame || frame.resourceContainer.Count > 10000 || frame.storageGroup != null || frame.storageSettings != null ||
+            frame.resourceContainer.Owner != frame || frame.resourceContainer.Count > 10000 || frame.storageGroup != null ||
             !RuntimeCompat.IsFinite(frame.workDone) || frame.workDone < 0 || frame.def?.entityDefToBuild == null)
             throw new ArgumentException("Original basic construction frame and resources required.");
+        _=Storage(frame);
         ResidentActiveWork.Known(typeof(Frame), "ExposeData"); ResidentActiveWork.Known(typeof(Frame), "GetDirectlyHeldThings"); ResidentActiveWork.Known(typeof(Frame), "GetChildHolders");
         foreach (var method in typeof(Frame).GetInterfaceMap(typeof(IThingHolder)).TargetMethods)
             if (method.Module.Assembly != typeof(Pawn).Assembly || Harmony.GetPatchInfo(method)?.Owners.Any() == true) throw new ArgumentException("Unknown construction holder dispatch.");
@@ -34,6 +35,16 @@ internal static class ConstructionEvidence
         string proof = RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Definition = def.defName, Type = def.GetType().FullName, frame.workDone, Color = color,
             Forbidden=frame.AllComps.Where(c=>c.GetType()==typeof(CompForbiddable)).Select(c=>(bool)ResidentActiveWork.Raw(c,typeof(CompForbiddable),"forbiddenInt")).ToArray(),
             Resources = resources.Select(t => ResidentActiveWork.SimpleCargo(t, frame.resourceContainer, null)).ToArray() }))));
-        return new(frame.GetUniqueLoadID(), proof, resources.Select(t => t.GetUniqueLoadID()).ToArray());
+        return new(frame.GetUniqueLoadID(), proof, resources.Select(t => t.GetUniqueLoadID()).ToArray()){StorageV7=Storage(frame),TerrainV8=def is TerrainDef?def.defName:null};
+    }
+    private static string Storage(Frame frame)
+    {
+        if(frame.storageSettings==null)return null;
+        if(frame.def.entityDefToBuild is not ThingDef def||def.thingClass!=typeof(Building_Storage)||frame.storageSettings.owner!=null||frame.storageGroup!=null)
+            throw new ArgumentException("Only original ungrouped native storage-frame settings are supported.");
+        ResidentActiveWork.Known(typeof(StorageSettings),"ExposeData");ResidentActiveWork.Known(typeof(StorageSettings),"CopyFrom");
+        ResidentActiveWork.Known(typeof(StorageSettings),"set_Priority");ResidentActiveWork.Known(typeof(StorageSettings),"TryNotifyChanged");
+        ResidentActiveWork.Known(typeof(ThingFilter),"CopyAllowancesFrom");ResidentActiveWork.Known(typeof(Building_Storage),"Notify_SettingsChanged");
+        return StorageMapEvidence.Configuration(frame.storageSettings,null,null,null);
     }
 }
