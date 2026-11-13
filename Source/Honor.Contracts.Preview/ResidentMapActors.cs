@@ -92,9 +92,9 @@ internal static class ResidentMapActors
                 EmptyManager(value, map, field == "pawnDestinationReservationManager", groundRest && map == source);
             }
     }
-    internal static void Require(Pawn p, bool groundRest = false) => RequireCore(p, false, groundRest);
+    internal static void Require(Pawn p, bool groundRest = false, bool givenWork = false) => RequireCore(p, false, groundRest, givenWork);
     internal static void RequireEnrollment(Pawn p) => RequireCore(p, true);
-    private static void RequireCore(Pawn p, bool enrollment, bool groundRest = false)
+    private static void RequireCore(Pawn p, bool enrollment, bool groundRest = false, bool givenWork = false)
     {
         if (!AuditedModules.Contains(typeof(Pawn).Module.ModuleVersionId)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (p?.Spawned != true || p.Map?.Parent is not Settlement city || p.Map.IsPlayerHome || !Find.Maps.Contains(p.Map) ||
@@ -105,7 +105,7 @@ internal static class ResidentMapActors
             p.health?.surgeryBills?.Count != 0 || p.AllComps.Any(c => c is IThingHolder) ||
             p.inventory?.innerContainer.Any(t => t is IThingHolder || t is ThingWithComps c && c.AllComps.Any(x => x is IThingHolder)) == true)
             throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-        if (groundRest && p.CurJob != null) _ = ResidentGroundRest.Capture(p);
+        if (groundRest && p.CurJob != null) _ = ResidentGroundRest.Capture(p, givenWork);
         if (NativeTransferBodies.ExtendedReadBodies)
         {
             // Current StopDead disposes pending asynchronous paths. No path/cancellation authority is inferred from Moving=false.

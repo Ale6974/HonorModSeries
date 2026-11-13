@@ -31,8 +31,8 @@ internal static class ResidentGroundRest
         if (v is ICollection list && list.Count == 0) return new { Empty = true };
         throw new ArgumentException("Rest job contains unsupported work/property references.");
     }
-    private static object Fields(object value, Type type, string names)
-        => names.Split(' ').OrderBy(s => s, StringComparer.Ordinal).Select(name => new { Name = name, Value = Value(Raw(value, type, name)) }).ToArray();
+    private static object Fields(object value, Type type, string names, GroundRestGiver giver = null)
+        => names.Split(' ').OrderBy(s => s, StringComparer.Ordinal).Select(name => new { Name = name, Value = giver != null && type == typeof(Job) && name == "jobGiverKey" ? giver.Key : giver != null && type == typeof(Job) && name == "jobGiverThinkTree" ? giver.Tree : Value(Raw(value, type, name)) }).ToArray();
     private static List<ReservationManager.Reservation> Reservations(Map map)
     {
         if (!NativeTransferBodies.WorkObservationBodies || map?.GetType() != typeof(Map) || map.reservationManager?.GetType() != typeof(ReservationManager) || Raw(map.reservationManager, typeof(ReservationManager), "map") != map || Raw(map.reservationManager, typeof(ReservationManager), "reservations") is not List<ReservationManager.Reservation> rows || rows.Count > 10000 || rows.Any(r => r?.GetType() != typeof(ReservationManager.Reservation)) || rows.Distinct().Count() != rows.Count) throw new ArgumentException("Original native cell reservations unavailable.");
@@ -59,7 +59,7 @@ internal static class ResidentGroundRest
         RequireReservations(pawn.Map, rows);
         return rows.Select((r, i) => new { Row = r, Index = i }).Where(r => ReferenceEquals(Raw(r.Row, typeof(ReservationManager.Reservation), "claimant"), pawn)).Select(r => new { r.Index, Job = pawn.jobs.curJob.GetUniqueLoadID(), Cell = pawn.Map.cellIndices.CellToIndex(pawn.Position), Max = 1, Stack = -1 }).ToArray();
     }
-    internal static GroundRestRow Capture(Pawn pawn)
+    internal static GroundRestRow Capture(Pawn pawn, bool given = false)
     {
         if (pawn == null) return null;
         if (!NativeTransferBodies.WorkObservationBodies) throw new ArgumentException("Unreviewed ongoing native work bodies.");
@@ -67,7 +67,7 @@ internal static class ResidentGroundRest
         if (pawn.CurJob == null) return null;
         if (!NativeTransferBodies.WorkObservationBodies || pawn.GetType() != typeof(Pawn) || !pawn.Spawned || pawn.IsPrisoner || pawn.IsSlave || pawn.Drafted || pawn.InMentalState || pawn.jobs?.GetType() != typeof(Pawn_JobTracker)) throw new ArgumentException("Reviewed spawned civilian rest only.");
         var job = pawn.jobs.curJob; var driver = pawn.jobs.curDriver;
-        if (job?.GetType() != typeof(Job) || job.loadID < 0 || job.def != JobDefOf.LayDown || job.def.driverClass != typeof(JobDriver_LayDown) || driver?.GetType() != typeof(JobDriver_LayDown) || driver.pawn != pawn || driver.job != job || driver.ended || driver.locomotionUrgencySameAs != null || pawn.jobs.jobQueue?.GetType() != typeof(JobQueue) || pawn.jobs.jobQueue.Count != 0 || pawn.jobs.startingNewJob || job.targetA.Thing != null || job.targetA.Cell != pawn.Position || !job.targetB.Equals(LocalTargetInfo.Invalid) || !job.targetC.Equals(LocalTargetInfo.Invalid) || job.jobGiver != null || job.jobGiverThinkTree != null || Raw(job, typeof(Job), "jobGiverKey") is not int key || key != -1) throw new ArgumentException("Only same original ground job without queued or foreign work is reviewed.");
+        if (job?.GetType() != typeof(Job) || job.loadID < 0 || job.def != JobDefOf.LayDown || job.def.driverClass != typeof(JobDriver_LayDown) || driver?.GetType() != typeof(JobDriver_LayDown) || driver.pawn != pawn || driver.job != job || driver.ended || driver.locomotionUrgencySameAs != null || pawn.jobs.jobQueue?.GetType() != typeof(JobQueue) || pawn.jobs.jobQueue.Count != 0 || pawn.jobs.startingNewJob || job.targetA.Thing != null || job.targetA.Cell != pawn.Position || !job.targetB.Equals(LocalTargetInfo.Invalid) || !job.targetC.Equals(LocalTargetInfo.Invalid) || !given && (job.jobGiver != null || job.jobGiverThinkTree != null || Raw(job, typeof(Job), "jobGiverKey") is not int key || key != -1)) throw new ArgumentException("Only same original ground job without queued or foreign work is reviewed.");
         if (Raw(driver, typeof(JobDriver_LayDown), "hasSavedValues") is not true || Raw(driver, typeof(JobDriver), "curToilIndex") is not int index || index < 0 || Raw(driver, typeof(JobDriver), "wantBeginNextToil") is not false || Raw(driver, typeof(JobDriver), "nextToilIndex") is not int next || next != -1) throw new ArgumentException("Rest driver has not reached a stable original toil.");
         foreach (var pair in new[] { (typeof(Job), "ExposeData"), (typeof(Job), "GetUniqueLoadID"), (typeof(JobDriver), "ExposeData"), (typeof(JobDriver), "SetupToils"), (typeof(JobDriver_LayDown), "ExposeData"), (typeof(JobDriver_LayDown), "MakeNewToils"), (typeof(JobDriver_LayDown), "LayDownToil"), (typeof(Pawn_JobTracker), "ExposeData"), (typeof(Pawn_JobTracker), "StopAll"), (typeof(Pawn_JobTracker), "ClearQueuedJobs"), (typeof(JobQueue), "Clear"), (typeof(JobQueue), "get_Count"), (typeof(RestUtility), "IsLayingForJobCleanup"), (typeof(RestUtility), "InBed"), (typeof(RestUtility), "CurrentBed"), (typeof(PawnUtility), "GetPosture"), (typeof(PawnPostureUtility), "Laying"), (typeof(Pawn), "get_CurJob"), (typeof(Toils_LayDown), "LayDown"), (typeof(Toils_Goto), "GotoCell") }) Known(pair.Item1, pair.Item2);
         if (!RestUtility.IsLayingForJobCleanup(pawn)) throw new ArgumentException("Native faction change would end this job.");
@@ -101,15 +101,22 @@ internal static class ResidentGroundRest
             return Value(value);
         }
         var plan = toils.Select(t => typeof(Toil).GetFields(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic).OrderBy(f => f.Name, StringComparer.Ordinal).Select(f => new { f.Name, Value = Plan(f.GetValue(t)) }).ToArray()).ToArray();
-        string saved = JsonSerializer.Serialize(new { Job = Fields(job, typeof(Job), JobFields), Driver = Fields(driver, typeof(JobDriver), DriverFields), Rest = Fields(driver, typeof(JobDriver_LayDown), "canMoveOrCrawl hasSavedValues"), Posture = (int)pawn.jobs.posture, Toils = plan, Fail = Plan(driver.globalFailConditions), Finish = Plan(driver.globalFinishActions), Reservations = OwnReservations(pawn) });
-        var row = new GroundRestRow(pawn.GetUniqueLoadID(), job.GetUniqueLoadID(), saved); _ = GroundRest.Proof(row); return row;
+        var giver = given ? GroundRestGivers.Capture(job) : null;
+        string saved = JsonSerializer.Serialize(new { Job = Fields(job, typeof(Job), JobFields, giver), Driver = Fields(driver, typeof(JobDriver), DriverFields), Rest = Fields(driver, typeof(JobDriver_LayDown), "canMoveOrCrawl hasSavedValues"), Posture = (int)pawn.jobs.posture, Toils = plan, Fail = Plan(driver.globalFailConditions), Finish = Plan(driver.globalFinishActions), Reservations = OwnReservations(pawn) });
+        var row = new GroundRestRow(pawn.GetUniqueLoadID(), job.GetUniqueLoadID(), saved) { GiverV1 = giver }; _ = GroundRest.Proof(row); return row;
     }
     internal static void Validate(ResidentExecutionRecord record)
     {
-        if (record.Profile != 14) { if (record.GroundRestJobs != null) throw new ArgumentException("Rest references cannot expand old clinical scopes."); return; }
+        if (record.Profile is not (14 or 15)) { if (record.GroundRestJobs != null) throw new ArgumentException("Rest references cannot expand old clinical scopes."); return; }
+        if (record.Profile == 14 && record.GroundRestTrees != null) throw new ArgumentException("Old work scope cannot acquire giver definitions.");
+        if (record.Profile == 15)
+        {
+            var trees = record.Pawns.Select(p => p.jobs?.curJob?.jobGiverThinkTree).Where(t => t != null).Distinct().OrderBy(t => t.defName, StringComparer.Ordinal).ToList();
+            if (record.GroundRestTrees == null || !record.GroundRestTrees.SequenceEqual(trees)) throw new ArgumentException("Original registered giver definition references changed.");
+        }
         var original = LoadedMapPreservation.Restore(record.LoadedMapScope).GroundRestV1;
         if (original == null || record.GroundRestJobs == null || record.GroundRestJobs.Count != original.Length || record.GroundRestJobs.Where((j,i) => j == null || j.GetUniqueLoadID() != original[i].Job || record.Pawns.Single(p => p.GetUniqueLoadID() == original[i].Pawn).jobs?.curJob != j).Any()) throw new ArgumentException("Original native rest job references changed.");
-        var current = record.Pawns.Where(p => p.CurJob != null).Select(Capture).ToArray();
+        var current = record.Pawns.Where(p => p.CurJob != null).Select(p => Capture(p, record.Profile == 15)).ToArray();
         if (JsonSerializer.Serialize(current) != JsonSerializer.Serialize(original)) throw new ArgumentException("Original native work progressed/changed; do not reset or restart it.");
     }
 }

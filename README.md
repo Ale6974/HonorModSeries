@@ -1,8 +1,8 @@
 # Honor Mod Series — RimWorld 1.6 / 1.7
 
-현재 Contracts 개발판은 **0.3.103**입니다. [최신 구현 범위와 남은 M2 작업](docs/M2-PARTS-AUDIT-0.3.103.md)을 먼저 확인하세요. 지원 지도 주민의 왕실 개인 권리와 진행 중 지면 휴식·같은 작업의 현재 칸 예약을 실제 이전/저장/복구에 연결했습니다. M2 전체·M3 진입은 미완료이며 아래 버전별 기록의 과거 추정치는 당시 이력입니다. 개발판 Steam 게시는 하지 않습니다.
+현재 Contracts 개발판은 **0.3.104**입니다. [최신 M2.4 구현과 남은 작업](docs/M2-PARTS-AUDIT-0.3.104.md)을 먼저 확인하세요. 지원 지도 주민의 왕실 개인 권리와 진행 중 지면 휴식·같은 작업의 현재 칸 예약을 실제 이전/저장/복구에 연결했습니다. M2 전체·M3 진입은 미완료이며 아래 버전별 기록의 과거 추정치는 당시 이력입니다. 개발판 Steam 게시는 하지 않습니다.
 
-Contracts development preview **0.3.103** preserves supported mapped royal rights and original ongoing ground-rest jobs/current-cell reservations through the existing native transfer/save/recovery paths. Broader work, military/private-property and compound recovery cases remain unfinished. See the current scope audit above.
+Contracts development preview **0.3.104** preserves supported mapped royal rights and original ongoing ground-rest jobs/current-cell reservations through the existing native transfer/save/recovery paths. Broader work, military/private-property and compound recovery cases remain unfinished. See the current scope audit above.
 
 ## 0.3.63 — 하위 영지를 동반하는 정당한 독립의 초기 실제 집행
 

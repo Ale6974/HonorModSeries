@@ -26,6 +26,8 @@ public sealed record TerritoryTransfer(string Id, string Territory, string Basel
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string PreviousTransferV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string RoyalResidentsV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string RoyalRightsV2 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string UnstartedWorkAbortV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public bool StandaloneWorkV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string LoadedMap { get; init; }
 }
 public sealed record TerritoryTransfersSave(int Version, long LastTick, TerritoryTransfer[] Transfers);
@@ -68,9 +70,9 @@ public sealed class TerritoryTransferLedger
         RuntimeCompat.NotNull(book); RuntimeCompat.NotNull(observed);
         Require(privateRights == null || RoyalRights.Proof(privateRights) == royalResidents, "Unpaired private royal evidence.");
         Require(observed.StockFormat != 22 || privateRights != null, "Royal mapped custody requires fresh separate private rights.");
-        Require(loaded ? observed.HasMap && observed.LoadedMap != null && observed.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 or 22 or 23 : observed.LoadedMap == null && !observed.HasMap, "Loaded custody requires a separately scoped preparation.");
+        Require(loaded ? observed.HasMap && observed.LoadedMap != null && observed.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 or 22 or 23 or 24 : observed.LoadedMap == null && !observed.HasMap, "Loaded custody requires a separately scoped preparation.");
         Require(observed.LoadedMap == null || LoadedMapPreservation.Restore(observed.LoadedMap).OwnedAssets?.Any(a => a.Owner != observed.Owner) != true, "Original property rights must belong to the reviewed source faction.");
-        Require(observed.StockFormat is not (10 or 15 or 17 or 19 or 21 or 22 or 23) || observed.HasInhabitants && CityStockProof.Valid(observed.ResidentProof), "Mapped residents require their original clinical census.");
+        Require(observed.StockFormat is not (10 or 15 or 17 or 19 or 21 or 22 or 23 or 24) || observed.HasInhabitants && CityStockProof.Valid(observed.ResidentProof), "Mapped residents require their original clinical census.");
         Key(id); Key(target); Key(observed.Territory); Key(observed.Owner); Time(now);
         Require(now >= book.LastTick, "Transfer cannot precede the current consent book clock.");
         var charter = book.Charter(charterId); var subject = book.Entity(charter.Terms.Subject);
@@ -159,6 +161,21 @@ public sealed class TerritoryTransferLedger
             "Only verified unmoved ownership with unchanged stock can cancel a transfer.");
         transfers[transfers.IndexOf(transfer)] = transfer with { Phase = TerritoryTransferPhase.Cancelled, ResolvedTick = now }; LastTick = now;
     }
+    public void MarkStandaloneGivenWork(string id)
+    {
+        var t=Transfer(id); Require(t.Phase==TerritoryTransferPhase.Prepared && t.StockFormat==24 && t.Purpose==TerritoryTransferPurpose.ActiveCharter && t.ReleasedRoot==null && t.PreviousTransferV1==null && t.RoyalResidentsV1==null && !t.StandaloneWorkV1, "Fresh standalone given-work UI intent required.");
+        var marked=t with { StandaloneWorkV1=true };
+        if(JsonSerializer.Serialize(new TerritoryTransfersSave(Version,LastTick,transfers.Select(row=>row.Id==id?marked:row).ToArray())).Length>4000000) throw new ArgumentException("Standalone intent capacity.");
+        transfers[transfers.IndexOf(t)]=marked;
+    }
+    public void CancelUnstartedGivenWork(string id, string proof, long now)
+    {
+        var t = Transfer(id); Require(t.Phase == TerritoryTransferPhase.Prepared, "Original intent is not pending.");
+        GroundRestAbort.Validate(t,proof); Require(JsonSerializer.Deserialize<GroundRestAbortState>(proof).Tick == now, "Exact no-start observation tick required."); Time(now);
+        var cancelled = t with { Phase = TerritoryTransferPhase.Cancelled, ResolvedTick = now, UnstartedWorkAbortV1 = proof };
+        if (JsonSerializer.Serialize(new TerritoryTransfersSave(Version,now,transfers.Select(row => row.Id == id ? cancelled : row).ToArray())).Length > 4000000) throw new ArgumentException("No-start archive capacity; original retained.");
+        transfers[transfers.IndexOf(t)] = cancelled; LastTick = now;
+    }
     public string Export() => JsonSerializer.Serialize(new TerritoryTransfersSave(Version, LastTick, transfers.ToArray()));
     internal void ResolveDestroyed(string id, TerritoryTransferDestruction loss, long now)
     {
@@ -174,7 +191,7 @@ public sealed class TerritoryTransferLedger
     private static bool MapPreserved(TerritoryTransferObservation actual, string proof)
     {
         if (actual.LoadedMap == null) return actual.StockFormat is 0 or 1 or 2 && (actual.StockFormat == 0 || proof != null) && !actual.HasMap;
-        if (!actual.HasMap || actual.StockFormat is not (3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 or 22 or 23)) return false;
+        if (!actual.HasMap || actual.StockFormat is not (3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 or 22 or 23 or 24)) return false;
         LoadedMapPreservation.Pair(actual.LoadedMap, actual.Territory, proof, actual.StockFormat); return true;
     }
     public static TerritoryTransferLedger Restore(string json)
@@ -190,13 +207,13 @@ public sealed class TerritoryTransferLedger
             foreach (var key in new[] { item.Id, item.Territory, item.BaselineOwner, item.FromOwner, item.TargetOwner, item.Charter }) Key(key);
             if (item.ReleasedRoot != null) { Key(item.ReleasedRoot); Require(item.Purpose == TerritoryTransferPurpose.ReleasedToUnion, "Subtree scope is union-only."); }
             Require(item.ResidentProof == null || CityStockProof.Valid(item.ResidentProof), "Invalid resident preservation proof.");
-            Require(item.StockFormat is not (10 or 15 or 17 or 19 or 21 or 22 or 23) || CityStockProof.Valid(item.ResidentProof), "Mapped city history requires its original resident proof.");
+            Require(item.StockFormat is not (10 or 15 or 17 or 19 or 21 or 22 or 23 or 24) || CityStockProof.Valid(item.ResidentProof), "Mapped city history requires its original resident proof.");
             if (item.LoadedMap != null)
             {
                 LoadedMapPreservation.Pair(item.LoadedMap, item.Territory, item.StockProof, item.StockFormat);
                 Require(LoadedMapPreservation.Restore(item.LoadedMap).OwnedAssets?.Any(a => a.Owner != item.FromOwner) != true, "Original asset owner changed.");
             }
-            Require((item.LoadedMap == null ? item.StockFormat is 0 or 1 or 2 : item.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 or 22 or 23 && item.CityCallJournalV1) && (item.StockFormat == 0 || item.StockProof != null) &&
+            Require((item.LoadedMap == null ? item.StockFormat is 0 or 1 or 2 : item.StockFormat is 3 or 4 or 5 or 6 or 7 or 8 or 9 or 10 or 11 or 12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 or 22 or 23 or 24 && item.CityCallJournalV1) && (item.StockFormat == 0 || item.StockProof != null) &&
                 (item.StockProof == null || CityStockProof.Valid(item.StockProof)) &&
                 RuntimeCompat.IsDefined(item.Purpose) && RuntimeCompat.IsDefined(item.Phase) && item.FromOwner != item.TargetOwner &&
                 item.PreparedTick >= result.LastTick && item.PreparedTick <= save.LastTick &&
@@ -210,6 +227,8 @@ public sealed class TerritoryTransferLedger
                 item.Destruction.ObservedTick >= item.Destruction.LossTick && item.ResolvedTick >= item.Destruction.ObservedTick : item.Destruction == null,
                 "Invalid destruction terminal state.");
             Require(item.StockFormat != 22 || item.RoyalRightsV2 != null, "Mapped royal history lacks private rights.");
+            Require(!item.StandaloneWorkV1 || item.StockFormat==24 && item.Purpose==TerritoryTransferPurpose.ActiveCharter && item.PreviousTransferV1==null && item.ReleasedRoot==null && item.RoyalResidentsV1==null, "Invalid standalone work origin.");
+            if (item.UnstartedWorkAbortV1 != null) { Require(item.Phase == TerritoryTransferPhase.Cancelled, "No-start proof is only a cancelled intent."); GroundRestAbort.Validate(item,item.UnstartedWorkAbortV1); }
             if (item.RoyalRightsV2 != null && RoyalRights.Proof(item.RoyalRightsV2) != item.RoyalResidentsV1) throw new ArgumentException("Unpaired private royal rights.");
             Require(item.RoyalResidentsV1 == null || CityStockProof.Valid(item.RoyalResidentsV1) && item.Phase is TerritoryTransferPhase.Prepared or TerritoryTransferPhase.Applied && item.CityCallJournalV1 && item.Purpose == TerritoryTransferPurpose.ActiveCharter && item.ReleasedRoot == null, "Invalid royal custody provenance.");
             if (item.PreviousTransferV1 != null)

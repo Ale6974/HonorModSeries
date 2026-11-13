@@ -67,11 +67,11 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     internal ResidentExecutionRecord MapResidentOriginal(Settlement city)
     {
         if (RestoreFailed) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-        var matches = references.Where(r => r.City == city && (r.Residents?.Profile is 11 or 13 or 14) && Ledger.Transfer(r.Id).Phase == TerritoryTransferPhase.Prepared).ToArray();
+        var matches = references.Where(r => r.City == city && (r.Residents?.Profile is 11 or 13 or 14 or 15) && Ledger.Transfer(r.Id).Phase == TerritoryTransferPhase.Prepared).ToArray();
         if (matches.Length > 1) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (matches.Length == 0) return null;
         var r = matches[0]; var t = Ledger.Transfer(r.Id);
-        if (r.Residents.NativeMap != city.Map || r.LoadedMap?.Map != city.Map || r.Residents.LoadedMapScope != t.LoadedMap || t.StockFormat is not (10 or 15 or 17 or 19 or 21 or 22 or 23) || r.LoadedMap.Snapshot != t.LoadedMap)
+        if (r.Residents.NativeMap != city.Map || r.LoadedMap?.Map != city.Map || r.Residents.LoadedMapScope != t.LoadedMap || t.StockFormat is not (10 or 15 or 17 or 19 or 21 or 22 or 23 or 24) || r.LoadedMap.Snapshot != t.LoadedMap)
             throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         ResidentExecution.ValidateCensus(r.Residents, r.ResidentCensusProof, t.Territory, t.FromOwner, t.TargetOwner);
         return r.Residents;
@@ -83,7 +83,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (matches.Length > 1) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (matches.Length == 0) return null;
         var r = matches[0]; var t = Ledger.Transfer(r.Id);
-        if (r.From == null || r.Target == null || r.LoadedMap.Map != city.Map || r.LoadedMap.Snapshot != t.LoadedMap || t.StockFormat is not (12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 or 22 or 23) ||
+        if (r.From == null || r.Target == null || r.LoadedMap.Map != city.Map || r.LoadedMap.Snapshot != t.LoadedMap || t.StockFormat is not (12 or 13 or 14 or 15 or 16 or 17 or 18 or 19 or 20 or 21 or 22 or 23 or 24) ||
             r.From.GetUniqueLoadID() != t.FromOwner || r.Target.GetUniqueLoadID() != t.TargetOwner) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, t.LoadedMap, t.FromOwner, t.TargetOwner);
         return r;
@@ -139,7 +139,9 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 var binding = Charters.Binding(t.Territory); var reference = references.Single(r => r.Id == t.Id);
                 if (t.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
                 TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
-                ValidateMapReference(t, reference, t.Phase == TerritoryTransferPhase.Prepared);
+                bool unstartedGivenWork = KeepsUnstartedGivenWork(t,reference);
+                ValidateMapReference(t, reference, t.Phase == TerritoryTransferPhase.Prepared && !unstartedGivenWork);
+                if (t.UnstartedWorkAbortV1 != null && (reference.CityCallStarted || reference.CityCallReturned || reference.Residents?.Started != false || reference.CustodyAgreementV1 != null)) throw new ArgumentException("No-start receipt conflicts with actual native calls.");
                 if (reference.CityCallV1 && reference.CityCallStarted && reference.Residents != null && !reference.Residents.Started)
                     throw new ArgumentException("City call cannot precede its recorded resident execution.");
                 if (t.Phase == TerritoryTransferPhase.Applied)
@@ -165,12 +167,12 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 if (reference.Residents != null)
                 {
                     ResidentExecution.ValidateCensus(reference.Residents, reference.ResidentCensusProof, t.Territory, t.FromOwner, t.TargetOwner, t.Phase == TerritoryTransferPhase.Applied);
-                    if (t.Phase == TerritoryTransferPhase.Prepared)
+                    if (t.Phase == TerritoryTransferPhase.Prepared && !unstartedGivenWork)
                     {
                         ResidentExecution.ValidateReferences(reference.Residents, reference.City, t.ResidentProof);
                         if (reference.ResidentCareJournalRequired) ResidentExecution.ValidateCareJournal(reference.Residents, reference.From, reference.Target);
                     }
-                    else ResidentExecution.ReleaseReferences(reference.Residents);
+                    else if (t.Phase != TerritoryTransferPhase.Prepared) ResidentExecution.ReleaseReferences(reference.Residents);
                 }
                 // Complex asset/town loss is not a positive terminal custody result. Retain its original references and raw calls.
                 if (t.Phase != TerritoryTransferPhase.Prepared && reference.LoadedMap != null &&
@@ -218,11 +220,11 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (t.Phase == TerritoryTransferPhase.Cancelled && MapAssetTransfers.Started(r.LoadedMap.AssetJournal)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         }
         else if (r.LoadedMap.AssetJournal != null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
-        if ((map.GroundRestV1 != null) != (r.Residents?.Profile == 14)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if ((map.GroundRestV1 != null) != (r.Residents?.Profile is 14 or 15)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (map.RoyalMappedV1 == 1 && (r.Residents?.Profile != 13 || t.RoyalRightsV2 == null)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (r.Residents?.Profile == 13 && map.RoyalMappedV1 != 1) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var mapped = map.NativeResidents;
-        if (mapped != null && (r.Residents?.Profile is not (11 or 13 or 14) || r.Residents.MapBindings == null || current && r.Residents.NativeMap != r.LoadedMap.Map)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (mapped != null && (r.Residents?.Profile is not (11 or 13 or 14 or 15) || r.Residents.MapBindings == null || current && r.Residents.NativeMap != r.LoadedMap.Map)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (current)
         {
             if (r.From == null || r.Target == null || !Find.FactionManager.AllFactionsListForReading.Contains(r.From) || !Find.FactionManager.AllFactionsListForReading.Contains(r.Target) ||
@@ -288,14 +290,14 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             string.Join("/", id, c.City.GetUniqueLoadID(), c.City.Faction.GetUniqueLoadID(), c.Target.GetUniqueLoadID(), Charters.Book.LastTick, Ledger.LastTick, c.Purpose, c.Observation.StockProof, c.Observation.ResidentProof),
             c.Target.GetUniqueLoadID(), c.City.previouslyGeneratedInhabitants?.Count ?? 0) { LoadedThings = mapScope == null ? null : mapScope.Things.Length + (mapScope.Held?.Length ?? 0), PackedThings = mapScope?.Held?.Length ?? 0, StorageShelves = mapScope?.Storage?.Length ?? 0, StorageGroups = mapScope?.Groups?.Length ?? 0, Stockpiles = mapScope?.Stockpiles?.Length ?? 0, GrowingZones = mapScope?.Growing?.Length ?? 0, Containers = mapScope?.Containers?.Length ?? 0, OwnedHolderForest = mapScope?.OwnedHolderForestV1 == 1, HeldAssets = mapScope?.OwnedAssets?.Count(a => mapScope.Held?.Any(s => s.Item.Id == a.Id) == true) ?? 0, OwnedContainers = mapScope?.OwnedAssets?.Count(a => mapScope.Containers?.Any(s => s.Id == a.Id) == true) ?? 0, OwnedShelves = mapScope?.OwnedAssets?.Count(a => mapScope.Storage?.Any(s => s.Id == a.Id) == true) ?? 0, DamagedAssets = mapScope?.OwnedAssets?.Count(a => a.Repair != null && mapScope.Things.Concat((mapScope.Held ?? []).Select(r => r.Item)).Single(t => t.Id == a.Id).HitPoints < a.Repair.Maximum) ?? 0, OwnedAssets = mapScope?.OwnedAssets?.Length ?? 0, NativeResidents = mapScope?.NativeResidents?.Length ?? 0, OngoingGroundRest = mapScope?.GroundRestV1?.Length ?? 0, Visitors = mapScope?.Visitors?.Length ?? 0, MixedResidents = c.City.previouslyGeneratedInhabitants?.Any(p => p?.IsPrisoner == true) == true && (c.City.previouslyGeneratedInhabitants.Any(ResidentAreaRecords.HasRestrictions) || c.City.previouslyGeneratedInhabitants.Any(p => p?.Downed == true)) };
     }
-    public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true)
+    public bool Apply(TerritoryAdministrationReview reviewed, bool notify = true, bool standaloneWork = false)
     {
         var transition = Current.Game?.GetComponent<PoliticalTransitionLedger>();
         if (nativeExecutionDepth != 0 || transition?.Journal.Pending == true && transition.Journal.Current?.LawfulExit != null)
         { Reject(); return false; }
-        return ApplyForTarget(reviewed, notify, null);
+        return ApplyForTarget(reviewed, notify, null, standaloneWork);
     }
-    private bool ApplyForTarget(TerritoryAdministrationReview reviewed, bool notify, Faction target)
+    private bool ApplyForTarget(TerritoryAdministrationReview reviewed, bool notify, Faction target, bool standaloneWork = false)
     {
         if (reviewed == null || nativeExecutionDepth != 0) { Reject(); return false; }
         var executionGame = Current.Game;
@@ -314,17 +316,19 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (residents != null) residents.PrepareCareJournal(c.City.Faction, c.Target, c.City);
             if (loaded != null) MapAssetRecords.Prepare(loaded, c.City.Faction, c.Target);
             CheckLawfulResidentPreparation(c.Charter.Id, residents);
-            if (loaded != null) Ledger.PrepareLoadedJournaled(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
+            var stagedPhysical = TerritoryTransferLedger.Restore(Ledger.Export());
+            if (loaded != null) stagedPhysical.PrepareLoadedJournaled(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
                 c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
                 c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
                 Current.Game.GetComponent<SubtreeExitLedger>().Scope(c.Charter.Id));
-            else Ledger.PrepareJournaled(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
+            else stagedPhysical.PrepareJournaled(id, Charters.Book, c.Charter.Id, c.Observation, c.Target.GetUniqueLoadID(),
                 c.Purpose == TerritoryTransferPurpose.ActiveCharter ? c.Target.GetUniqueLoadID() : null,
                 c.Purpose == TerritoryTransferPurpose.ReleasedToUnion ? c.Target.GetUniqueLoadID() : null, c.Purpose, Find.TickManager.TicksGame, AdministrationId,
                 Current.Game.GetComponent<SubtreeExitLedger>().Scope(c.Charter.Id));
             var reference = new TerritoryTransferReference { Id = id, City = c.City, From = c.City.Faction, Target = c.Target, Residents = residents, ResidentCareJournalRequired = residents != null,
                 ResidentCensusProof = residents == null ? null : ResidentTransferCensus.Restore(residents.Census).Proof, CityCallV1 = true, LoadedMap = loaded };
-            references.Add(reference);
+            if (standaloneWork && !transition.Journal.Pending && c.Purpose==TerritoryTransferPurpose.ActiveCharter && stagedPhysical.Transfer(id).StockFormat==24) stagedPhysical.MarkStandaloneGivenWork(id);
+            Ledger = stagedPhysical; references.Add(reference);
             if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
             if (loaded?.AssetJournal != null)
             {
@@ -708,7 +712,7 @@ public sealed class TerritoryAdministrationWindow : Window
                 if (review.OngoingGroundRest > 0) list.Label("RE_GroundRestReview".Translate(review.OngoingGroundRest));
                 if (review.MixedResidents) list.Label("RE_MixedResidentReview".Translate());
                 list.Label((review.Purpose == TerritoryTransferPurpose.ActiveCharter ? "CT_Active" : "CT_Released").Translate());
-                if (list.ButtonText("CT_Confirm".Translate())) { ledger.Apply(review); review = null; }
+                if (list.ButtonText("CT_Confirm".Translate())) { ledger.Apply(review, standaloneWork: true); review = null; }
             }
             foreach (var item in ledger.Ledger.Transfers.Where(t => t.Charter == charter).ToArray())
             {
@@ -716,6 +720,7 @@ public sealed class TerritoryAdministrationWindow : Window
                 var progress = ledger.ResidentProgress(item.Id); if (progress != null) list.Label(progress);
                 if (item.Phase == TerritoryTransferPhase.Prepared) ledger.DrawCustodyAgreement(list, item.Id);
                 if (item.Phase == TerritoryTransferPhase.Applied) ledger.DrawContinuation(list, item.Id);
+                if (item.Phase == TerritoryTransferPhase.Prepared) ledger.DrawUnstartedGivenWork(list,item.Id);
                 if (item.Phase == TerritoryTransferPhase.Prepared && list.ButtonText("CT_Recover".Translate())) ledger.Recover(item.Id);
             }
         }

@@ -105,10 +105,11 @@ internal static class LoadedMapRecords
         var originalResidents = actors.Count == 0 ? null : Current.Game.GetComponent<TerritoryAdministrationLedger>().MapResidentOriginal(city);
         royal |= originalResidents?.Profile == 13;
         if (royal && (!NativeTransferBodies.RoyalCustodyBodies || actors.Count == 0)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-        bool groundRest = originalResidents?.Profile == 14 || !royal && actors.Any(p => p.jobs?.curJob != null);
+        bool groundRest = originalResidents?.Profile is 14 or 15 || !royal && actors.Any(p => p.jobs?.curJob != null);
         if (royal && groundRest) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-        var work = groundRest ? actors.Where(p => p.jobs?.curJob != null).Select(ResidentGroundRest.Capture).ToArray() : null;
-        var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents, royal, groundRest)).ToArray();
+        bool givenWork = originalResidents != null ? originalResidents.Profile == 15 : groundRest && actors.Any(p => p.jobs?.curJob?.jobGiver != null || p.jobs?.curJob?.jobGiverThinkTree != null);
+        var work = groundRest ? actors.Where(p => p.jobs?.curJob != null).Select(p => ResidentGroundRest.Capture(p, givenWork)).ToArray() : null;
+        var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents, royal, groundRest, givenWork)).ToArray();
         if (visitors.Count > 128) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var visitorRows = visitors.Select(ResidentMapVisitors.Capture).ToArray();
         var rootThings = things.Where(t => t is not Pawn).ToList();
@@ -177,7 +178,7 @@ internal static class LoadedMapRecords
         if (actors.Count > 0) snapshot = LoadedMapPreservation.CaptureResidents(snapshot, actorRows, visitorRows);
         else if (visitors.Count > 0) snapshot = LoadedMapPreservation.CaptureBystanders(snapshot, visitorRows);
         if (ownedRows.Count > 0) snapshot = ownedForest ? LoadedMapPreservation.CaptureOwnedHolderForest(snapshot, ownedRows, repairAssets, ownedStorage, ownedContainers, heldAssets) : heldAssets ? LoadedMapPreservation.CaptureHeldAssets(snapshot, ownedRows, repairAssets, ownedStorage, ownedContainers) : ownedContainers ? LoadedMapPreservation.CaptureOwnedContainers(snapshot, ownedRows, repairAssets, ownedStorage) : civicAssets ? LoadedMapPreservation.CaptureCivicAssets(snapshot, ownedRows, repairAssets, ownedStorage) : ownedStorage ? LoadedMapPreservation.CaptureOwnedStorage(snapshot, ownedRows, repairAssets) : repairAssets ? LoadedMapPreservation.CaptureRepairAssets(snapshot, ownedRows) : LoadedMapPreservation.CaptureAssets(snapshot, ownedRows);
-        if (groundRest) snapshot = LoadedMapPreservation.CaptureGroundRest(snapshot, work);
+        if (groundRest) snapshot = LoadedMapPreservation.CaptureGroundRest(snapshot, work, givenWork);
         if (royal) snapshot = LoadedMapPreservation.CaptureRoyalMapped(snapshot);
         var visitorReferences = actors.Count == 0 && visitors.Count > 0 ? visitors.Select(ResidentMapVisitors.References).ToList() : null;
         if (visitorReferences != null)
