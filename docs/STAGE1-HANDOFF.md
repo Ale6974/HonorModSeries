@@ -1,4 +1,12 @@
-# 1단계 개발 인수인계 — 0.3.110 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.111 / 2026-11-14
+
+## 0.3.111 — 실제 일반 제작대 후계·원 주문 보존
+
+[실행/저장/복구·API 근거·미완료](M2-PARTS-AUDIT-0.3.111.md). 별도 실제 successor/remainder executor에 WorktableV6 전체 설정과 같은 Bill 참조를 결합했다. 후계는 별도 현재 준비의 참조, 원 제작대는 원 LoadedMapRecord.WorkBills의 참조를 호출 전후 확인한다. native SetFaction/Started/정상 Returned/Verified/current full-party approval/Scribe/명시 복구/마지막 도시 영수증까지 연결했다. 원 프레임·asset journal·계약·채무를 변경하거나 주문을 다시 만들지 않는다. old null scope와 권한은 유지한다.
+
+양 타깃 전체 빌드와 최종 native 재컴파일 경고/오류0, Honor20093/Contracts5975, ENKO607 및 양 타깃 DLL allowlist 통과. 설치5005 DLL hash와 WorkTable/BillStack 전체 metadata hash가 기존 .105 검토와 같다. 미확인1.6 본문에는 신규 실행 권한을 주지 않는다. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.111.zip` SHA256 `7B54712F4F17D8CAB407925FFD1B68660471058824B012CEA603F8DEA593B78C`. 이전 로컬 Preview를 `.local/contracts-preview-29da4cfb8fba48a4a7157c793491d646`에 백업 후 최종32개 파일 일치 설치했다. 활성화·언어 설정 hash 불변. Preview Steam·예약 없음.
+
+다음 착수: terrain/저장·전력·연결 시설 등 특수 후계와 연속 소실/변형, 더 넓은 작업/특수 역할·개인 권리, 부모 follower/정치·후손/M2.10 조립. M2.4 전체 미완료다. 새 제작대의 현재 설정 변경을 과거 준비로 덮어쓰거나, 불확실 호출을 재시도하거나, 부품 구현만으로 부모 조정기 완료를 추정하지 않는다. 잔여 노력 계획 추정25–40%/큰3묶음은 이번 좁은 확장만으로 재산정하지 않았다. M1 10/10,M2 0/18,전체10/100 유지. 여섯 단계의 과거 추정은 재측정하지 않았다.
 
 ## 0.3.110 — 후계 실제 재산·동결 원 호출·별도 인계
 

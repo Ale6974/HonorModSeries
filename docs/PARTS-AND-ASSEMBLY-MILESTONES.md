@@ -1,5 +1,7 @@
 # 부품 제작·기능 조립 방식의 마일스톤 운영 — 2026-11-13
 
+0.3.111: [B03/B06의 실제 제작대 후계/원 재산 보존 조립](M2-PARTS-AUDIT-0.3.111.md). 기존 WorktableEvidence와 별도 실제-object resolution을 재사용하여 Bill reference-only Scribe/전체 설정 proof/현재 동의/실제 native 호출/중단 복구를 연결했다. 부모/M7 조정기나 전력·연결 시설 권한은 추가하지 않는다. M2.4 전체 미완료.
+
 0.3.110: [B03/B06의 후계 실제 재산 resolution 부품과 M2.4 실행 조립](M2-PARTS-AUDIT-0.3.110.md). 원 asset-call prefix와 별도 실제-object call을 함께 검증하는 WorkAssetResolutions 규칙은 재사용 가능하다. 현재 native 사용처는 원 standalone v3의 기본 건물/원 재산이며, 특수 후계·부모/M7 조정기의 권한이나 완료를 추정하지 않는다.
 
 0.3.109: [B03/B06의 새 현재 작업 승인·운반 lineage 조립](M2-PARTS-AUDIT-0.3.109.md). WorkJobObservations 규칙은 승인 descriptor/grant의 재사용 부품이며, 현재 native 사용처는 M2.4 standalone v3다. 부모 follower/M7 조정기는 아직 이 권한을 조립하지 않았다. NativeJob의 유일 deep-save 소유권은 유지한다.

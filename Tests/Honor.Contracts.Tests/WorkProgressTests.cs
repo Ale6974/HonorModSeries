@@ -224,6 +224,43 @@ internal static class WorkProgressTests
         var tailApproval=TailConsent("tail-original",tr,26);string remainder=WorkAssetResolutions.AddOriginal(tt,tp,tr,"zBuilding");
         remainder=WorkAssetResolutions.Begin(tt,tp,remainder,"zBuilding","source",tailApproval);remainder=WorkAssetResolutions.Returned(tt,tp,remainder,"zBuilding","target");remainder=WorkAssetResolutions.Verify(tt,tp,remainder,"zBuilding");
         Check(WorkAssetResolutions.Validate(tt,tp,remainder,true).Entries.Length==2 && MapAssetTransfers.Restore(ta).Calls.All(c=>!c.Started));
+        var tableScope=new NativeWorktable("wall",hash,["Bill_1"]);
+        string tableResolution=WorkAssetResolutions.AddSuccessor(mt,completedFrame,null,ma,"frame",0,wallAsset,wallPhysical,tableScope);
+        Check(WorkAssetResolutions.Validate(mt,completedFrame,tableResolution).Entries[0].WorktableV6.Bills.SequenceEqual(["Bill_1"]));
+        Reject(()=>WorkAssetResolutions.AddSuccessor(mt,completedFrame,null,ma,"frame",0,wallAsset,wallPhysical,tableScope with{Id="other"}));
+        Reject(()=>WorkAssetResolutions.AddSuccessor(mt,completedFrame,null,ma,"frame",0,wallAsset,wallPhysical,tableScope with{Configuration="unknown"}));
+        Reject(()=>WorkAssetResolutions.AddSuccessor(mt,completedFrame,null,ma,"frame",0,wallAsset,wallPhysical,tableScope with{Bills=["Bill_1","Bill_1"]}));
+        Reject(()=>WorkAssetResolutions.AddSuccessor(mt,completedFrame,null,ma,"frame",0,wallAsset,wallPhysical,tableScope with{Bills=[""]}));
+        var tableWitness=clinicalWitness with{Id="table-successor",Tick=24,WorkProgressV1=WorkProgress.Approve(mt,completedFrame,next,24,[],[],tableResolution)};
+        var tableConsent=new CustodyAgreementReceipt(tableWitness,WorkProgress.Hash(tableWitness));
+        Reject(()=>WorkAssetResolutions.Begin(mt,completedFrame,tableResolution,"frame","source",successorConsent));
+        string tableStarted=WorkAssetResolutions.Begin(mt,completedFrame,tableResolution,"frame","source",tableConsent);
+        WorkAssetResolutions.Approved(mt,completedFrame,WorkAssetResolutions.Validate(mt,completedFrame,tableStarted).Entries[0],tableConsent);
+        Reject(()=>WorkAssetResolutions.Validate(mt,completedFrame,tableStarted,true));
+        string tableReturned=WorkAssetResolutions.Returned(mt,completedFrame,tableStarted,"frame","target");
+        Reject(()=>WorkAssetResolutions.Begin(mt,completedFrame,tableReturned,"frame","source",tableConsent));
+        string tableVerified=WorkAssetResolutions.Verify(mt,completedFrame,tableReturned,"frame");
+        var tableFinish=tableWitness with{Id="table-finish",Tick=28,WorkProgressV1=WorkProgress.Approve(mt,completedFrame,next,28,[],[],tableVerified)};
+        var tableFinal=new CustodyAgreementReceipt(tableFinish,WorkProgress.Hash(tableFinish));
+        var tablePhysical=TerritoryTransferLedger.Restore(clinicalWitness.Physical);
+        tablePhysical.ConfirmWorkProgress(mt.Id,tableFinish.WorkProgressV1,tableFinal,"target",true,true,29,ma,finished,tableVerified);
+        Check(TerritoryTransferLedger.Restore(tablePhysical.Export()).Transfer(mt.Id).Phase==TerritoryTransferPhase.Applied);
+        Check(WorkAssetResolutions.Validate(mt,completedFrame,tableVerified,true).Entries[0].WorktableV6.Configuration==hash && !MapAssetTransfers.Restore(ma).Calls[0].Started);
+        Check(!resolution.Contains("WorktableV6"));
+        string tableMap=LoadedMapPreservation.Capture("town","map",20,20,hash,CityStockProof.Capture(true,false,-1,[]),0,[new("frame","WallFrame","Wood",1,100,2,0,null),new("zTable","Table","Wood",1,100,4,0,null)]);
+        tableMap=LoadedMapPreservation.CaptureResidents(tableMap,mixedResidents.Residents.Select(p=>new NativeMapResident(p.Id,p.Preserved)));
+        tableMap=LoadedMapPreservation.CaptureCivicAssets(tableMap,[new("frame","source",hash),new("zTable","source",hash)],false,false);
+        tableMap=LoadedMapPreservation.CaptureActiveWork(tableMap,[work,secondWork],tables:[new("zTable",hash,["Bill_2"])],frames:[new("frame",hash,["wood"])]);
+        var tableLedger=new TerritoryTransferLedger();var tx=tableLedger.PrepareLoadedJournaled("table-tail",book,"root",mixedActual with{LoadedMap=tableMap,StockProof=LoadedMapPreservation.Restore(tableMap).Proof},"target","target",null,TerritoryTransferPurpose.ActiveCharter,10);tableLedger.MarkStandaloneActiveWork(tx.Id);tx=tableLedger.Transfer(tx.Id);
+        string txa=MapAssetTransfers.Prepare(tableMap,"source","target"),txp=WorkProgress.PrepareClinical(tx,mc,mcProof,originalClinical,txa,11,hash,["frame","wood","worker","zTable","zzsecond"]);
+        txp=WorkProgress.Begin(tx,txp,"frame","worker","Job_1",["frame","wood"],hash,22);txp=WorkProgress.ObserveReturn(tx,txp,0,22);txp=WorkProgress.Returned(tx,txp,0,["frame","wood"],["wall"],next,23);
+        string txr=WorkAssetResolutions.AddSuccessor(tx,txp,null,txa,"frame",0,wallAsset,wallPhysical);
+        CustodyAgreementReceipt TableTailConsent(string id,string doc,long tick){var w=clinicalWitness with{Id=id,Transfer=tx.Id,Physical=tableLedger.Export(),Tick=tick,WorkProgressV1=WorkProgress.Approve(tx,txp,next,tick,[],[],doc)};return new(w,WorkProgress.Hash(w));}
+        txr=WorkAssetResolutions.Begin(tx,txp,txr,"frame","source",TableTailConsent("table-gap",txr,24));txr=WorkAssetResolutions.Returned(tx,txp,txr,"frame","target");txr=WorkAssetResolutions.Verify(tx,txp,txr,"frame");
+        var txConsent=TableTailConsent("original-table",txr,26);txr=WorkAssetResolutions.AddOriginal(tx,txp,txr,"zTable");
+        Check(WorkAssetResolutions.Validate(tx,txp,txr).Entries.Last().WorktableV6.Bills.SequenceEqual(["Bill_2"]));
+        txr=WorkAssetResolutions.Begin(tx,txp,txr,"zTable","source",txConsent);txr=WorkAssetResolutions.Returned(tx,txp,txr,"zTable","target");txr=WorkAssetResolutions.Verify(tx,txp,txr,"zTable");
+        Check(WorkAssetResolutions.Validate(tx,txp,txr,true).Entries.Last().WorktableV6.Id=="zTable" && MapAssetTransfers.Restore(txa).Calls.All(c=>!c.Started));
         return n;
     }
 }

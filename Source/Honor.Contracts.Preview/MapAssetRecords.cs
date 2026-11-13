@@ -41,12 +41,12 @@ internal static class MapAssetRecords
         if (!AuditedModules.Contains(typeof(Thing).Module.ModuleVersionId) || getter == null || Harmony.GetPatchInfo(getter)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         return t.HitPoints < t.MaxHitPoints;
     }
-    private static void Boundary(Thing t, Map map, bool repairAssets, bool ownedStorage, IReadOnlyCollection<Pawn> reviewedPawns, bool ownedContainers, bool heldAssets, bool ownedForest)
+    private static void Boundary(Thing t, Map map, bool repairAssets, bool ownedStorage, IReadOnlyCollection<Pawn> reviewedPawns, bool ownedContainers, bool heldAssets, bool ownedForest,bool independentWorktable=false)
     {
         bool held = heldAssets && !t.Spawned && t.Map == null && t.holdingOwner != null;
         bool package = ownedForest && t.GetType() == typeof(MinifiedThing);
         bool shelf = ownedStorage && t.GetType() == typeof(Building_Storage);
-        bool worktable = NativeTransferBodies.WorkObservationBodies && WorktableEvidence.Supported(t) && reviewedPawns?.Any(p => p?.jobs?.curJob != null && p.jobs.curJob.def != JobDefOf.LayDown) == true;
+        bool worktable = NativeTransferBodies.WorkObservationBodies && WorktableEvidence.Supported(t) && (independentWorktable||reviewedPawns?.Any(p => p?.jobs?.curJob != null && p.jobs.curJob.def != JobDefOf.LayDown) == true);
         if (worktable) _ = WorktableEvidence.Capture((Building_WorkTable)t);
         bool workframe = NativeTransferBodies.WorkObservationBodies && t.GetType() == typeof(Frame) && reviewedPawns?.Any(p => p?.jobs?.curJob != null && p.jobs.curJob.def != JobDefOf.LayDown) == true;
         if (workframe) _ = ConstructionEvidence.Capture((Frame)t);
@@ -123,7 +123,7 @@ internal static class MapAssetRecords
     }
     internal static MapAsset Capture(Thing t, Settlement city, TerritoryTransferReference original, bool repairAssets = false, bool ownedStorage = false, IReadOnlyCollection<Pawn> reviewedPawns = null, bool ownedContainers = false, bool heldAssets = false, bool ownedForest = false, Faction independentOwner = null)
     {
-        Boundary(t, city.Map, repairAssets, ownedStorage, reviewedPawns, ownedContainers, heldAssets, ownedForest);
+        Boundary(t, city.Map, repairAssets, ownedStorage, reviewedPawns, ownedContainers, heldAssets, ownedForest,independentOwner!=null&&WorktableEvidence.Supported(t));
         string owner = t.Faction.GetUniqueLoadID();
         if (original != null)
         {

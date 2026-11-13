@@ -7,14 +7,16 @@ public sealed class WorkAssetReferenceV5 : IExposable
 {
     public string Original;
     public Thing Actual;
-    public void ExposeData(){Scribe_Values.Look(ref Original,"originalAssetId");Scribe_References.Look(ref Actual,"separateActualProperty");}
+    // The native BillStack remains the only deep-save owner, including after load.
+    public List<Bill> WorktableBillsV6;
+    public void ExposeData(){Scribe_Values.Look(ref Original,"originalAssetId");Scribe_References.Look(ref Actual,"separateActualProperty");Scribe_Collections.Look(ref WorktableBillsV6,"actualWorktableBillsV6",LookMode.Reference);}
 }
-internal sealed record WorkSuccessorCandidate(WorkAssetReferenceV5 Reference,MapAsset Asset,NeutralMapThing Physical);
+internal sealed record WorkSuccessorCandidate(WorkAssetReferenceV5 Reference,MapAsset Asset,NeutralMapThing Physical,NativeWorktable Worktable);
 public sealed partial class TerritoryAdministrationLedger
 {
     private static NeutralMapThing ResolutionPhysical(Thing thing,Map map)
     {
-        if(thing==null || thing.Destroyed || !thing.Spawned || thing.Map!=map || thing is IThingHolder || thing.GetType()!=typeof(Building)&&thing.GetType()!=typeof(Thing)&&thing.GetType()!=typeof(ThingWithComps))
+        if(thing==null || thing.Destroyed || !thing.Spawned || thing.Map!=map || thing is IThingHolder || thing.GetType()!=typeof(Building)&&thing.GetType()!=typeof(Thing)&&thing.GetType()!=typeof(ThingWithComps)&&!WorktableEvidence.Supported(thing))
             throw new ArgumentException("Same basic original or new building property required.");
         MapAssetRecords.VerifyHolderRead(thing);int? quality=thing.TryGetQuality(out var q)?(int)q:null;
         return new(thing.GetUniqueLoadID(),thing.def.defName,thing.Stuff?.defName,thing.stackCount,thing.HitPoints,map.cellIndices.CellToIndex(thing.Position),thing.Rotation.AsInt,quality);
@@ -37,11 +39,12 @@ public sealed partial class TerritoryAdministrationLedger
         if(frame?.GetType()!=typeof(Frame)||!frame.Destroyed||frame.def.defName!=row.Def||frame.Faction!=r.From||map.WorkFramesV1?.Any(f=>f.Id==id)!=true)
             throw new ArgumentException("Original same naturally completed frame required.");
         var added=r.City.Map.listerThings.AllThings.Where(p=>!state.Before.Ids.Contains(p.GetUniqueLoadID())).ToArray();
-        if(added.Length!=1 || added[0].GetType()!=typeof(Building) || added[0].Faction!=r.From || frame.def.entityDefToBuild!=added[0].def ||
+        if(added.Length!=1 || added[0].GetType()!=typeof(Building)&&!WorktableEvidence.Supported(added[0]) || added[0].Faction!=r.From || frame.def.entityDefToBuild!=added[0].def ||
             added[0].Stuff?.defName!=row.Stuff || r.City.Map.cellIndices.CellToIndex(added[0].Position)!=row.Cell || added[0].Rotation.AsInt!=row.Rotation)
             throw new ArgumentException("Exactly one same-definition/location source building must be observed after native completion.");
         var thing=added[0];var physical=ResolutionPhysical(thing,r.City.Map);var asset=ResolutionAsset(r,thing,true,r.From);
-        return new(new(){Original=id,Actual=thing},asset,physical);
+        var table=thing as Building_WorkTable;var descriptor=table==null?null:WorktableEvidence.Capture(table);
+        return new(new(){Original=id,Actual=thing,WorktableBillsV6=table==null?null:WorktableEvidence.Bills(table).ToList()},asset,physical,descriptor);
     }
     internal static bool KnownResolutionOwner(TerritoryTransferReference r,Thing thing)
     {
@@ -68,6 +71,7 @@ public sealed partial class TerritoryAdministrationLedger
                 if(thing?.GetUniqueLoadID()!=entry.Actual || ResolutionPhysical(thing,r.City.Map)!=entry.Physical || ResolutionAsset(r,thing,entry.Asset.Repair!=null,entry.Returned?r.Target:r.From)!=entry.Asset)
                     throw new ArgumentException("Same actual property and its separate original preparation required.");
                 if(!entry.Event.HasValue && !r.LoadedMap.Things.Any(p=>ReferenceEquals(p,thing)))throw new ArgumentException("Original remainder property lost its original reference.");
+                VerifyResolutionWorktable(r,entry,thing);
             }
         }
     }
@@ -85,9 +89,10 @@ public sealed partial class TerritoryAdministrationLedger
             var thing=r.LoadedMap.Things.SingleOrDefault(p=>p!=null&&p.GetUniqueLoadID()==next.Id);
             staged=WorkAssetResolutions.AddOriginal(t,r.WorkProgressV1,staged,next.Id);entry=WorkAssetResolutions.Validate(t,r.WorkProgressV1,staged).Entries.Last();
             if(thing==null||ResolutionPhysical(thing,r.City.Map)!=entry.Physical||ResolutionAsset(r,thing,entry.Asset.Repair!=null,r.From)!=entry.Asset)throw new ArgumentException("Remaining original property is unsupported or changed.");
-            refs.Add(new(){Original=next.Id,Actual=thing});
+            refs.Add(new(){Original=next.Id,Actual=thing,WorktableBillsV6=entry.WorktableV6==null?null:OriginalWorktableBills(r.LoadedMap,entry)});
         }
         var actual=refs.Single(p=>p.Original==entry.Original).Actual;
+        VerifyResolutionWorktable(refs.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap);
         if(entry.Started&&!entry.Returned)throw new ArgumentException("Unknown actual-property call; original retained.");
         if(!entry.Returned)
         {
@@ -98,9 +103,23 @@ public sealed partial class TerritoryAdministrationLedger
             r.WorkAssetResolutionV5=WorkAssetResolutions.Returned(t,r.WorkProgressV1,r.WorkAssetResolutionV5,entry.Original,actual.Faction?.GetUniqueLoadID());
         }
         if(ResolutionPhysical(actual,r.City.Map)!=entry.Physical||ResolutionAsset(r,actual,entry.Asset.Repair!=null,r.Target)!=entry.Asset)throw new ArgumentException("Actual property returned but independent preservation is unverified.");
+        VerifyResolutionWorktable(r,entry,actual);
         r.WorkAssetResolutionV5=WorkAssetResolutions.Verify(t,r.WorkProgressV1,r.WorkAssetResolutionV5,entry.Original);
         Messages.Message("RE_WorkSuccessorProgress".Translate(),MessageTypeDefOf.NeutralEvent);return true;
     }
     private static void ReleaseAssetResolutionReferences(TerritoryTransferReference r)
-    {foreach(var reference in r.WorkAssetReferencesV5??[])reference.Actual=null;}
+    {foreach(var reference in r.WorkAssetReferencesV5??[]){reference.Actual=null;reference.WorktableBillsV6?.Clear();}}
+    private static void VerifyResolutionWorktable(TerritoryTransferReference r,WorkAssetResolution entry,Thing actual)
+        =>VerifyResolutionWorktable(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap);
+    private static List<Bill> OriginalWorktableBills(LoadedMapRecord original,WorkAssetResolution entry)
+    {
+        if(original.WorkBills==null)throw new ArgumentException("Original bill reference record missing.");
+        return entry.WorktableV6.Bills.Select(id=>original.WorkBills.Single(b=>b!=null&&b.GetUniqueLoadID()==id)).ToList();
+    }
+    private static void VerifyResolutionWorktable(WorkAssetReferenceV5 reference,WorkAssetResolution entry,Thing actual,LoadedMapRecord original)
+    {
+        if(entry.WorktableV6==null){if(WorktableEvidence.Supported(actual)||reference.WorktableBillsV6!=null)throw new ArgumentException("Worktable requires its separate scope.");return;}
+        if(actual is not Building_WorkTable table || JsonSerializer.Serialize(WorktableEvidence.Capture(table))!=JsonSerializer.Serialize(entry.WorktableV6)||reference.WorktableBillsV6==null||!WorktableEvidence.Bills(table).SequenceEqual(reference.WorktableBillsV6))throw new ArgumentException("Actual bill references/configuration changed.");
+        if(!entry.Event.HasValue&&!reference.WorktableBillsV6.SequenceEqual(OriginalWorktableBills(original,entry)))throw new ArgumentException("Original remainder table lost its original Bill references.");
+    }
 }
