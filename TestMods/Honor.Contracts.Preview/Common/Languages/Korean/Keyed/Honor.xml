@@ -595,4 +595,5 @@
 <RE_AbortUnstartedWork>실행 전인 이 이전 준비 중단</RE_AbortUnstartedWork>
 <RE_AbortUnstartedWorkConfirm>이 단독 이전 준비를 중단할까요? 주민·의료·영역·재산·도시 기록으로 변경이 하나도 시작되지 않았음을 확인한 경우만 가능합니다. 현재 작업·진행도·건강·예약·계약·채무는 그대로 유지하고 원 준비 기록도 이력에 남깁니다. 이후 이전하려면 새로 검토해야 합니다.</RE_AbortUnstartedWorkConfirm>
 <RE_AbortUnstartedWorkDone>실행 전 준비를 중단했습니다. 현재 작업과 정착지 상태를 유지하고 원 기록은 이력에 남겼습니다.</RE_AbortUnstartedWorkDone>
+<RE_ActiveWorkReview>진행 중인 민간 작업: {0}; 대기 작업: {1}; 작업대·공사 프레임: {2}. 지원 운반·기본 제작·프레임 작업의 원 작업·진행도·화물·검토된 예약을 유지합니다. 결과가 불확실한 이전은 중복 적용하지 않고 검토를 기다립니다. 변경된 작업·미완성 제작물·복합 설비·사유/군사 의무는 추가 검토가 필요합니다.</RE_ActiveWorkReview>
 </LanguageData>

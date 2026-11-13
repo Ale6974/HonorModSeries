@@ -1,4 +1,13 @@
-# 1단계 개발 인수인계 — 0.3.104 / 2026-11-13
+# 1단계 개발 인수인계 — 0.3.105 / 2026-11-13
+
+## 0.3.105 — 일반 작업·자재·예약의 실제 보존 인계
+
+2026-11-13. [구현·저장/복구·검사·남은3묶음](M2-PARTS-AUDIT-0.3.105.md). 새 map25/clinical16으로 원 HaulToCell, 프레임 공급 HaulToContainer, ConstructFinishFrame, 기본 DoBill의 원 Job/driver/toil/queue/이동/우선순위/thinkData/화물 및 일반·목적지·물리·enroute 예약을 실제 resident/asset/city 호출과 Scribe/명시 Recover에 연결했다. 검토한 native SetFaction의 private reverse copy는 정확히 두 정리 경계만 바꾸며 원 전역 메서드/소속 필드를 패치·raw-write하지 않는다. 원 Frame 자재/진행, 기본 WorkTable/Bill/필터와 same-reference/native sole deep save를 보존한다. 정상 반환과 의료/area output을 후속 보존 확인보다 먼저 기록한다. 별도 UI 단독 미실행 intent만 준비 취소/원 이력 보관이 가능하다.
+
+M2.4 전체 미완료: 시작 뒤 자연 진행/종료·소비된 자재의 새 사실·현재 승인 연결, 더 넓은 driver/설비/사유·군사/수술 혼합, 부모 follower/정치·후손 일괄 조립이 남았다. 남은 노력45~60%/큰3묶음은 계획 추정이다. M1 10/10, M2 0/18, 전체10/100 유지. unknown calls 재실행·원 증거 덮어쓰기·가드 제거로 완료 처리하지 않는다. 새 실행 권한은 검토한5005만이며1.6의 미확인 본문 허용은 추가하지 않는다. 다른 단계의 과거 잔여 비율은 이번 새 측정값이 아니다.
+
+
+검사 완료: 양 타깃 전체 빌드/최종 native 컴파일 경고·오류0, Honor20093/Contracts5864, EN/KO597, 패키지 allowlist 통과. 백업 후 로컬32개 파일 일치와 활성화/언어 설정 불변 확인.
 
 ## 0.3.104 — M2.4 자율 작업 제공자·저장 키와 실행 전 단독 준비 중단
 

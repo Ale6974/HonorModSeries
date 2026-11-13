@@ -13,7 +13,7 @@ namespace Honor.Contracts.Preview;
 internal static class MapAssetRecords
 {
     private static readonly Guid[] AuditedModules = [new("bfbab472-0f01-4378-acdf-3bd92e3a67f8"), new("6c268a95-d1a8-4d6f-ad81-e5dcf6949c0e"), new("3523c04c-c298-43ae-9571-20caaef22acc")];
-    private static bool Component(Type type, bool shelf, bool container = false) => type == typeof(CompStyleable) || (shelf || container) && type == typeof(CompQuality) || container && (type == typeof(CompHackable) || type == typeof(CompGlower));
+    private static bool Component(Type type, bool shelf, bool container = false, bool worktable = false, bool workframe = false) => workframe && type == typeof(CompForbiddable) || worktable && WorktableEvidence.Component(type) || type == typeof(CompStyleable) || (shelf || container) && type == typeof(CompQuality) || container && (type == typeof(CompHackable) || type == typeof(CompGlower));
     private static void Native(Type type, string name)
     {
         var methods = AccessTools.GetDeclaredMethods(type).Where(m => m.Name == name).ToArray();
@@ -35,7 +35,7 @@ internal static class MapAssetRecords
     }
     internal static bool NeedsRepairScope(Thing t, bool ownedStorage = false, bool ownedContainers = false)
     {
-        if (t?.GetType() != typeof(Building) && (!ownedStorage || t?.GetType() != typeof(Building_Storage)) && (!ownedContainers || !ContainerMapEvidence.Supported(t))) return false;
+        if (t?.GetType() != typeof(Building) && (!NativeTransferBodies.WorkObservationBodies || t?.GetType() != typeof(Frame)) && (!ownedStorage || t?.GetType() != typeof(Building_Storage)) && (!ownedContainers || !ContainerMapEvidence.Supported(t))) return false;
         if (t.def == null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         var getter = AccessTools.PropertyGetter(typeof(Thing), nameof(Thing.MaxHitPoints));
         if (!AuditedModules.Contains(typeof(Thing).Module.ModuleVersionId) || getter == null || Harmony.GetPatchInfo(getter)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_AssetUnavailable");
@@ -46,24 +46,28 @@ internal static class MapAssetRecords
         bool held = heldAssets && !t.Spawned && t.Map == null && t.holdingOwner != null;
         bool package = ownedForest && t.GetType() == typeof(MinifiedThing);
         bool shelf = ownedStorage && t.GetType() == typeof(Building_Storage);
+        bool worktable = NativeTransferBodies.WorkObservationBodies && WorktableEvidence.Supported(t) && reviewedPawns?.Any(p => p?.jobs?.curJob != null && p.jobs.curJob.def != JobDefOf.LayDown) == true;
+        if (worktable) _ = WorktableEvidence.Capture((Building_WorkTable)t);
+        bool workframe = NativeTransferBodies.WorkObservationBodies && t.GetType() == typeof(Frame) && reviewedPawns?.Any(p => p?.jobs?.curJob != null && p.jobs.curJob.def != JobDefOf.LayDown) == true;
+        if (workframe) _ = ConstructionEvidence.Capture((Frame)t);
         if (held && t is Building heldBuilding && (heldBuilding.def?.building == null || heldBuilding.def.building.isNaturalRock || heldBuilding.def == ThingDefOf.CaravanPackingSpot)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         bool container = ownedContainers && ContainerMapEvidence.Supported(t);
         if ((container || held || package) && !NativeTransferBodies.ExtendedReadBodies) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (!AuditedModules.Contains(typeof(Thing).Module.ModuleVersionId) || (reviewedPawns == null ? map.mapPawns.AllPawns.Count != 0 : map.mapPawns.AllPawns.Count != reviewedPawns.Count || map.mapPawns.AllPawns.Any(p => !reviewedPawns.Contains(p))) || map.lordManager?.lords?.Count != 0 ||
-            !package && !container && t.GetType() != typeof(Building) && (!ownedStorage || t.GetType() != typeof(Building_Storage)) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) ||
+            !package && !container && !worktable && !workframe && t.GetType() != typeof(Building) && (!ownedStorage || t.GetType() != typeof(Building_Storage)) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) ||
             !t.def.CanHaveFaction || t.def.GetType() != typeof(ThingDef) || DefDatabase<ThingDef>.GetNamedSilentFail(t.def.defName) != t.def ||
-            t is IThingHolder && !container && !package || t is IAttackTarget || t.questTags?.Count > 0 || (!held && (!t.Spawned || t.Map != map)) || t.Faction == null || t.Faction.IsPlayer ||
-            t is ThingWithComps c && (c.AllComps.Count > (container ? 4 : shelf || held || package ? 2 : 1) || c.AllComps.Any(x => x == null || !Component(x.GetType(), shelf || held || package, container) || x.parent != t) || c.AllComps.Select(x => x.GetType()).Distinct().Count() != c.AllComps.Count)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+            t is IThingHolder && !container && !package && !workframe || t is IAttackTarget || t.questTags?.Count > 0 || (!held && (!t.Spawned || t.Map != map)) || t.Faction == null || t.Faction.IsPlayer ||
+            t is ThingWithComps c && (c.AllComps.Count > (worktable ? 5 : workframe ? 3 : container ? 4 : shelf || held || package ? 2 : 1) || c.AllComps.Any(x => x == null || !Component(x.GetType(), shelf || held || package || worktable || workframe, container, worktable, workframe) || x.parent != t) || c.AllComps.Select(x => x.GetType()).Distinct().Count() != c.AllComps.Count)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if ((t.def.comps?.Count ?? 0) != ((t as ThingWithComps)?.AllComps.Count ?? 0)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         foreach (var getter in new[] { AccessTools.PropertyGetter(typeof(ThingDef), nameof(ThingDef.CanHaveFaction)), AccessTools.PropertyGetter(typeof(Thing), nameof(Thing.MaxHitPoints)) })
             if (getter == null || getter.DeclaringType.Assembly != typeof(Thing).Assembly || Harmony.GetPatchInfo(getter)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         var dispatch = AccessTools.Method(t.GetType(), nameof(Thing.SetFaction), [typeof(Faction), typeof(Pawn)]);
         if (dispatch?.DeclaringType != (t is Building ? typeof(Building) : typeof(Thing)) || Harmony.GetPatchInfo(dispatch)?.Owners.Any() == true ||
-            t.def.comps?.Any(c => c == null || !Component(c.compClass, shelf || held || package, container) || c.GetType().Assembly != typeof(Thing).Assembly) == true ||
+            t.def.comps?.Any(c => c == null || !Component(c.compClass, shelf || held || package || worktable || workframe, container, worktable, workframe) || c.GetType().Assembly != typeof(Thing).Assembly) == true ||
             RimWorld.QuestGen.QuestGen.quest != null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (package) Native(typeof(MinifiedThing), "get_InnerThing");
         if (held || package) Native(typeof(QualityUtility), "TryGetQuality");
-        if ((shelf || container || held || package) && t is ThingWithComps)
+        if ((shelf || container || held || package || workframe || worktable) && t is ThingWithComps)
         {
             var comps = ((ThingWithComps)t).AllComps;
             if (Field(t, "compQuality", typeof(CompQuality)) != comps.OfType<CompQuality>().SingleOrDefault() || Field(t, "compStyleable", typeof(CompStyleable)) != comps.OfType<CompStyleable>().SingleOrDefault()) throw new ResidentMoveBlocked("RE_AssetUnavailable");
@@ -80,7 +84,8 @@ internal static class MapAssetRecords
             var f = AccessTools.Field(events.GetType(), name);
             if (f == null || !typeof(Delegate).IsAssignableFrom(f.FieldType) || f.GetValue(events) != null) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         }
-        ResidentMapActors.RequireEmptyReservations(map, typeof(Thing).Module.ModuleVersionId, reviewedPawns?.Any(p => p?.jobs?.curJob != null) == true);
+        bool activeWork = reviewedPawns?.Any(p => p?.jobs?.curJob != null && p.jobs.curJob.def != JobDefOf.LayDown) == true;
+        ResidentMapActors.RequireEmptyReservations(map, typeof(Thing).Module.ModuleVersionId, !activeWork && reviewedPawns?.Any(p => p?.jobs?.curJob != null) == true, activeWork);
         var designations = map.designationManager;
         Native(typeof(DesignationManager), "get_AllDesignations");
         if (designations?.GetType() != typeof(DesignationManager) || designations.AllDesignations.Any()) throw new ResidentMoveBlocked("RE_AssetUnavailable");

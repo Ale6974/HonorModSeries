@@ -595,4 +595,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
 <RE_AbortUnstartedWork>Stop this transfer preparation before execution</RE_AbortUnstartedWork>
 <RE_AbortUnstartedWorkConfirm>Stop this standalone transfer preparation? This is allowed only when the resident, medical, area, asset and city records prove that no change began. Current work, progress, health, reservations, contracts and debts stay as they are. The original preparation remains in history. A later attempt needs a fresh review.</RE_AbortUnstartedWorkConfirm>
 <RE_AbortUnstartedWorkDone>The unstarted preparation was stopped. Current work and colony state were preserved; original records remain in history.</RE_AbortUnstartedWorkDone>
+<RE_ActiveWorkReview>Ongoing civilian work: {0}; queued jobs: {1}; worktables/construction frames: {2}. Supported hauling, basic production and frame work keep their current jobs, progress, cargo and reservations. An uncertain handover waits for review without repeating changes. Changed work, unfinished products, complex equipment and private/military duties require further review.</RE_ActiveWorkReview>
 </LanguageData>

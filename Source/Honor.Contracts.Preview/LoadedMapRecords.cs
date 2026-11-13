@@ -20,6 +20,8 @@ public sealed class LoadedMapRecord : IExposable
     public List<MapVisitorReference> BystanderReferencesV1;
     public string AssetJournal;
     public string Snapshot;
+    public List<Bill> WorkBills;
+    public List<Thing> WorkFrameResources;
     public void ExposeData()
     {
         Scribe_References.Look(ref Map, "originalMap"); Scribe_Collections.Look(ref Things, "originalMapThings", LookMode.Reference);
@@ -31,6 +33,8 @@ public sealed class LoadedMapRecord : IExposable
         Scribe_Collections.Look(ref BystanderReferencesV1, "originalReadOnlyBystanderReferencesV1", LookMode.Deep);
         Scribe_Values.Look(ref AssetJournal, "originalOwnedAssetCallsV1");
         Scribe_Values.Look(ref Snapshot, "originalNeutralMapV1");
+        Scribe_Collections.Look(ref WorkBills, "originalWorktableBillsV1", LookMode.Reference);
+        Scribe_Collections.Look(ref WorkFrameResources, "originalConstructionResourcesV1", LookMode.Reference);
     }
 }
 
@@ -58,15 +62,15 @@ internal static class LoadedMapRecords
             Harmony.GetPatchInfo(method)?.Owners.Any(x => x != "honor.series.contracts.preview") == true)
             throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
     }
-    private static NeutralMapThing Evidence(Thing t, Map map, bool held = false, bool owned = false)
+    private static NeutralMapThing Evidence(Thing t, Map map, bool held = false, bool owned = false, bool activeWork = false)
     {
         if (t == null || t.def == null || t.Destroyed || (held ? t.Spawned || t.Map != null || t.holdingOwner == null : !t.Spawned || t.Map != map || t.holdingOwner != null && t.holdingOwner != map.GetDirectlyHeldThings()) ||
-            t.Faction != null && !owned || t is Pawn or Corpse || t is IThingHolder && t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t) ||
+            t.Faction != null && !owned || t is Pawn or Corpse || t is IThingHolder && !(activeWork && t.GetType() == typeof(Frame)) && t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t) ||
             t.GetType().Assembly != typeof(Thing).Assembly || t is ThingWithComps c && c.AllComps.Any(comp => comp == null || comp is IThingHolder ||
-                comp.GetType() != typeof(CompQuality) && comp.GetType() != typeof(CompForbiddable) && comp.GetType() != typeof(CompColorable) && comp.GetType() != typeof(CompArt) &&
+                !(activeWork && WorktableEvidence.Supported(t) && WorktableEvidence.Component(comp.GetType())) && comp.GetType() != typeof(CompQuality) && comp.GetType() != typeof(CompForbiddable) && comp.GetType() != typeof(CompColorable) && comp.GetType() != typeof(CompArt) &&
                 (t.GetType() != typeof(Building_Storage) && !owned || comp.GetType() != typeof(CompStyleable)) &&
                 (!ContainerMapEvidence.Supported(t) || comp.GetType() != typeof(CompHackable) && comp.GetType() != typeof(CompGlower))) ||
-            !ContainerMapEvidence.Supported(t) && t.GetType() != typeof(Building) && t.GetType() != typeof(Building_Storage) && t.GetType() != typeof(Plant) && t.GetType() != typeof(Filth) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) && t.GetType() != typeof(MinifiedThing))
+            !ContainerMapEvidence.Supported(t) && !(activeWork && (WorktableEvidence.Supported(t) || t.GetType() == typeof(Frame))) && t.GetType() != typeof(Building) && t.GetType() != typeof(Building_Storage) && t.GetType() != typeof(Plant) && t.GetType() != typeof(Filth) && t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) && t.GetType() != typeof(MinifiedThing))
             throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         if (AccessTools.PropertyGetter(t.GetType(), nameof(Thing.Faction))?.DeclaringType != typeof(Thing)) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         return new(t.GetUniqueLoadID(), t.def.defName, t.Stuff?.defName, t.stackCount, t.HitPoints, held ? -1 : map.cellIndices.CellToIndex(t.Position), t.Rotation.AsInt,
@@ -105,11 +109,12 @@ internal static class LoadedMapRecords
         var originalResidents = actors.Count == 0 ? null : Current.Game.GetComponent<TerritoryAdministrationLedger>().MapResidentOriginal(city);
         royal |= originalResidents?.Profile == 13;
         if (royal && (!NativeTransferBodies.RoyalCustodyBodies || actors.Count == 0)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-        bool groundRest = originalResidents?.Profile is 14 or 15 || !royal && actors.Any(p => p.jobs?.curJob != null);
-        if (royal && groundRest) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        bool activeWork = originalResidents != null ? originalResidents.Profile == 16 : !royal && actors.Any(p => p.jobs?.curJob != null && p.jobs.curJob.def != JobDefOf.LayDown);
+        bool groundRest = !activeWork && (originalResidents?.Profile is 14 or 15 || !royal && actors.Any(p => p.jobs?.curJob != null));
+        if (royal && (groundRest || activeWork)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         bool givenWork = originalResidents != null ? originalResidents.Profile == 15 : groundRest && actors.Any(p => p.jobs?.curJob?.jobGiver != null || p.jobs?.curJob?.jobGiverThinkTree != null);
         var work = groundRest ? actors.Where(p => p.jobs?.curJob != null).Select(p => ResidentGroundRest.Capture(p, givenWork)).ToArray() : null;
-        var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents, royal, groundRest, givenWork)).ToArray();
+        var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents, royal, groundRest, givenWork, activeWork)).ToArray();
         if (visitors.Count > 128) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var visitorRows = visitors.Select(ResidentMapVisitors.Capture).ToArray();
         var rootThings = things.Where(t => t is not Pawn).ToList();
@@ -140,7 +145,9 @@ internal static class LoadedMapRecords
             }
             // A descendant may select the new forest scope after this ancestor was first visited.
             if (ownedForest) MapAssetRecords.VerifyHolderRead(t);
-            var row = Evidence(t, map, parent != null, owned); references.Add(t);
+            if (WorktableEvidence.Supported(t)) { if (!activeWork || !owned || parent != null) throw new ResidentMoveBlocked("RE_AssetUnavailable"); _ = WorktableEvidence.Capture((Building_WorkTable)t); }
+            if (t.GetType() == typeof(Frame)) { if (!activeWork || !owned || parent != null) throw new ResidentMoveBlocked("RE_AssetUnavailable"); _ = ConstructionEvidence.Capture((Frame)t); }
+            var row = Evidence(t, map, parent != null, owned, activeWork); references.Add(t);
             if (t.GetType() == typeof(Building_Storage)) storage.Add(owned ? StorageMapEvidence.CaptureOwned((Building_Storage)t, map, grouped: true) : StorageMapEvidence.Capture((Building_Storage)t, map, grouped: true));
             if (parent != null) held.Add(new(parent, slot, row));
             return row;
@@ -155,7 +162,7 @@ internal static class LoadedMapRecords
         var stockpiles = StockpileMapEvidence.Capture(map);
         // Validate known holders BEFORE the native recursive pawn query can visit any ship/provider/unknown component.
         var holders = new List<IThingHolder>(); map.GetChildHolders(holders);
-        if (holders.Any(h => h is not Thing t || !things.Contains(t) || t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t) && (t is not Pawn p || !allActors.Contains(p)))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        if (holders.Any(h => h is not Thing t || !things.Contains(t) || !(activeWork && t.GetType() == typeof(Frame)) && t.GetType() != typeof(MinifiedThing) && !ContainerMapEvidence.Supported(t) && (t is not Pawn p || !allActors.Contains(p)))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         var direct = map.GetDirectlyHeldThings();
         if (direct != null && (direct.Count != things.Count || direct.Any(t => !things.Contains(t)))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         if (map.mapPawns.AllPawns.Count != allActors.Count || map.mapPawns.AllPawns.Any(p => !allActors.Contains(p))) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
@@ -178,6 +185,18 @@ internal static class LoadedMapRecords
         if (actors.Count > 0) snapshot = LoadedMapPreservation.CaptureResidents(snapshot, actorRows, visitorRows);
         else if (visitors.Count > 0) snapshot = LoadedMapPreservation.CaptureBystanders(snapshot, visitorRows);
         if (ownedRows.Count > 0) snapshot = ownedForest ? LoadedMapPreservation.CaptureOwnedHolderForest(snapshot, ownedRows, repairAssets, ownedStorage, ownedContainers, heldAssets) : heldAssets ? LoadedMapPreservation.CaptureHeldAssets(snapshot, ownedRows, repairAssets, ownedStorage, ownedContainers) : ownedContainers ? LoadedMapPreservation.CaptureOwnedContainers(snapshot, ownedRows, repairAssets, ownedStorage) : civicAssets ? LoadedMapPreservation.CaptureCivicAssets(snapshot, ownedRows, repairAssets, ownedStorage) : ownedStorage ? LoadedMapPreservation.CaptureOwnedStorage(snapshot, ownedRows, repairAssets) : repairAssets ? LoadedMapPreservation.CaptureRepairAssets(snapshot, ownedRows) : LoadedMapPreservation.CaptureAssets(snapshot, ownedRows);
+        var worktables = activeWork ? references.OfType<Building_WorkTable>().OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToArray() : [];
+        var workBills = worktables.Length == 0 ? null : worktables.SelectMany(WorktableEvidence.Bills).ToList();
+        var frames = activeWork ? references.OfType<Frame>().OrderBy(f => f.GetUniqueLoadID(), StringComparer.Ordinal).ToArray() : [];
+        var frameResources = frames.Length == 0 ? null : frames.SelectMany(ConstructionEvidence.Resources).ToList();
+        if (activeWork)
+        {
+            var allIds = new HashSet<string>(references.Select(t => t.GetUniqueLoadID()).Concat(allActors.Select(p => p.GetUniqueLoadID())), StringComparer.Ordinal);
+            foreach (var item in (frameResources ?? []).Concat(actors.Select(ResidentActiveWork.CarriedReference).Where(t => t != null)).Concat(allActors.SelectMany(p =>
+                (p.inventory?.innerContainer.Cast<Thing>() ?? []).Concat(p.equipment?.AllEquipmentListForReading.Cast<Thing>() ?? []).Concat(p.apparel?.WornApparel.Cast<Thing>() ?? []))))
+                if (!allIds.Add(item.GetUniqueLoadID()) || allIds.Count > 10000) throw new ArgumentException("Original work/frame/carry/gear references overlap or exceed capacity.");
+        }
+        if (activeWork) snapshot = LoadedMapPreservation.CaptureActiveWork(snapshot, actors.Where(p => p.CurJob != null).Select(ResidentActiveWork.Capture), worktables.Length == 0 ? null : worktables.Select(WorktableEvidence.Capture), frames.Length == 0 ? null : frames.Select(ConstructionEvidence.Capture));
         if (groundRest) snapshot = LoadedMapPreservation.CaptureGroundRest(snapshot, work, givenWork);
         if (royal) snapshot = LoadedMapPreservation.CaptureRoyalMapped(snapshot);
         var visitorReferences = actors.Count == 0 && visitors.Count > 0 ? visitors.Select(ResidentMapVisitors.References).ToList() : null;
@@ -191,7 +210,7 @@ internal static class LoadedMapRecords
                     if (!custodyIds.Add(item.GetUniqueLoadID()) || custodyIds.Count > 10000) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
             }
         }
-        return new() { BystanderReferencesV1 = visitorReferences, Map = map, MapResidents = actors.Count == 0 ? null : actors, Visitors = visitors.Count == 0 ? null : visitors, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
+        return new() { WorkFrameResources = frameResources, WorkBills = workBills, BystanderReferencesV1 = visitorReferences, Map = map, MapResidents = actors.Count == 0 ? null : actors, Visitors = visitors.Count == 0 ? null : visitors, Things = references.OrderBy(t => t.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
             Groups = groups.Length == 0 ? null : groups.OrderBy(g => g.GetUniqueLoadID(), StringComparer.Ordinal).ToList(),
             Stockpiles = stockpiles.Evidence.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Stockpile)).ToList(),
             Growing = stockpiles.Growing.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Growing)).ToList(), Snapshot = snapshot };
@@ -207,6 +226,8 @@ internal static class LoadedMapRecords
         }
         else if (original.BystanderReferencesV1 != null) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (fresh.Snapshot != original.Snapshot || !fresh.Things.SequenceEqual(original.Things)) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        if (fresh.WorkBills == null ? original.WorkBills != null : original.WorkBills == null || !fresh.WorkBills.SequenceEqual(original.WorkBills)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        if (fresh.WorkFrameResources == null ? original.WorkFrameResources != null : original.WorkFrameResources == null || !fresh.WorkFrameResources.SequenceEqual(original.WorkFrameResources)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (fresh.Groups == null ? original.Groups != null : original.Groups == null || !fresh.Groups.SequenceEqual(original.Groups)) throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
         if (fresh.MapResidents == null ? original.MapResidents != null : original.MapResidents == null || !fresh.MapResidents.SequenceEqual(original.MapResidents)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (fresh.Visitors == null ? original.Visitors != null : original.Visitors == null || !fresh.Visitors.SequenceEqual(original.Visitors)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
@@ -217,5 +238,5 @@ internal static class LoadedMapRecords
     {
         if (Capture(city, LoadedMapPreservation.Restore(scope).RoyalMappedV1 == 1).Snapshot != scope) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
     }
-    internal static void Release(LoadedMapRecord r) { r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); r.Growing?.Clear(); r.MapResidents?.Clear(); r.Visitors?.Clear(); r.BystanderReferencesV1?.Clear(); }
+    internal static void Release(LoadedMapRecord r) { r.WorkFrameResources?.Clear(); r.WorkBills?.Clear(); r.Map = null; r.Things?.Clear(); r.Groups?.Clear(); r.Stockpiles?.Clear(); r.Growing?.Clear(); r.MapResidents?.Clear(); r.Visitors?.Clear(); r.BystanderReferencesV1?.Clear(); }
 }

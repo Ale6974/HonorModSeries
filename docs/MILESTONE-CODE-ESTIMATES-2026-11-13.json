@@ -320,7 +320,7 @@
       "stage": 1,
       "id": "M2.4",
       "title": "진행 작업·예약의 이전 경계",
-      "status": "자율 지면 휴식 제공자/저장·자기 칸 예약·실행 전 단독 중단 실제 조립; 일반 작업/복합 예약/부모 통합 미완료",
+      "status": "네 종류 native 작업/queue/자재/네 종류 예약/호출·저장·명시 복구 실제 부분 조립; 시작 후 자연 진행/복합 설비/부모 조합 미완료",
       "production_kloc": [
         1,
         2
@@ -340,16 +340,23 @@
       ],
       "part_evidence": [
         "docs/M2-PARTS-AUDIT-0.3.103.md",
-        "docs/M2-PARTS-AUDIT-0.3.104.md"
+        "docs/M2-PARTS-AUDIT-0.3.104.md",
+        "docs/M2-PARTS-AUDIT-0.3.105.md"
       ],
       "assembly_evidence": [
         "Source/Honor.Contracts.Preview/GroundRestGivers.cs",
         "Source/Honor.Contracts.Preview/ResidentGroundRest.cs",
         "Source/Honor.Contracts.Preview/GroundRestAbort.cs",
-        "Source/Honor.Contracts.Preview/TerritoryAdministration.cs"
+        "Source/Honor.Contracts.Preview/TerritoryAdministration.cs",
+        "Source/Honor.Contracts.Preview/ResidentActiveWork.cs",
+        "Source/Honor.Contracts.Preview/NativeWorkFactionCall.cs",
+        "Source/Honor.Contracts.Preview/ConstructionEvidence.cs",
+        "Source/Honor.Contracts.Preview/WorktableEvidence.cs",
+        "Source/Honor.Contracts.Preview/ActiveWorkAbort.cs"
       ],
       "integration_evidence": [
-        "Tests/Honor.Contracts.Tests/GroundRestTests.cs"
+        "Tests/Honor.Contracts.Tests/GroundRestTests.cs",
+        "Tests/Honor.Contracts.Tests/ActiveWorkTests.cs"
       ]
     },
     {
@@ -2151,7 +2158,7 @@
       "owner": "M2.2",
       "contract": "호출 전 시작/실제 정상 반환/불확실 결과·일회 소비",
       "consumers": "M2,M3,M4,M5,M6,M7,M8",
-      "status": "원 지면 휴식·제공자·자기 칸 예약·단독 미실행 중단 실제 조립; docs/M2-PARTS-AUDIT-0.3.104.md 참조; 일반 작업 미완료"
+      "status": "0.3.105: 네 driver/queue/화물·Frame 자재·기본 Bill/예약의 실제 실행·저장·양성 부분 복구 조립; docs/M2-PARTS-AUDIT-0.3.105.md; 자연 진행·복합 상태·부모 조립 미완료"
     },
     {
       "id": "B04",
@@ -2175,7 +2182,7 @@
       "owner": "M2.4/M2.5",
       "contract": "job/driver/queue/자원 예약/Lord·개별 관리 권한",
       "consumers": "M2,M3,M6,M7,M8,W2",
-      "status": "원 지면 휴식·제공자·자기 칸 예약·단독 미실행 중단 실제 조립; docs/M2-PARTS-AUDIT-0.3.104.md 참조; 일반 작업 미완료"
+      "status": "0.3.105: 네 driver/queue/화물·Frame 자재·기본 Bill/예약의 실제 실행·저장·양성 부분 복구 조립; docs/M2-PARTS-AUDIT-0.3.105.md; 자연 진행·복합 상태·부모 조립 미완료"
     },
     {
       "id": "B07",
@@ -2183,7 +2190,7 @@
       "owner": "M2.6",
       "contract": "원 holder/슬롯/그룹/재산 소속·설정·품목",
       "consumers": "M2,M5,M7,M8,E3,C4",
-      "status": "기존 코드 재검수/분리 설계 필요; 부품 신규 완성 판정 아님"
+      "status": "0.3.105: 네 driver/queue/화물·Frame 자재·기본 Bill/예약의 실제 실행·저장·양성 부분 복구 조립; docs/M2-PARTS-AUDIT-0.3.105.md; 자연 진행·복합 상태·부모 조립 미완료"
     },
     {
       "id": "B08",

@@ -11,8 +11,13 @@ public sealed record NeutralMapStockpile(string Id, string Configuration, int[] 
 public sealed record NativeMapResident(string Id, string Preserved);
 public sealed record NeutralMapContainer(string Id, string Kind, string Configuration, int Count);
 public sealed record NeutralMapGrowing(string Id, string Configuration, int[] Cells);
+public sealed record NativeWorktable(string Id, string Configuration, string[] Bills);
+public sealed record NativeWorkFrame(string Id, string Configuration, string[] Resources);
 public sealed record LoadedMapScope(string Town, string Map, int Width, int Height, string Grid, string Stock, int StockFormat, NeutralMapThing[] Things, string Proof)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public ActiveWorkRow[] ActiveWorkV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeWorktable[] WorktablesV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeWorkFrame[] WorkFramesV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapHeld[] Held { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorage[] Storage { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorageGroup[] Groups { get; init; }
@@ -285,6 +290,20 @@ public static class LoadedMapPreservation
             if (s.Growing.SelectMany(r => r.Cells).Any(c => !occupied.Add(c))) throw new ArgumentException("Original growing zone overlaps storage or another zone.");
         }
         if (s.GivenGroundRestV1 != null && (s.GivenGroundRestV1 != 1 || s.GroundRestV1?.Any(r => r.GiverV1 != null) != true) || s.GivenGroundRestV1 == null && s.GroundRestV1?.Any(r => r.GiverV1 != null) == true) throw new ArgumentException("Original given-work scope missing or expanded.");
+        if (s.ActiveWorkV1 != null) { if (s.NativeResidents == null || s.GroundRestV1 != null || s.RoyalMappedV1 != null) throw new ArgumentException("Separate original active work requires mapped civilians."); ActiveWork.Validate(s.ActiveWorkV1, s.NativeResidents.Select(r => r.Id)); }
+        if (s.WorktablesV1 != null && (s.ActiveWorkV1 == null || s.WorktablesV1.Length is < 1 or > 1000 || s.WorktablesV1.Any(t => t == null || !Key(t.Id) || !CityStockProof.Valid(t.Configuration) ||
+            !s.Things.Any(r => r.Id == t.Id) || s.OwnedAssets?.Any(r => r.Id == t.Id) != true || t.Bills == null || t.Bills.Length > 15 || t.Bills.Any(b => !Key(b))) ||
+            !s.WorktablesV1.Select(t => t.Id).SequenceEqual(s.WorktablesV1.Select(t => t.Id).Distinct().OrderBy(n => n, StringComparer.Ordinal)) ||
+            s.WorktablesV1.SelectMany(t => t.Bills).Distinct().Count() != s.WorktablesV1.Sum(t => t.Bills.Length))) throw new ArgumentException("Original distinct owned worktables/bills required.");
+        if (s.WorkFramesV1 != null)
+        {
+            if (s.ActiveWorkV1 == null || s.WorkFramesV1.Length is < 1 or > 1000 || s.WorkFramesV1.Any(f => f == null || !Key(f.Id) || !CityStockProof.Valid(f.Configuration) ||
+                !s.Things.Any(r => r.Id == f.Id) || s.OwnedAssets?.Any(r => r.Id == f.Id) != true || s.WorktablesV1?.Any(t => t.Id == f.Id) == true ||
+                f.Resources == null || f.Resources.Length > 10000 || f.Resources.Any(id => !Key(id))) ||
+                !s.WorkFramesV1.Select(f => f.Id).SequenceEqual(s.WorkFramesV1.Select(f => f.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal))) throw new ArgumentException("Original owned construction frames required.");
+            var occupied = new HashSet<string>(s.Things.Select(t => t.Id).Concat((s.Held ?? []).Select(r => r.Item.Id)).Concat((s.NativeResidents ?? []).Select(r => r.Id)).Concat((s.Visitors ?? []).Select(r => r.Id)), StringComparer.Ordinal);
+            foreach (var resource in s.WorkFramesV1.SelectMany(f => f.Resources)) if (!occupied.Add(resource) || occupied.Count > 10000) throw new ArgumentException("Duplicated/oversized original construction resource scope.");
+        }
         if (s.GroundRestV1 != null) { if (s.NativeResidents == null || s.RoyalMappedV1 != null) throw new ArgumentException("Rest scope requires separate original mapped civilians."); GroundRest.Validate(s.GroundRestV1, s.NativeResidents.Select(r => r.Id)); }
         if (s.RoyalMappedV1 != null && (s.RoyalMappedV1 != 1 || s.NativeResidents == null || s.ReadOnlyBystandersV1 != null)) throw new ArgumentException("Incomplete original royal map scope.");
         if (s.NativeResidents != null)
@@ -338,10 +357,17 @@ public static class LoadedMapPreservation
     {
         var s = Restore(json); if (s.Town != town || s.Proof != proof) throw new ArgumentException("Original loaded map differs from transfer scope.");
     }
+    public static string CaptureActiveWork(string original, IEnumerable<ActiveWorkRow> rows, IEnumerable<NativeWorktable> tables = null, IEnumerable<NativeWorkFrame> frames = null)
+    {
+        var s = Restore(original);
+        if (s.ActiveWorkV1 != null || s.GroundRestV1 != null || s.RoyalMappedV1 != null || s.NativeResidents == null) throw new ArgumentException("Fresh separate original active-work map required.");
+        s = s with { ActiveWorkV1 = ActiveWork.Validate(rows, s.NativeResidents.Select(r => r.Id)), WorktablesV1 = tables?.OrderBy(t => t.Id, StringComparer.Ordinal).ToArray(), WorkFramesV1 = frames?.OrderBy(f => f.Id, StringComparer.Ordinal).ToArray(), Proof = null }; s = s with { Proof = Hash(s) };
+        string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
+    }
     public static string CaptureGroundRest(string original, IEnumerable<GroundRestRow> rows, bool given = false)
     {
         var s = Restore(original);
-        if (s.GroundRestV1 != null || s.RoyalMappedV1 != null || s.NativeResidents == null) throw new ArgumentException("Fresh original ground-rest map required.");
+        if (s.ActiveWorkV1 != null || s.GroundRestV1 != null || s.RoyalMappedV1 != null || s.NativeResidents == null) throw new ArgumentException("Fresh original ground-rest map required.");
         s = s with { GroundRestV1 = GroundRest.Validate(rows, s.NativeResidents.Select(r => r.Id)), GivenGroundRestV1 = given ? 1 : null, Proof = null }; s = s with { Proof = Hash(s) };
         string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
@@ -349,13 +375,13 @@ public static class LoadedMapPreservation
     {
         var s = Restore(original);
 
-        if (s.RoyalMappedV1 != null || s.GroundRestV1 != null || s.NativeResidents == null) throw new ArgumentException("Fresh original mapped royal scope required.");
+        if (s.ActiveWorkV1 != null || s.RoyalMappedV1 != null || s.GroundRestV1 != null || s.NativeResidents == null) throw new ArgumentException("Fresh original mapped royal scope required.");
         s = s with { RoyalMappedV1 = 1, Proof = null }; s = s with { Proof = Hash(s) };
         string json = JsonSerializer.Serialize(s); _ = Restore(json); return json;
     }
     public static int Format(string json)
     {
-        var s = Restore(json); return s.GivenGroundRestV1 == 1 ? 24 : s.GroundRestV1 != null ? 23 : s.RoyalMappedV1 == 1 ? 22 : s.OwnedHolderForestV1 == 1 ? (s.CivicAssetsV1 == 1 ? 21 : 20) : s.HeldAssetsV1 == 1 ? (s.CivicAssetsV1 == 1 ? 19 : 18) : s.OwnedContainersV1 == 1 ? (s.CivicAssetsV1 == 1 ? 17 : 16) : s.CivicAssetsV1 == 1 ? 15 : s.OwnedStorageV1 == 1 ? 14 : s.AssetRepairV1 == 1 ? 13 : s.OwnedAssets != null ? 12 : s.ReadOnlyBystandersV1 == 1 ? 11 : s.NativeResidents != null ? 10 : s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
+        var s = Restore(json); return s.ActiveWorkV1 != null ? 25 : s.GivenGroundRestV1 == 1 ? 24 : s.GroundRestV1 != null ? 23 : s.RoyalMappedV1 == 1 ? 22 : s.OwnedHolderForestV1 == 1 ? (s.CivicAssetsV1 == 1 ? 21 : 20) : s.HeldAssetsV1 == 1 ? (s.CivicAssetsV1 == 1 ? 19 : 18) : s.OwnedContainersV1 == 1 ? (s.CivicAssetsV1 == 1 ? 17 : 16) : s.CivicAssetsV1 == 1 ? 15 : s.OwnedStorageV1 == 1 ? 14 : s.AssetRepairV1 == 1 ? 13 : s.OwnedAssets != null ? 12 : s.ReadOnlyBystandersV1 == 1 ? 11 : s.NativeResidents != null ? 10 : s.Containers != null ? 9 : s.Growing != null ? 8 : s.Stockpiles != null ? 7 : s.Groups != null ? 6 : s.Storage != null ? 5 : s.Held == null ? 3 : 4;
     }
     public static void Pair(string json, string town, string proof, int format)
     {
