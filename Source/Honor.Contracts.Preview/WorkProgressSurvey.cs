@@ -44,7 +44,7 @@ internal static class WorkProgressSurvey
         LoadedMapRecords.RequireProgressBoundary(r.City);
         ResidentMapActors.RequireEmptyReservations(r.City.Map,typeof(Pawn).Module.ModuleVersionId,activeWork:true);
         var map=r.City.Map;var ids=new HashSet<string>(StringComparer.Ordinal);var rows=new List<object>();
-        bool partial=r.WorkProgressV1==null || WorkProgress.Validate(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfer(r.Id),r.WorkProgressV1).Version==2;
+        bool partial=r.WorkProgressV1==null || WorkProgress.Validate(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfer(r.Id),r.WorkProgressV1).Version>=2;
         var assetOwners=partial&&r.LoadedMap.AssetJournal!=null?MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.ToDictionary(c=>c.Id,c=>MapAssetTransfers.ExpectedOwner(r.LoadedMap.AssetJournal,c.Id)):null;
         void Thing(Thing t,string owner,int slot,int depth=0)
         {
@@ -78,12 +78,14 @@ internal static class WorkProgressSurvey
         if(roster.Count!=original.Count+visitors.Count || roster.Any(p=>!original.Contains(p)&&!visitors.Contains(p)))throw new ArgumentException("Original mapped people changed.");
         foreach(var p in r.Residents.Pawns)
         {
-            if(p==null || p.Destroyed || p.Dead || p.Faction!=r.Target || p.HostFaction!=null || p.IsPrisoner || p.IsSlave || p.InMentalState || p.GetLord()!=null || (p.royalty?.AllTitlesInEffectForReading.Count??0)!=0 || !ids.Add(p.GetUniqueLoadID()))throw new ArgumentException("Original current civilian identity/rights changed.");
+            int index=r.Residents.Pawns.IndexOf(p);var expectedFaction=ResidentTransferCensus.Call(r.Residents.AuthorityJournal[index]).Returned?r.Target:r.From;
+            if(p==null || p.Destroyed || p.Dead || p.Faction!=expectedFaction || p.HostFaction!=null || p.IsPrisoner || p.IsSlave || p.InMentalState || p.GetLord()!=null || (p.royalty?.AllTitlesInEffectForReading.Count??0)!=0 || !ids.Add(p.GetUniqueLoadID()))throw new ArgumentException("Original current civilian identity/rights changed.");
             ResidentMapActors.RequireHolders(p);
             var baseline=ResidentBaselineStore.Evidence(p);
             var job=p.jobs?.curJob;var driver=p.jobs?.curDriver;
             if(job!=null && (job.GetType()!=typeof(Job)||driver?.GetType().Assembly!=typeof(Pawn).Assembly||driver.job!=job||driver.pawn!=p))throw new ArgumentException("Current native job owner changed.");
             rows.Add(new {Pawn=p.GetUniqueLoadID(),baseline,Genes=ResidentGenes.Proof(p),Ideology=ResidentIdeology.Proof(p),
+                PendingClinical=r.WorkProgressV1!=null&&WorkProgress.Validate(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfer(r.Id),r.WorkProgressV1).Version==3&&!ResidentTransferCensus.Call(r.Residents.AuthorityJournal[index]).Started?ResidentExecution.FreshClinical(p):null,
                 Needs=p.needs.AllNeeds.Select(n=>new {Def=n.def.defName,Level=n.CurLevel}).ToArray(),Relations=p.relations.DirectRelations.Select(x=>new {Def=x.def.defName,Pawn=x.otherPawn.GetUniqueLoadID()}).ToArray(),
                 Medical=p.playerSettings==null?null:(int?)p.playerSettings.medCare,Areas=ResidentAreaRecords.Entries(p),Surgery=ResidentSurgery.Capture(p).Set().Export(),
                 Cell=p.Spawned?map.cellIndices.CellToIndex(p.Position):-1,Job=job==null?null:SavedFields(job,typeof(Job),ResidentGroundRest.JobFields),
@@ -99,6 +101,7 @@ internal static class WorkProgressSurvey
         foreach(var t in map.listerThings.AllThings.Where(t=>t is not Pawn).OrderBy(t=>t.GetUniqueLoadID(),StringComparer.Ordinal))Thing(t,map.GetUniqueLoadID(),-1);
         var grid=map.AllCells.Select(c=>new {Terrain=map.terrainGrid.TerrainAt(c)?.defName,Under=map.terrainGrid.UnderTerrainAt(c)?.defName,Roof=map.roofGrid.RoofAt(c)?.defName}).ToArray();
         var reservations=new {Regular=ResidentActiveWork.ReservationState(map),Physical=ResidentActiveWork.PhysicalState(map),Enroute=ResidentActiveWork.EnrouteState(map),Destination=ResidentActiveWork.DestinationState(map)};
-        string proof=WorkProgress.Hash(new {Map=map.GetUniqueLoadID(),Size=new[]{map.Size.x,map.Size.z},Grid=grid,Reservations=reservations,Rows=rows,AssetCalls=partial?r.LoadedMap.AssetJournal:null});return new(proof,ids.OrderBy(id=>id,StringComparer.Ordinal).ToArray());
+        string proof=WorkProgress.Hash(new {Map=map.GetUniqueLoadID(),Size=new[]{map.Size.x,map.Size.z},Grid=grid,Reservations=reservations,Rows=rows,AssetCalls=partial?r.LoadedMap.AssetJournal:null,
+            Clinical=r.WorkProgressV1!=null&&WorkProgress.Validate(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfer(r.Id),r.WorkProgressV1).Version==3?TerritoryAdministrationLedger.ClinicalState(r.Residents):null});return new(proof,ids.OrderBy(id=>id,StringComparer.Ordinal).ToArray());
     }
 }

@@ -1,4 +1,12 @@
-# 1단계 개발 인수인계 — 0.3.107 / 2026-11-13
+# 1단계 개발 인수인계 — 0.3.108 / 2026-11-13
+
+## 0.3.108 — 주민별 호출·의료·영역 부분 복구
+
+[원 seal·현재 승인·실행·저장·검사](M2-PARTS-AUDIT-0.3.108.md). 새 v3는 원 정상 주민 반환/의료·영역 출력 직후 원문을 seal한다. ResumeClinicalOriginal은 현재 전체 동의로 다음 의료/영역 복원 또는 미시작 원 주민의 실제 호출을 한 단계씩 실행한다. 새 pending 주민의 전체 임상 proof를 PendingV3/current-resident-start archive와 연결하고 원 임상/area.Previous를 바꾸지 않는다. 반환한 호출을 반복하지 않으며 불확실한 Started는 보류한다. 완료 ClinicalV3/AssetCallsV2 영수증이 실제 원 journal과 일치해야 최종 Applied와 load를 통과한다. 의료·영역 뒤 재산/도시 경로까지 조립했다.
+
+다음 착수: 새 작업의 후속 소비 lineage 및 driver/설비·운반 merge/split 확대, 특수 역할·권리, 부모 follower/정치·후손 조합. 새 v3 seal 없는 과거 중단에 증거를 소급하지 않는다. 원 의료 정책·영역 자체의 변경을 예전 reset permission으로 덮지 않는다. M2.4 전체 미완료, 노력 추정35–50%/큰3묶음; M1 10/10,M2 0/18,전체10/100 유지. 다른 단계의 과거 추정은 새 측정값이 아니다.
+
+배포 확인: 양 타깃 전체 빌드/최종 native 컴파일 경고·오류0, Honor20093/Contracts5921, ENKO604, 패키지 양 타깃 DLL allowlist 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.108.zip` SHA256 `27CC9F8B3946481701FEB530B1C62334BE37CADDED1F1F14A6A77F8B609811ED`. 이전 .107 로컬 모드는 `.local/contracts-preview-f1442faee3784bf7875637e85c9275e1`에 백업했다. 최종 재설치 전 백업은 `.local/contracts-preview-ce2293de67084024b3813297b463aab0`이며 최종32개 파일 일치 설치·활성화/언어 hash 불변을 확인했다. 설치 게임5005 DLL SHA도 기존 검토 hash와 일치한다. 미확인1.6 native 권한 없음. Preview Steam 게시·예약 없음.
 
 ## 0.3.107 — 재산 부분 인계 경계
 

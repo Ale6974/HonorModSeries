@@ -46,14 +46,32 @@ public sealed partial class TerritoryAdministrationLedger
     private WorkProgressSave WorkProgressBasis(TerritoryTransfer t,TerritoryTransferReference r,bool current)
     {
         var s=WorkProgress.Validate(t,r.WorkProgressV1);
-        if(r.Residents?.Profile!=16 || r.Residents.Snapshot!=ResidentTransferCensus.Restore(s.Seal.Census).Residents || r.Residents.Census!=s.Seal.Census || r.ResidentCensusProof!=s.Seal.CensusProof ||
-            JsonSerializer.Serialize(r.Residents.AuthorityJournal)!=JsonSerializer.Serialize(s.Seal.Calls) || JsonSerializer.Serialize(r.Residents.CareJournal)!=JsonSerializer.Serialize(s.Seal.Care) ||
-            JsonSerializer.Serialize(r.Residents.AreaRecords.Select(a=>a.Journal))!=JsonSerializer.Serialize(s.Seal.Areas) || r.LoadedMap?.Snapshot!=t.LoadedMap || !r.Residents.Started || !r.ResidentCareJournalRequired ||
+        if(r.Residents?.Profile!=16 || r.Residents.Pawns==null || r.Residents.Snapshot!=ResidentTransferCensus.Restore(s.Seal.Census).Residents || r.Residents.Census!=s.Seal.Census || r.ResidentCensusProof!=s.Seal.CensusProof ||
+            s.Version!=3&&(JsonSerializer.Serialize(r.Residents.AuthorityJournal)!=JsonSerializer.Serialize(s.Seal.Calls) || JsonSerializer.Serialize(r.Residents.CareJournal)!=JsonSerializer.Serialize(s.Seal.Care) ||
+            JsonSerializer.Serialize(r.Residents.AreaRecords.Select(a=>a.Journal))!=JsonSerializer.Serialize(s.Seal.Areas)) || r.LoadedMap?.Snapshot!=t.LoadedMap || !r.Residents.Started || !r.ResidentCareJournalRequired ||
             !r.CityCallV1 || r.CityCallStarted&&!r.CityCallReturned)throw new ArgumentException("Original positive work/call/care/area/assets seal changed.");
         WorkProgress.AssetAdvance(t,r.WorkProgressV1,r.LoadedMap.AssetJournal,t.Phase==TerritoryTransferPhase.Applied);
-        if(s.Version==1 && r.WorkAssetVerifiedV2!=null || s.Version==2 && (r.WorkAssetVerifiedV2==null || r.WorkAssetVerifiedV2.Count>1000 || r.WorkAssetVerifiedV2.Distinct().Count()!=r.WorkAssetVerifiedV2.Count ||
-            r.WorkAssetVerifiedV2.Any(id=>!MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Any(c=>c.Id==id&&c.Returned))))throw new ArgumentException("Unpaired original partial asset verification facts.");
-        if(s.Version==2 && (current || t.Phase==TerritoryTransferPhase.Applied))
+        if(s.Version==3)WorkProgress.ClinicalAdvance(t,r.WorkProgressV1,ClinicalState(r.Residents),t.Phase==TerritoryTransferPhase.Applied);
+        if(s.Version==3)
+        {
+            if(r.WorkNativeRosterV3==null || (t.Phase==TerritoryTransferPhase.Prepared || r.WorkNativeRosterV3.Count!=0) &&
+                !r.WorkNativeRosterV3.Select(p=>p?.GetUniqueLoadID()).SequenceEqual(s.RosterV3))throw new ArgumentException("Original native roster reference order changed.");
+            if(t.Phase==TerritoryTransferPhase.Prepared && (r.WorkNativeRosterV3.Distinct().Count()!=r.WorkNativeRosterV3.Count || r.WorkNativeRosterV3.Any(p=>!r.Residents.Pawns.Contains(p))))throw new ArgumentException("Original native roster must retain the same original Pawn references.");
+            if(r.WorkResidentStartsV3==null || r.WorkResidentStartsV3.Count>r.Residents.AuthorityJournal.Count || r.WorkResidentStartsV3.Any(raw=>raw==null||raw.Length>2048))throw new ArgumentException("Missing or oversized current resident starts.");
+            var starts=r.WorkResidentStartsV3.Select(raw=>JsonSerializer.Deserialize<WorkResidentStart>(raw)).ToArray();
+            if(starts.Any(p=>p==null)||starts.Select(p=>p.Pawn).Distinct().Count()!=starts.Length)throw new ArgumentException("Duplicate current resident start.");
+            foreach(var start in starts)
+            {
+                var consent=custodyAgreements.Record(start.Agreement);var a=WorkProgress.Approval(t,consent.Witness.WorkProgressV1);
+                int i=ResidentMoveSet.Restore(r.Residents.Snapshot).Residents.ToList().FindIndex(p=>p.Id==start.Pawn);
+                if(i<0 || !ResidentTransferCensus.Call(r.Residents.AuthorityJournal[i]).Started || !CityStockProof.Valid(start.CurrentProof) || start.Tick<consent.Witness.Tick || start.Tick>Find.TickManager.TicksGame ||
+                    a.PendingV3?.SingleOrDefault(p=>p.Pawn==start.Pawn)?.Proof!=start.CurrentProof)throw new ArgumentException("Current resident start lost its exact approved current proof.");
+            }
+        }
+        else if(r.WorkResidentStartsV3!=null || r.WorkNativeRosterV3!=null)throw new ArgumentException("Unexpected current resident starts or roster.");
+        if(s.Version==1 && r.WorkAssetVerifiedV2!=null || s.Version>=2 && (r.WorkAssetVerifiedV2==null || r.WorkAssetVerifiedV2.Count>1000 || r.WorkAssetVerifiedV2.Distinct().Count()!=r.WorkAssetVerifiedV2.Count ||
+            r.WorkAssetVerifiedV2.Any(id=>r.LoadedMap.AssetJournal==null||!MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Any(c=>c.Id==id&&c.Returned))))throw new ArgumentException("Unpaired original partial asset verification facts.");
+        if(s.Version>=2 && s.Seal.Assets!=null && (current || t.Phase==TerritoryTransferPhase.Applied))
         {
             var initial=MapAssetTransfers.Restore(s.Seal.Assets);
             if(MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Where((c,i)=>c.Returned&&!initial.Calls[i].Returned&&!r.WorkAssetVerifiedV2.Contains(c.Id)).Any())
@@ -72,10 +90,10 @@ public sealed partial class TerritoryAdministrationLedger
             r.City.Faction==r.From && Cities().Count(c=>c.Faction==r.From)<2 && t.FromOwner!=AdministrationId)
             throw new ArgumentException("Current registered realms and original last-base protection required.");
         if(!Find.WorldObjects.AllWorldObjects.Contains(r.City) || "territory/"+r.City.GetUniqueLoadID()!=t.Territory ||
-            r.City.previouslyGeneratedInhabitants==null || r.City.previouslyGeneratedInhabitants.Count!=r.Residents.Pawns.Count || r.City.previouslyGeneratedInhabitants.Where((p,i)=>p!=r.Residents.Pawns[i]).Any())
+            r.City.previouslyGeneratedInhabitants==null || r.City.previouslyGeneratedInhabitants.Count!=r.Residents.Pawns.Count || !r.City.previouslyGeneratedInhabitants.SequenceEqual(s.Version==3?r.WorkNativeRosterV3:r.Residents.Pawns))
             throw new ArgumentException("Same original city and ordered resident aliases required.");
         var census=ResidentMoveSet.Restore(r.Residents.Snapshot);
-        if(r.Residents.Pawns.Count!=census.Residents.Count || r.Residents.Pawns.Where((p,i)=>p==null || p.GetUniqueLoadID()!=census.Residents[i].Id || p.Faction!=r.Target).Any())throw new ArgumentException("Original positive resident identities changed.");
+        if(r.Residents.Pawns.Count!=census.Residents.Count || r.Residents.Pawns.Where((p,i)=>p==null || p.GetUniqueLoadID()!=census.Residents[i].Id || p.Faction!=(s.Version==3&&!ResidentTransferCensus.Call(r.Residents.AuthorityJournal[i]).Returned?r.From:r.Target)).Any())throw new ArgumentException("Original positive resident identities changed.");
         return s;
     }
     private void ValidateWorkCompletion(TerritoryTransfer t,TerritoryTransferReference r)
@@ -88,7 +106,9 @@ public sealed partial class TerritoryAdministrationLedger
         if(t.WorkCompletionV1==null)return;
         var receipt=JsonSerializer.Deserialize<WorkCompletionReceipt>(t.WorkCompletionV1);
         var progress=WorkProgress.Validate(t,r.WorkProgressV1);
-        if(progress.Version==2){WorkProgress.AssetAdvance(t,r.WorkProgressV1,receipt.AssetCallsV2,true);if(receipt.AssetCallsV2!=r.LoadedMap.AssetJournal)throw new ArgumentException("Terminal original asset calls changed.");}
+        if(progress.Version==3){WorkProgress.ClinicalAdvance(t,r.WorkProgressV1,receipt.ClinicalV3,true);if(JsonSerializer.Serialize(receipt.ClinicalV3)!=JsonSerializer.Serialize(ClinicalState(r.Residents)))throw new ArgumentException("Terminal original clinical outputs changed.");}
+        else if(receipt.ClinicalV3!=null)throw new ArgumentException("Unexpected clinical completion scope.");
+        if(progress.Version>=2){WorkProgress.AssetAdvance(t,r.WorkProgressV1,receipt.AssetCallsV2,true);if(receipt.AssetCallsV2!=r.LoadedMap.AssetJournal)throw new ArgumentException("Terminal original asset calls changed.");}
         else if(receipt.AssetCallsV2!=null)throw new ArgumentException("Unexpected partial asset completion scope.");
         if(r.WorkProgressV1==null || r.CustodyAgreementV1==null)throw new ArgumentException("Progress completion lost its native archive/current consent.");
         var approval=custodyAgreements.Record(r.CustodyAgreementV1);
@@ -102,7 +122,8 @@ public sealed partial class TerritoryAdministrationLedger
         var s=WorkProgressBasis(t,r,true);var survey=WorkProgressSurvey.Capture(r);
         var removed=new HashSet<string>(s.Events.Where(e=>e.Returned.HasValue).SelectMany(e=>e.Removed),StringComparer.Ordinal);
         if(s.Seal.Objects.Any(id=>!survey.Ids.Contains(id)&&!removed.Contains(id)))throw new ArgumentException("Missing original object has no positive native consumption/completion lineage.");
-        return WorkProgress.Approve(t,r.WorkProgressV1,survey.Proof,tick);
+        var pending=s.Version==3?r.Residents.Pawns.Where((p,i)=>!ResidentTransferCensus.Call(r.Residents.AuthorityJournal[i]).Started).Select(p=>new WorkPendingResident(p.GetUniqueLoadID(),ResidentExecution.FreshClinical(p).Preserved)).ToArray():null;
+        return WorkProgress.Approve(t,r.WorkProgressV1,survey.Proof,tick,pending);
     }
     internal void DrawWorkProgress(Listing_Standard list,string id)
     {
@@ -115,7 +136,8 @@ public sealed partial class TerritoryAdministrationLedger
             var w=CurrentCustodyWitness(id,"work-consent-"+Guid.NewGuid().ToString("N"),Find.TickManager.TicksGame,workProgress:progress);
             var review=new LiveCustodyAgreementReview(Current.Game,w,r.City.Label);
             string parties=string.Join(", ",w.Parties.Select(p=>Charters.Binding(p.Party).Settlement?.Label??(p.Player?Faction.OfPlayer.Name:Charters.Binding(p.Party).OriginalFaction?.Name)??p.Party));
-            string key=WorkProgress.Validate(t,r.WorkProgressV1).Version==2 && MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Any(c=>!c.Returned)?"RE_WorkAssetConfirm":"RE_WorkProgressConfirm";
+            string key=WorkProgress.Validate(t,r.WorkProgressV1).Version>=2 && r.LoadedMap.AssetJournal!=null && MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Any(c=>!c.Returned)?"RE_WorkAssetConfirm":"RE_WorkProgressConfirm";
+            if(WorkProgress.Validate(t,r.WorkProgressV1).Version==3 && r.Residents.AuthorityJournal.Where((raw,i)=>!ResidentTransferCensus.Call(raw).Returned || !ResidentCareJournal.Restore(r.Residents.CareJournal[i]).State.Consumed || !ResidentAreas.Restore(r.Residents.AreaRecords[i].Journal).Consumed).Any())key="RE_WorkClinicalConfirm";
             Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(key.Translate(review.Label,parties,WorkProgress.Validate(t,r.WorkProgressV1).Events.Length),()=>CommitCustodyAgreement(review)));
         }
         catch(Exception e){Log.Warning("[Honor.Contracts.Preview] Progress review retains original evidence: "+e.GetType().Name);Reject();}
@@ -126,7 +148,8 @@ public sealed partial class TerritoryAdministrationLedger
         var consent=custodyAgreements.Record(r.CustodyAgreementV1);
         if(consent.Witness.WorkProgressV1==null)throw new ArgumentException("Legacy custody consent grants no progressed-work permission.");
         RequireCurrentCustody(r);WorkProgressBasis(t,r,true);
-        if(WorkProgress.Validate(t,r.WorkProgressV1).Version==2 && MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Any(c=>!c.Returned))
+        if(WorkProgress.Validate(t,r.WorkProgressV1).Version==3 && ResidentExecution.ResumeClinicalOriginal(r)){Messages.Message("RE_WorkClinicalProgress".Translate(),MessageTypeDefOf.NeutralEvent);return;}
+        if(WorkProgress.Validate(t,r.WorkProgressV1).Version>=2 && r.LoadedMap.AssetJournal!=null && MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Any(c=>!c.Returned))
         {
             MapAssetRecords.ApplyProgressNext(r);
             Messages.Message("RE_WorkAssetProgress".Translate(),MessageTypeDefOf.NeutralEvent);
@@ -142,7 +165,9 @@ public sealed partial class TerritoryAdministrationLedger
         TerritoryCallGuard.RequireStartedForTarget(r.CityCallV1,r.CityCallStarted,r.CityCallReturned);
         RequireCurrentCustody(r);CityStockPreservation.InvalidateMaterial(r.City);
         Ledger.ConfirmWorkProgress(t.Id,consent.Witness.WorkProgressV1,consent,r.City.Faction.GetUniqueLoadID(),r.CityCallStarted,r.CityCallReturned,Find.TickManager.TicksGame,
-            WorkProgress.Validate(t,r.WorkProgressV1).Version==2?r.LoadedMap.AssetJournal:null);
+            WorkProgress.Validate(t,r.WorkProgressV1).Version>=2?r.LoadedMap.AssetJournal:null,
+            WorkProgress.Validate(t,r.WorkProgressV1).Version==3?ClinicalState(r.Residents):null);
         ResidentExecution.ReleaseReferences(r.Residents);LoadedMapRecords.Release(r.LoadedMap);
+        r.WorkNativeRosterV3?.Clear();
     }
 }

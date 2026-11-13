@@ -89,6 +89,57 @@ internal static class WorkProgressTests
         Check(JsonSerializer.Serialize(WorkProgress.Original(applied))==original && book.Export()==beforeBook && payments.Export()==paid);
         agreements.ValidateHistory(book,physical,payments);
         Reject(()=>physical.ConfirmWorkProgress(t.Id,approval,consent,"target",true,true,22));
+        var secondWork=new ActiveWorkRow("zzsecond",["Job_2"],"{\"Driver\":\"frame\"}");
+        var mixedResidents=ResidentMoveSet.Capture([residents.Residents[0],new("zzsecond",ActiveWork.Bind(ResidentMapped.Bind(hash,new("zzsecond","map",3,0)),secondWork),3)]);
+        string mixedMap=LoadedMapPreservation.Capture("town","map",20,20,hash,CityStockProof.Capture(true,false,-1,[]),0,[new("frame","WallFrame","Wood",1,100,2,0,null)]);
+        mixedMap=LoadedMapPreservation.CaptureResidents(mixedMap,mixedResidents.Residents.Select(p=>new NativeMapResident(p.Id,p.Preserved)));
+        mixedMap=LoadedMapPreservation.CaptureCivicAssets(mixedMap,[new("frame","source",hash)],false,false);
+        mixedMap=LoadedMapPreservation.CaptureActiveWork(mixedMap,[work,secondWork],frames:[new("frame",hash,["wood"])]);
+        var mixedPhysical=new TerritoryTransferLedger();var mixedActual=actual with{LoadedMap=mixedMap,StockProof=LoadedMapPreservation.Restore(mixedMap).Proof,ResidentProof=mixedResidents.Proof};
+        var mt=mixedPhysical.PrepareLoadedJournaled("mixed",book,"root",mixedActual,"target","target",null,TerritoryTransferPurpose.ActiveCharter,10);mixedPhysical.MarkStandaloneActiveWork(mt.Id);mt=mixedPhysical.Transfer(mt.Id);
+        string mc=ResidentTransferCensus.Prepare("town","source","target",16,mixedResidents);var mcProof=ResidentTransferCensus.Restore(mc).Proof;
+        var firstMed=ResidentCareJournal.Prepare("worker","source","target",3);firstMed.Begin("source",3);firstMed.RecordReturn("target",1);
+        var originalClinical=new WorkClinicalState([calls[0],JsonSerializer.Serialize(new ResidentAuthorityState("zzsecond"))],
+            [firstMed.Export(),ResidentCareJournal.Prepare("zzsecond","source","target",3).Export()],
+            [ResidentAreas.Returned(ResidentAreas.Begin(ResidentAreas.Prepare("worker",[]),[]),[]),ResidentAreas.Prepare("zzsecond",[])]);
+        string ma=MapAssetTransfers.Prepare(mixedMap,"source","target");
+        string cp=WorkProgress.PrepareClinical(mt,mc,mcProof,originalClinical,ma,11,hash,["frame","wood","worker","zzsecond"]);
+        string reordered=WorkProgress.PrepareClinical(mt,mc,mcProof,originalClinical,ma,11,hash,["frame","wood","worker","zzsecond"],["zzsecond","worker"]);
+        Check(WorkProgress.Validate(mt,reordered).RosterV3.SequenceEqual(["zzsecond","worker"]));
+        Reject(()=>WorkProgress.PrepareClinical(mt,mc,mcProof,originalClinical,ma,11,hash,["frame","wood","worker","zzsecond"],["worker","worker"]));
+        Reject(()=>WorkProgress.PrepareClinical(mt,mc,mcProof,originalClinical,ma,11,hash,["frame","wood","worker","zzsecond"],["worker"]));
+        WorkProgress.ClinicalAdvance(mt,cp,originalClinical);Reject(()=>WorkProgress.ClinicalAdvance(mt,cp,originalClinical,true));
+        Reject(()=>WorkProgress.Approve(mt,cp,next,20));
+        Check(WorkProgress.Approval(mt,WorkProgress.Approve(mt,cp,next,20,[new("zzsecond",next)])).PendingV3[0].Proof==next);
+        Reject(()=>WorkProgress.Approve(mt,cp,next,20,[new("foreign",next)]));
+        var unknown=originalClinical with{Calls=[calls[0],ResidentTransferCensus.Begin(originalClinical.Calls[1])]};
+        Reject(()=>WorkProgress.ClinicalAdvance(mt,cp,unknown));
+        var changedMed=originalClinical with{Care=[JsonSerializer.Serialize(firstMed.State with{ReturnedCare=2}),originalClinical.Care[1]]};
+        Reject(()=>WorkProgress.ClinicalAdvance(mt,cp,changedMed));
+        firstMed.Consume("target",1);var lastMed=ResidentCareJournal.Prepare("zzsecond","source","target",3);lastMed.Begin("source",3);lastMed.RecordReturn("target",3);lastMed.SealUnchanged("target",3);
+        var finished=new WorkClinicalState([calls[0],ResidentTransferCensus.Returned(ResidentTransferCensus.Begin(originalClinical.Calls[1]))],[firstMed.Export(),lastMed.Export()],
+            [ResidentAreas.Complete(originalClinical.Areas[0],[]),ResidentAreas.Complete(ResidentAreas.Returned(ResidentAreas.Begin(originalClinical.Areas[1],[]),[]),[])]);
+        WorkProgress.ClinicalAdvance(mt,cp,finished,true);Reject(()=>WorkProgress.ClinicalAdvance(mt,cp,finished with{Areas=originalClinical.Areas},true));
+        Check(WorkProgress.Validate(mt,cp).Seal.Care[0]==originalClinical.Care[0] && WorkProgress.Validate(mt,cp).Seal.Calls[1]==originalClinical.Calls[1]);
+        string clinicalApproval=WorkProgress.Approve(mt,cp,next,20,[]);
+        var clinicalWitness=witness with{Transfer=mt.Id,Physical=mixedPhysical.Export(),WorkProgressV1=clinicalApproval};
+        var clinicalConsent=new CustodyAgreementReceipt(clinicalWitness,WorkProgress.Hash(clinicalWitness));
+        string completeAssets=MapAssetTransfers.Returned(MapAssetTransfers.Begin(ma,"frame","source"),"frame","target");
+        Reject(()=>mixedPhysical.ConfirmWorkProgress(mt.Id,clinicalApproval,clinicalConsent,"target",true,true,21,completeAssets));
+        Reject(()=>mixedPhysical.ConfirmWorkProgress(mt.Id,clinicalApproval,clinicalConsent,"target",true,true,21,completeAssets,originalClinical));
+        Reject(()=>mixedPhysical.ConfirmWorkProgress(mt.Id,clinicalApproval,clinicalConsent,"target",true,true,21,ma,finished));
+        mixedPhysical.ConfirmWorkProgress(mt.Id,clinicalApproval,clinicalConsent,"target",true,true,21,completeAssets,finished);
+        Check(TerritoryTransferLedger.Restore(mixedPhysical.Export()).Transfer(mt.Id).Phase==TerritoryTransferPhase.Applied);
+        string bareMap=LoadedMapPreservation.Capture("town","map",20,20,hash,CityStockProof.Capture(true,false,-1,[]),0,[new("frame","WallFrame","Wood",1,100,2,0,null)]);
+        bareMap=LoadedMapPreservation.CaptureResidents(bareMap,mixedResidents.Residents.Select(p=>new NativeMapResident(p.Id,p.Preserved)));
+        bareMap=LoadedMapPreservation.CaptureActiveWork(bareMap,[work,secondWork]);
+        var bare=new TerritoryTransferLedger();var bt=bare.PrepareLoadedJournaled("bare",book,"root",mixedActual with{LoadedMap=bareMap,StockProof=LoadedMapPreservation.Restore(bareMap).Proof},"target","target",null,TerritoryTransferPurpose.ActiveCharter,10);
+        bare.MarkStandaloneActiveWork(bt.Id);bt=bare.Transfer(bt.Id);
+        string bp=WorkProgress.PrepareClinical(bt,mc,mcProof,originalClinical,null,11,hash,["frame","wood","worker","zzsecond"]);
+        WorkProgress.AssetAdvance(bt,bp,null,true);Reject(()=>WorkProgress.AssetAdvance(bt,bp,ma));
+        var bw=clinicalWitness with{Transfer=bt.Id,Physical=bare.Export(),WorkProgressV1=WorkProgress.Approve(bt,bp,next,20,[])};
+        bare.ConfirmWorkProgress(bt.Id,bw.WorkProgressV1,new(bw,WorkProgress.Hash(bw)),"target",true,true,21,null,finished);
+        Check(TerritoryTransferLedger.Restore(bare.Export()).Transfer(bt.Id).Phase==TerritoryTransferPhase.Applied);
         return n;
     }
 }

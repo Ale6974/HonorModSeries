@@ -84,7 +84,7 @@ public sealed class ResidentExecutionRecord : IExposable
     }
 }
 
-internal static class ResidentExecution
+internal static partial class ResidentExecution
 {
     private static readonly System.Reflection.FieldInfo Areas = AccessTools.Field(typeof(Pawn_PlayerSettings), "allowedAreas");
     internal static readonly System.Reflection.MethodInfo GcMethod = AccessTools.Method(typeof(WorldPawnGC), "GetCriticalPawnReason", [typeof(Pawn)]);
@@ -446,6 +446,7 @@ internal static class ResidentExecution
                     if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing || p.Faction != target) throw new ArgumentException("Native work return belongs to a changed game/authority.");
                     care.RecordReturn(target.GetUniqueLoadID(), p.playerSettings == null ? null : (int)p.playerSettings.medCare); record.CareJournal[i] = care.Export();
                     if (area != null) ResidentAreaRecords.Returned(area);
+                    Current.Game.GetComponent<TerritoryAdministrationLedger>().SealClinicalReturn(record);
                 });
                 else p.SetFaction(target);
                 if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
@@ -457,6 +458,7 @@ internal static class ResidentExecution
             if (record.Census != null && care != null && action == ResidentMoveAction.ChangeFaction && !(record.Profile == 16 && p.CurJob != null))
             { care.RecordReturn(target.GetUniqueLoadID(), p.playerSettings == null ? null : (int)p.playerSettings.medCare); record.CareJournal[i] = care.Export(); }
             if (area != null && action == ResidentMoveAction.ChangeFaction && !(record.Profile == 16 && p.CurJob != null)) ResidentAreaRecords.Returned(area);
+            if(record.Profile==16)Current.Game.GetComponent<TerritoryAdministrationLedger>().SealClinicalReturn(record);
             // Restore recorded care/orders and separately verified custody resets only; never repair health, gear, social state or unexplained ownership.
             var actual = ReadWithAreas(p, record.Profile, surgery, prisoner, area);
             var before = set.Residents[i];

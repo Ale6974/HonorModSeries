@@ -320,7 +320,7 @@
       "stage": 1,
       "id": "M2.4",
       "title": "진행 작업·예약의 이전 경계",
-      "status": "원 주민/재산 양성 인계 뒤 native 종료·소비 증거/현재 승인/원 도시 실행·저장·복구 부분 조립; 더 이른 부분 인계/넓은 작업/부모 조합 미완료",
+      "status": "주민별 부분 반환·의료/영역 복원·새 현재 임상 승인/미시작 호출 및 재산/도시 실행·저장·복구 부분 조립; 새 작업 소비/특수 역할/부모 조합 미완료",
       "production_kloc": [
         1,
         2
@@ -343,7 +343,8 @@
         "docs/M2-PARTS-AUDIT-0.3.104.md",
         "docs/M2-PARTS-AUDIT-0.3.105.md",
         "docs/M2-PARTS-AUDIT-0.3.106.md",
-        "docs/M2-PARTS-AUDIT-0.3.107.md"
+        "docs/M2-PARTS-AUDIT-0.3.107.md",
+        "docs/M2-PARTS-AUDIT-0.3.108.md"
       ],
       "assembly_evidence": [
         "Source/Honor.Contracts.Preview/GroundRestGivers.cs",
@@ -358,7 +359,9 @@
         "Source/Honor.Contracts.Rules/WorkProgress.cs",
         "Source/Honor.Contracts.Preview/WorkProgressHooks.cs",
         "Source/Honor.Contracts.Preview/WorkProgressSurvey.cs",
-        "Source/Honor.Contracts.Preview/WorkProgressRecovery.cs"
+        "Source/Honor.Contracts.Preview/WorkProgressRecovery.cs",
+        "Source/Honor.Contracts.Rules/WorkClinicalProgress.cs",
+        "Source/Honor.Contracts.Preview/WorkClinicalRecovery.cs"
       ],
       "integration_evidence": [
         "Tests/Honor.Contracts.Tests/GroundRestTests.cs",

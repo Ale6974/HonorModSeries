@@ -19,6 +19,8 @@ public sealed class TerritoryTransferReference : IExposable
     public string CustodyAgreementV1;
     public string WorkProgressV1;
     public List<string> WorkAssetVerifiedV2;
+    public List<string> WorkResidentStartsV3;
+    public List<Pawn> WorkNativeRosterV3;
     public void ExposeData()
     {
         Scribe_Values.Look(ref Id, "id"); Scribe_References.Look(ref City, "city");
@@ -33,6 +35,8 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Values.Look(ref CustodyAgreementV1, "currentCustodyCompletionAgreementV1");
         Scribe_Values.Look(ref WorkProgressV1, "verifiedNativeWorkProgressV1");
         Scribe_Collections.Look(ref WorkAssetVerifiedV2,"verifiedPartialWorkAssetsV2",LookMode.Value);
+        Scribe_Collections.Look(ref WorkResidentStartsV3,"currentResidentCallStartsV3",LookMode.Value);
+        Scribe_Collections.Look(ref WorkNativeRosterV3,"originalOrderedClinicalRosterV3",LookMode.Reference);
     }
 }
 public sealed record TerritoryAdministrationReview(string Charter, string City, string From, string Target,
@@ -185,6 +189,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 // Complex asset/town loss is not a positive terminal custody result. Retain its original references and raw calls.
                 if (t.Phase != TerritoryTransferPhase.Prepared && reference.LoadedMap != null &&
                     (t.Phase != TerritoryTransferPhase.Destroyed || reference.LoadedMap.AssetJournal == null)) LoadedMapRecords.Release(reference.LoadedMap);
+                if(t.Phase!=TerritoryTransferPhase.Prepared)reference.WorkNativeRosterV3?.Clear();
             }
             ValidateDeferredTowns();
             ValidateCustodyAgreements();
@@ -369,6 +374,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             Ledger.Confirm(id, finalObservation, Find.TickManager.TicksGame);
             if (residents != null) ResidentExecution.ReleaseReferences(residents);
             if (loaded != null) LoadedMapRecords.Release(loaded);
+            reference.WorkNativeRosterV3?.Clear();
             if (notify) Messages.Message("CT_Applied".Translate(), MessageTypeDefOf.NeutralEvent);
             return true;
         }
@@ -525,6 +531,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 }
                 ResidentExecution.ReleaseReferences(reference.Residents);
                 if (reference.LoadedMap != null) LoadedMapRecords.Release(reference.LoadedMap);
+                reference.WorkNativeRosterV3?.Clear();
                 return;
             }
             if (reference.City.Faction == reference.From)
@@ -542,6 +549,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 Ledger.Confirm(id, actual, Find.TickManager.TicksGame);
             }
             if (reference.LoadedMap != null) LoadedMapRecords.Release(reference.LoadedMap);
+            reference.WorkNativeRosterV3?.Clear();
         }
         catch (Exception e)
         { Log.Warning("[Honor.Contracts.Preview] Territory recovery incomplete; original resident/stock intent retained. " + e.GetType().Name); if (Current.Game == executionGame) { Reject(); Find.TickManager.Pause(); } }
@@ -578,6 +586,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         Ledger.Confirm(item.Id, final, Find.TickManager.TicksGame);
         if (reference.Residents != null) ResidentExecution.ReleaseReferences(reference.Residents);
         if (reference.LoadedMap != null) LoadedMapRecords.Release(reference.LoadedMap);
+        reference.WorkNativeRosterV3?.Clear();
     }
     private void ValidateResidentRecovery(TerritoryTransfer item, TerritoryTransferReference reference)
     {

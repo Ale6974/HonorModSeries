@@ -601,4 +601,6 @@ Review Honor contracts for settlement. This notice does not establish intent, di
 <RE_WorkProgressConfirm>Complete the original handover of {0} using current work observations and the current agreement of: {1}? Verified work events: {2}. Original resident, property, debt and call records remain unchanged. Only an unstarted city handover may execute; previous calls are never repeated.</RE_WorkProgressConfirm>
   <RE_WorkAssetProgress>The original asset returned and was verified. Review current consent again for the next asset or city step.</RE_WorkAssetProgress>
   <RE_WorkAssetConfirm>Review {0}: {1}. Recorded work events: {2}. Approve only the next unchanged original basic asset. Completed resident and asset calls are not repeated. A new current review is required after this step.</RE_WorkAssetConfirm>
+  <RE_WorkClinicalProgress>One resident call or clinical restoration step was recorded. Review current consent again for the next step.</RE_WorkClinicalProgress>
+  <RE_WorkClinicalConfirm>Review {0}: {1}. Recorded work events: {2}. Approve the next resident call or observed medical/area restoration. Pending residents use separately recorded current clinical proofs. Returned calls are never repeated; the next step requires fresh consent.</RE_WorkClinicalConfirm>
 </LanguageData>

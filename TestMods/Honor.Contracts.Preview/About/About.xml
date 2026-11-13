@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.107</modVersion>
+  <modVersion>0.3.108</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.107: Adds a separate early seal after resident and medical handover, before all assets return. Fresh current approval can transfer the next unchanged original basic asset, preserving original calls and independent verification/save facts. Partial resident/medical handover remains unfinished.
+  <description>0.3.108: Adds individually approved resident call, medical-output and original-area recovery with independent original journals and fresh pending-resident clinical proofs. Completed calls are never repeated. Broader M2.4 combinations remain unfinished.
+0.3.108: 주민별 호출·의료 출력·원 영역 복구를 원 기록과 새 현재 주민 증거·승인에 연결합니다. 반환한 호출을 반복하지 않으며 M2.4의 넓은 조합은 미완료입니다.
+0.3.107: Adds a separate early seal after resident and medical handover, before all assets return. Fresh current approval can transfer the next unchanged original basic asset, preserving original calls and independent verification/save facts. Partial resident/medical handover remains unfinished.
 0.3.107: 주민·의료 인계 후 재산 일부가 남은 경계의 별도 원 증거와 새 현재 승인으로 다음 원 기본 재산을 인계합니다. 호출 반환·보존 확인을 따로 저장하며 일부 주민·의료만 처리된 복구는 미완료입니다.
 0.3.106: Adds independent native work completion and material-consumption evidence after verified resident and asset handover. A fresh all-party approval can finish the original city handover without replaying those completed calls. Original records remain intact. Earlier partial handovers and broader M2.4 combinations remain unfinished.
 0.3.106: 주민·재산 인계 확인 후 작업 종료·자재 소비를 별도 증거로 저장합니다. 현재 당사자의 새 승인으로 완료된 호출을 반복하지 않고 원 도시 인계를 마칠 수 있습니다. 원 기록은 보존하며 더 이른 부분 인계와 M2.4의 넓은 조합은 미완료입니다.
