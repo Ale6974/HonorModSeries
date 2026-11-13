@@ -606,5 +606,13 @@
   <RE_WorkJobConsent>현재 지원 작업 {0}건의 종료·자재 소비 관측도 이 승인에 연결합니다. 작업은 그대로 진행하며 새로 실행하거나 재시작하지 않습니다.</RE_WorkJobConsent>
   <RE_WorkSuccessorConfirm>{0} 검토: {1}. 작업 사건 {2}건. 원 프레임 호출은 그대로 보존합니다. 관측된 일반 바닥은 도시 인계 전에 별도로 수락합니다. 다음 실제 후계 건물·변경 없는 원 재산 한 단계 또는 모든 재산 확인 후 원 도시 인계를 승인합니다. 지원 일반 제작대의 같은 제작 주문과 설정을 보존하며 전력·연료·연결 시설은 별도 지원이 필요합니다. 불확실한 호출은 반복하지 않습니다.</RE_WorkSuccessorConfirm>
   <RE_WorkSuccessorProgress>별도 실제 재산의 호출 또는 보존 확인을 기록했습니다. 지원 비연결 선반의 원 설정·칸·같은 물품을 보존하며 물품의 별도 인계 권한은 부여하지 않습니다. 다음 단계에는 새 현재 동의를 검토하세요. 원 프레임 호출은 그대로 유지됩니다.</RE_WorkSuccessorProgress>
-  <RE_WorkTerrainAccepted>현재 동의로 관측된 일반 바닥과 원 프레임 완공을 확인했습니다. 지형을 만들거나 바꾸지 않았으며 건물 소속 변경 호출도 만들지 않았습니다. 원 도시 인계에는 모든 재산의 처리가 필요합니다.</RE_WorkTerrainAccepted>
+  <RE_WorkTerrainAccepted>현재 동의로 관측된 지형 완공을 확인했습니다. 별도 겹층 범위는 실제 표면·기초·임시 층·색상도 보존합니다. 지형을 만들거나 바꾸지 않았으며 건물 소속 변경 호출도 만들지 않았습니다. 원 도시 인계에는 모든 재산의 처리가 필요합니다.</RE_WorkTerrainAccepted>
+  <RE_WorkTerrainLayerTop>표면 공사</RE_WorkTerrainLayerTop>
+  <RE_WorkTerrainLayerFoundation>기초 공사</RE_WorkTerrainLayerFoundation>
+  <RE_WorkTerrainLayerTemporary>임시 지형 공사</RE_WorkTerrainLayerTemporary>
+  <RE_WorkTerrainBefore>공사 전</RE_WorkTerrainBefore>
+  <RE_WorkTerrainAfter>관측된 완공</RE_WorkTerrainAfter>
+  <RE_WorkTerrainNone>없음</RE_WorkTerrainNone>
+  <RE_WorkTerrainLayersReview>({1})의 {0}: {2}, 목표 {3}. 표면: {4}; 기초: {5}; 임시: {6}; 색상: {7}; 보이는 지형: {8}.</RE_WorkTerrainLayersReview>
+  <RE_WorkTerrainMoreReview>추가 겹층 완공 {0}건도 이번 현재 검토에 포함됩니다.</RE_WorkTerrainMoreReview>
 </LanguageData>

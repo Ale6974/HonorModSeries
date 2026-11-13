@@ -1,4 +1,14 @@
-# 1단계 개발 인수인계 — 0.3.112 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.113 / 2026-11-14
+
+## 0.3.113 — 원/완공 지형 층과 현재 승인 UI
+
+[실제 부품·집행·저장/복구·native 근거](M2-PARTS-AUDIT-0.3.113.md). NativeWorkFrame.TerrainLayersV9는 원 source 칸의 visible/top/foundation/temporary/color와 원 공사 목표 층을 별도 보존한다. 양성 native 완공 결과의 모든 층과 현재 under/roof는 WorkTerrainAcceptance.LayersV9로 별도 보관한다. 원하는 정의가 실제 원 목표 층에 있어야 새 현재 full-party 수락·기존 도시/최종 receipt로 이어진다. 같은 native Map/array owner·모든 등록된 layer/color 정의·같은 현재 출력으로 명시 복구하며 setter/재생성/가짜 asset call은 없다. old plain/null JSON/API/권한은 그대로다.
+
+실제 승인 팝업에 공사 전/완공의 좌표·목표·각 층·색상·visible을 EN/KO로 표시한다. 최대4건과 추가 포함 수를 표시하며 화면 자체를 집행 증거로 사용하지 않는다. 새 source/actual layer 부품은 standalone M2.4 실제 실행 경로에 조립했으며 부모/M7 권한을 추정하지 않는다.
+
+검사·설치: 양 타깃 전체 빌드 및 최종 native 재컴파일 경고/오류0, Honor20093/Contracts6026. 최종 ENKO616 키·자리표시자/중복 검사와 패키지 양 타깃 DLL allowlist 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.113.zip` SHA256 `2A06C0B07FF813056C008AB056AF81EC77AECC659D93B030E2D76DD171089259`. 이전 로컬 Preview는 `.local/contracts-preview-a072dcd1eb0a4b1899fc6971c0d3adfc`에 백업 후 최종32파일 일치 설치했다. 활성화·언어 설정 hash 불변. 현재5005 DLL hash는 기존 검토 값과 같으며 새 미확인1.6 native 권한은 없다. Preview Steam·예약 없음.
+
+다음 착수: 필스 등 원 입력 밖의 추가 자연 출력/연속 지형 변경·후계 소실과 보관 물품 소비·교체, 연결 shelf group/전력·연료·시설, 더 넓은 작업/특수 역할·개인 권리 및 부모 follower/정치·후손/M2.10 실제 조립. M2.4 전체 미완료다. 원 층/원 물체/원 호출을 현재 값으로 바꾸지 않는다. 기존 잔여 노력 추정25–40%/3묶음은 이번 부분 변경만으로 재측정하지 않았다. M1 10/10,M2 0/18,전체10/100 유지. 여섯 단계의 과거 추정은 새 측정값이 아니다.
 
 ## 0.3.112 — 원 선반 설정·같은 물품 및 일반 바닥 수락
 

@@ -16,6 +16,7 @@ public sealed record NativeWorkFrame(string Id, string Configuration, string[] R
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string StorageV7 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string TerrainV8 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkTerrainLayers TerrainLayersV9 { get; init; }
 }
 public sealed record LoadedMapScope(string Town, string Map, int Width, int Height, string Grid, string Stock, int StockFormat, NeutralMapThing[] Things, string Proof)
 {
@@ -306,6 +307,7 @@ public static class LoadedMapPreservation
                 f.Resources == null || f.Resources.Length > 10000 || f.Resources.Any(id => !Key(id)) || f.StorageV7!=null&&!CityStockProof.Valid(f.StorageV7) || f.TerrainV8!=null&&(!Key(f.TerrainV8)||f.StorageV7!=null)) ||
                 !s.WorkFramesV1.Select(f => f.Id).SequenceEqual(s.WorkFramesV1.Select(f => f.Id).Distinct().OrderBy(id => id, StringComparer.Ordinal))) throw new ArgumentException("Original owned construction frames required.");
             var occupied = new HashSet<string>(s.Things.Select(t => t.Id).Concat((s.Held ?? []).Select(r => r.Item.Id)).Concat((s.NativeResidents ?? []).Select(r => r.Id)).Concat((s.Visitors ?? []).Select(r => r.Id)), StringComparer.Ordinal);
+            foreach(var frame in s.WorkFramesV1.Where(frame=>frame.TerrainLayersV9!=null)){if(frame.TerrainV8==null)throw new ArgumentException("Layered frame scope requires its original terrain definition.");WorkTerrainLayerRules.Check(frame.TerrainLayersV9);}
             foreach (var resource in s.WorkFramesV1.SelectMany(f => f.Resources)) if (!occupied.Add(resource) || occupied.Count > 10000) throw new ArgumentException("Duplicated/oversized original construction resource scope.");
         }
         if (s.GroundRestV1 != null) { if (s.NativeResidents == null || s.RoyalMappedV1 != null) throw new ArgumentException("Rest scope requires separate original mapped civilians."); GroundRest.Validate(s.GroundRestV1, s.NativeResidents.Select(r => r.Id)); }

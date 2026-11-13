@@ -333,6 +333,51 @@ internal static class WorkProgressTests
         floorPhysical.ConfirmWorkProgress(tf.Id,ff.Witness.WorkProgressV1,ff,"target",true,true,29,fa,finished,fr);
         Check(TerritoryTransferLedger.Restore(floorPhysical.Export()).Transfer(tf.Id).Phase==TerritoryTransferPhase.Applied);
         Check(!resolution.Contains("TerrainV8")&&!JsonSerializer.Serialize(new NativeWorkFrame("frame",hash,["wood"])).Contains("TerrainV8"));
+        var layerOrigin=new WorkTerrainLayers(1,"Soil","Soil",null,null,"Blue");
+        var layerActual=new WorkTerrainLayers(1,"Foundation","Soil","Foundation",null,"Blue");
+        WorkTerrainLayerRules.Pair(layerOrigin,layerActual,"Foundation");
+        Reject(()=>WorkTerrainLayerRules.Pair(null,layerActual,"Foundation"));
+        Reject(()=>WorkTerrainLayerRules.Pair(layerOrigin,null,"Foundation"));
+        Reject(()=>WorkTerrainLayerRules.Pair(layerOrigin,layerActual with{TargetLayer=0},"Soil"));
+        Reject(()=>WorkTerrainLayerRules.Check(layerActual with{TargetLayer=3}));
+        Reject(()=>WorkTerrainLayerRules.Check(layerActual with{Visible=""}));
+        Reject(()=>WorkTerrainLayerRules.Check(layerActual with{Color=" "}));
+        Reject(()=>WorkTerrainLayerRules.Pair(layerOrigin,layerActual,"Other"));
+        Reject(()=>WorkAssetResolutions.AddTerrain(tf,fp,null,fa,"frame",0,floor with{LayersV9=layerActual}));
+        (TerritoryTransferLedger Ledger,TerritoryTransfer Transfer,string Progress,string Calls) Layered(string id,string definition,WorkTerrainLayers layers)
+        {
+            string lm=LoadedMapPreservation.Capture("town","map",20,20,hash,CityStockProof.Capture(true,false,-1,[]),0,[new("frame","LayerFrame",null,1,100,2,0,null)]);
+            lm=LoadedMapPreservation.CaptureResidents(lm,mixedResidents.Residents.Select(p=>new NativeMapResident(p.Id,p.Preserved)));
+            lm=LoadedMapPreservation.CaptureCivicAssets(lm,[new("frame","source",hash)],false,false);
+            lm=LoadedMapPreservation.CaptureActiveWork(lm,[work,secondWork],frames:[new NativeWorkFrame("frame",hash,["wood"]){TerrainV8=definition,TerrainLayersV9=layers}]);
+            var ledger=new TerritoryTransferLedger();var transfer=ledger.PrepareLoadedJournaled(id,book,"root",mixedActual with{LoadedMap=lm,StockProof=LoadedMapPreservation.Restore(lm).Proof},"target","target",null,TerritoryTransferPurpose.ActiveCharter,10);ledger.MarkStandaloneActiveWork(transfer.Id);transfer=ledger.Transfer(transfer.Id);
+            string calls=MapAssetTransfers.Prepare(lm,"source","target"),progress=WorkProgress.PrepareClinical(transfer,mc,mcProof,originalClinical,calls,11,hash,["frame","wood","worker","zzsecond"]);
+            progress=WorkProgress.Begin(transfer,progress,"frame","worker","Job_1",["frame","wood"],hash,22);progress=WorkProgress.ObserveReturn(transfer,progress,0,22);progress=WorkProgress.Returned(transfer,progress,0,["frame","wood"],[],next,23);
+            return(ledger,transfer,progress,calls);
+        }
+        var layered=Layered("foundation","Foundation",layerOrigin);
+        var foundation=new WorkTerrainAcceptance(2,"Foundation","Soil","Roof"){LayersV9=layerActual};
+        Reject(()=>WorkAssetResolutions.AddTerrain(layered.Transfer,layered.Progress,null,layered.Calls,"frame",0,foundation with{LayersV9=null}));
+        string layeredDoc=WorkAssetResolutions.AddTerrain(layered.Transfer,layered.Progress,null,layered.Calls,"frame",0,foundation);
+        CustodyAgreementReceipt LayerConsent(string id,string doc,long tick){var w=clinicalWitness with{Id=id,Transfer=layered.Transfer.Id,Physical=layered.Ledger.Export(),Tick=tick,WorkProgressV1=WorkProgress.Approve(layered.Transfer,layered.Progress,next,tick,[],[],doc)};return new(w,WorkProgress.Hash(w));}
+        var layeredConsent=LayerConsent("layer-accept",layeredDoc,24);
+        Reject(()=>WorkAssetResolutions.Begin(layered.Transfer,layered.Progress,layeredDoc,"frame","source",layeredConsent));
+        layeredDoc=WorkAssetResolutions.AcceptTerrain(layered.Transfer,layered.Progress,layeredDoc,"frame",layeredConsent);
+        var preservedLayer=WorkAssetResolutions.Validate(layered.Transfer,layered.Progress,layeredDoc,true).Entries.Single();
+        Check(preservedLayer.TerrainV8.LayersV9==layerActual && !preservedLayer.Started && !preservedLayer.Returned);
+        WorkAssetResolutions.Approved(layered.Transfer,layered.Progress,preservedLayer,layeredConsent);
+        Reject(()=>WorkAssetResolutions.Approved(layered.Transfer,layered.Progress,preservedLayer with{TerrainV8=preservedLayer.TerrainV8 with{LayersV9=layerActual with{Color="Red"}}},layeredConsent));
+        var layerFinal=LayerConsent("layer-finish",layeredDoc,28);var layerPhysical=TerritoryTransferLedger.Restore(layered.Ledger.Export());
+        layerPhysical.ConfirmWorkProgress(layered.Transfer.Id,layerFinal.Witness.WorkProgressV1,layerFinal,"target",true,true,29,layered.Calls,finished,layeredDoc);
+        Check(TerritoryTransferLedger.Restore(layerPhysical.Export()).Transfer(layered.Transfer.Id).Phase==TerritoryTransferPhase.Applied && MapAssetTransfers.Restore(layered.Calls).Calls.All(call=>!call.Started));
+        foreach(int kind in new[]{0,2})
+        {
+            string def=kind==0?"Bridge":"Snow";var origin=new WorkTerrainLayers(kind,"Soil","Soil","Support",null,null);
+            var actualLayers=kind==0?origin with{Visible=def,Top=def}:origin with{Visible=def,Temporary=def};var variant=Layered("layers-"+kind,def,origin);
+            string doc=WorkAssetResolutions.AddTerrain(variant.Transfer,variant.Progress,null,variant.Calls,"frame",0,new(2,def,"Soil",null){LayersV9=actualLayers});
+            Check(WorkAssetResolutions.Validate(variant.Transfer,variant.Progress,doc).Entries.Single().TerrainV8.LayersV9==actualLayers);
+        }
+        Check(!JsonSerializer.Serialize(floor).Contains("LayersV9")&&!JsonSerializer.Serialize(new NativeWorkFrame("frame",hash,["wood"]){TerrainV8="Floor"}).Contains("TerrainLayersV9"));
         return n;
     }
 }

@@ -1,6 +1,9 @@
 using System.Text.Json;
 namespace Honor.Contracts.Rules;
-public sealed record WorkTerrainAcceptance(int Cell,string Def,string Under,string Roof,bool Accepted=false,string Approval=null);
+public sealed record WorkTerrainAcceptance(int Cell,string Def,string Under,string Roof,bool Accepted=false,string Approval=null)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkTerrainLayers LayersV9 { get; init; }
+}
 public sealed record WorkAssetResolution(string Original,string Actual,int? Event,MapAsset Asset,NeutralMapThing Physical,bool Started=false,bool Returned=false,bool Verified=false,string Approval=null)
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeWorktable WorktableV6 { get; init; }
@@ -30,6 +33,7 @@ public static class WorkAssetResolutions
                     frame?.TerrainV8!=terrain.Def||terrainCall==null||terrainCall.Started||!e.Event.HasValue||e.Event<0||e.Event>=work.Events.Length||
                     terrain.Cell!=map.Things.Single(p=>p.Id==e.Original).Cell||string.IsNullOrWhiteSpace(terrain.Def)||terrain.Under!=null&&string.IsNullOrWhiteSpace(terrain.Under)||terrain.Roof!=null&&string.IsNullOrWhiteSpace(terrain.Roof)||!terrain.Accepted&&terrain.Approval!=null||terrain.Accepted!=(!string.IsNullOrWhiteSpace(terrain.Approval)))throw new ArgumentException("Explicit original terrain-frame acceptance required; no synthetic native asset call.");
                 var ev=work.Events[e.Event.Value];if(ev.Kind!="frame"||!ev.Returned.HasValue||ev.Inputs[0]!=e.Original||!ev.Removed.Contains(e.Original)||ev.Added.Length!=0)throw new ArgumentException("Positive native terrain completion required.");
+                WorkTerrainLayerRules.Pair(frame.TerrainLayersV9,terrain.LayersV9,terrain.Def);
                 continue;
             }
             if(e.StorageV7!=null)

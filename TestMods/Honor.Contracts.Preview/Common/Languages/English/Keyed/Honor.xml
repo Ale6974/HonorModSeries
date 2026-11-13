@@ -606,5 +606,13 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <RE_WorkJobConsent>This consent also records completion and material-consumption observations for {0} supported current jobs. The jobs continue as they are; this does not start or restart them.</RE_WorkJobConsent>
   <RE_WorkSuccessorConfirm>Review {0}: {1}. Recorded work events: {2}. Original frame calls remain unchanged. Observed standard floors use separate acceptance before city handover. Approve the next actual successor or unchanged remainder property step, or the original city handover after every property is verified. Supported basic worktables retain the same production bills and settings; powered, fueled or linked facilities require separate support. Unknown calls are never repeated.</RE_WorkSuccessorConfirm>
   <RE_WorkSuccessorProgress>The separate actual-property call or preservation verification was recorded. Supported ungrouped shelves retain their original settings, cells and the same goods; goods receive no separate handover permission. Review fresh current consent for the next step; original frame calls remain untouched.</RE_WorkSuccessorProgress>
-  <RE_WorkTerrainAccepted>The observed standard floor and its original frame completion were accepted under current consent. No terrain was created or changed, and no building faction call was invented. The original city handover still requires every property to be resolved.</RE_WorkTerrainAccepted>
+  <RE_WorkTerrainAccepted>The observed terrain completion was accepted under current consent. An explicit layered scope also preserves the actual top, foundation, temporary layer and color. No terrain was created or changed, and no building faction call was invented. The original city handover still requires every property to be resolved.</RE_WorkTerrainAccepted>
+  <RE_WorkTerrainLayerTop>surface construction</RE_WorkTerrainLayerTop>
+  <RE_WorkTerrainLayerFoundation>foundation construction</RE_WorkTerrainLayerFoundation>
+  <RE_WorkTerrainLayerTemporary>temporary terrain construction</RE_WorkTerrainLayerTemporary>
+  <RE_WorkTerrainBefore>Before construction</RE_WorkTerrainBefore>
+  <RE_WorkTerrainAfter>Observed completion</RE_WorkTerrainAfter>
+  <RE_WorkTerrainNone>none</RE_WorkTerrainNone>
+  <RE_WorkTerrainLayersReview>{0} at ({1}): {2}, target {3}. Surface: {4}; foundation: {5}; temporary: {6}; color: {7}; visible terrain: {8}.</RE_WorkTerrainLayersReview>
+  <RE_WorkTerrainMoreReview>{0} additional layered completions are included in this current review.</RE_WorkTerrainMoreReview>
 </LanguageData>

@@ -1,5 +1,7 @@
 # 부품 제작·기능 조립 방식의 마일스톤 운영 — 2026-11-13
 
+0.3.113: [B03/B06의 원/실제 지형 층 부품과 M2.4 조립](M2-PARTS-AUDIT-0.3.113.md). WorkTerrainLayerRules와 TerrainWorkEvidence를 원 준비·실제 완공 관측·현재 승인 UI·수락/도시 완료·저장/복구에 조립했다. 원문을 실제 결과로 교체하거나 native setter를 실행하지 않는다. 부모/M7 조정기에는 아직 미조립이며 M2.4 전체 미완료다.
+
 0.3.112: [B03/B06 선반 설정/물품 및 일반 바닥의 실제 후계 조립](M2-PARTS-AUDIT-0.3.112.md). 원 storage/terrain Frame tag와 별도 실제-object/terrain-acceptance 부품을 standalone M2.4의 실제 호출·저장·복구·도시 완료에 연결했다. 지형에는 건물 호출을 만들지 않으며 물품/그룹/부모/M7 권한은 추정하지 않는다. M2.4 전체 미완료.
 
 0.3.111: [B03/B06의 실제 제작대 후계/원 재산 보존 조립](M2-PARTS-AUDIT-0.3.111.md). 기존 WorktableEvidence와 별도 실제-object resolution을 재사용하여 Bill reference-only Scribe/전체 설정 proof/현재 동의/실제 native 호출/중단 복구를 연결했다. 부모/M7 조정기나 전력·연결 시설 권한은 추가하지 않는다. M2.4 전체 미완료.

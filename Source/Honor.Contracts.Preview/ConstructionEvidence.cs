@@ -35,7 +35,7 @@ internal static class ConstructionEvidence
         string proof = RuntimeCompat.Hex(RuntimeCompat.Sha256(Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new { Definition = def.defName, Type = def.GetType().FullName, frame.workDone, Color = color,
             Forbidden=frame.AllComps.Where(c=>c.GetType()==typeof(CompForbiddable)).Select(c=>(bool)ResidentActiveWork.Raw(c,typeof(CompForbiddable),"forbiddenInt")).ToArray(),
             Resources = resources.Select(t => ResidentActiveWork.SimpleCargo(t, frame.resourceContainer, null)).ToArray() }))));
-        return new(frame.GetUniqueLoadID(), proof, resources.Select(t => t.GetUniqueLoadID()).ToArray()){StorageV7=Storage(frame),TerrainV8=def is TerrainDef?def.defName:null};
+        return new(frame.GetUniqueLoadID(), proof, resources.Select(t => t.GetUniqueLoadID()).ToArray()){StorageV7=Storage(frame),TerrainV8=def is TerrainDef?def.defName:null,TerrainLayersV9=TerrainWorkEvidence.Original(frame)};
     }
     private static string Storage(Frame frame)
     {

@@ -162,6 +162,13 @@ public sealed partial class TerritoryAdministrationLedger
             string message=key.Translate(review.Label,parties,WorkProgress.Validate(t,r.WorkProgressV1).Events.Length);
             int observed=WorkProgress.Approval(t,progress).JobsV4?.Length??0;
             if(observed>0)message+="\n\n"+"RE_WorkJobConsent".Translate(observed);
+            if(r.WorkAssetResolutionV5!=null)
+            {
+                var terrain=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Where(e=>e.TerrainV8?.LayersV9!=null).ToArray();
+                var originalMap=LoadedMapPreservation.Restore(t.LoadedMap);
+                foreach(var entry in terrain.Take(4))message+="\n\n"+TerrainWorkEvidence.Review(r.LoadedMap.Map,entry.TerrainV8,originalMap.WorkFramesV1.Single(f=>f.Id==entry.Original).TerrainLayersV9);
+                if(terrain.Length>4)message+="\n"+"RE_WorkTerrainMoreReview".Translate(terrain.Length-4);
+            }
             Find.WindowStack.Add(Dialog_MessageBox.CreateConfirmation(message,()=>CommitCustodyAgreement(review)));
         }
         catch(Exception e){Log.Warning("[Honor.Contracts.Preview] Progress review retains original evidence: "+e.GetType().Name);Reject();}

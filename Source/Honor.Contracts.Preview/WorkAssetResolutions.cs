@@ -43,7 +43,7 @@ public sealed partial class TerritoryAdministrationLedger
         if(frame.def.entityDefToBuild is TerrainDef terrain)
         {
             if(added.Length!=0||map.WorkFramesV1.Single(f=>f.Id==id).TerrainV8!=terrain.defName)throw new ArgumentException("Original explicit terrain frame and zero added objects required.");
-            return new(new(){Original=id},null,null,null,null,CaptureResolutionTerrain(r.LoadedMap.Map,row.Cell,terrain.defName));
+            return new(new(){Original=id},null,null,null,null,TerrainWorkEvidence.Capture(r.LoadedMap.Map,row.Cell,terrain.defName,map.WorkFramesV1.Single(f=>f.Id==id).TerrainLayersV9));
         }
         if(added.Length!=1 || added[0].GetType()!=typeof(Building)&&added[0].GetType()!=typeof(Building_Storage)&&!WorktableEvidence.Supported(added[0]) || added[0].Faction!=r.From || frame.def.entityDefToBuild!=added[0].def ||
             added[0].Stuff?.defName!=row.Stuff || r.City.Map.cellIndices.CellToIndex(added[0].Position)!=row.Cell || added[0].Rotation.AsInt!=row.Rotation)
@@ -153,21 +153,9 @@ public sealed partial class TerritoryAdministrationLedger
         var current=shelf.slotGroup.HeldThings.OrderBy(p=>p.GetUniqueLoadID(),StringComparer.Ordinal).ToArray();
         if(!current.SequenceEqual(reference.StorageContentsV7)||!entry.Event.HasValue&&reference.StorageContentsV7.Any(p=>!original.Things.Contains(p)))throw new ArgumentException("Same original stored goods references required; never haul or recreate.");
     }
-    private static WorkTerrainAcceptance CaptureResolutionTerrain(Map map,int cell,string expected)
-    {
-        if(!NativeTransferBodies.WorkObservationBodies||map==null||map.terrainGrid?.GetType()!=typeof(TerrainGrid)||map.roofGrid?.GetType()!=typeof(RoofGrid)||cell<0||cell>=map.cellIndices.NumGridCells)throw new ArgumentException("Original audited terrain map required.");
-        if(ResidentActiveWork.Raw(map.terrainGrid,typeof(TerrainGrid),"map")!=map||ResidentActiveWork.Raw(map.roofGrid,typeof(RoofGrid),"map")!=map)throw new ArgumentException("Original native terrain/roof owners changed.");
-        if(ResidentActiveWork.Raw(map.terrainGrid,typeof(TerrainGrid),"foundationGrid") is not TerrainDef[] foundation||ResidentActiveWork.Raw(map.terrainGrid,typeof(TerrainGrid),"tempGrid") is not TerrainDef[] temporary||
-            ResidentActiveWork.Raw(map.terrainGrid,typeof(TerrainGrid),"colorGrid") is not ColorDef[] colors||foundation.Length!=map.cellIndices.NumGridCells||temporary.Length!=foundation.Length||colors.Length!=foundation.Length||foundation[cell]!=null||temporary[cell]!=null||colors[cell]!=null)throw new ArgumentException("Layered or painted terrain needs its own preservation scope.");
-        ResidentActiveWork.Known(typeof(TerrainGrid),"TerrainAt");ResidentActiveWork.Known(typeof(TerrainGrid),"UnderTerrainAt");ResidentActiveWork.Known(typeof(RoofGrid),"RoofAt");
-        var position=map.cellIndices.IndexToCell(cell);var def=map.terrainGrid.TerrainAt(position);var under=map.terrainGrid.UnderTerrainAt(position);var roof=map.roofGrid.RoofAt(position);
-        if(def?.GetType()!=typeof(TerrainDef)||def.defName!=expected||def.isFoundation||def.temporary||def.bridge||DefDatabase<TerrainDef>.GetNamedSilentFail(expected)!=def||
-            under!=null&&(under.GetType()!=typeof(TerrainDef)||DefDatabase<TerrainDef>.GetNamedSilentFail(under.defName)!=under)||roof!=null&&(roof.GetType()!=typeof(RoofDef)||DefDatabase<RoofDef>.GetNamedSilentFail(roof.defName)!=roof))throw new ArgumentException("Same registered standard terrain/under-terrain/roof required.");
-        return new(cell,def.defName,under?.defName,roof?.defName);
-    }
     private static void VerifyResolutionTerrain(TerritoryTransferReference r,WorkAssetResolution entry)
     {
         var reference=r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original);var clean=entry.TerrainV8 with{Accepted=false,Approval=null};
-        if(reference.Actual!=null||reference.WorktableBillsV6!=null||reference.StorageContentsV7!=null||CaptureResolutionTerrain(r.LoadedMap.Map,clean.Cell,clean.Def)!=clean)throw new ArgumentException("Same positively observed terrain required; no native property call is inferred.");
+        if(reference.Actual!=null||reference.WorktableBillsV6!=null||reference.StorageContentsV7!=null||TerrainWorkEvidence.Capture(r.LoadedMap.Map,clean.Cell,clean.Def,clean.LayersV9)!=clean)throw new ArgumentException("Same positively observed terrain required; no native property call is inferred.");
     }
 }
