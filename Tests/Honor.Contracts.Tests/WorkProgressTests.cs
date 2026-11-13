@@ -344,15 +344,15 @@ internal static class WorkProgressTests
         Reject(()=>WorkTerrainLayerRules.Check(layerActual with{Color=" "}));
         Reject(()=>WorkTerrainLayerRules.Pair(layerOrigin,layerActual,"Other"));
         Reject(()=>WorkAssetResolutions.AddTerrain(tf,fp,null,fa,"frame",0,floor with{LayersV9=layerActual}));
-        (TerritoryTransferLedger Ledger,TerritoryTransfer Transfer,string Progress,string Calls) Layered(string id,string definition,WorkTerrainLayers layers)
+        (TerritoryTransferLedger Ledger,TerritoryTransfer Transfer,string Progress,string Calls) Layered(string id,string definition,WorkTerrainLayers layers,WorkFrameFilth[] filth=null)
         {
-            string lm=LoadedMapPreservation.Capture("town","map",20,20,hash,CityStockProof.Capture(true,false,-1,[]),0,[new("frame","LayerFrame",null,1,100,2,0,null)]);
+            string lm=LoadedMapPreservation.Capture("town","map",20,20,hash,CityStockProof.Capture(true,false,-1,[]),0,new[]{new NeutralMapThing("frame","LayerFrame",null,1,100,2,0,null)}.Concat((filth??[]).Select(f=>new NeutralMapThing(f.Id,f.Def,null,1,100,f.Cell,0,null))));
             lm=LoadedMapPreservation.CaptureResidents(lm,mixedResidents.Residents.Select(p=>new NativeMapResident(p.Id,p.Preserved)));
             lm=LoadedMapPreservation.CaptureCivicAssets(lm,[new("frame","source",hash)],false,false);
-            lm=LoadedMapPreservation.CaptureActiveWork(lm,[work,secondWork],frames:[new NativeWorkFrame("frame",hash,["wood"]){TerrainV8=definition,TerrainLayersV9=layers}]);
+            lm=LoadedMapPreservation.CaptureActiveWork(lm,[work,secondWork],frames:[new NativeWorkFrame("frame",hash,["wood"]){TerrainV8=definition,TerrainLayersV9=layers,FilthV10=filth}]);
             var ledger=new TerritoryTransferLedger();var transfer=ledger.PrepareLoadedJournaled(id,book,"root",mixedActual with{LoadedMap=lm,StockProof=LoadedMapPreservation.Restore(lm).Proof},"target","target",null,TerritoryTransferPurpose.ActiveCharter,10);ledger.MarkStandaloneActiveWork(transfer.Id);transfer=ledger.Transfer(transfer.Id);
-            string calls=MapAssetTransfers.Prepare(lm,"source","target"),progress=WorkProgress.PrepareClinical(transfer,mc,mcProof,originalClinical,calls,11,hash,["frame","wood","worker","zzsecond"]);
-            progress=WorkProgress.Begin(transfer,progress,"frame","worker","Job_1",["frame","wood"],hash,22);progress=WorkProgress.ObserveReturn(transfer,progress,0,22);progress=WorkProgress.Returned(transfer,progress,0,["frame","wood"],[],next,23);
+            string calls=MapAssetTransfers.Prepare(lm,"source","target"),progress=WorkProgress.PrepareClinical(transfer,mc,mcProof,originalClinical,calls,11,hash,new[]{"frame","wood","worker","zzsecond"}.Concat((filth??[]).Select(f=>f.Id)).OrderBy(id=>id,StringComparer.Ordinal).ToArray());
+            progress=WorkProgress.Begin(transfer,progress,"frame","worker","Job_1",["frame","wood"],hash,22,null,filth?.Select(f=>f with{Proof=next}).ToArray());progress=WorkProgress.ObserveReturn(transfer,progress,0,22);progress=WorkProgress.Returned(transfer,progress,0,new[]{"frame","wood"}.Concat((filth??[]).Select(f=>f.Id)).OrderBy(id=>id,StringComparer.Ordinal).ToArray(),[],next,23);
             return(ledger,transfer,progress,calls);
         }
         var layered=Layered("foundation","Foundation",layerOrigin);
@@ -378,6 +378,47 @@ internal static class WorkProgressTests
             Check(WorkAssetResolutions.Validate(variant.Transfer,variant.Progress,doc).Entries.Single().TerrainV8.LayersV9==actualLayers);
         }
         Check(!JsonSerializer.Serialize(floor).Contains("LayersV9")&&!JsonSerializer.Serialize(new NativeWorkFrame("frame",hash,["wood"]){TerrainV8="Floor"}).Contains("TerrainLayersV9"));
+        WorkFrameFilth[] originalFilth=[new("filth1","Filth_Blood",2,hash),new("filth2","Filth_Dirt",2,hash)];
+        var filthy=Layered("filth-floor","Floor",null,originalFilth);var filthWork=WorkProgress.Validate(filthy.Transfer,filthy.Progress);
+        Check(filthWork.Events[0].FilthV10.All(f=>f.Proof==next)&&LoadedMapPreservation.Restore(filthy.Transfer.LoadedMap).WorkFramesV1.Single().FilthV10.All(f=>f.Proof==hash));
+        WorkFrameFilthRules.Pair(originalFilth,filthWork.Events[0].FilthV10);
+        Reject(()=>WorkFrameFilthRules.Pair(null,originalFilth));
+        Reject(()=>WorkFrameFilthRules.Pair(originalFilth,null));
+        Reject(()=>WorkFrameFilthRules.Pair(originalFilth,[originalFilth[0]]));
+        Reject(()=>WorkFrameFilthRules.Pair(originalFilth,[originalFilth[0] with{Def="Other"},originalFilth[1]]));
+        Reject(()=>WorkFrameFilthRules.Pair(originalFilth,[originalFilth[0] with{Cell=3},originalFilth[1]]));
+        Reject(()=>WorkFrameFilthRules.Check([originalFilth[0],originalFilth[0]]));
+        Reject(()=>WorkFrameFilthRules.Check([originalFilth[0] with{Proof="unknown"}]));
+        Reject(()=>WorkFrameFilthRules.Check([originalFilth[0] with{Id="filth\nunknown"}]));
+        string filthyStart=WorkProgress.PrepareClinical(filthy.Transfer,mc,mcProof,originalClinical,filthy.Calls,11,hash,filthWork.Seal.Objects);
+        Reject(()=>WorkProgress.Begin(filthy.Transfer,filthyStart,"frame","worker","Job_1",["frame","wood"],hash,22));
+        Reject(()=>WorkProgress.Begin(mt,cp,"frame","worker","Job_1",["frame","wood"],hash,22,null,originalFilth));
+        Reject(()=>WorkProgress.Begin(filthy.Transfer,filthyStart,"recipe","worker","Job_1",["frame","wood"],hash,22,null,originalFilth));
+        Reject(()=>WorkProgress.Begin(filthy.Transfer,filthyStart,"frame","worker","Job_1",["frame","wood","filth1"],hash,22,null,originalFilth));
+        string filthBegun=WorkProgress.Begin(filthy.Transfer,filthyStart,"frame","worker","Job_1",["frame","wood"],hash,22,null,originalFilth);
+        Reject(()=>WorkProgress.Returned(filthy.Transfer,filthBegun,0,["filth1","filth2","frame","wood"],[],next,23));
+        string filthBody=WorkProgress.ObserveReturn(filthy.Transfer,filthBegun,0,22);
+        Reject(()=>WorkProgress.Returned(filthy.Transfer,filthBody,0,["filth1","frame","wood"],[],next,23));
+        Reject(()=>WorkProgress.Returned(filthy.Transfer,filthBody,0,["filth1","filth2","frame","unknown"],[],next,23));
+        var filthTerrain=new WorkTerrainAcceptance(2,"Floor","Soil",null);
+        string filthResolution=WorkAssetResolutions.AddTerrain(filthy.Transfer,filthy.Progress,null,filthy.Calls,"frame",0,filthTerrain);
+        CustodyAgreementReceipt FilthConsent(string id,string doc,long tick){var w=clinicalWitness with{Id=id,Transfer=filthy.Transfer.Id,Physical=filthy.Ledger.Export(),Tick=tick,WorkProgressV1=WorkProgress.Approve(filthy.Transfer,filthy.Progress,next,tick,[],[],doc)};return new(w,WorkProgress.Hash(w));}
+        filthResolution=WorkAssetResolutions.AcceptTerrain(filthy.Transfer,filthy.Progress,filthResolution,"frame",FilthConsent("filth-accept",filthResolution,24));
+        var filthFinal=FilthConsent("filth-finish",filthResolution,28);var filthPhysical=TerritoryTransferLedger.Restore(filthy.Ledger.Export());
+        filthPhysical.ConfirmWorkProgress(filthy.Transfer.Id,filthFinal.Witness.WorkProgressV1,filthFinal,"target",true,true,29,filthy.Calls,finished,filthResolution);
+        Check(TerritoryTransferLedger.Restore(filthPhysical.Export()).Transfer(filthy.Transfer.Id).Phase==TerritoryTransferPhase.Applied&&MapAssetTransfers.Restore(filthy.Calls).Calls.All(call=>!call.Started));
+        Check(!cp.Contains("FilthV10")&&!JsonSerializer.Serialize(new NativeWorkFrame("frame",hash,["wood"]){TerrainV8="Floor"}).Contains("FilthV10"));
+        foreach(bool allAssets in new[]{false,true})
+        {
+            string assetCalls=allAssets?MapAssetTransfers.Returned(MapAssetTransfers.Begin(filthy.Calls,"frame","source"),"frame","target"):filthy.Calls;
+            string filthObserved=allAssets?WorkProgress.Prepare(filthy.Transfer,mc,mcProof,finished.Calls,finished.Care,finished.Areas,assetCalls,11,hash,filthWork.Seal.Objects):
+                WorkProgress.PrepareBeforeAssets(filthy.Transfer,mc,mcProof,finished.Calls,finished.Care,finished.Areas,assetCalls,11,hash,filthWork.Seal.Objects);
+            filthObserved=WorkProgress.Begin(filthy.Transfer,filthObserved,"frame","worker","Job_1",["frame","wood"],hash,22,null,originalFilth);
+            filthObserved=WorkProgress.ObserveReturn(filthy.Transfer,filthObserved,0,22);filthObserved=WorkProgress.Returned(filthy.Transfer,filthObserved,0,["filth1","filth2","frame","wood"],[],next,23);
+            Check(WorkProgress.Validate(filthy.Transfer,filthObserved).Version==(allAssets?1:2));
+            Reject(()=>WorkProgress.Approve(filthy.Transfer,filthObserved,next,24,null,[work]));
+            Reject(()=>WorkAssetResolutions.AddTerrain(filthy.Transfer,filthObserved,null,assetCalls,"frame",0,filthTerrain));
+        }
         return n;
     }
 }

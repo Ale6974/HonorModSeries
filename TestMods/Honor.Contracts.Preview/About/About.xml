@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.113</modVersion>
+  <modVersion>0.3.114</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.113: Explicit original terrain-layer evidence now connects observed foundation, temporary terrain, bridge and painted/layered floor completion to current consent, save, recovery and final city handover. Keep actual top/foundation/temporary/color layers and their visible terrain; never rebuild terrain or invent a building faction call. Wider M2.4 combinations remain unfinished.
+  <description>0.3.114: Terrain construction can record native removal of the same original neutral filth as separate ancillary inputs. Keep original and current filth state proofs, verify normal construction return and removal/registry output, and connect current consent, save, recovery and final city handover. Recovery never cleans or recreates filth. Wider M2.4 combinations remain unfinished.
+0.3.114: 지형 공사가 같은 원 중립 오물을 함께 제거하는 경우를 별도 입력으로 기록합니다. 원/현재 오물 상태와 공사 정상 반환·제거/목록 출력을 확인하고 현재 승인, 저장·복구·최종 도시 인계에 연결했습니다. 복구에서 청소하거나 오물을 재생성하지 않습니다. 더 넓은 M2.4 조합은 미완료입니다.
+0.3.113: Explicit original terrain-layer evidence now connects observed foundation, temporary terrain, bridge and painted/layered floor completion to current consent, save, recovery and final city handover. Keep actual top/foundation/temporary/color layers and their visible terrain; never rebuild terrain or invent a building faction call. Wider M2.4 combinations remain unfinished.
 0.3.113: 원 지형 층의 별도 증거로 기초·임시 지형·다리·채색/겹층 공사 완공을 현재 승인, 저장·복구, 마지막 도시 인계에 연결했습니다. 실제 표면·기초·임시·색상과 보이는 지형을 보존하며 지형 재생성이나 건물 소속 호출을 만들지 않습니다. 더 넓은 M2.4 조합은 미완료입니다.
 0.3.112: Ungrouped source shelf frames retain explicit original storage settings. Their actual completed shelf and unchanged original shelves retain settings, cells and the same goods through current approval, handover, save and explicit recovery. Standard floor completion has separate current acceptance linked to the final city handover, without an invented faction call. No goods are hauled or refactioned by this scope. M2.4 remains incomplete for wider combinations.
 0.3.112: 비연결 원 선반 프레임의 보관 설정과 실제 완공 선반·남은 원 선반의 설정·칸·같은 물품을 현재 승인, 인계, 저장·명시 복구에 연결했습니다. 일반 바닥 완공은 별도 현재 승인과 마지막 도시 인계에 연결하며 소속 변경 호출을 만들지 않습니다. 이 범위로 물품을 운반하거나 소속을 바꾸지 않습니다. 더 넓은 조합과 M2.4 전체는 미완료입니다.

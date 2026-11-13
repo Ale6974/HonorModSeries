@@ -22,7 +22,9 @@ public sealed partial class TerritoryAdministrationLedger
         if(saved.Events.Any(e=>e.Job==job.GetUniqueLoadID() && e.Returned.HasValue && e.Kind is "job-end" or "recipe"))return null;
         var before=WorkProgressSurvey.Capture(r);var ids=inputs.Select(x=>x?.GetUniqueLoadID()).ToArray();
         if(ids.Any(id=>id==null || !before.Ids.Contains(id)))throw new ArgumentException("Native progress input is not current original custody.");
-        string next=WorkProgress.Begin(t,r.WorkProgressV1,kind,pawn.GetUniqueLoadID(),job.GetUniqueLoadID(),ids,before.Proof,Find.TickManager.TicksGame,grant);
+        var filth=FrameFilthEvidence.Current(t,r,kind,inputs);
+        if(filth?.Any(f=>!before.Ids.Contains(f.Id))==true)throw new ArgumentException("Original ancillary filth is absent from the actual before-survey.");
+        string next=WorkProgress.Begin(t,r.WorkProgressV1,kind,pawn.GetUniqueLoadID(),job.GetUniqueLoadID(),ids,before.Proof,Find.TickManager.TicksGame,grant,filth);
         r.WorkProgressV1=next;return new(Current.Game,this,r.Id,saved.Events.Length,before,ids);
     }
     internal void EndWorkObservation(WorkObservationState state,bool? placed=null)
@@ -31,6 +33,7 @@ public sealed partial class TerritoryAdministrationLedger
         var r=references.Single(x=>x.Id==state.Transfer);var t=Ledger.Transfer(r.Id);var current=WorkProgress.Validate(t,r.WorkProgressV1);
         if(current.Events.Last().Sequence!=state.Sequence || current.Events.Last().Returned.HasValue)throw new ArgumentException("Original progress start changed.");
         r.WorkProgressV1=placed.HasValue?WorkProgress.ObservePlacementReturn(t,r.WorkProgressV1,state.Sequence,Find.TickManager.TicksGame,placed.Value):WorkProgress.ObserveReturn(t,r.WorkProgressV1,state.Sequence,Find.TickManager.TicksGame);
+        FrameFilthEvidence.After(r,current.Events.Last());
         var candidate=ObserveFrameSuccessor(t,r,state,current.Events.Last());
         var after=WorkProgressSurvey.Capture(r,candidate?.Reference);var removed=state.Before.Ids.Except(after.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();var added=after.Ids.Except(state.Before.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();
         string next=WorkProgress.Returned(t,r.WorkProgressV1,state.Sequence,removed,added,after.Proof,Find.TickManager.TicksGame);
@@ -162,6 +165,8 @@ public sealed partial class TerritoryAdministrationLedger
             string message=key.Translate(review.Label,parties,WorkProgress.Validate(t,r.WorkProgressV1).Events.Length);
             int observed=WorkProgress.Approval(t,progress).JobsV4?.Length??0;
             if(observed>0)message+="\n\n"+"RE_WorkJobConsent".Translate(observed);
+            int filth=WorkProgress.Validate(t,r.WorkProgressV1).Events.Sum(e=>e.FilthV10?.Length??0);
+            if(filth>0)message+="\n\n"+"RE_WorkFrameFilthReview".Translate(filth);
             if(r.WorkAssetResolutionV5!=null)
             {
                 var terrain=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Where(e=>e.TerrainV8?.LayersV9!=null).ToArray();

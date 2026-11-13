@@ -7,6 +7,7 @@ public sealed record WorkProgressEvent(int Sequence, string Kind, string Actor, 
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkEventGrantV4 GrantV4 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public bool? PlacementResultV4 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkFrameFilth[] FilthV10 { get; init; }
 }
 public sealed record WorkProgressSave(int Version, WorkProgressSeal Seal, WorkProgressEvent[] Events)
 {
@@ -83,12 +84,20 @@ public static partial class WorkProgress
                 e.Inputs==null || e.Inputs.Length>10000 || e.Inputs.Any(id=>!Key(id)) || e.Inputs.Distinct().Count()!=e.Inputs.Length || !CityStockProof.Valid(e.Before) ||
                 e.Started<previous || e.Started>int.MaxValue || !e.Returned.HasValue && i!=s.Events.Length-1)throw new ArgumentException("Original ordered native progress start is invalid.");
             if(e.GrantV4!=null){if(s.Version!=3)throw new ArgumentException("Legacy events grant no new work authority.");WorkJobObservations.Check(e.GrantV4,e.Actor,e.Job,s.Seal.Tick,e.Started);}
+            var originalFilth=e.Kind=="frame"&&e.Inputs.Length>0?map.WorkFramesV1?.SingleOrDefault(frame=>frame.Id==e.Inputs[0])?.FilthV10:null;
+            if(originalFilth!=null||e.FilthV10!=null)
+            {
+                if(e.Kind!="frame")throw new ArgumentException("Only explicit original frame observations may contain ancillary filth.");
+                WorkFrameFilthRules.Pair(originalFilth,e.FilthV10);
+                if(e.FilthV10.Any(filth=>e.Inputs.Contains(filth.Id)))throw new ArgumentException("Primary and ancillary native inputs overlap.");
+            }
+            var ancillary=e.FilthV10?.Select(filth=>filth.Id).ToArray()??[];
             if(e.Kind=="haul-place"&&(e.GrantV4==null||e.Inputs.Length!=1) || e.PlacementResultV4.HasValue&&(e.Kind!="haul-place"||!e.BodyReturned.HasValue))throw new ArgumentException("Explicit native placement grant/result required.");
             if(e.BodyReturned.HasValue && (e.BodyReturned<e.Started || e.BodyReturned>int.MaxValue))throw new ArgumentException("Invalid native progress body-return clock.");
             if(!e.Returned.HasValue){if(e.Removed!=null || e.Added!=null || e.After!=null)throw new ArgumentException("Unverified progress output cannot contain results.");previous=e.Started;continue;}
             if(!e.BodyReturned.HasValue || e.BodyReturned<e.Started || e.Returned<e.BodyReturned || e.Returned>int.MaxValue || e.Removed==null || e.Added==null || !CityStockProof.Valid(e.After) || e.Removed.Length>10000 || e.Added.Length>10000 ||
-                e.Removed.Any(id=>!Key(id)||!e.Inputs.Contains(id)||!removed.Add(id)) || e.Removed.Distinct().Count()!=e.Removed.Length || e.Added.Any(id=>!Key(id)||removed.Contains(id)) || e.Added.Distinct().Count()!=e.Added.Length ||
-                e.Kind=="job-end" && (e.Removed.Length!=0 || e.Added.Length!=0) || e.Kind=="frame" && (e.Inputs.Length==0 || e.Removed.Length!=e.Inputs.Length || e.Added.Length>1))
+                e.Removed.Any(id=>!Key(id)||!e.Inputs.Contains(id)&&!ancillary.Contains(id)||!removed.Add(id)) || e.Removed.Distinct().Count()!=e.Removed.Length || e.Added.Any(id=>!Key(id)||removed.Contains(id)) || e.Added.Distinct().Count()!=e.Added.Length ||
+                e.Kind=="job-end" && (e.Removed.Length!=0 || e.Added.Length!=0) || e.Kind=="frame" && (e.Inputs.Length==0 || e.Removed.Length!=e.Inputs.Length+ancillary.Length || e.Added.Length>1))
                 throw new ArgumentException("Native progress normal return has invalid object lineage.");
             if(e.Kind=="haul-place" && (!e.PlacementResultV4.HasValue || e.PlacementResultV4==false&&(e.Removed.Length!=0||e.Added.Length!=0)))throw new ArgumentException("Failed placement cannot prove physical identity changes.");
             previous=e.Returned.Value;
@@ -98,9 +107,11 @@ public static partial class WorkProgress
     public static string Begin(TerritoryTransfer t,string json,string kind,string actor,string job,string[] inputs,string before,long tick)
         =>Begin(t,json,kind,actor,job,inputs,before,tick,null);
     public static string Begin(TerritoryTransfer t,string json,string kind,string actor,string job,string[] inputs,string before,long tick,WorkEventGrantV4 grant)
+        =>Begin(t,json,kind,actor,job,inputs,before,tick,grant,null);
+    public static string Begin(TerritoryTransfer t,string json,string kind,string actor,string job,string[] inputs,string before,long tick,WorkEventGrantV4 grant,WorkFrameFilth[] filth)
     {
         var s=Validate(t,json);if(s.Events.LastOrDefault()?.Returned==null && s.Events.Length!=0)throw new ArgumentException("Unknown progress operation is never replayed.");
-        string next=JsonSerializer.Serialize(s with {Events=s.Events.Append(new WorkProgressEvent(s.Events.Length,kind,actor,job,inputs,before,tick){GrantV4=grant}).ToArray()});Validate(t,next);return next;
+        string next=JsonSerializer.Serialize(s with {Events=s.Events.Append(new WorkProgressEvent(s.Events.Length,kind,actor,job,inputs,before,tick){GrantV4=grant,FilthV10=filth}).ToArray()});Validate(t,next);return next;
     }
     public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick)
     {

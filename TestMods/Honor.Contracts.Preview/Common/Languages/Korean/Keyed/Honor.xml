@@ -615,4 +615,5 @@
   <RE_WorkTerrainNone>없음</RE_WorkTerrainNone>
   <RE_WorkTerrainLayersReview>({1})의 {0}: {2}, 목표 {3}. 표면: {4}; 기초: {5}; 임시: {6}; 색상: {7}; 보이는 지형: {8}.</RE_WorkTerrainLayersReview>
   <RE_WorkTerrainMoreReview>추가 겹층 완공 {0}건도 이번 현재 검토에 포함됩니다.</RE_WorkTerrainMoreReview>
+  <RE_WorkFrameFilthReview>게임의 공사 기록에 원 오물 {0}개의 제거가 포함됩니다. 원 상태와 호출 직전 상태를 보존하며 복구에서 청소를 반복하거나 재생성하지 않습니다.</RE_WorkFrameFilthReview>
 </LanguageData>

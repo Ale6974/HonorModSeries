@@ -1,4 +1,14 @@
-# 1단계 개발 인수인계 — 0.3.113 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.114 / 2026-11-14
+
+## 0.3.114 — 원 오물을 함께 제거한 native 공사의 양성 기록
+
+[실제 조립·권한·저장/복구·API 근거](M2-PARTS-AUDIT-0.3.114.md). 새 NativeWorkFrame.FilthV10은 원 중립 native filth ID/정의/칸/상태 proof를 보존한다. BeginWorkObservation은 같은 원 LoadedMapRecord.Things 실제 참조와 현재 filth state proof를 WorkProgressEvent.FilthV10에 별도로 기록한다. native Frame 정상 본문 반환을 먼저 저장하고, 실제 Destroyed/비spawn/home registry 제거 및 전체 주 입력+ancillary 소실을 확인한다. 현재 full-party 승인·terrain acceptance·원 도시/최종 receipt·Scribe/load/명시 복구까지 연결했다. 새 원 scope 없는 옛 사건에는 소급하지 않고 청소/파괴/재생성을 실행하지 않는다.
+
+Filth/Thing의 저장 상태와 draw/sources·시간·stuff/기본 물리/회전·지도 상태·노출/graphic·native home membership proof를 읽는다. 정확한 native 타입/원 map owner·bounded/finite state와 getter/ID/Destroy/DeSpawn/RemoveAllFilth/lister 경계의 미패치만 허용한다. 원/현재 proof가 달라도 같은 원 ID/정의/칸/실제 참조여야 한다. partial/unknown output은 원 시작/본문 반환을 남기고 보류한다. v1/v2는 새 원 tag ancillary 관측만 가능하며 새 job/haul grant와 v3 actual resolution 권한을 얻지 않는다.
+
+검사·배포: 양 타깃 전체 빌드 및 최신 규칙/최종 native 컴파일 경고/오류0, Honor20093/Contracts6050/ENKO617, 양 타깃 패키지 DLL allowlist 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.114.zip` SHA256 `49C6BAAFED1CCC287E86F3665C7CE280374945BFA9945BB549D721157BAEBE59`. 이전 로컬 Preview를 `.local/contracts-preview-223c325c31f34be3b0f90bdb69700b14`에 백업 후 최종32파일 일치 설치했다. 활성화·언어 설정 hash 불변. 현재5005 DLL hash는 검토 값과 같다. 미확인1.6 native 본문 권한을 추가하지 않는다. Preview Steam·자동 예약 없음.
+
+다음 착수: 원 scope에 없는 새 ancillary 물체와 추가 출력, 연속 후계 소실/지형 변경·보관 물품 소비/교체, 연결 shelf group/전력·연료·시설, 더 넓은 작업/특수 역할·개인 권리, 부모 follower/정치·후손/M2.10 실제 조립. M2.4 전체 미완료다. 기존 잔여 노력 추정25–40%/3묶음은 이번 부분 변경만으로 재측정하지 않았다. M1 10/10,M2 0/18,전체10/100 유지. 여섯 단계의 과거 추정은 새 측정값이 아니다.
 
 ## 0.3.113 — 원/완공 지형 층과 현재 승인 UI
 

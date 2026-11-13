@@ -349,7 +349,8 @@
         "docs/M2-PARTS-AUDIT-0.3.110.md",
         "docs/M2-PARTS-AUDIT-0.3.111.md",
         "docs/M2-PARTS-AUDIT-0.3.112.md",
-        "docs/M2-PARTS-AUDIT-0.3.113.md"
+        "docs/M2-PARTS-AUDIT-0.3.113.md",
+        "docs/M2-PARTS-AUDIT-0.3.114.md"
       ],
       "assembly_evidence": [
         "Source/Honor.Contracts.Preview/GroundRestGivers.cs",
