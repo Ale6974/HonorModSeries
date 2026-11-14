@@ -1,5 +1,7 @@
 # 부품 제작·기능 조립 방식의 마일스톤 운영 — 2026-11-13
 
+0.3.115: [B03/B06의 저장 범위 hash-chain·call-prefix 부품과 실제 선반 조립](M2-PARTS-AUDIT-0.3.115.md). WorkStorageProgressRules와 reference-only history를 실제 native 출력 관측/현재 승인/인계/Scribe/복구/도시 완료에 조립했다. 원 설정·재고·과거 호출 승인은 고정하고 이후 범위를 별도로 검증한다. 부모/M7 조립은 아직 없으며 M2.4 전체 미완료다.
+
 0.3.114: [B03/B06의 원/현재 ancillary filth 부품과 M2.4 실제 조립](M2-PARTS-AUDIT-0.3.114.md). WorkFrameFilthRules/FrameFilthEvidence를 원 준비·실제 공사 시작/정상 반환/제거·registry 출력·승인 UI·저장/복구·도시 완료에 연결했다. 원 필드를 재작성하거나 청소/파괴를 재실행하지 않는다. 부모/M7의 권한/통합 완료는 추정하지 않으며 M2.4 전체 미완료다.
 
 0.3.113: [B03/B06의 원/실제 지형 층 부품과 M2.4 조립](M2-PARTS-AUDIT-0.3.113.md). WorkTerrainLayerRules와 TerrainWorkEvidence를 원 준비·실제 완공 관측·현재 승인 UI·수락/도시 완료·저장/복구에 조립했다. 원문을 실제 결과로 교체하거나 native setter를 실행하지 않는다. 부모/M7 조정기에는 아직 미조립이며 M2.4 전체 미완료다.

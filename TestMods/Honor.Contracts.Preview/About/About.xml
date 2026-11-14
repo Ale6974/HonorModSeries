@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.114</modVersion>
+  <modVersion>0.3.115</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.114: Terrain construction can record native removal of the same original neutral filth as separate ancillary inputs. Keep original and current filth state proofs, verify normal construction return and removal/registry output, and connect current consent, save, recovery and final city handover. Recovery never cleans or recreates filth. Wider M2.4 combinations remain unfinished.
+  <description>0.3.115: Already tracked ungrouped shelves retain their original stock record while verified native production/placement changes append separate contents history and actual references. Fresh current consent binds that history to handover, save and recovery; original faction-call approval is never rewritten or replayed. No hauling, stock recreation or settings reset is performed by recovery. Wider M2.4 combinations remain unfinished.
+0.3.115: 이미 별도 기록된 비연결 선반의 원 보관 기록을 유지하고 실제 제작·내려놓기로 설명되는 내용물 변화를 별도 이력과 참조에 추가합니다. 새 현재 동의로 인계·저장·복구에 연결하며 원 소속 변경 승인·호출을 덮어쓰거나 반복하지 않습니다. 복구에서 운반·재생성·설정 초기화를 실행하지 않습니다. 더 넓은 M2.4 조합은 미완료입니다.
+0.3.114: Terrain construction can record native removal of the same original neutral filth as separate ancillary inputs. Keep original and current filth state proofs, verify normal construction return and removal/registry output, and connect current consent, save, recovery and final city handover. Recovery never cleans or recreates filth. Wider M2.4 combinations remain unfinished.
 0.3.114: 지형 공사가 같은 원 중립 오물을 함께 제거하는 경우를 별도 입력으로 기록합니다. 원/현재 오물 상태와 공사 정상 반환·제거/목록 출력을 확인하고 현재 승인, 저장·복구·최종 도시 인계에 연결했습니다. 복구에서 청소하거나 오물을 재생성하지 않습니다. 더 넓은 M2.4 조합은 미완료입니다.
 0.3.113: Explicit original terrain-layer evidence now connects observed foundation, temporary terrain, bridge and painted/layered floor completion to current consent, save, recovery and final city handover. Keep actual top/foundation/temporary/color layers and their visible terrain; never rebuild terrain or invent a building faction call. Wider M2.4 combinations remain unfinished.
 0.3.113: 원 지형 층의 별도 증거로 기초·임시 지형·다리·채색/겹층 공사 완공을 현재 승인, 저장·복구, 마지막 도시 인계에 연결했습니다. 실제 표면·기초·임시·색상과 보이는 지형을 보존하며 지형 재생성이나 건물 소속 호출을 만들지 않습니다. 더 넓은 M2.4 조합은 미완료입니다.

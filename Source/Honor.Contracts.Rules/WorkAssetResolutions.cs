@@ -9,6 +9,8 @@ public sealed record WorkAssetResolution(string Original,string Actual,int? Even
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NativeWorktable WorktableV6 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public NeutralMapStorage StorageV7 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkTerrainAcceptance TerrainV8 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageProgress[] StorageProgressV11 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? StorageCallV11 { get; init; }
 }
 public sealed record WorkAssetResolutionSave(int Version,string Original,string BaseCalls,WorkAssetResolution[] Entries,string Proof);
 /// <summary>Separate actual-object calls. Original missing-frame calls remain unstarted forever.</summary>
@@ -26,6 +28,7 @@ public static class WorkAssetResolutions
         if(s.Entries.Select(e=>e.Original).Distinct().Count()!=s.Entries.Length||s.Entries.Where(e=>e.Actual!=null).Select(e=>e.Actual).Distinct().Count()!=s.Entries.Count(e=>e.Actual!=null)||!s.Entries.Any(e=>e.Event.HasValue))throw new ArgumentException("Unique original and actual objects plus positive succession required.");
         foreach(var e in s.Entries)
         {
+            WorkStorageProgressRules.Check(e,work);
             if(e.TerrainV8!=null)
             {
                 var terrain=e.TerrainV8;var frame=map.WorkFramesV1?.SingleOrDefault(f=>f.Id==e.Original);var terrainCall=calls.SingleOrDefault(c=>c.Id==e.Original);
@@ -63,12 +66,21 @@ public static class WorkAssetResolutions
             else if(e.Actual!=e.Original||e.Asset!=original||e.Physical!=map.Things.SingleOrDefault(p=>p.Id==e.Original)||JsonSerializer.Serialize(e.WorktableV6)!=JsonSerializer.Serialize(map.WorktablesV1?.SingleOrDefault(p=>p.Id==e.Original))||JsonSerializer.Serialize(e.StorageV7)!=JsonSerializer.Serialize(map.Storage?.SingleOrDefault(p=>p.Id==e.Original)))throw new ArgumentException("Original remainder property cannot be replaced or rebased.");
         }
         foreach(var e in s.Entries.Where(e=>e.StorageV7!=null))
-            if(s.Entries.Any(other=>other.Original!=e.Original&&other.StorageV7!=null&&(other.StorageV7.Cells.Intersect(e.StorageV7.Cells).Any()||other.StorageV7.Contents.Intersect(e.StorageV7.Contents).Any()))||
-                map.Storage?.Any(other=>other.Id!=e.Original&&(other.Cells.Intersect(e.StorageV7.Cells).Any()||other.Contents.Intersect(e.StorageV7.Contents).Any()))==true)throw new ArgumentException("Storage custody overlaps another original shelf.");
+        {
+            var current=WorkStorageProgressRules.Current(e);
+            if(s.Entries.Any(other=>other.Original!=e.Original&&other.StorageV7!=null&&(WorkStorageProgressRules.Current(other).Cells.Intersect(current.Cells).Any()||WorkStorageProgressRules.Current(other).Contents.Intersect(current.Contents).Any()))||
+                map.Storage?.Any(other=>!s.Entries.Any(row=>row.Original==other.Id&&row.StorageV7!=null)&&(other.Cells.Intersect(current.Cells).Any()||other.Contents.Intersect(current.Contents).Any()))==true)throw new ArgumentException("Storage custody overlaps another original shelf.");
+        }
         if(complete&&calls.Any(c=>!c.Returned&&!s.Entries.Any(e=>e.Original==c.Id&&Resolved(e))))throw new ArgumentException("Every original property needs positive original return or separately verified actual resolution.");
         return s;
     }
     public static bool Resolved(WorkAssetResolution entry)=>entry.Verified||entry.TerrainV8?.Accepted==true;
+    public static string AppendStorage(TerritoryTransfer t,string progress,string json,string id,int eventIndex,NeutralMapStorage current)
+        =>Update(t,progress,json,id,e=>
+        {
+            if(e.StorageV7==null||e.Started&&!e.Returned)throw new ArgumentException("Known same storage custody required; never explain an unknown property call.");
+            var rows=e.StorageProgressV11??[];return e with{StorageProgressV11=rows.Append(new WorkStorageProgress(rows.Length,eventIndex,WorkProgress.Hash(WorkStorageProgressRules.Current(e)),current)).ToArray()};
+        });
     public static string AddTerrain(TerritoryTransfer t,string progress,string current,string originalCalls,string frame,int eventIndex,WorkTerrainAcceptance terrain)
     {
         if(terrain==null||terrain.Accepted||terrain.Approval!=null)throw new ArgumentException("Fresh observed terrain scope required.");
@@ -95,16 +107,17 @@ public static class WorkAssetResolutions
     }
     public static void Approved(TerritoryTransfer t,string progress,WorkAssetResolution entry,CustodyAgreementReceipt receipt)
     {
+        WorkStorageProgressRules.Check(entry,WorkProgress.Validate(t,progress));
         if(receipt==null||receipt.Proof!=WorkProgress.Hash(receipt.Witness)||CustodyAgreements.Validate(receipt.Witness)!=WorkProgress.Original(t))throw new ArgumentException("Current full-party property approval required.");
         var a=WorkProgress.Approval(t,receipt.Witness.WorkProgressV1);var before=Validate(t,a.Progress,a.ResolutionsV5);
-        var old=before.Entries.SingleOrDefault(e=>e.Original==entry.Original);var clean=entry with{Started=false,Returned=false,Verified=false,Approval=null,TerrainV8=entry.TerrainV8==null?null:entry.TerrainV8 with{Accepted=false,Approval=null}};
+        var old=before.Entries.SingleOrDefault(e=>e.Original==entry.Original);var clean=WorkStorageProgressRules.CallPreparation(entry) with{TerrainV8=entry.TerrainV8==null?null:entry.TerrainV8 with{Accepted=false,Approval=null}};
         if(old!=null){if(JsonSerializer.Serialize(old)!=JsonSerializer.Serialize(clean))throw new ArgumentException("Actual property differs from its approved preparation.");}
         else if(entry.Event.HasValue || JsonSerializer.Serialize(Validate(t,progress,AddOriginal(t,progress,a.ResolutionsV5,entry.Original)).Entries.Last())!=JsonSerializer.Serialize(clean))throw new ArgumentException("Only unchanged original remainder can be prepared under this scope.");
     }
     private static string Update(TerritoryTransfer t,string progress,string json,string id,Func<WorkAssetResolution,WorkAssetResolution> action)
     {var s=Validate(t,progress,json);var e=s.Entries.Single(row=>row.Original==id);string next=Write(s with{Entries=s.Entries.Select(row=>row.Original==id?action(e):row).ToArray()});Validate(t,progress,next);return next;}
     public static string Begin(TerritoryTransfer t,string progress,string json,string id,string owner,CustodyAgreementReceipt consent)
-        =>Update(t,progress,json,id,e=>{if(e.TerrainV8!=null||e.Started||owner!=t.FromOwner)throw new ArgumentException("Never replay an actual-object call.");Approved(t,progress,e,consent);return e with{Started=true,Approval=consent.Witness.Id};});
+        =>Update(t,progress,json,id,e=>{if(e.TerrainV8!=null||e.Started||owner!=t.FromOwner)throw new ArgumentException("Never replay an actual-object call.");Approved(t,progress,e,consent);return e with{Started=true,Approval=consent.Witness.Id,StorageCallV11=e.StorageProgressV11?.Length};});
     public static string Returned(TerritoryTransfer t,string progress,string json,string id,string owner)
         =>Update(t,progress,json,id,e=>!e.Started||e.Returned||owner!=t.TargetOwner?throw new ArgumentException("Independent normal return required."):e with{Returned=true});
     public static string Verify(TerritoryTransfer t,string progress,string json,string id)

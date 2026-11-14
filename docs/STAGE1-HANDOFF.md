@@ -1,4 +1,14 @@
-# 1단계 개발 인수인계 — 0.3.114 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.115 / 2026-11-14
+
+## 0.3.115 — 실제 선반 재고 연속 변화·과거 승인 prefix
+
+[부품·실제 실행/저장/복구·정확한 범위](M2-PARTS-AUDIT-0.3.115.md). 이미 actual-resolution에 기록된 비연결 선반의 원 StorageV7/StorageContentsV7을 그대로 두고 양성 recipe/haul-place의 membership 변화를 StorageProgressV11 hash-chain과 별도 actual ref snapshots에 추가했다. 실제 EndWorkObservation은 body return/전후 출력 후 physical/권한/고정 settings/cells/current slots를 확인해 문서+refs를 함께 저장한다. historical missing refs는 뒤의 양성 Removed로만 설명하며 최신 refs는 실제 슬롯과 동일해야 한다. 운반·소모·재생성·원 scope rebase는 없다.
+
+StorageCallV11은 실제 SetFaction 당시 사용한 history prefix만 고정한다. 과거 승인 검증은 그 prefix와만 비교하며 다음 actual call/도시는 최신 history를 포함한 새 현재 full-party 동의가 필요하다. Returned call은 replay하지 않는다. raw Scribe/load/explicit recovery/최종 receipt/참조 release까지 연결했고 원 계약·채무·제삼자 권리·주민/의료·native player control을 유지한다. old null JSON/API/permission unchanged. UI EN/KO에 검증 변화 건수 표시.
+
+검사·설치: 양 타깃 전체 빌드/최종 native 컴파일 경고·오류0, Honor20093/Contracts6069/ENKO618, 양 타깃 package allowlist 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.115.zip` SHA256 `0AA94D7CD876E92294C57CF8E3D5ABACA0D88EE439B5AC75C7CF123970B7A0C3`. 이전 로컬 Preview를 `.local/contracts-preview-4451460738824319a878728bad09c013`에 백업 후 최종32파일 일치 설치했다. 활성화·언어 설정 hash 불변. 현재5005 DLL hash와 기존 storage/recipe/placement body audit 동일; GetUniqueLoadID/ThingID 미패치도 확인한다. unknown1.6 native 권한 없음. Preview Steam·자동 예약 없음.
+
+다음 착수: actual-resolution이 아직 없는 일반 선반의 작업 중 변화를 원 frame-successor 없이 별도 positive provenance로 연결하는 경로, 집기 관측·제작대 반복/주문 상태·다른 추가 출력/연속 후계 소실, 연결 shelf group/전력·시설, 역할/개인 권리 및 부모 follower/정치·후손/M2.10 실제 조립. 기존 ledger의 원인 없는 가드 제거·old refs retarget·unknown 호출 replay로 완료하지 않는다. M2.4 전체 미완료, 기존 잔여25–40%/3묶음 추정은 재측정하지 않았다. M1 10/10,M2 0/18,전체10/100 유지. 여섯 단계의 과거 추정은 새 측정값이 아니다.
 
 ## 0.3.114 — 원 오물을 함께 제거한 native 공사의 양성 기록
 

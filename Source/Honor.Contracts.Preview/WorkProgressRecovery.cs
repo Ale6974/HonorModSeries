@@ -44,6 +44,7 @@ public sealed partial class TerritoryAdministrationLedger
                 WorkAssetResolutions.AddTerrain(t,next,resolution,r.LoadedMap.AssetJournal,candidate.Reference.Original,state.Sequence,candidate.Terrain);
             actualRefs=(actualRefs??[]).Append(candidate.Reference).ToList();
         }
+        (resolution,actualRefs)=ObserveStorageProgress(t,r,next,resolution,actualRefs,state.Sequence);
         r.WorkProgressV1=next;r.WorkAssetResolutionV5=resolution;r.WorkAssetReferencesV5=actualRefs;
     }
     private void SealWorkBoundary(TerritoryTransferReference r,bool beforeAssets=false)
@@ -167,6 +168,8 @@ public sealed partial class TerritoryAdministrationLedger
             if(observed>0)message+="\n\n"+"RE_WorkJobConsent".Translate(observed);
             int filth=WorkProgress.Validate(t,r.WorkProgressV1).Events.Sum(e=>e.FilthV10?.Length??0);
             if(filth>0)message+="\n\n"+"RE_WorkFrameFilthReview".Translate(filth);
+            int storage=r.WorkAssetResolutionV5==null?0:WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Sum(e=>e.StorageProgressV11?.Length??0);
+            if(storage>0)message+="\n\n"+"RE_WorkStorageProgressReview".Translate(storage);
             if(r.WorkAssetResolutionV5!=null)
             {
                 var terrain=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Where(e=>e.TerrainV8?.LayersV9!=null).ToArray();

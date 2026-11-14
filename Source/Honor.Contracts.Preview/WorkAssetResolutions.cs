@@ -10,7 +10,14 @@ public sealed class WorkAssetReferenceV5 : IExposable
     // The native BillStack remains the only deep-save owner, including after load.
     public List<Bill> WorktableBillsV6;
     public List<Thing> StorageContentsV7;
-    public void ExposeData(){Scribe_Values.Look(ref Original,"originalAssetId");Scribe_References.Look(ref Actual,"separateActualProperty");Scribe_Collections.Look(ref WorktableBillsV6,"actualWorktableBillsV6",LookMode.Reference);Scribe_Collections.Look(ref StorageContentsV7,"actualStorageContentsV7",LookMode.Reference);}
+    public List<WorkStorageReferenceV11> StorageProgressV11;
+    public void ExposeData(){Scribe_Values.Look(ref Original,"originalAssetId");Scribe_References.Look(ref Actual,"separateActualProperty");Scribe_Collections.Look(ref WorktableBillsV6,"actualWorktableBillsV6",LookMode.Reference);Scribe_Collections.Look(ref StorageContentsV7,"actualStorageContentsV7",LookMode.Reference);Scribe_Collections.Look(ref StorageProgressV11,"actualStorageProgressV11",LookMode.Deep);}
+}
+public sealed class WorkStorageReferenceV11 : IExposable
+{
+    public int Sequence;
+    public List<Thing> Contents;
+    public void ExposeData(){Scribe_Values.Look(ref Sequence,"storageSequence");Scribe_Collections.Look(ref Contents,"sameActualContents",LookMode.Reference);}
 }
 internal sealed record WorkSuccessorCandidate(WorkAssetReferenceV5 Reference,MapAsset Asset,NeutralMapThing Physical,NativeWorktable Worktable,NeutralMapStorage Storage,WorkTerrainAcceptance Terrain=null);
 public sealed partial class TerritoryAdministrationLedger
@@ -71,6 +78,7 @@ public sealed partial class TerritoryAdministrationLedger
             throw new ArgumentException("Original call prefix or separately owned actual references changed.");
         foreach(var entry in s.Entries)
         {
+            if(t.Phase==TerritoryTransferPhase.Prepared)ValidateStorageReferenceShape(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry);
             if(entry.Started)WorkAssetResolutions.Approved(t,r.WorkProgressV1,entry,custodyAgreements.Record(entry.Approval));
             if(entry.TerrainV8!=null)
             {
@@ -86,7 +94,7 @@ public sealed partial class TerritoryAdministrationLedger
                     throw new ArgumentException("Same actual property and its separate original preparation required.");
                 if(!entry.Event.HasValue && !r.LoadedMap.Things.Any(p=>ReferenceEquals(p,thing)))throw new ArgumentException("Original remainder property lost its original reference.");
                 VerifyResolutionWorktable(r,entry,thing);
-                VerifyResolutionStorage(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,thing,r.LoadedMap);
+                VerifyResolutionStorage(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,thing,r.LoadedMap,WorkProgress.Validate(t,r.WorkProgressV1));
             }
         }
     }
@@ -114,7 +122,7 @@ public sealed partial class TerritoryAdministrationLedger
         }
         var actual=refs.Single(p=>p.Original==entry.Original).Actual;
         VerifyResolutionWorktable(refs.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap);
-        VerifyResolutionStorage(refs.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap);
+        VerifyResolutionStorage(refs.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap,WorkProgress.Validate(t,r.WorkProgressV1));
         if(entry.Started&&!entry.Returned)throw new ArgumentException("Unknown actual-property call; original retained.");
         if(!entry.Returned)
         {
@@ -126,12 +134,12 @@ public sealed partial class TerritoryAdministrationLedger
         }
         if(ResolutionPhysical(actual,r.City.Map)!=entry.Physical||ResolutionAsset(r,actual,entry.Asset.Repair!=null,r.Target)!=entry.Asset)throw new ArgumentException("Actual property returned but independent preservation is unverified.");
         VerifyResolutionWorktable(r,entry,actual);
-        VerifyResolutionStorage(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap);
+        VerifyResolutionStorage(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap,WorkProgress.Validate(t,r.WorkProgressV1));
         r.WorkAssetResolutionV5=WorkAssetResolutions.Verify(t,r.WorkProgressV1,r.WorkAssetResolutionV5,entry.Original);
         Messages.Message("RE_WorkSuccessorProgress".Translate(),MessageTypeDefOf.NeutralEvent);return true;
     }
     private static void ReleaseAssetResolutionReferences(TerritoryTransferReference r)
-    {foreach(var reference in r.WorkAssetReferencesV5??[]){reference.Actual=null;reference.WorktableBillsV6?.Clear();reference.StorageContentsV7?.Clear();}}
+    {foreach(var reference in r.WorkAssetReferencesV5??[]){reference.Actual=null;reference.WorktableBillsV6?.Clear();reference.StorageContentsV7?.Clear();reference.StorageProgressV11?.Clear();}}
     private static void VerifyResolutionWorktable(TerritoryTransferReference r,WorkAssetResolution entry,Thing actual)
         =>VerifyResolutionWorktable(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap);
     private static List<Bill> OriginalWorktableBills(LoadedMapRecord original,WorkAssetResolution entry)
@@ -145,13 +153,32 @@ public sealed partial class TerritoryAdministrationLedger
         if(actual is not Building_WorkTable table || JsonSerializer.Serialize(WorktableEvidence.Capture(table))!=JsonSerializer.Serialize(entry.WorktableV6)||reference.WorktableBillsV6==null||!WorktableEvidence.Bills(table).SequenceEqual(reference.WorktableBillsV6))throw new ArgumentException("Actual bill references/configuration changed.");
         if(!entry.Event.HasValue&&!reference.WorktableBillsV6.SequenceEqual(OriginalWorktableBills(original,entry)))throw new ArgumentException("Original remainder table lost its original Bill references.");
     }
-    private static void VerifyResolutionStorage(WorkAssetReferenceV5 reference,WorkAssetResolution entry,Thing actual,LoadedMapRecord original)
+    private static void ValidateStorageReferenceShape(WorkAssetReferenceV5 reference,WorkAssetResolution entry)
     {
-        if(entry.StorageV7==null){if(actual?.GetType()==typeof(Building_Storage)||reference.StorageContentsV7!=null)throw new ArgumentException("Storage needs its separate original contents/settings scope.");return;}
-        if(actual is not Building_Storage shelf||JsonSerializer.Serialize(StorageMapEvidence.CaptureOwned(shelf,original.Map))!=JsonSerializer.Serialize(entry.StorageV7)||reference.StorageContentsV7==null||
-            !reference.StorageContentsV7.Select(p=>p?.GetUniqueLoadID()).SequenceEqual(entry.StorageV7.Contents))throw new ArgumentException("Original actual storage scope changed.");
+        if(entry.StorageV7==null){if(reference.StorageContentsV7!=null||reference.StorageProgressV11!=null)throw new ArgumentException("Storage references need original scope.");return;}
+        if(reference.StorageContentsV7==null||reference.StorageContentsV7.Count!=entry.StorageV7.Contents.Length)throw new ArgumentException("Original storage reference slots changed.");
+        if(entry.StorageProgressV11==null){if(reference.StorageProgressV11!=null)throw new ArgumentException("Storage references need original history.");return;}
+        if(reference.StorageProgressV11==null||reference.StorageProgressV11.Count!=entry.StorageProgressV11.Length||reference.StorageProgressV11.Where((row,i)=>row==null||row.Sequence!=i||row.Contents==null||row.Contents.Count!=entry.StorageProgressV11[i].Current.Contents.Length).Any())throw new ArgumentException("Storage history reference slots changed.");
+    }
+    private static void VerifyResolutionStorage(WorkAssetReferenceV5 reference,WorkAssetResolution entry,Thing actual,LoadedMapRecord original,WorkProgressSave work)
+    {
+        ValidateStorageReferenceShape(reference,entry);
+        if(entry.StorageV7==null){if(actual?.GetType()==typeof(Building_Storage))throw new ArgumentException("Storage needs its separate original contents/settings scope.");return;}
+        ResidentActiveWork.Known(typeof(Thing),"GetUniqueLoadID");
+        ResidentActiveWork.Known(typeof(Thing),"get_ThingID");
+        var scope=WorkStorageProgressRules.Current(entry);
+        if(actual is not Building_Storage shelf||JsonSerializer.Serialize(StorageMapEvidence.CaptureOwned(shelf,original.Map))!=JsonSerializer.Serialize(scope))throw new ArgumentException("Current actual storage scope changed.");
+        void History(List<Thing> refs,string[] ids,int after)
+        {
+            for(int i=0;i<ids.Length;i++)
+                if(refs[i]!=null?refs[i].GetUniqueLoadID()!=ids[i]:!work.Events.Any(ev=>ev.Sequence>after&&ev.Returned.HasValue&&ev.Removed.Contains(ids[i])))throw new ArgumentException("Historical stored references need positive original removal lineage, never replacement.");
+        }
+        History(reference.StorageContentsV7,entry.StorageV7.Contents,entry.Event??-1);
+        foreach(var row in entry.StorageProgressV11??[])History(reference.StorageProgressV11[row.Sequence].Contents,row.Current.Contents,row.Event);
+        var latest=reference.StorageProgressV11?.Last().Contents??reference.StorageContentsV7;
+        if(!latest.Select(p=>p?.GetUniqueLoadID()).SequenceEqual(scope.Contents))throw new ArgumentException("Current actual storage references are missing or changed.");
         var current=shelf.slotGroup.HeldThings.OrderBy(p=>p.GetUniqueLoadID(),StringComparer.Ordinal).ToArray();
-        if(!current.SequenceEqual(reference.StorageContentsV7)||!entry.Event.HasValue&&reference.StorageContentsV7.Any(p=>!original.Things.Contains(p)))throw new ArgumentException("Same original stored goods references required; never haul or recreate.");
+        if(current.Length!=latest.Count||current.Where((p,i)=>!ReferenceEquals(p,latest[i])).Any()||!entry.Event.HasValue&&reference.StorageContentsV7.Any(p=>p!=null&&!original.Things.Any(t=>ReferenceEquals(t,p))))throw new ArgumentException("Same original/current stored goods references required; never haul or recreate.");
     }
     private static void VerifyResolutionTerrain(TerritoryTransferReference r,WorkAssetResolution entry)
     {
