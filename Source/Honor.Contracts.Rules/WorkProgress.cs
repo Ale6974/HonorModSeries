@@ -8,6 +8,7 @@ public sealed record WorkProgressEvent(int Sequence, string Kind, string Actor, 
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkEventGrantV4 GrantV4 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public bool? PlacementResultV4 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkFrameFilth[] FilthV10 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageOrigins StorageOriginsV12 { get; init; }
 }
 public sealed record WorkProgressSave(int Version, WorkProgressSeal Seal, WorkProgressEvent[] Events)
 {
@@ -75,7 +76,7 @@ public static partial class WorkProgress
         else MapAssetTransfers.Pair(s.Seal.Assets,t.LoadedMap,t.FromOwner,t.TargetOwner,s.Version==1);
         if(s.Version==2&&map.OwnedAssets==null || s.Version>=2&&s.Seal.Assets!=null&&MapAssetTransfers.Restore(s.Seal.Assets).Calls.Any(c=>c.Started&&!c.Returned))throw new ArgumentException("Known partial original assets required.");
         var actors=map.ActiveWorkV1?.ToDictionary(r=>r.Pawn,StringComparer.Ordinal)??throw new ArgumentException("Original active work missing.");
-        long previous=s.Seal.Tick;var removed=new HashSet<string>(StringComparer.Ordinal);
+        long previous=s.Seal.Tick;var removed=new HashSet<string>(StringComparer.Ordinal);string previousStorageCalls=s.Seal.Assets;
         for(int i=0;i<s.Events.Length;i++)
         {
             var e=s.Events[i];
@@ -84,6 +85,11 @@ public static partial class WorkProgress
                 e.Inputs==null || e.Inputs.Length>10000 || e.Inputs.Any(id=>!Key(id)) || e.Inputs.Distinct().Count()!=e.Inputs.Length || !CityStockProof.Valid(e.Before) ||
                 e.Started<previous || e.Started>int.MaxValue || !e.Returned.HasValue && i!=s.Events.Length-1)throw new ArgumentException("Original ordered native progress start is invalid.");
             if(e.GrantV4!=null){if(s.Version!=3)throw new ArgumentException("Legacy events grant no new work authority.");WorkJobObservations.Check(e.GrantV4,e.Actor,e.Job,s.Seal.Tick,e.Started);}
+            if(e.StorageOriginsV12!=null)
+            {
+                if(s.Version!=3||e.Kind is not ("recipe" or "haul-place"))throw new ArgumentException("Only explicit clinical production/placement may capture new storage origins.");
+                WorkStorageOriginRules.Check(t,map,e.StorageOriginsV12,previousStorageCalls);previousStorageCalls=e.StorageOriginsV12.Calls;
+            }
             var originalFilth=e.Kind=="frame"&&e.Inputs.Length>0?map.WorkFramesV1?.SingleOrDefault(frame=>frame.Id==e.Inputs[0])?.FilthV10:null;
             if(originalFilth!=null||e.FilthV10!=null)
             {
@@ -109,9 +115,11 @@ public static partial class WorkProgress
     public static string Begin(TerritoryTransfer t,string json,string kind,string actor,string job,string[] inputs,string before,long tick,WorkEventGrantV4 grant)
         =>Begin(t,json,kind,actor,job,inputs,before,tick,grant,null);
     public static string Begin(TerritoryTransfer t,string json,string kind,string actor,string job,string[] inputs,string before,long tick,WorkEventGrantV4 grant,WorkFrameFilth[] filth)
+        =>Begin(t,json,kind,actor,job,inputs,before,tick,grant,filth,null);
+    public static string Begin(TerritoryTransfer t,string json,string kind,string actor,string job,string[] inputs,string before,long tick,WorkEventGrantV4 grant,WorkFrameFilth[] filth,WorkStorageOrigins storage)
     {
         var s=Validate(t,json);if(s.Events.LastOrDefault()?.Returned==null && s.Events.Length!=0)throw new ArgumentException("Unknown progress operation is never replayed.");
-        string next=JsonSerializer.Serialize(s with {Events=s.Events.Append(new WorkProgressEvent(s.Events.Length,kind,actor,job,inputs,before,tick){GrantV4=grant,FilthV10=filth}).ToArray()});Validate(t,next);return next;
+        string next=JsonSerializer.Serialize(s with {Events=s.Events.Append(new WorkProgressEvent(s.Events.Length,kind,actor,job,inputs,before,tick){GrantV4=grant,FilthV10=filth,StorageOriginsV12=storage}).ToArray()});Validate(t,next);return next;
     }
     public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick)
     {

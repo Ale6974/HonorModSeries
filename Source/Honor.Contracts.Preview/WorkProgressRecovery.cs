@@ -23,8 +23,9 @@ public sealed partial class TerritoryAdministrationLedger
         var before=WorkProgressSurvey.Capture(r);var ids=inputs.Select(x=>x?.GetUniqueLoadID()).ToArray();
         if(ids.Any(id=>id==null || !before.Ids.Contains(id)))throw new ArgumentException("Native progress input is not current original custody.");
         var filth=FrameFilthEvidence.Current(t,r,kind,inputs);
+        var storage=CaptureStorageOrigins(t,r,kind);
         if(filth?.Any(f=>!before.Ids.Contains(f.Id))==true)throw new ArgumentException("Original ancillary filth is absent from the actual before-survey.");
-        string next=WorkProgress.Begin(t,r.WorkProgressV1,kind,pawn.GetUniqueLoadID(),job.GetUniqueLoadID(),ids,before.Proof,Find.TickManager.TicksGame,grant,filth);
+        string next=WorkProgress.Begin(t,r.WorkProgressV1,kind,pawn.GetUniqueLoadID(),job.GetUniqueLoadID(),ids,before.Proof,Find.TickManager.TicksGame,grant,filth,storage);
         r.WorkProgressV1=next;return new(Current.Game,this,r.Id,saved.Events.Length,before,ids);
     }
     internal void EndWorkObservation(WorkObservationState state,bool? placed=null)
@@ -170,6 +171,8 @@ public sealed partial class TerritoryAdministrationLedger
             if(filth>0)message+="\n\n"+"RE_WorkFrameFilthReview".Translate(filth);
             int storage=r.WorkAssetResolutionV5==null?0:WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Sum(e=>e.StorageProgressV11?.Length??0);
             if(storage>0)message+="\n\n"+"RE_WorkStorageProgressReview".Translate(storage);
+            int origins=WorkProgress.Validate(t,r.WorkProgressV1).Events.Sum(e=>e.StorageOriginsV12?.Stores.Length??0);
+            if(origins>0)message+="\n\n"+"RE_WorkStorageOriginReview".Translate(origins);
             if(r.WorkAssetResolutionV5!=null)
             {
                 var terrain=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Where(e=>e.TerrainV8?.LayersV9!=null).ToArray();

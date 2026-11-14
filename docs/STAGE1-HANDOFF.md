@@ -1,4 +1,13 @@
-# 1단계 개발 인수인계 — 0.3.115 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.116 / 2026-11-14
+
+## 0.3.116 — 원 선반의 작업 전 증거에서 독립 인계 기록 시작
+
+[구현·저장·복구 범위](M2-PARTS-AUDIT-0.3.116.md). 원 소속 변경 호출이 시작되지 않은 비연결 선반에서, 작업 직전 같은 원 선반·기본 중립 물품·설정·위치·수량/물리 상태를 확인해 StorageOriginsV12에 기록한다. 정상 native 제작/내려놓기의 양성 membership 출력만 새 version2 실제 재산 장부를 시작한다. 프레임 완공은 시작 조건이 아니며 원 StorageV7/객체/호출 이력을 바꾸지 않는다. 후속 최신 full-party 동의·실제 SetFaction·도시·최종 receipt·Scribe/명시 복구는 기존 공통 경로에 연결한다.
+
+M2.4 전체 미완료. 같은 ID 수량만 바뀐 최초 선반 상태, 이미 원 호출이 반환된 미기록 선반, 집기·주문 진행·복합 연결 설비·역할/개인 권리·부모 follower/정치/후손 조립이 남았다. M1 10/10,M2 0/18,전체10/100. 기존 M2.4 잔여25–40%/3묶음 추정은 재측정하지 않았다. Preview Steam/자동 예약 없음.
+
+
+검사·배포: 양 타깃 전체 빌드 경고/오류0, Honor20093/Contracts6078, EN/KO619, 양 runtime DLL allowlist/패키지 검사 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.116.zip` SHA256 `BB13AB48FC28665C10447DAECEB98457CADA2BEFE52ED9E04B3F43D2CB289F57`. 이전 로컬 Preview는 `.local/contracts-preview-83cb859bd3ae4193a6b5b95160d29ea1`에 백업했고 최종32파일 일치 설치, 활성화/언어 설정 hash 불변. Preview Steam 게시/예약 없음.
 
 ## 0.3.115 — 실제 선반 재고 연속 변화·과거 승인 prefix
 

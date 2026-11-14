@@ -21,14 +21,20 @@ public static class WorkAssetResolutions
     {
         if(json==null||json.Length>3000000)throw new ArgumentException("Bounded separate property resolution required.");
         var work=WorkProgress.Validate(t,progress);var map=LoadedMapPreservation.Restore(t.LoadedMap);var s=JsonSerializer.Deserialize<WorkAssetResolutionSave>(json);
-        if(work.Version!=3||s?.Version!=1||s.Original!=WorkProgress.Hash(WorkProgress.Original(t))||s.Entries==null||s.Entries.Length is <1 or >1000||s.Entries.Any(e=>e==null)||Write(s)!=json)
+        if(work.Version!=3||s?.Version is not (1 or 2)||s.Original!=WorkProgress.Hash(WorkProgress.Original(t))||s.Entries==null||s.Entries.Length is <1 or >1000||s.Entries.Any(e=>e==null)||Write(s)!=json)
             throw new ArgumentException("Separate current-object ledger is not paired to the original transfer.");
         MapAssetTransfers.Pair(s.BaseCalls,t.LoadedMap,t.FromOwner,t.TargetOwner);var calls=MapAssetTransfers.Restore(s.BaseCalls).Calls;
         WorkProgress.AssetAdvance(t,progress,s.BaseCalls);
-        if(s.Entries.Select(e=>e.Original).Distinct().Count()!=s.Entries.Length||s.Entries.Where(e=>e.Actual!=null).Select(e=>e.Actual).Distinct().Count()!=s.Entries.Count(e=>e.Actual!=null)||!s.Entries.Any(e=>e.Event.HasValue))throw new ArgumentException("Unique original and actual objects plus positive succession required.");
+        if(s.Entries.Select(e=>e.Original).Distinct().Count()!=s.Entries.Length||s.Entries.Where(e=>e.Actual!=null).Select(e=>e.Actual).Distinct().Count()!=s.Entries.Count(e=>e.Actual!=null)||
+            (s.Version==1?!s.Entries.Any(e=>e.Event.HasValue):!s.Entries.Any(e=>e.Event==null&&e.StorageV7!=null&&e.StorageProgressV11?.Length>0)))throw new ArgumentException("Unique actual objects plus explicit positive original provenance required.");
         foreach(var e in s.Entries)
         {
             WorkStorageProgressRules.Check(e,work);
+            if(s.Version==2&&e.Event==null&&e.StorageProgressV11!=null)
+            {
+                var start=work.Events[e.StorageProgressV11[0].Event].StorageOriginsV12;
+                if(start?.Calls!=s.BaseCalls||start?.Stores.Any(row=>row.Id==e.Original)!=true)throw new ArgumentException("New storage ledger needs its actual original before-call origin.");
+            }
             if(e.TerrainV8!=null)
             {
                 var terrain=e.TerrainV8;var frame=map.WorkFramesV1?.SingleOrDefault(f=>f.Id==e.Original);var terrainCall=calls.SingleOrDefault(c=>c.Id==e.Original);
@@ -75,6 +81,14 @@ public static class WorkAssetResolutions
         return s;
     }
     public static bool Resolved(WorkAssetResolution entry)=>entry.Verified||entry.TerrainV8?.Accepted==true;
+    public static string CreateStorage(TerritoryTransfer t,string progress,string originalCalls,string id,int sequence,NeutralMapStorage current)
+    {
+        var work=WorkProgress.Validate(t,progress);var map=LoadedMapPreservation.Restore(t.LoadedMap);
+        if(sequence<0||sequence>=work.Events.Length||work.Events[sequence].StorageOriginsV12==null||work.Events[sequence].StorageOriginsV12.Calls!=originalCalls||work.Events[sequence].StorageOriginsV12.Stores.Any(row=>row.Id==id)!=true)throw new ArgumentException("Positive work with an original before-call storage origin required.");
+        var storage=map.Storage.Single(row=>row.Id==id);var asset=map.OwnedAssets.Single(row=>row.Id==id);var physical=map.Things.Single(row=>row.Id==id);
+        var entry=new WorkAssetResolution(id,id,null,asset,physical){StorageV7=storage,StorageProgressV11=[new(0,sequence,WorkProgress.Hash(storage),current)]};
+        string next=Write(new(2,WorkProgress.Hash(WorkProgress.Original(t)),originalCalls,[entry],null));Validate(t,progress,next);return next;
+    }
     public static string AppendStorage(TerritoryTransfer t,string progress,string json,string id,int eventIndex,NeutralMapStorage current)
         =>Update(t,progress,json,id,e=>
         {
