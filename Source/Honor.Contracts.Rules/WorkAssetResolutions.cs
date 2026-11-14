@@ -21,6 +21,8 @@ public sealed record WorkAssetResolution(string Original,string Actual,int? Even
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? StorageMergeCallV17 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int[] StorageSplitsV19 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? StorageSplitCallV19 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int[] StorageContinuationsV20 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? StorageContinuationCallV20 { get; init; }
 }
 public sealed record WorkAssetResolutionSave(int Version,string Original,string BaseCalls,WorkAssetResolution[] Entries,string Proof);
 /// <summary>Separate actual-object calls. Original missing-frame calls remain unstarted forever.</summary>
@@ -45,6 +47,7 @@ public static class WorkAssetResolutions
             WorktableIterations.Entry(e,work);
             WorkStorageMerges.Entry(e,work);
             WorkStorageSplits.Entry(e,work);
+            WorkStorageContinuations.Entry(e,work);
             if(e.StorageSplitsV19!=null&&work.Events[e.StorageSplitsV19[0]].StorageSplitV19.Calls!=s.BaseCalls)throw new ArgumentException("Original split-call prefix changed.");
             if(e.StorageMergeEventsV17!=null&&work.Events[e.StorageMergeEventsV17[0]].StorageMergeV17.Calls!=s.BaseCalls)throw new ArgumentException("Original merge-call prefix changed.");
             if(e.WorktableIterationsV15!=null&&work.Events[e.WorktableIterationsV15[0]].WorktableIterationV15.Calls!=s.BaseCalls)throw new ArgumentException("Original table iteration calls changed.");
@@ -106,10 +109,22 @@ public static class WorkAssetResolutions
         if(complete&&work.Events.Any(ev=>ev.WorktableIterationV15?.After!=null&&!s.Entries.Any(e=>e.Original==ev.WorktableIterationV15.Table&&e.WorktableIterationsV15?.Contains(ev.Sequence)==true)))throw new ArgumentException("All positive table iterations need their actual object history.");
         if(complete&&work.Events.Any(ev=>ev.StorageMergeV17?.After!=null&&ev.PlacementResultV4==true&&!s.Entries.Any(e=>e.Original==ev.StorageMergeV17.Shelf&&e.StorageMergeEventsV17?.Contains(ev.Sequence)==true)))throw new ArgumentException("Every positive merge requires its actual stack history.");
         if(complete&&work.Events.Any(ev=>ev.StorageSplitV19?.After!=null&&!s.Entries.Any(e=>e.Original==ev.StorageSplitV19.Shelf&&e.StorageSplitsV19?.Contains(ev.Sequence)==true)))throw new ArgumentException("Every positive split needs its actual original remainder history.");
+        if(complete&&work.Events.Any(ev=>ev.StorageContinuationV20?.After!=null&&!s.Entries.Any(e=>e.Original==ev.StorageContinuationV20.Shelf&&e.StorageContinuationsV20?.Contains(ev.Sequence)==true)))throw new ArgumentException("Every positive continuation needs its actual original history.");
         if(complete&&calls.Any(c=>!c.Returned&&!s.Entries.Any(e=>e.Original==c.Id&&Resolved(e))))throw new ArgumentException("Every original property needs positive original return or separately verified actual resolution.");
         return s;
     }
     public static bool Resolved(WorkAssetResolution entry)=>entry.Verified||entry.TerrainV8?.Accepted==true;
+    public static string AppendContinuation(TerritoryTransfer t,string progress,string document,int sequence)
+    {
+        var work=WorkProgress.Validate(t,progress);
+        if(sequence<0||sequence>=work.Events.Length||work.Events[sequence].StorageContinuationV20?.After==null)throw new ArgumentException("Positive native continuation required.");
+        var row=work.Events[sequence].StorageContinuationV20;
+        return Update(t,progress,document,row.Shelf,e=>
+        {
+            if(e.Started&&!e.Returned)throw new ArgumentException("Unknown actual calls cannot be explained by continuation.");
+            return e with{StorageContinuationsV20=(e.StorageContinuationsV20??[]).Append(sequence).ToArray()};
+        });
+    }
     public static string AppendSplit(TerritoryTransfer t,string progress,string document,int sequence)
     {
         var work=WorkProgress.Validate(t,progress);var map=LoadedMapPreservation.Restore(t.LoadedMap);
@@ -211,6 +226,7 @@ public static class WorkAssetResolutions
         WorktableIterations.Entry(entry,WorkProgress.Validate(t,progress));
         WorkStorageMerges.Entry(entry,WorkProgress.Validate(t,progress));
         WorkStorageSplits.Entry(entry,WorkProgress.Validate(t,progress));
+        WorkStorageContinuations.Entry(entry,WorkProgress.Validate(t,progress));
         if(receipt==null||receipt.Proof!=WorkProgress.Hash(receipt.Witness)||CustodyAgreements.Validate(receipt.Witness)!=WorkProgress.Original(t))throw new ArgumentException("Current full-party property approval required.");
         var a=WorkProgress.Approval(t,receipt.Witness.WorkProgressV1);var before=Validate(t,a.Progress,a.ResolutionsV5);
         var old=before.Entries.SingleOrDefault(e=>e.Original==entry.Original);var clean=WorkStorageProgressRules.CallPreparation(entry) with{TerrainV8=entry.TerrainV8==null?null:entry.TerrainV8 with{Accepted=false,Approval=null}};
@@ -220,7 +236,7 @@ public static class WorkAssetResolutions
     private static string Update(TerritoryTransfer t,string progress,string json,string id,Func<WorkAssetResolution,WorkAssetResolution> action)
     {var s=Validate(t,progress,json);var e=s.Entries.Single(row=>row.Original==id);string next=Write(s with{Entries=s.Entries.Select(row=>row.Original==id?action(e):row).ToArray()});Validate(t,progress,next);return next;}
     public static string Begin(TerritoryTransfer t,string progress,string json,string id,string owner,CustodyAgreementReceipt consent)
-        =>Update(t,progress,json,id,e=>{if(e.TerrainV8!=null||e.Started||owner!=t.FromOwner)throw new ArgumentException("Never replay an actual-object call.");Approved(t,progress,e,consent);return e with{Started=true,Approval=consent.Witness.Id,StorageCallV11=e.StorageProgressV11?.Length,StorageStackCallV13=e.StorageStackEventsV13?.Length,WorktableCallV15=e.WorktableIterationsV15?.Length,StorageMergeCallV17=e.StorageMergeEventsV17?.Length,StorageSplitCallV19=e.StorageSplitsV19?.Length};});
+        =>Update(t,progress,json,id,e=>{if(e.TerrainV8!=null||e.Started||owner!=t.FromOwner)throw new ArgumentException("Never replay an actual-object call.");Approved(t,progress,e,consent);return e with{Started=true,Approval=consent.Witness.Id,StorageCallV11=e.StorageProgressV11?.Length,StorageStackCallV13=e.StorageStackEventsV13?.Length,WorktableCallV15=e.WorktableIterationsV15?.Length,StorageMergeCallV17=e.StorageMergeEventsV17?.Length,StorageSplitCallV19=e.StorageSplitsV19?.Length,StorageContinuationCallV20=e.StorageContinuationsV20?.Length};});
     public static string Returned(TerritoryTransfer t,string progress,string json,string id,string owner)
         =>Update(t,progress,json,id,e=>!e.Started||e.Returned||owner!=t.TargetOwner?throw new ArgumentException("Independent normal return required."):e with{Returned=true});
     public static string Verify(TerritoryTransfer t,string progress,string json,string id)

@@ -14,7 +14,7 @@ public sealed partial class TerritoryAdministrationLedger
         if(scope==null||map.OwnedAssets?.Any(p=>p.Id==scope.Id&&p.Owner==t.FromOwner)!=true||map.Groups?.Any(g=>g.Members.Contains(scope.Id))==true)return false;
         var entry=r.WorkAssetResolutionV5==null?null:WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.SingleOrDefault(p=>p.Original==scope.Id);
         if(entry==null)return !MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Single(p=>p.Id==scope.Id).Started;
-        if(requested>0&&requested<item.stackCount)return entry.StorageSplitsV19!=null;
+        if(entry.StorageSplitsV19!=null)return requested>=item.stackCount?WorkStorageSplits.Current(entry,work).Any(p=>p.Id==item.GetUniqueLoadID()):entry.StorageContinuationsV20==null;
         return !entry.Event.HasValue&&entry.StorageStackEventsV13==null&&entry.StorageMergeEventsV17==null&&entry.StorageProgressV11?.Any(row=>work.Events[row.Event].StoragePickupV18?.Shelf==scope.Id)==true&&WorkStorageProgressRules.Current(entry).Contents.Contains(item.GetUniqueLoadID());
     }
     internal void StageStoragePickup(WorkObservationState state,Pawn pawn,Thing item,int requested)
@@ -25,6 +25,7 @@ public sealed partial class TerritoryAdministrationLedger
         var map=LoadedMapPreservation.Restore(t.LoadedMap);var scope=map.Storage?.SingleOrDefault(s=>s.Contents.Contains(item.GetUniqueLoadID()));
         if(scope==null)throw new ArgumentException("Original shelf input required for this pickup scope.");
         var save=r.WorkAssetResolutionV5==null?null:WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5);var entry=save?.Entries.SingleOrDefault(p=>p.Original==scope.Id);
+        if(entry?.StorageSplitsV19!=null){StageStorageContinuationPickup(t,r,pawn,item,requested,entry,work);return;}
         if(entry!=null&&(entry.Event.HasValue||entry.StorageStackEventsV13!=null||entry.StorageMergeEventsV17!=null||entry.StorageProgressV11?.Any(row=>work.Events[row.Event].StoragePickupV18?.Shelf==scope.Id)!=true))throw new ArgumentException("Only original or explicit original-pickup shelf history supported.");
         var before=entry==null?scope:WorkStorageProgressRules.Current(entry);var shelf=r.LoadedMap.Things.SingleOrDefault(p=>p!=null&&p.GetUniqueLoadID()==scope.Id) as Building_Storage;
         if(shelf==null||JsonSerializer.Serialize(StorageMapEvidence.CaptureOwned(shelf,r.LoadedMap.Map))!=JsonSerializer.Serialize(before)||ResolutionPhysical(item,r.LoadedMap.Map)!=map.Things.Single(p=>p.Id==item.GetUniqueLoadID()))throw new ArgumentException("Exact unchanged original physical pickup input and current shelf scope required.");
@@ -37,6 +38,7 @@ public sealed partial class TerritoryAdministrationLedger
     {
         if(ev.Kind!="haul-pickup")return null;
         if(ev.StorageSplitV19!=null)return null;
+        if(ev.StorageContinuationV20!=null)return null;
         var start=ev.StoragePickupV18;
         if(start==null||taken!=start.Item.Count)throw new ArgumentException("Original before-body scope and exact whole pickup result required.");
         var pawn=r.Residents.Pawns.Single(p=>p!=null&&p.GetUniqueLoadID()==ev.Actor);var item=r.LoadedMap.Things.SingleOrDefault(p=>p!=null&&p.GetUniqueLoadID()==start.Item.Id);

@@ -1,5 +1,11 @@
 # 부품 제작·기능 조립 방식의 마일스톤 운영 — 2026-11-13
 
+## 0.3.122 — 부분 집기 후 전량 집기·같은 선반 재합치기·원 물품 되놓기
+
+[실제 실행·저장·복구 연결과 제한](M2-PARTS-AUDIT-0.3.122.md). 새 before-body StorageContinuationV20은 직전 양성 V19/V20 출력·원 refs·수량·호출을 연결한다. 전량 집기는 SAME original object/native carry owner, 재합치기는 true native placement·같은 cargo 소멸·원 더미의 정확한 증가, 되놓기는 같은 원 객체의 실제 map 복귀를 요구한다. 원 V7/분할/call approval prefix를 유지하며 최신 full-party 승인·실제 인계·최종 receipt·Scribe/load/명시 복구에 조립했다. 복구에서 집기·합치기·생성·수량 setter를 실행하지 않는다.
+
+M2.4 전체 미완료: 일반 ground/복합 holder, 추가 분할·부분 합치기·stock protocol 혼합, comp merge·UFT/반복 모드·연결 시설, 역할/개인 권리·부모/follower/정치/후손 조립이 남았다. M1 10/10,M2 0/18,전체10/100 유지. 과거 노력 %는 현재 측정값이 아니다. Preview Steam/자동 예약 없음.
+
 ## 0.3.121 — 실제 부분 집기·새 native 물품·원 잔량의 분리 보존
 
 [실제 before/normal return/출력·현재 승인·인계·저장/명시 복구](M2-PARTS-AUDIT-0.3.121.md). 새 V19 before는 원 Thing 잔량과 새 native carried split을 다른 객체/ID로 연결한다. 원 V7/calls/physical은 고정하고 exact quantity/physical·새 ID Added를 검증하며 original refs와 new cargo refs를 각각 reference-only Scribe한다. version6 actual root/StorageSplitCallV19로 최신 full-party 동의·실제 calls·도시/최종 receipt에 이어간다. 원 잔량의 다음 partial pickup과 다른 원 선반으로의 whole merge 통합도 검사했다. native pickup/split/생성/수량·HP writer를 recovery에서 호출하지 않는다. 옛 V18 unknown output을 V19로 소급 승격하지 않는다.

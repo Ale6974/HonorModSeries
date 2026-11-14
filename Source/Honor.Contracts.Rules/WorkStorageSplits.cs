@@ -10,6 +10,7 @@ public static class WorkStorageSplits
     public static void Check(TerritoryTransfer t,LoadedMapScope map,WorkProgressSave work,int sequence)
     {
         var ev=work.Events[sequence];var row=ev.StorageSplitV19;if(row==null)return;
+        if(work.Events.Take(sequence).Any(e=>e.StorageContinuationV20?.Shelf==row.Shelf))throw new ArgumentException("Old partial-pickup scope cannot rebase after a new continuation.");
         var shelf=map.Storage?.SingleOrDefault(s=>s.Id==row.Shelf);var prior=work.Events.Take(sequence).Select(e=>e.StorageSplitV19).LastOrDefault(p=>p?.Shelf==row.Shelf);
         var expectedBefore=prior?.After??shelf?.Contents.Select(id=>map.Things.Single(p=>p.Id==id)).ToArray();
         if(work.Version!=3||ev.Kind!="haul-pickup"||ev.StoragePickupV18!=null||ev.GrantV4==null||shelf==null||row.Before==null||JsonSerializer.Serialize(row.Before)!=JsonSerializer.Serialize(expectedBefore)||prior!=null&&prior.After==null||ev.Inputs.Length!=1||ev.Inputs[0]!=row.Input||prior==null&&(ev.StorageOriginsV12?.Calls!=row.Calls||ev.StorageOriginsV12?.Stores.Any(s=>s.Id==row.Shelf)!=true))throw new ArgumentException("New explicit original partial-pickup scope required; never reinterpret whole pickup evidence.");
@@ -32,5 +33,5 @@ public static class WorkStorageSplits
         var all=work.Events.Where(e=>e.StorageSplitV19?.Shelf==entry.Original&&e.StorageSplitV19.After!=null).Select(e=>e.Sequence);
         if(!indices.SequenceEqual(all.Take(indices.Length)))throw new ArgumentException("Native split results cannot be skipped.");
     }
-    public static NeutralMapThing[] Current(WorkAssetResolution entry,WorkProgressSave work)=>entry.StorageSplitsV19==null?null:work.Events[entry.StorageSplitsV19.Last()].StorageSplitV19.After;
+    public static NeutralMapThing[] Current(WorkAssetResolution entry,WorkProgressSave work)=>WorkStorageContinuations.Current(entry,work)??(entry.StorageSplitsV19==null?null:work.Events[entry.StorageSplitsV19.Last()].StorageSplitV19.After);
 }

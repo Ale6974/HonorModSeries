@@ -1,4 +1,13 @@
-# 1단계 개발 인수인계 — 0.3.121 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.122 / 2026-11-15
+
+## 0.3.122 — 부분 집기 후 전량 집기·같은 선반 재합치기·원 물품 되놓기
+
+[실제 실행·저장·복구 연결과 제한](M2-PARTS-AUDIT-0.3.122.md). 새 before-body StorageContinuationV20은 직전 양성 V19/V20 출력·원 refs·수량·호출을 연결한다. 전량 집기는 SAME original object/native carry owner, 재합치기는 true native placement·같은 cargo 소멸·원 더미의 정확한 증가, 되놓기는 같은 원 객체의 실제 map 복귀를 요구한다. 원 V7/분할/call approval prefix를 유지하며 최신 full-party 승인·실제 인계·최종 receipt·Scribe/load/명시 복구에 조립했다. 복구에서 집기·합치기·생성·수량 setter를 실행하지 않는다.
+
+M2.4 전체 미완료: 일반 ground/복합 holder, 추가 분할·부분 합치기·stock protocol 혼합, comp merge·UFT/반복 모드·연결 시설, 역할/개인 권리·부모/follower/정치/후손 조립이 남았다. M1 10/10,M2 0/18,전체10/100 유지. 과거 노력 %는 현재 측정값이 아니다. Preview Steam/자동 예약 없음.
+
+
+검사·설치: 양 타깃 전체 빌드/native compiler 경고·오류0, 최종 Honor20093/Contracts6187/ENKO627, XML/두 runtime allowlist/패키지 검사 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.122.zip` SHA256 `EBB11F9F203E70D9AB41BFF1EE38DBD2FDB3B0B294E081ED2C7B0E10797C91E7`. 이전 로컬 Preview는 `.local/contracts-preview-8d59d12e18484e81bfde69ea4894b166`에 백업하고 최종32파일 일치 설치했다. 활성화·언어 hash 불변. 다음 착수점은 continuation 뒤 추가 분할·부분 합치기와 일반 ground/복합 stock protocol이며, 원 기록을 rebase하거나 unknown 호출을 replay하지 않는다.
 
 ## 0.3.121 — 실제 부분 집기·새 native 물품·원 잔량의 분리 보존
 

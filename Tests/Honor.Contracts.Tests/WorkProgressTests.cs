@@ -693,6 +693,37 @@ internal static class WorkProgressTests
         var spw=sw with{Id="split-pair-calls",Tick=26,WorkProgressV1=WorkProgress.Approve(sx,sprogress,next,26,[],[],sdoc)};var spc=new CustodyAgreementReceipt(spw,WorkProgress.Hash(spw));foreach(string id in new[]{"zSource","zDestination"}){sdoc=WorkAssetResolutions.Begin(sx,sprogress,sdoc,id,"source",spc);sdoc=WorkAssetResolutions.Returned(sx,sprogress,sdoc,id,"target");sdoc=WorkAssetResolutions.Verify(sx,sprogress,sdoc,id);}
         var sfw=sw with{Id="split-pair-finish",Tick=27,WorkProgressV1=WorkProgress.Approve(sx,sprogress,next,27,[],[],sdoc)};var sl=TerritoryTransferLedger.Restore(sledger.Export());sl.ConfirmWorkProgress(sx.Id,sfw.WorkProgressV1,new(sfw,WorkProgress.Hash(sfw)),"target",true,true,28,scalls,finished,sdoc);
         Check(TerritoryTransferLedger.Restore(sl.Export()).Transfer(sx.Id).Phase==TerritoryTransferPhase.Applied&&WorkAssetResolutions.Validate(sx,sprogress,sdoc,true).Entries.Length==2);
+        // New explicit V20 continues a split journal through same-shelf merge, whole pickup and put-back.
+        var flowJob=storageHaul with{Jobs=["Job_flow_merge"]};var flowWitness=mxw with{Id="flow-merge-job",Tick=30,WorkProgressV1=WorkProgress.Approve(mx,splitProgress,next,30,[],[flowJob],splitDoc)};var flowGrant=WorkJobObservations.Grant(mx,new(flowWitness,WorkProgress.Hash(flowWitness)),flowJob,31);
+        string flowProgress=WorkProgress.Begin(mx,splitProgress,"haul-place","worker","Job_flow_merge",["splitCargo2"],next,31,flowGrant);
+        var mergeFlow=new WorkStorageContinuation("zShelf",1,"merge",splitOutput2.After,splitOutput2.Carried,"goods",4,1,mxa);
+        Reject(()=>WorkProgress.BindStorageContinuation(mx,flowProgress,mergeFlow with{Previous=0}));
+        Reject(()=>WorkProgress.BindStorageContinuation(mx,flowProgress,mergeFlow with{Before=mxgoods}));
+        flowProgress=WorkProgress.BindStorageContinuation(mx,flowProgress,mergeFlow);Reject(()=>WorkAssetResolutions.AppendContinuation(mx,flowProgress,splitDoc,2));
+        flowProgress=WorkProgress.ObservePlacementReturn(mx,flowProgress,2,31,true);Reject(()=>WorkProgress.BindStorageContinuation(mx,flowProgress,mergeFlow));
+        var mergeFlowOutput=mergeFlow with{After=[mxgoods[0] with{Count=2},mxgoods[1]]};
+        Reject(()=>WorkProgress.Returned(mx,flowProgress,2,[],[],next,32,null,null,null,null,null,null,mergeFlowOutput));
+        Reject(()=>WorkProgress.Returned(mx,flowProgress,2,["splitCargo2"],[],next,32,null,null,null,null,null,null,mergeFlowOutput with{After=mxgoods}));
+        flowProgress=WorkProgress.Returned(mx,flowProgress,2,["splitCargo2"],[],next,32,null,null,null,null,null,null,mergeFlowOutput);string flowDoc=WorkAssetResolutions.AppendContinuation(mx,flowProgress,splitDoc,2);
+        var flowedEntry=WorkAssetResolutions.Validate(mx,flowProgress,flowDoc).Entries.Single();WorkAssetResolutions.Approved(mx,flowProgress,flowedEntry,splitConsent);Check(WorkStorageSplits.Current(flowedEntry,WorkProgress.Validate(mx,flowProgress))[0].Count==2);
+        var wholeFlowJob=storageHaul with{Jobs=["Job_flow_whole"]};var wholeFlowWitness=mxw with{Id="flow-whole-job",Tick=33,WorkProgressV1=WorkProgress.Approve(mx,flowProgress,next,33,[],[wholeFlowJob],flowDoc)};var wholeFlowGrant=WorkJobObservations.Grant(mx,new(wholeFlowWitness,WorkProgress.Hash(wholeFlowWitness)),wholeFlowJob,34);
+        flowProgress=WorkProgress.Begin(mx,flowProgress,"haul-pickup","worker","Job_flow_whole",["goods"],next,34,wholeFlowGrant);
+        var takeFlow=new WorkStorageContinuation("zShelf",2,"take",mergeFlowOutput.After,mergeFlowOutput.After[0],null,-1,2,mxa);flowProgress=WorkProgress.BindStorageContinuation(mx,flowProgress,takeFlow);flowProgress=WorkProgress.ObserveReturn(mx,flowProgress,3,34);flowProgress=WorkProgress.ObservePickupCount(mx,flowProgress,3,2);
+        var takeOutput=takeFlow with{After=[mxgoods[1]],Carried=mxgoods[0] with{Count=2,Cell=-1}};
+        Reject(()=>WorkProgress.Returned(mx,flowProgress,3,["goods"],[],next,35,null,null,null,null,null,null,takeOutput));
+        flowProgress=WorkProgress.Returned(mx,flowProgress,3,[],[],next,35,null,null,null,null,null,null,takeOutput);flowDoc=WorkAssetResolutions.AppendContinuation(mx,flowProgress,flowDoc,3);
+        Check(WorkStorageSplits.Current(WorkAssetResolutions.Validate(mx,flowProgress,flowDoc).Entries.Single(),WorkProgress.Validate(mx,flowProgress)).Select(p=>p.Id).SequenceEqual(["grain"]));
+        var putJob=storageHaul with{Jobs=["Job_flow_put"]};var putWitness=mxw with{Id="flow-put-job",Tick=36,WorkProgressV1=WorkProgress.Approve(mx,flowProgress,next,36,[],[putJob],flowDoc)};var putGrant=WorkJobObservations.Grant(mx,new(putWitness,WorkProgress.Hash(putWitness)),putJob,37);
+        flowProgress=WorkProgress.Begin(mx,flowProgress,"haul-place","worker","Job_flow_put",["goods"],next,37,putGrant);var putFlow=new WorkStorageContinuation("zShelf",3,"put",takeOutput.After,takeOutput.Carried,null,4,2,mxa);flowProgress=WorkProgress.BindStorageContinuation(mx,flowProgress,putFlow);flowProgress=WorkProgress.ObservePlacementReturn(mx,flowProgress,4,37,true);
+        flowProgress=WorkProgress.Returned(mx,flowProgress,4,[],[],next,38,null,null,null,null,null,null,putFlow with{After=mergeFlowOutput.After});flowDoc=WorkAssetResolutions.AppendContinuation(mx,flowProgress,flowDoc,4);
+        var flowEntry=WorkAssetResolutions.Validate(mx,flowProgress,flowDoc,true).Entries.Single();Check(flowEntry.StorageContinuationsV20.SequenceEqual([2,3,4])&&flowEntry.StorageSplitsV19.SequenceEqual([0,1]));WorkAssetResolutions.Approved(mx,flowProgress,flowEntry,splitConsent);
+        Reject(()=>WorkStorageContinuations.Entry(flowEntry with{StorageContinuationsV20=[3,4]},WorkProgress.Validate(mx,flowProgress)));
+        Reject(()=>WorkStorageContinuations.Entry(flowEntry with{StorageSplitsV19=[0]},WorkProgress.Validate(mx,flowProgress)));
+        var flowSave=WorkProgress.Validate(mx,flowProgress);var brokenFlow=flowSave.Events.ToArray();brokenFlow[3]=brokenFlow[3] with{StorageContinuationV20=brokenFlow[3].StorageContinuationV20 with{Previous=1}};
+        Reject(()=>WorkProgress.Validate(mx,JsonSerializer.Serialize(flowSave with{Events=brokenFlow})));
+        Reject(()=>WorkStorageContinuations.Entry(flowEntry with{StorageContinuationCallV20=4},flowSave));
+        var flowFinish=mxw with{Id="flow-finish",Tick=39,WorkProgressV1=WorkProgress.Approve(mx,flowProgress,next,39,[],[],flowDoc)};var flowPhysical=TerritoryTransferLedger.Restore(mixLedger.Export());flowPhysical.ConfirmWorkProgress(mx.Id,flowFinish.WorkProgressV1,new(flowFinish,WorkProgress.Hash(flowFinish)),"target",true,true,40,mxa,finished,flowDoc);
+        Check(TerritoryTransferLedger.Restore(flowPhysical.Export()).Transfer(mx.Id).Phase==TerritoryTransferPhase.Applied&&!splitProgress.Contains("StorageContinuationV20")&&!splitDoc.Contains("StorageContinuationsV20"));
         string terrainMap=LoadedMapPreservation.Capture("town","map",20,20,hash,CityStockProof.Capture(true,false,-1,[]),0,[new("frame","FloorFrame",null,1,100,2,0,null),new("zBuilding","Wall","Wood",1,100,4,0,null)]);
         terrainMap=LoadedMapPreservation.CaptureResidents(terrainMap,mixedResidents.Residents.Select(p=>new NativeMapResident(p.Id,p.Preserved)));
         terrainMap=LoadedMapPreservation.CaptureCivicAssets(terrainMap,[new("frame","source",hash),new("zBuilding","source",hash)],false,false);

@@ -36,6 +36,7 @@ public sealed partial class TerritoryAdministrationLedger
         var save=WorkAssetResolutions.Validate(t,progress,next);
         foreach(var entry in save.Entries.Where(e=>e.StorageV7!=null))
         {
+            if(work.Events[sequence].StorageContinuationV20?.Shelf==entry.Original||entry.StorageContinuationsV20!=null)continue;
             var reference=nextRefs.Single(p=>p.Original==entry.Original);
             if(reference.Actual is not Building_Storage shelf)throw new ArgumentException("Same actual storage reference required.");
             var current=StorageMapEvidence.CaptureOwned(shelf,r.LoadedMap.Map);

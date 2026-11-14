@@ -170,6 +170,8 @@ public sealed partial class TerritoryAdministrationLedger
         ResidentActiveWork.Known(typeof(Thing),"GetUniqueLoadID");
         ResidentActiveWork.Known(typeof(Thing),"get_ThingID");
         var scope=WorkStorageProgressRules.Current(entry);
+        var continued=WorkStorageContinuations.Current(entry,work);
+        if(continued!=null)scope=scope with{Contents=continued.Select(p=>p.Id).ToArray()};
         if(actual is not Building_Storage shelf||JsonSerializer.Serialize(StorageMapEvidence.CaptureOwned(shelf,original.Map))!=JsonSerializer.Serialize(scope))throw new ArgumentException("Current actual storage scope changed.");
         void History(List<Thing> refs,string[] ids,int after)
         {
@@ -179,6 +181,7 @@ public sealed partial class TerritoryAdministrationLedger
         History(reference.StorageContentsV7,entry.StorageV7.Contents,entry.Event??-1);
         foreach(var row in entry.StorageProgressV11??[])History(reference.StorageProgressV11[row.Sequence].Contents,row.Current.Contents,row.Event);
         var latest=reference.StorageProgressV11?.Last().Contents??reference.StorageContentsV7;
+        if(continued!=null)latest=scope.Contents.Select(id=>reference.StorageContentsV7.Single(p=>p!=null&&p.GetUniqueLoadID()==id)).ToList();
         if(!latest.Select(p=>p?.GetUniqueLoadID()).SequenceEqual(scope.Contents))throw new ArgumentException("Current actual storage references are missing or changed.");
         var current=shelf.slotGroup.HeldThings.OrderBy(p=>p.GetUniqueLoadID(),StringComparer.Ordinal).ToArray();
         if(current.Length!=latest.Count||current.Where((p,i)=>!ReferenceEquals(p,latest[i])).Any()||!entry.Event.HasValue&&reference.StorageContentsV7.Any(p=>p!=null&&!original.Things.Any(t=>ReferenceEquals(t,p))))throw new ArgumentException("Same original/current stored goods references required; never haul or recreate.");

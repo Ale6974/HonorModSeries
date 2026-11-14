@@ -25,6 +25,7 @@ public sealed partial class TerritoryAdministrationLedger
         var carried=CarriedMergePhysical(pawn,cargo);var map=LoadedMapPreservation.Restore(t.LoadedMap);int index=pawn.Map.cellIndices.CellToIndex(cell);
         var scope=map.Storage?.SingleOrDefault(s=>s.Cells.Contains(index));if(scope==null)return state;
         var saved=r.WorkAssetResolutionV5==null?null:WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5);var entry=saved?.Entries.SingleOrDefault(e=>e.Original==scope.Id);
+        if(entry?.StorageSplitsV19!=null)return StageStorageContinuationPlace(state,t,r,pawn,cargo,index,count,entry,work);
         if(entry==null?ev.StorageOriginsV12?.Stores.Any(p=>p.Id==scope.Id)!=true:entry.StorageMergeEventsV17==null)return state;
         var shelf=r.LoadedMap.Things.SingleOrDefault(p=>p!=null&&p.GetUniqueLoadID()==scope.Id) as Building_Storage;
         if(shelf==null||JsonSerializer.Serialize(StorageMapEvidence.CaptureOwned(shelf,pawn.Map))!=JsonSerializer.Serialize(scope))throw new ArgumentException("Same original ungrouped merge shelf scope required.");

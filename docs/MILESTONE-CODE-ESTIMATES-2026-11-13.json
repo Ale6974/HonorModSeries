@@ -357,7 +357,8 @@
         "docs/M2-PARTS-AUDIT-0.3.118.md",
         "docs/M2-PARTS-AUDIT-0.3.119.md",
         "docs/M2-PARTS-AUDIT-0.3.120.md",
-        "docs/M2-PARTS-AUDIT-0.3.121.md"
+        "docs/M2-PARTS-AUDIT-0.3.121.md",
+        "docs/M2-PARTS-AUDIT-0.3.122.md"
       ],
       "assembly_evidence": [
         "Source/Honor.Contracts.Preview/GroundRestGivers.cs",
@@ -379,7 +380,9 @@
         "Source/Honor.Contracts.Preview/WorkJobObservations.cs",
         "Source/Honor.Contracts.Preview/WorkHaulPlacementObservation.cs",
         "Source/Honor.Contracts.Rules/WorkAssetResolutions.cs",
-        "Source/Honor.Contracts.Preview/WorkAssetResolutions.cs"
+        "Source/Honor.Contracts.Preview/WorkAssetResolutions.cs",
+        "Source/Honor.Contracts.Preview/StorageContinuationObservation.cs",
+        "Source/Honor.Contracts.Rules/WorkStorageContinuations.cs"
       ],
       "integration_evidence": [
         "Tests/Honor.Contracts.Tests/GroundRestTests.cs",

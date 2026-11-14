@@ -50,7 +50,7 @@ public sealed partial class TerritoryAdministrationLedger
         FinishStorageRetirements(r,current.Events.Last());
         var candidate=ObserveFrameSuccessor(t,r,state,current.Events.Last());
         var after=WorkProgressSurvey.Capture(r,candidate?.Reference);var removed=state.Before.Ids.Except(after.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();var added=after.Ids.Except(state.Before.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();
-        string next=WorkProgress.Returned(t,r.WorkProgressV1,state.Sequence,removed,added,after.Proof,Find.TickManager.TicksGame,FinishStorageStacks(r,current.Events.Last()),FinishWorktableIteration(r,current.Events.Last()),FinishStorageMixtures(r,current.Events.Last()),FinishStorageMerge(r,current.Events.Last(),state,placed),FinishStoragePickup(r,current.Events.Last(),picked),FinishStorageSplit(r,current.Events.Last(),picked));
+        string next=WorkProgress.Returned(t,r.WorkProgressV1,state.Sequence,removed,added,after.Proof,Find.TickManager.TicksGame,FinishStorageStacks(r,current.Events.Last()),FinishWorktableIteration(r,current.Events.Last()),FinishStorageMixtures(r,current.Events.Last()),FinishStorageMerge(r,current.Events.Last(),state,placed),FinishStoragePickup(r,current.Events.Last(),picked),FinishStorageSplit(r,current.Events.Last(),picked),FinishStorageContinuation(r,current.Events.Last(),state,picked,placed));
         string resolution=r.WorkAssetResolutionV5;var actualRefs=r.WorkAssetReferencesV5;
         if(candidate!=null)
         {
@@ -63,6 +63,7 @@ public sealed partial class TerritoryAdministrationLedger
         (resolution,actualRefs)=ObserveWorktableIteration(t,r,next,resolution,actualRefs,state.Sequence);
         (resolution,actualRefs)=ObserveStorageMerge(t,r,next,resolution,actualRefs,state.Sequence);
         (resolution,actualRefs)=ObserveStorageSplit(t,r,next,resolution,actualRefs,state.Sequence);
+        (resolution,actualRefs)=ObserveStorageContinuation(t,r,next,resolution,actualRefs,state.Sequence);
         r.WorkProgressV1=next;r.WorkAssetResolutionV5=resolution;r.WorkAssetReferencesV5=actualRefs;
     }
     private void SealWorkBoundary(TerritoryTransferReference r,bool beforeAssets=false)
@@ -205,6 +206,8 @@ public sealed partial class TerritoryAdministrationLedger
             if(pickups>0)message+="\n\n"+"RE_WorkStoragePickupReview".Translate(pickups);
             int splits=workReview.Events.Count(e=>e.StorageSplitV19?.After!=null);
             if(splits>0)message+="\n\n"+"RE_WorkStorageSplitReview".Translate(splits);
+            int continuations=workReview.Events.Count(e=>e.StorageContinuationV20?.After!=null);
+            if(continuations>0)message+="\n\n"+"RE_WorkStorageContinuationReview".Translate(continuations);
             if(r.WorkAssetResolutionV5!=null)
             {
                 var terrain=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Where(e=>e.TerrainV8?.LayersV9!=null).ToArray();
