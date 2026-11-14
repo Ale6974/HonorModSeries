@@ -618,4 +618,5 @@
   <RE_WorkFrameFilthReview>게임의 공사 기록에 원 오물 {0}개의 제거가 포함됩니다. 원 상태와 호출 직전 상태를 보존하며 복구에서 청소를 반복하거나 재생성하지 않습니다.</RE_WorkFrameFilthReview>
   <RE_WorkStorageProgressReview>게임의 제작·내려놓기로 설명되는 선반 내용물 변화 {0}건이 포함됩니다. 원 설정과 보관 이력은 유지합니다. 새 현재 동의가 필요하며 이전 소속 변경 호출은 반복하지 않습니다.</RE_WorkStorageProgressReview>
   <RE_WorkStorageOriginReview>작업 전에 기록한 원 선반 증거 {0}건을 포함합니다. 검증된 내용물 변화만 별도 인계 기록을 시작할 수 있으며 원 설정·물품 증거·호출 이력을 보존합니다.</RE_WorkStorageOriginReview>
+  <RE_WorkStorageStackReview>원 선반의 같은 물품에서 제작 재료를 일부 소비한 검증 기록 {0}건을 포함합니다. 정확한 요구량과 현재 수량은 별도로 기록하며 복구가 수량을 바꾸거나 소비를 반복하지 않습니다. 최신 증거에 대한 새 동의가 필요합니다.</RE_WorkStorageStackReview>
 </LanguageData>

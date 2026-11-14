@@ -179,6 +179,8 @@ public sealed partial class TerritoryAdministrationLedger
         if(!latest.Select(p=>p?.GetUniqueLoadID()).SequenceEqual(scope.Contents))throw new ArgumentException("Current actual storage references are missing or changed.");
         var current=shelf.slotGroup.HeldThings.OrderBy(p=>p.GetUniqueLoadID(),StringComparer.Ordinal).ToArray();
         if(current.Length!=latest.Count||current.Where((p,i)=>!ReferenceEquals(p,latest[i])).Any()||!entry.Event.HasValue&&reference.StorageContentsV7.Any(p=>p!=null&&!original.Things.Any(t=>ReferenceEquals(t,p))))throw new ArgumentException("Same original/current stored goods references required; never haul or recreate.");
+        var stacks=WorkStorageStackRules.Current(entry,work);
+        if(stacks!=null&&current.Where((thing,i)=>thing.Faction!=null||ResolutionPhysical(thing,original.Map)!=stacks[i]).Any())throw new ArgumentException("Current same stored stack differs from positive native count output.");
     }
     private static void VerifyResolutionTerrain(TerritoryTransferReference r,WorkAssetResolution entry)
     {

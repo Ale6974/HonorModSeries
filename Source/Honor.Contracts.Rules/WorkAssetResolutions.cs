@@ -11,6 +11,8 @@ public sealed record WorkAssetResolution(string Original,string Actual,int? Even
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkTerrainAcceptance TerrainV8 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageProgress[] StorageProgressV11 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? StorageCallV11 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int[] StorageStackEventsV13 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? StorageStackCallV13 { get; init; }
 }
 public sealed record WorkAssetResolutionSave(int Version,string Original,string BaseCalls,WorkAssetResolution[] Entries,string Proof);
 /// <summary>Separate actual-object calls. Original missing-frame calls remain unstarted forever.</summary>
@@ -21,15 +23,21 @@ public static class WorkAssetResolutions
     {
         if(json==null||json.Length>3000000)throw new ArgumentException("Bounded separate property resolution required.");
         var work=WorkProgress.Validate(t,progress);var map=LoadedMapPreservation.Restore(t.LoadedMap);var s=JsonSerializer.Deserialize<WorkAssetResolutionSave>(json);
-        if(work.Version!=3||s?.Version is not (1 or 2)||s.Original!=WorkProgress.Hash(WorkProgress.Original(t))||s.Entries==null||s.Entries.Length is <1 or >1000||s.Entries.Any(e=>e==null)||Write(s)!=json)
+        if(work.Version!=3||s?.Version is not (1 or 2 or 3)||s.Original!=WorkProgress.Hash(WorkProgress.Original(t))||s.Entries==null||s.Entries.Length is <1 or >1000||s.Entries.Any(e=>e==null)||Write(s)!=json)
             throw new ArgumentException("Separate current-object ledger is not paired to the original transfer.");
         MapAssetTransfers.Pair(s.BaseCalls,t.LoadedMap,t.FromOwner,t.TargetOwner);var calls=MapAssetTransfers.Restore(s.BaseCalls).Calls;
         WorkProgress.AssetAdvance(t,progress,s.BaseCalls);
         if(s.Entries.Select(e=>e.Original).Distinct().Count()!=s.Entries.Length||s.Entries.Where(e=>e.Actual!=null).Select(e=>e.Actual).Distinct().Count()!=s.Entries.Count(e=>e.Actual!=null)||
-            (s.Version==1?!s.Entries.Any(e=>e.Event.HasValue):!s.Entries.Any(e=>e.Event==null&&e.StorageV7!=null&&e.StorageProgressV11?.Length>0)))throw new ArgumentException("Unique actual objects plus explicit positive original provenance required.");
+            (s.Version==1?!s.Entries.Any(e=>e.Event.HasValue):s.Version==2?!s.Entries.Any(e=>e.Event==null&&e.StorageV7!=null&&e.StorageProgressV11?.Length>0):!s.Entries.Any(e=>e.StorageStackEventsV13?.Length>0)))throw new ArgumentException("Unique actual objects plus explicit positive original provenance required.");
         foreach(var e in s.Entries)
         {
             WorkStorageProgressRules.Check(e,work);
+            WorkStorageStackRules.Entry(e,work);
+            if(e.StorageStackEventsV13!=null)
+            {
+                var origin=work.Events[e.StorageStackEventsV13[0]].StorageOriginsV12;
+                if(origin?.Calls!=s.BaseCalls||origin.Stores.Any(row=>row.Id==e.Original)!=true)throw new ArgumentException("Original before-body shelf call prefix required.");
+            }
             if(s.Version==2&&e.Event==null&&e.StorageProgressV11!=null)
             {
                 var start=work.Events[e.StorageProgressV11[0].Event].StorageOriginsV12;
@@ -77,10 +85,22 @@ public static class WorkAssetResolutions
             if(s.Entries.Any(other=>other.Original!=e.Original&&other.StorageV7!=null&&(WorkStorageProgressRules.Current(other).Cells.Intersect(current.Cells).Any()||WorkStorageProgressRules.Current(other).Contents.Intersect(current.Contents).Any()))||
                 map.Storage?.Any(other=>!s.Entries.Any(row=>row.Original==other.Id&&row.StorageV7!=null)&&(other.Cells.Intersect(current.Cells).Any()||other.Contents.Intersect(current.Contents).Any()))==true)throw new ArgumentException("Storage custody overlaps another original shelf.");
         }
+        if(complete&&work.Events.Any(ev=>ev.StorageStacksV13?.Any(row=>row.After!=null&&!Enumerable.SequenceEqual(row.Before,row.After)&&!s.Entries.Any(e=>e.Original==row.Shelf&&e.StorageStackEventsV13?.Contains(ev.Sequence)==true))==true))throw new ArgumentException("All positive stack observations need their actual resolution history.");
         if(complete&&calls.Any(c=>!c.Returned&&!s.Entries.Any(e=>e.Original==c.Id&&Resolved(e))))throw new ArgumentException("Every original property needs positive original return or separately verified actual resolution.");
         return s;
     }
     public static bool Resolved(WorkAssetResolution entry)=>entry.Verified||entry.TerrainV8?.Accepted==true;
+    public static string AppendStacks(TerritoryTransfer t,string progress,string document,string originalCalls,string id,int sequence)
+    {
+        var work=WorkProgress.Validate(t,progress);var map=LoadedMapPreservation.Restore(t.LoadedMap);
+        if(sequence<0||sequence>=work.Events.Length||work.Events[sequence].StorageStacksV13?.Any(row=>row.Shelf==id&&row.After!=null&&!Enumerable.SequenceEqual(row.Before,row.After))!=true)throw new ArgumentException("Positive partial same-stack output required.");
+        var s=document==null?new WorkAssetResolutionSave(3,WorkProgress.Hash(WorkProgress.Original(t)),originalCalls,[],null):Validate(t,progress,document);
+        if(s.BaseCalls!=originalCalls)throw new ArgumentException("Original calls remain frozen.");
+        var entry=s.Entries.SingleOrDefault(e=>e.Original==id)??new WorkAssetResolution(id,id,null,map.OwnedAssets.Single(a=>a.Id==id),map.Things.Single(p=>p.Id==id)){StorageV7=map.Storage.Single(p=>p.Id==id)};
+        if(entry.Started&&!entry.Returned)throw new ArgumentException("Unknown calls cannot be explained by stack changes.");
+        var updated=entry with{StorageStackEventsV13=(entry.StorageStackEventsV13??[]).Append(sequence).ToArray()};
+        string next=Write(s with{Entries=s.Entries.Any(e=>e.Original==id)?s.Entries.Select(e=>e.Original==id?updated:e).ToArray():s.Entries.Append(updated).ToArray()});Validate(t,progress,next);return next;
+    }
     public static string CreateStorage(TerritoryTransfer t,string progress,string originalCalls,string id,int sequence,NeutralMapStorage current)
     {
         var work=WorkProgress.Validate(t,progress);var map=LoadedMapPreservation.Restore(t.LoadedMap);
@@ -131,7 +151,7 @@ public static class WorkAssetResolutions
     private static string Update(TerritoryTransfer t,string progress,string json,string id,Func<WorkAssetResolution,WorkAssetResolution> action)
     {var s=Validate(t,progress,json);var e=s.Entries.Single(row=>row.Original==id);string next=Write(s with{Entries=s.Entries.Select(row=>row.Original==id?action(e):row).ToArray()});Validate(t,progress,next);return next;}
     public static string Begin(TerritoryTransfer t,string progress,string json,string id,string owner,CustodyAgreementReceipt consent)
-        =>Update(t,progress,json,id,e=>{if(e.TerrainV8!=null||e.Started||owner!=t.FromOwner)throw new ArgumentException("Never replay an actual-object call.");Approved(t,progress,e,consent);return e with{Started=true,Approval=consent.Witness.Id,StorageCallV11=e.StorageProgressV11?.Length};});
+        =>Update(t,progress,json,id,e=>{if(e.TerrainV8!=null||e.Started||owner!=t.FromOwner)throw new ArgumentException("Never replay an actual-object call.");Approved(t,progress,e,consent);return e with{Started=true,Approval=consent.Witness.Id,StorageCallV11=e.StorageProgressV11?.Length,StorageStackCallV13=e.StorageStackEventsV13?.Length};});
     public static string Returned(TerritoryTransfer t,string progress,string json,string id,string owner)
         =>Update(t,progress,json,id,e=>!e.Started||e.Returned||owner!=t.TargetOwner?throw new ArgumentException("Independent normal return required."):e with{Returned=true});
     public static string Verify(TerritoryTransfer t,string progress,string json,string id)

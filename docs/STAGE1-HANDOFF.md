@@ -1,4 +1,13 @@
-# 1단계 개발 인수인계 — 0.3.116 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.117 / 2026-11-14
+
+## 0.3.117 — 같은 원 선반 물품의 정확한 부분 소비 연결
+
+[실제 관측·현재 승인·인계·저장/명시 복구](M2-PARTS-AUDIT-0.3.117.md). native 제작 전 원 물품/정확한 요구량을 StorageStacksV13에 기록하고, 같은 실제 원 물품이 그 양만큼 줄어든 정상 출력만 별도 version3 재산 장부에 연결한다. 원 Count/Stock/StorageV7/실제 refs를 바꾸지 않는다. 연속 소비를 보존하고 실제 소속 호출 승인은 당시 stack-history prefix에만 결합한다. 새 현재 full-party 동의로 실제 호출·도시·최종 receipt/Scribe/로드/복구를 진행한다. 수량 조작·소비/호출 replay·원 증거 rebase는 없다.
+
+M2.4 전체 미완료. 수량 증가/운반 합치기·membership 복합 변화·집기·제작 주문 진행·연결 설비·역할/개인 권리·부모 조립이 남았다. M1 10/10,M2 0/18,전체10/100 유지. 기존 잔여25–40%/3묶음 추정은 재측정하지 않았다. Preview Steam/자동 예약 없음.
+
+
+검사·설치: 양 타깃 전체 빌드/최종 native 컴파일 경고·오류0, Honor20093/Contracts6089/ENKO620, 두 runtime DLL allowlist/패키지 검사 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.117.zip` SHA256 `5E875D4508AB2AC23AB10200D54A1574B14E0CB6FC9970B7A1522B310548719C`. 이전 로컬 Preview는 `.local/contracts-preview-8dc112d608fe4653b1c08839adea3ff3`에 백업한 뒤32파일 일치 설치했다. 활성화·언어 설정 hash 불변. 다음 착수는 부분 소비 이력과 이후 membership 변화의 안전한 조합 또는 실제 집기 관측이며, 기존 before/after/호출 증거를 새 범위로 소급 확대하지 않는다.
 
 ## 0.3.116 — 원 선반의 작업 전 증거에서 독립 인계 기록 시작
 
