@@ -16,6 +16,7 @@ public sealed record WorkProgressEvent(int Sequence, string Kind, string Actor, 
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageMerge StorageMergeV17 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStoragePickup StoragePickupV18 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? PickupTakenV18 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageSplit StorageSplitV19 { get; init; }
 }
 public sealed record WorkProgressSave(int Version, WorkProgressSeal Seal, WorkProgressEvent[] Events)
 {
@@ -102,6 +103,7 @@ public static partial class WorkProgress
             WorkStorageMixtures.Check(s,i);
             WorkStorageMerges.Check(t,map,s,i);
             WorkStoragePickups.Check(t,map,s,i);
+            WorkStorageSplits.Check(t,map,s,i);
             WorktableIterations.Check(t,map,s,i);
             var originalFilth=e.Kind=="frame"&&e.Inputs.Length>0?map.WorkFramesV1?.SingleOrDefault(frame=>frame.Id==e.Inputs[0])?.FilthV10:null;
             if(originalFilth!=null||e.FilthV10!=null)
@@ -146,6 +148,8 @@ public static partial class WorkProgress
     public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick,WorkStorageStacks[] stacks,WorktableIteration iteration,WorkStorageMixture[] mixtures,WorkStorageMerge merge)
         =>Returned(t,json,sequence,removed,added,after,tick,stacks,iteration,mixtures,merge,null);
     public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick,WorkStorageStacks[] stacks,WorktableIteration iteration,WorkStorageMixture[] mixtures,WorkStorageMerge merge,WorkStoragePickup pickup)
+        =>Returned(t,json,sequence,removed,added,after,tick,stacks,iteration,mixtures,merge,pickup,null);
+    public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick,WorkStorageStacks[] stacks,WorktableIteration iteration,WorkStorageMixture[] mixtures,WorkStorageMerge merge,WorkStoragePickup pickup,WorkStorageSplit split)
     {
         var s=Validate(t,json);var last=s.Events.LastOrDefault();if(last==null || last.Sequence!=sequence || last.Returned.HasValue)throw new ArgumentException("Exact original unreturned progress start required.");
         if(stacks!=null&&(last.StorageStacksV13==null||stacks.Length!=last.StorageStacksV13.Length||stacks.Where((row,i)=>row==null||JsonSerializer.Serialize(row with{After=null})!=JsonSerializer.Serialize(last.StorageStacksV13[i])).Any()))throw new ArgumentException("Original stack before-evidence cannot be replaced after return.");
@@ -153,7 +157,8 @@ public static partial class WorkProgress
         if(mixtures!=null&&(last.StorageMixturesV16==null||mixtures.Length!=last.StorageMixturesV16.Length||mixtures.Where((row,i)=>row==null||JsonSerializer.Serialize(row with{After=null})!=JsonSerializer.Serialize(last.StorageMixturesV16[i])).Any()))throw new ArgumentException("Original mixture before-evidence cannot be replaced after return.");
         if(merge!=null&&(last.StorageMergeV17==null||JsonSerializer.Serialize(merge with{After=null})!=JsonSerializer.Serialize(last.StorageMergeV17)))throw new ArgumentException("Original merge input proof cannot be replaced.");
         if(pickup!=null&&(last.StoragePickupV18==null||JsonSerializer.Serialize(pickup with{After=null,Carried=null})!=JsonSerializer.Serialize(last.StoragePickupV18)))throw new ArgumentException("Original pickup input proof cannot be replaced.");
-        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{Removed=removed,Added=added,After=after,Returned=tick,StorageStacksV13=stacks??last.StorageStacksV13,WorktableIterationV15=iteration??last.WorktableIterationV15,StorageMixturesV16=mixtures??last.StorageMixturesV16,StorageMergeV17=merge??last.StorageMergeV17,StoragePickupV18=pickup??last.StoragePickupV18};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
+        if(split!=null&&(last.StorageSplitV19==null||JsonSerializer.Serialize(split with{After=null,Carried=null})!=JsonSerializer.Serialize(last.StorageSplitV19)))throw new ArgumentException("Original split before-evidence cannot be replaced.");
+        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{Removed=removed,Added=added,After=after,Returned=tick,StorageStacksV13=stacks??last.StorageStacksV13,WorktableIterationV15=iteration??last.WorktableIterationV15,StorageMixturesV16=mixtures??last.StorageMixturesV16,StorageMergeV17=merge??last.StorageMergeV17,StoragePickupV18=pickup??last.StoragePickupV18,StorageSplitV19=split??last.StorageSplitV19};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
     }
     public static string BindStorageStacks(TerritoryTransfer t,string json,WorkStorageStacks[] stacks)
     {
@@ -196,6 +201,12 @@ public static partial class WorkProgress
         var s=Validate(t,json);var last=s.Events.LastOrDefault();
         if(last==null||last.Sequence!=sequence||last.Kind!="haul-pickup"||!last.BodyReturned.HasValue||last.Returned.HasValue||last.PickupTakenV18.HasValue||taken<0)throw new ArgumentException("Exact independent native pickup count required.");
         var rows=s.Events.ToArray();rows[rows.Length-1]=last with{PickupTakenV18=taken};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
+    }
+    public static string BindStorageSplit(TerritoryTransfer t,string json,WorkStorageSplit start,WorkStorageOrigins origins=null)
+    {
+        var s=Validate(t,json);var last=s.Events.LastOrDefault();
+        if(last==null||last.BodyReturned.HasValue||last.Returned.HasValue||last.StorageSplitV19!=null||last.StoragePickupV18!=null||start==null||start.After!=null||start.Carried!=null||origins!=null&&last.StorageOriginsV12!=null)throw new ArgumentException("New before-body partial pickup required; never upgrade old whole-pickup outputs.");
+        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{StorageSplitV19=start,StorageOriginsV12=origins??last.StorageOriginsV12};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
     }
     public static string ObserveReturn(TerritoryTransfer t,string json,int sequence,long tick)
     {

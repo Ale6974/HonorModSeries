@@ -11,7 +11,8 @@ public sealed class WorkAssetReferenceV5 : IExposable
     public List<Bill> WorktableBillsV6;
     public List<Thing> StorageContentsV7;
     public List<WorkStorageReferenceV11> StorageProgressV11;
-    public void ExposeData(){Scribe_Values.Look(ref Original,"originalAssetId");Scribe_References.Look(ref Actual,"separateActualProperty");Scribe_Collections.Look(ref WorktableBillsV6,"actualWorktableBillsV6",LookMode.Reference);Scribe_Collections.Look(ref StorageContentsV7,"actualStorageContentsV7",LookMode.Reference);Scribe_Collections.Look(ref StorageProgressV11,"actualStorageProgressV11",LookMode.Deep);}
+    public List<Thing> SplitCargoV19;
+    public void ExposeData(){Scribe_Values.Look(ref Original,"originalAssetId");Scribe_References.Look(ref Actual,"separateActualProperty");Scribe_Collections.Look(ref WorktableBillsV6,"actualWorktableBillsV6",LookMode.Reference);Scribe_Collections.Look(ref StorageContentsV7,"actualStorageContentsV7",LookMode.Reference);Scribe_Collections.Look(ref StorageProgressV11,"actualStorageProgressV11",LookMode.Deep);Scribe_Collections.Look(ref SplitCargoV19,"actualSplitCargoV19",LookMode.Reference);}
 }
 public sealed class WorkStorageReferenceV11 : IExposable
 {
@@ -139,7 +140,7 @@ public sealed partial class TerritoryAdministrationLedger
         Messages.Message("RE_WorkSuccessorProgress".Translate(),MessageTypeDefOf.NeutralEvent);return true;
     }
     private static void ReleaseAssetResolutionReferences(TerritoryTransferReference r)
-    {foreach(var reference in r.WorkAssetReferencesV5??[]){reference.Actual=null;reference.WorktableBillsV6?.Clear();reference.StorageContentsV7?.Clear();reference.StorageProgressV11?.Clear();}}
+    {foreach(var reference in r.WorkAssetReferencesV5??[]){reference.Actual=null;reference.WorktableBillsV6?.Clear();reference.StorageContentsV7?.Clear();reference.StorageProgressV11?.Clear();reference.SplitCargoV19?.Clear();}}
     private void VerifyResolutionWorktable(TerritoryTransferReference r,WorkAssetResolution entry,Thing actual)
         =>VerifyResolutionWorktable(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap,WorkProgress.Validate(Ledger.Transfer(r.Id),r.WorkProgressV1));
     private static List<Bill> OriginalWorktableBills(LoadedMapRecord original,WorkAssetResolution entry)
@@ -156,6 +157,7 @@ public sealed partial class TerritoryAdministrationLedger
     }
     private static void ValidateStorageReferenceShape(WorkAssetReferenceV5 reference,WorkAssetResolution entry)
     {
+        if(entry.StorageSplitsV19==null?reference.SplitCargoV19!=null:reference.SplitCargoV19==null||reference.SplitCargoV19.Count!=entry.StorageSplitsV19.Length)throw new ArgumentException("Split cargo references must retain exactly their original event slots.");
         if(entry.StorageV7==null){if(reference.StorageContentsV7!=null||reference.StorageProgressV11!=null)throw new ArgumentException("Storage references need original scope.");return;}
         if(reference.StorageContentsV7==null||reference.StorageContentsV7.Count!=entry.StorageV7.Contents.Length)throw new ArgumentException("Original storage reference slots changed.");
         if(entry.StorageProgressV11==null){if(reference.StorageProgressV11!=null)throw new ArgumentException("Storage references need original history.");return;}
@@ -189,6 +191,16 @@ public sealed partial class TerritoryAdministrationLedger
         }
         var merged=WorkStorageMerges.Current(entry,work);
         if(merged!=null&&current.Where((thing,i)=>thing.Faction!=null||ResolutionPhysical(thing,original.Map)!=merged[i]).Any())throw new ArgumentException("Current original shelf counts differ from positive whole-cargo merge output.");
+        var split=WorkStorageSplits.Current(entry,work);
+        if(split!=null)
+        {
+            if(current.Where((thing,i)=>thing.Faction!=null||ResolutionPhysical(thing,original.Map)!=split[i]).Any())throw new ArgumentException("Original remainder differs from positive native split output.");
+            for(int i=0;i<entry.StorageSplitsV19.Length;i++)
+            {
+                int index=entry.StorageSplitsV19[i];var proof=work.Events[index].StorageSplitV19;var cargo=reference.SplitCargoV19[i];
+                if(cargo!=null?cargo.GetUniqueLoadID()!=proof.Carried.Id:!work.Events.Any(ev=>ev.Sequence>index&&ev.Returned.HasValue&&ev.Removed.Contains(proof.Carried.Id)))throw new ArgumentException("Original new-cargo references need positive later removal, never replacement or rebinding.");
+            }
+        }
     }
     private static void VerifyResolutionTerrain(TerritoryTransferReference r,WorkAssetResolution entry)
     {

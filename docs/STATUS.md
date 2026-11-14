@@ -1,5 +1,11 @@
 # 요구사항 상태 — 공개 0.2.1 / 호환성 0.2.2 / Contracts 개발판
 
+## 0.3.121 — 실제 부분 집기·새 native 물품·원 잔량의 분리 보존
+
+[실제 before/normal return/출력·현재 승인·인계·저장/명시 복구](M2-PARTS-AUDIT-0.3.121.md). 새 V19 before는 원 Thing 잔량과 새 native carried split을 다른 객체/ID로 연결한다. 원 V7/calls/physical은 고정하고 exact quantity/physical·새 ID Added를 검증하며 original refs와 new cargo refs를 각각 reference-only Scribe한다. version6 actual root/StorageSplitCallV19로 최신 full-party 동의·실제 calls·도시/최종 receipt에 이어간다. 원 잔량의 다음 partial pickup과 다른 원 선반으로의 whole merge 통합도 검사했다. native pickup/split/생성/수량·HP writer를 recovery에서 호출하지 않는다. 옛 V18 unknown output을 V19로 소급 승격하지 않는다.
+
+M2.4 전체 미완료. ground/복합 holder, partial→whole·same-source 재합치기/다른 stock protocol, comp merge·UFT/시설/역할/권리·부모 조립이 남았다. M1 10/10,M2 0/18,전체10/100 유지. 과거 노력 비율은 재측정하지 않았다. Preview Steam/자동 예약 없음.
+
 ## 0.3.120 — 실제 전량 집기와 동일 객체 운반·후속 내려놓기
 
 [실제 native 시작/반환·원 refs/owner·재산 인계·저장/복구](M2-PARTS-AUDIT-0.3.120.md). 새 명시 StoragePickupV18은 원 선반의 같은 실제 물품이 원 주민의 native carry owner로 옮겨졌음을 검증하며 global Added/Removed나 소멸·새 ID로 처리하지 않는다. 독립 body/int result 다음 exact same-ref whole-item output을 저장하고 existing membership/actual calls/현재 full-party 동의/도시/최종 receipt/Scribe·명시 복구에 조립했다. 지원 preflight 전에 새 Started를 만들지 않으며 partial/불명 반환은 원 raw를 보존하고 replay하지 않는다. 원 stock/refs/jobs·예약·임상·계약·채무/원 호출 승인 prefix는 유지한다.

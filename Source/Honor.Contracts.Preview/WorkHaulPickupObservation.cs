@@ -17,7 +17,7 @@ internal static class WorkHaulPickupObservation
         {
             if(WorkProgressHooks.Depth!=0||Current.Game==null||Current.ProgramState!=ProgramState.Playing)return;
             var pawn=__instance?.pawn;
-            if(__instance?.GetType()!=typeof(Pawn_CarryTracker)||pawn?.carryTracker!=__instance||pawn.jobs?.curDriver?.GetType()!=typeof(JobDriver_HaulToCell)||pawn.jobs.curJob?.def.driverClass!=typeof(JobDriver_HaulToCell)||__instance.innerContainer?.Count!=0||item==null||!item.Spawned||item.Map!=pawn.Map||item.Faction!=null||count<item.stackCount)return;
+            if(__instance?.GetType()!=typeof(Pawn_CarryTracker)||pawn?.carryTracker!=__instance||pawn.jobs?.curDriver?.GetType()!=typeof(JobDriver_HaulToCell)||pawn.jobs.curJob?.def.driverClass!=typeof(JobDriver_HaulToCell)||__instance.innerContainer?.Count!=0||item==null||!item.Spawned||item.Map!=pawn.Map||item.Faction!=null||count<=0)return;
             if(item is IThingHolder||item.GetType()!=typeof(Thing)&&item.GetType()!=typeof(ThingWithComps))return;
             ResidentActiveWork.Known(typeof(Thing),nameof(Thing.SplitOff));
             ResidentActiveWork.Known(typeof(ThingWithComps),"get_AllComps");
@@ -32,7 +32,7 @@ internal static class WorkHaulPickupObservation
                 if(method==null||method.Module.Assembly!=typeof(Thing).Assembly||Harmony.GetPatchInfo(method)?.Owners.Any()==true)return;
             foreach(var type in new[]{typeof(ThingOwner),typeof(ThingOwner<Thing>)})
                 if(AccessTools.GetDeclaredMethods(type).Where(m=>m.Name is "TryAdd" or "TryAddOrTransfer" or "CanAcceptAnyOf" or "Contains" or "NotifyAdded" or "NotifyAddedAndMergedWith").Any(m=>Harmony.GetPatchInfo(m)?.Owners.Any()==true))return;
-            if(!Current.Game.GetComponent<TerritoryAdministrationLedger>().CanObserveStoragePickup(pawn,item))return;
+            if(!Current.Game.GetComponent<TerritoryAdministrationLedger>().CanObserveStoragePickup(pawn,item,count))return;
             __state=WorkProgressHooks.Begin(pawn,"haul-pickup",[item]);
             if(__state!=null)__state.Ledger.StageStoragePickup(__state,pawn,item,count);
         }

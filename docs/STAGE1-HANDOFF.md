@@ -1,4 +1,13 @@
-# 1단계 개발 인수인계 — 0.3.120 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.121 / 2026-11-14
+
+## 0.3.121 — 실제 부분 집기·새 native 물품·원 잔량의 분리 보존
+
+[실제 before/normal return/출력·현재 승인·인계·저장/명시 복구](M2-PARTS-AUDIT-0.3.121.md). 새 V19 before는 원 Thing 잔량과 새 native carried split을 다른 객체/ID로 연결한다. 원 V7/calls/physical은 고정하고 exact quantity/physical·새 ID Added를 검증하며 original refs와 new cargo refs를 각각 reference-only Scribe한다. version6 actual root/StorageSplitCallV19로 최신 full-party 동의·실제 calls·도시/최종 receipt에 이어간다. 원 잔량의 다음 partial pickup과 다른 원 선반으로의 whole merge 통합도 검사했다. native pickup/split/생성/수량·HP writer를 recovery에서 호출하지 않는다. 옛 V18 unknown output을 V19로 소급 승격하지 않는다.
+
+M2.4 전체 미완료. ground/복합 holder, partial→whole·same-source 재합치기/다른 stock protocol, comp merge·UFT/시설/역할/권리·부모 조립이 남았다. M1 10/10,M2 0/18,전체10/100 유지. 과거 노력 비율은 재측정하지 않았다. Preview Steam/자동 예약 없음.
+
+
+검사·설치: 양 타깃 전체 빌드/native compiler 경고/오류0, 최종 Honor20093/Contracts6172/ENKO626, 두 runtime allowlist/패키지 검사 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.121.zip` SHA256 `55A9C2416CB4C37D773E71EF03136F12DAFF4803760A0A63BA411F5516BD464D`. 이전 로컬 Preview는 `.local/contracts-preview-e7aaa9b7664745c9b445e7f400d51150`에 백업 후 최종32파일 일치 설치, 활성화·언어 hash 불변. 다음은 새 explicit before scope에 의한 partial→whole/재합치기·ground 및 복합 stock/시설/역할/부모 조립이며, old unknown outputs/native calls를 replay하거나 original snapshots를 새 현재 값으로 교체하지 않는다.
 
 ## 0.3.120 — 실제 전량 집기와 동일 객체 운반·후속 내려놓기
 
