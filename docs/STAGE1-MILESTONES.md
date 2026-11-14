@@ -1,5 +1,11 @@
 # 1단계 완료 마일스톤
 
+## 0.3.120 — 실제 전량 집기와 동일 객체 운반·후속 내려놓기
+
+[실제 native 시작/반환·원 refs/owner·재산 인계·저장/복구](M2-PARTS-AUDIT-0.3.120.md). 새 명시 StoragePickupV18은 원 선반의 같은 실제 물품이 원 주민의 native carry owner로 옮겨졌음을 검증하며 global Added/Removed나 소멸·새 ID로 처리하지 않는다. 독립 body/int result 다음 exact same-ref whole-item output을 저장하고 existing membership/actual calls/현재 full-party 동의/도시/최종 receipt/Scribe·명시 복구에 조립했다. 지원 preflight 전에 새 Started를 만들지 않으며 partial/불명 반환은 원 raw를 보존하고 replay하지 않는다. 원 stock/refs/jobs·예약·임상·계약·채무/원 호출 승인 prefix는 유지한다.
+
+M2.4 전체 미완료. partial pickup/일반 ground·복합 holder/재입고·수량 흐름, comp merge·UFT/반복 모드·시설·역할/개인 권리·부모 조립은 남았다. M1 10/10,M2 0/18,전체10/100 유지. 과거 잔여 비율은 재측정하지 않았다. Preview Steam/자동 예약 없음.
+
 ## 0.3.119 — 남는 원 물품의 혼합 소비와 운반 물품 전량 합치기
 
 [새 부품의 실제 실행·저장·복구·정확한 범위](M2-PARTS-AUDIT-0.3.119.md). 원 count/stock/refs를 유지하고 일부 원 입력의 실제 소실과 다른 원 물품의 정확한 잔존 수량을 별도 before/after·membership bridge로 연결했다. 같은 원 선반의 단순 더미에 운반 입력 전량이 직접 합쳐진 정상 bool 반환·같은 cargo 소실·정확한 원 더미 수량 증가도 별도 event/version5 actual root로 연결했다. 새 현재 full-party 동의·실제 소속 호출·도시·최종 receipt/Scribe/load/명시 복구를 사용하며 원 호출 승인 prefix를 교체하지 않는다. 실패/불명 호출·변조된 원/출력 증거는 완료하지 않는다.

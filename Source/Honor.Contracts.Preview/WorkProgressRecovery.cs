@@ -13,7 +13,7 @@ public sealed partial class TerritoryAdministrationLedger
         var r=candidates[0];var t=Ledger.Transfer(r.Id);var saved=WorkProgressBasis(t,r,true);var job=pawn.jobs.curJob;
         var original=LoadedMapPreservation.Restore(t.LoadedMap).ActiveWorkV1.SingleOrDefault(row=>row.Pawn==pawn.GetUniqueLoadID());
         WorkEventGrantV4 grant=null;
-        if(kind=="haul-place" || original==null || !original.Jobs.Contains(job.GetUniqueLoadID()) || r.Residents.ActiveWorkJobs?.Contains(job)!=true)
+        if(kind is "haul-place" or "haul-pickup" || original==null || !original.Jobs.Contains(job.GetUniqueLoadID()) || r.Residents.ActiveWorkJobs?.Contains(job)!=true)
         {
             RequireWorkJobIdentity();
             var record=r.WorkJobObservationsV4?.LastOrDefault(record=>record.Matches(pawn,job));if(record==null)return null;
@@ -37,16 +37,20 @@ public sealed partial class TerritoryAdministrationLedger
         r.WorkProgressV1=next;return new(Current.Game,this,r.Id,saved.Events.Length,before,ids);
     }
     internal void EndWorkObservation(WorkObservationState state,bool? placed=null)
+        =>EndWorkObservation(state,placed,null);
+    internal void EndPickupObservation(WorkObservationState state,int taken)=>EndWorkObservation(state,null,taken);
+    private void EndWorkObservation(WorkObservationState state,bool? placed,int? picked)
     {
         if(Current.Game!=state.Game || Current.ProgramState!=ProgramState.Playing || Current.Game!=ownerGame)throw new ArgumentException("Native progress returned in a changed game.");
         var r=references.Single(x=>x.Id==state.Transfer);var t=Ledger.Transfer(r.Id);var current=WorkProgress.Validate(t,r.WorkProgressV1);
         if(current.Events.Last().Sequence!=state.Sequence || current.Events.Last().Returned.HasValue)throw new ArgumentException("Original progress start changed.");
         r.WorkProgressV1=placed.HasValue?WorkProgress.ObservePlacementReturn(t,r.WorkProgressV1,state.Sequence,Find.TickManager.TicksGame,placed.Value):WorkProgress.ObserveReturn(t,r.WorkProgressV1,state.Sequence,Find.TickManager.TicksGame);
+        if(picked.HasValue)r.WorkProgressV1=WorkProgress.ObservePickupCount(t,r.WorkProgressV1,state.Sequence,picked.Value);
         FrameFilthEvidence.After(r,current.Events.Last());
         FinishStorageRetirements(r,current.Events.Last());
         var candidate=ObserveFrameSuccessor(t,r,state,current.Events.Last());
         var after=WorkProgressSurvey.Capture(r,candidate?.Reference);var removed=state.Before.Ids.Except(after.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();var added=after.Ids.Except(state.Before.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();
-        string next=WorkProgress.Returned(t,r.WorkProgressV1,state.Sequence,removed,added,after.Proof,Find.TickManager.TicksGame,FinishStorageStacks(r,current.Events.Last()),FinishWorktableIteration(r,current.Events.Last()),FinishStorageMixtures(r,current.Events.Last()),FinishStorageMerge(r,current.Events.Last(),state,placed));
+        string next=WorkProgress.Returned(t,r.WorkProgressV1,state.Sequence,removed,added,after.Proof,Find.TickManager.TicksGame,FinishStorageStacks(r,current.Events.Last()),FinishWorktableIteration(r,current.Events.Last()),FinishStorageMixtures(r,current.Events.Last()),FinishStorageMerge(r,current.Events.Last(),state,placed),FinishStoragePickup(r,current.Events.Last(),picked));
         string resolution=r.WorkAssetResolutionV5;var actualRefs=r.WorkAssetReferencesV5;
         if(candidate!=null)
         {
@@ -196,6 +200,8 @@ public sealed partial class TerritoryAdministrationLedger
             if(mixtures>0)message+="\n\n"+"RE_WorkStorageMixtureReview".Translate(mixtures);
             int merges=workReview.Events.Count(e=>e.StorageMergeV17?.After!=null&&e.PlacementResultV4==true);
             if(merges>0)message+="\n\n"+"RE_WorkStorageMergeReview".Translate(merges);
+            int pickups=workReview.Events.Count(e=>e.StoragePickupV18?.After!=null);
+            if(pickups>0)message+="\n\n"+"RE_WorkStoragePickupReview".Translate(pickups);
             if(r.WorkAssetResolutionV5!=null)
             {
                 var terrain=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Where(e=>e.TerrainV8?.LayersV9!=null).ToArray();

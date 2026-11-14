@@ -31,6 +31,13 @@ internal static class WorkProgressHooks
         catch(Exception e){Log.Warning("[Honor.Contracts.Preview] Original native progress start retained without a verified return: "+e.GetType().Name);}
         finally{Depth--;}
     }
+    internal static void EndPickup(WorkObservationState state,int taken)
+    {
+        if(state==null)return;
+        try{state.Ledger.EndPickupObservation(state,taken);}
+        catch(Exception e){Log.Warning("[Honor.Contracts.Preview] Original pickup start retained without verified output: "+e.GetType().Name);}
+        finally{Depth--;}
+    }
     internal static void Failed(WorkObservationState state){if(state!=null)Depth--;}
     internal static MethodBase RecipeMethod()
     {
@@ -51,6 +58,7 @@ internal static class WorkProgressHooks
         var pairs=new[]{(AccessTools.Method(typeof(Frame),nameof(Frame.CompleteConstruction)),typeof(WorkFrameObservation)),
             (AccessTools.Method(typeof(Pawn_JobTracker),nameof(Pawn_JobTracker.EndCurrentJob)),typeof(WorkJobObservation)),(RecipeMethod() as MethodInfo,typeof(WorkRecipeObservation))}.ToList();
         pairs.AddRange(CarryMethods().Select(m=>(m,typeof(WorkHaulPlacementObservation))));
+        pairs.Add((PickupMethod() as MethodInfo,typeof(WorkHaulPickupObservation)));
         foreach(var pair in pairs)
         {
             var info=Harmony.GetPatchInfo(pair.Item1);
@@ -68,6 +76,12 @@ internal static class WorkProgressHooks
             [typeof(IntVec3),typeof(int),typeof(ThingPlaceMode),typeof(Thing).MakeByRefType(),typeof(Action<Thing,int>)]];
         if(rows.Length!=2 || rows.Where((m,i)=>m.ReturnType!=typeof(bool)||!m.GetParameters().Select(p=>p.ParameterType).SequenceEqual(expected[i])).Any())throw new ArgumentException("Reviewed native placement boundaries changed.");
         return rows;
+    }
+    internal static MethodInfo PickupMethod()
+    {
+        if(!NativeTransferBodies.WorkObservationBodies)return null;
+        var method=AccessTools.Method(typeof(Pawn_CarryTracker),nameof(Pawn_CarryTracker.TryStartCarry),[typeof(Thing),typeof(int),typeof(bool)]);
+        if(method?.DeclaringType!=typeof(Pawn_CarryTracker)||method.ReturnType!=typeof(int))throw new ArgumentException("Reviewed native whole pickup boundary changed.");return method;
     }
 }
 [HarmonyPatch(typeof(Frame),nameof(Frame.CompleteConstruction))]

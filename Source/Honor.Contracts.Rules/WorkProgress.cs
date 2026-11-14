@@ -14,6 +14,8 @@ public sealed record WorkProgressEvent(int Sequence, string Kind, string Actor, 
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorktableIteration WorktableIterationV15 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageMixture[] StorageMixturesV16 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageMerge StorageMergeV17 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStoragePickup StoragePickupV18 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public int? PickupTakenV18 { get; init; }
 }
 public sealed record WorkProgressSave(int Version, WorkProgressSeal Seal, WorkProgressEvent[] Events)
 {
@@ -85,20 +87,21 @@ public static partial class WorkProgress
         for(int i=0;i<s.Events.Length;i++)
         {
             var e=s.Events[i];
-            if(e==null || e.Sequence!=i || e.Kind is not ("frame" or "job-end" or "recipe" or "haul-place") ||
+            if(e==null || e.Sequence!=i || e.Kind is not ("frame" or "job-end" or "recipe" or "haul-place" or "haul-pickup") ||
                 !(actors.TryGetValue(e.Actor,out var owner)&&owner.Jobs.Contains(e.Job) || e.GrantV4!=null&&s.Version==3&&set.Residents.Any(p=>p.Id==e.Actor)) ||
                 e.Inputs==null || e.Inputs.Length>10000 || e.Inputs.Any(id=>!Key(id)) || e.Inputs.Distinct().Count()!=e.Inputs.Length || !CityStockProof.Valid(e.Before) ||
                 e.Started<previous || e.Started>int.MaxValue || !e.Returned.HasValue && i!=s.Events.Length-1)throw new ArgumentException("Original ordered native progress start is invalid.");
             if(e.GrantV4!=null){if(s.Version!=3)throw new ArgumentException("Legacy events grant no new work authority.");WorkJobObservations.Check(e.GrantV4,e.Actor,e.Job,s.Seal.Tick,e.Started);}
             if(e.StorageOriginsV12!=null)
             {
-                if(s.Version!=3||e.Kind is not ("recipe" or "haul-place"))throw new ArgumentException("Only explicit clinical production/placement may capture new storage origins.");
+                if(s.Version!=3||e.Kind is not ("recipe" or "haul-place" or "haul-pickup"))throw new ArgumentException("Only explicit clinical production/placement/pickup may capture new storage origins.");
                 WorkStorageOriginRules.Check(t,map,e.StorageOriginsV12,previousStorageCalls);previousStorageCalls=e.StorageOriginsV12.Calls;
             }
             WorkStorageStackRules.Check(map,s,i);
             WorkStorageRetirements.Check(s,i);
             WorkStorageMixtures.Check(s,i);
             WorkStorageMerges.Check(t,map,s,i);
+            WorkStoragePickups.Check(t,map,s,i);
             WorktableIterations.Check(t,map,s,i);
             var originalFilth=e.Kind=="frame"&&e.Inputs.Length>0?map.WorkFramesV1?.SingleOrDefault(frame=>frame.Id==e.Inputs[0])?.FilthV10:null;
             if(originalFilth!=null||e.FilthV10!=null)
@@ -109,6 +112,7 @@ public static partial class WorkProgress
             }
             var ancillary=e.FilthV10?.Select(filth=>filth.Id).ToArray()??[];
             if(e.Kind=="haul-place"&&(e.GrantV4==null||e.Inputs.Length!=1) || e.PlacementResultV4.HasValue&&(e.Kind!="haul-place"||!e.BodyReturned.HasValue))throw new ArgumentException("Explicit native placement grant/result required.");
+            if(e.Kind=="haul-pickup"&&(s.Version!=3||e.GrantV4==null||e.Inputs.Length!=1))throw new ArgumentException("Explicit new clinical pickup grant required.");
             if(e.BodyReturned.HasValue && (e.BodyReturned<e.Started || e.BodyReturned>int.MaxValue))throw new ArgumentException("Invalid native progress body-return clock.");
             if(!e.Returned.HasValue){if(e.Removed!=null || e.Added!=null || e.After!=null)throw new ArgumentException("Unverified progress output cannot contain results.");previous=e.Started;continue;}
             if(!e.BodyReturned.HasValue || e.BodyReturned<e.Started || e.Returned<e.BodyReturned || e.Returned>int.MaxValue || e.Removed==null || e.Added==null || !CityStockProof.Valid(e.After) || e.Removed.Length>10000 || e.Added.Length>10000 ||
@@ -140,13 +144,16 @@ public static partial class WorkProgress
     public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick,WorkStorageStacks[] stacks,WorktableIteration iteration,WorkStorageMixture[] mixtures)
         =>Returned(t,json,sequence,removed,added,after,tick,stacks,iteration,mixtures,null);
     public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick,WorkStorageStacks[] stacks,WorktableIteration iteration,WorkStorageMixture[] mixtures,WorkStorageMerge merge)
+        =>Returned(t,json,sequence,removed,added,after,tick,stacks,iteration,mixtures,merge,null);
+    public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick,WorkStorageStacks[] stacks,WorktableIteration iteration,WorkStorageMixture[] mixtures,WorkStorageMerge merge,WorkStoragePickup pickup)
     {
         var s=Validate(t,json);var last=s.Events.LastOrDefault();if(last==null || last.Sequence!=sequence || last.Returned.HasValue)throw new ArgumentException("Exact original unreturned progress start required.");
         if(stacks!=null&&(last.StorageStacksV13==null||stacks.Length!=last.StorageStacksV13.Length||stacks.Where((row,i)=>row==null||JsonSerializer.Serialize(row with{After=null})!=JsonSerializer.Serialize(last.StorageStacksV13[i])).Any()))throw new ArgumentException("Original stack before-evidence cannot be replaced after return.");
         if(iteration!=null&&(last.WorktableIterationV15==null||JsonSerializer.Serialize(iteration with{After=null,AfterStable=null,AfterCount=null})!=JsonSerializer.Serialize(last.WorktableIterationV15)))throw new ArgumentException("Original table iteration start cannot be replaced after return.");
         if(mixtures!=null&&(last.StorageMixturesV16==null||mixtures.Length!=last.StorageMixturesV16.Length||mixtures.Where((row,i)=>row==null||JsonSerializer.Serialize(row with{After=null})!=JsonSerializer.Serialize(last.StorageMixturesV16[i])).Any()))throw new ArgumentException("Original mixture before-evidence cannot be replaced after return.");
         if(merge!=null&&(last.StorageMergeV17==null||JsonSerializer.Serialize(merge with{After=null})!=JsonSerializer.Serialize(last.StorageMergeV17)))throw new ArgumentException("Original merge input proof cannot be replaced.");
-        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{Removed=removed,Added=added,After=after,Returned=tick,StorageStacksV13=stacks??last.StorageStacksV13,WorktableIterationV15=iteration??last.WorktableIterationV15,StorageMixturesV16=mixtures??last.StorageMixturesV16,StorageMergeV17=merge??last.StorageMergeV17};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
+        if(pickup!=null&&(last.StoragePickupV18==null||JsonSerializer.Serialize(pickup with{After=null,Carried=null})!=JsonSerializer.Serialize(last.StoragePickupV18)))throw new ArgumentException("Original pickup input proof cannot be replaced.");
+        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{Removed=removed,Added=added,After=after,Returned=tick,StorageStacksV13=stacks??last.StorageStacksV13,WorktableIterationV15=iteration??last.WorktableIterationV15,StorageMixturesV16=mixtures??last.StorageMixturesV16,StorageMergeV17=merge??last.StorageMergeV17,StoragePickupV18=pickup??last.StoragePickupV18};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
     }
     public static string BindStorageStacks(TerritoryTransfer t,string json,WorkStorageStacks[] stacks)
     {
@@ -177,6 +184,18 @@ public static partial class WorkProgress
         var s=Validate(t,json);var last=s.Events.LastOrDefault();
         if(last==null||last.BodyReturned.HasValue||last.Returned.HasValue||last.StorageMergeV17!=null||start==null||start.After!=null)throw new ArgumentException("New before-body merge evidence required.");
         var rows=s.Events.ToArray();rows[rows.Length-1]=last with{StorageMergeV17=start};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
+    }
+    public static string BindStoragePickup(TerritoryTransfer t,string json,WorkStoragePickup start,WorkStorageOrigins origins=null)
+    {
+        var s=Validate(t,json);var last=s.Events.LastOrDefault();
+        if(last==null||last.BodyReturned.HasValue||last.Returned.HasValue||last.StoragePickupV18!=null||start==null||start.After!=null||start.Carried!=null||origins!=null&&last.StorageOriginsV12!=null)throw new ArgumentException("New before-body original pickup required.");
+        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{StoragePickupV18=start,StorageOriginsV12=origins??last.StorageOriginsV12};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
+    }
+    public static string ObservePickupCount(TerritoryTransfer t,string json,int sequence,int taken)
+    {
+        var s=Validate(t,json);var last=s.Events.LastOrDefault();
+        if(last==null||last.Sequence!=sequence||last.Kind!="haul-pickup"||!last.BodyReturned.HasValue||last.Returned.HasValue||last.PickupTakenV18.HasValue||taken<0)throw new ArgumentException("Exact independent native pickup count required.");
+        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{PickupTakenV18=taken};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
     }
     public static string ObserveReturn(TerritoryTransfer t,string json,int sequence,long tick)
     {

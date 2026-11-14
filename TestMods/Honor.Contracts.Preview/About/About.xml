@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.119</modVersion>
+  <modVersion>0.3.120</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,7 +23,9 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.119: Preserves original surviving stacks when a recipe consumes other originals completely. Explicit whole-cargo direct merges can also record exact count increases in the same original simple shelf stacks. Original stock, objects and faction-call approvals remain intact through fresh consent, actual handover, save and explicit recovery. Arbitrary pickup, partial merges and wider M2.4 combinations remain unfinished.
+  <description>0.3.120: Explicit whole-item pickups from original simple shelves now retain the same object in the same native carry owner, then connect to actual shelf handover, later placement, save and explicit recovery. Native pickup return counts are recorded separately from verified output. Partial or uncertain pickups remain preserved and blocked; recovery never repeats carrying or recreates items. Wider M2.4 combinations remain unfinished.
+0.3.120: 원 선반의 물품 전량을 집어 같은 객체로 원 운반 보관함에 넣은 결과를 실제 선반 인계·후속 내려놓기·저장·명시 복구에 연결합니다. 게임의 집기 반환 수량과 검증된 출력을 별도로 기록합니다. 부분·불명 집기는 원 기록을 보존하고 중단하며 복구가 운반을 반복하거나 물품을 재생성하지 않습니다. 더 넓은 M2.4 조합은 미완료입니다.
+0.3.119: Preserves original surviving stacks when a recipe consumes other originals completely. Explicit whole-cargo direct merges can also record exact count increases in the same original simple shelf stacks. Original stock, objects and faction-call approvals remain intact through fresh consent, actual handover, save and explicit recovery. Arbitrary pickup, partial merges and wider M2.4 combinations remain unfinished.
 0.3.119: 일부 원 재료가 완전 소모되고 다른 원 물품은 남는 경우를 보존합니다. 단순 선반의 같은 원 더미에 운반 물품 전량이 직접 합쳐진 정확한 수량 증가도 별도 기록합니다. 원 보관·물품·소속 호출 승인을 유지하며 새 동의·실제 인계·저장·명시 복구에 연결합니다. 임의 집기·부분 합치기 및 더 넓은 M2.4 조합은 미완료입니다.
 0.3.118: Connects partial-consumption history to explicitly observed complete consumption and later restocking. Exact original production bills can record a normal one-step repeat-count decrease without rebuilding bills or changing settings. Fresh current consent, actual property calls, save and explicit recovery preserve original objects and call evidence. Wider M2.4 combinations remain unfinished.
 0.3.118: 부분 소비 뒤 실제 완전 소모·새 물품 보관을 이어서 기록합니다. 원 제작 주문의 남은 횟수가 정상적으로 하나 줄어든 결과도 주문 재생성·설정 변경 없이 보존합니다. 새 현재 동의·실제 재산 호출·저장·명시 복구를 연결하며 더 넓은 M2.4 조합은 미완료입니다.
