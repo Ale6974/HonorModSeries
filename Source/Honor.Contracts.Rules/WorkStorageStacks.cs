@@ -15,6 +15,7 @@ public static class WorkStorageStackRules
         if(work.Version!=3||ev.Kind!="recipe"||rows.Length is <1 or >1000||rows.Any(r=>r==null)||!rows.Select(r=>r.Shelf).SequenceEqual(rows.Select(r=>r.Shelf).Distinct().OrderBy(id=>id,StringComparer.Ordinal)))throw new ArgumentException("Ordered explicit original recipe shelf observations required.");
         foreach(var row in rows)
         {
+            if(work.Events.Take(index).Any(e=>e.StorageRetirementsV14?.Any(r=>r.Shelf==row.Shelf)==true))throw new ArgumentException("Retired original count objects never become a new count baseline.");
             var shelf=map.Storage?.SingleOrDefault(s=>s.Id==row.Shelf);
             var previous=work.Events.Take(index).SelectMany(e=>e.StorageStacksV13??[]).LastOrDefault(r=>r.Shelf==row.Shelf);
             var before=previous?.After??shelf?.Contents.Select(id=>map.Things.Single(p=>p.Id==id)).ToArray();
@@ -34,11 +35,12 @@ public static class WorkStorageStackRules
         var events=entry.StorageStackEventsV13;
         if(entry.StorageStackCallV13.HasValue&&(!entry.Started||events==null||entry.StorageStackCallV13<=0||entry.StorageStackCallV13>events.Length))throw new ArgumentException("Original stack call prefix changed.");
         if(events==null)return;
-        if(entry.Event.HasValue||entry.StorageV7==null||entry.StorageProgressV11!=null||events.Length is <1 or >128||!events.SequenceEqual(events.Distinct().OrderBy(i=>i)))throw new ArgumentException("Separate original same-membership stack history required.");
+        if(entry.Event.HasValue||entry.StorageV7==null||events.Length is <1 or >128||!events.SequenceEqual(events.Distinct().OrderBy(i=>i)))throw new ArgumentException("Separate original stack history required.");
+        WorkStorageRetirements.Pair(entry,work);
         var all=work.Events.Where(e=>e.StorageStacksV13?.Any(r=>r.Shelf==entry.Original&&r.After!=null&&!Enumerable.SequenceEqual(r.Before,r.After))==true).Select(e=>e.Sequence).ToArray();
         if(!events.SequenceEqual(all.Take(events.Length)))throw new ArgumentException("Positive count changes must remain linked without gaps.");
         foreach(int i in events)if(i<0||i>=work.Events.Length)throw new ArgumentException("Unknown stack event.");
     }
     public static NeutralMapThing[] Current(WorkAssetResolution entry,WorkProgressSave work)
-        =>entry.StorageStackEventsV13==null?null:work.Events[entry.StorageStackEventsV13.Last()].StorageStacksV13.Single(r=>r.Shelf==entry.Original).After;
+        =>entry.StorageStackEventsV13==null||entry.StorageBridgeV14.HasValue?null:work.Events[entry.StorageStackEventsV13.Last()].StorageStacksV13.Single(r=>r.Shelf==entry.Original).After;
 }

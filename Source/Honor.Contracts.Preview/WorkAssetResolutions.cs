@@ -121,7 +121,7 @@ public sealed partial class TerritoryAdministrationLedger
             refs.Add(new(){Original=next.Id,Actual=thing,WorktableBillsV6=entry.WorktableV6==null?null:OriginalWorktableBills(r.LoadedMap,entry),StorageContentsV7=entry.StorageV7==null?null:entry.StorageV7.Contents.Select(id=>r.LoadedMap.Things.Single(p=>p!=null&&p.GetUniqueLoadID()==id)).ToList()});
         }
         var actual=refs.Single(p=>p.Original==entry.Original).Actual;
-        VerifyResolutionWorktable(refs.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap);
+        VerifyResolutionWorktable(refs.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap,WorkProgress.Validate(t,r.WorkProgressV1));
         VerifyResolutionStorage(refs.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap,WorkProgress.Validate(t,r.WorkProgressV1));
         if(entry.Started&&!entry.Returned)throw new ArgumentException("Unknown actual-property call; original retained.");
         if(!entry.Returned)
@@ -140,17 +140,18 @@ public sealed partial class TerritoryAdministrationLedger
     }
     private static void ReleaseAssetResolutionReferences(TerritoryTransferReference r)
     {foreach(var reference in r.WorkAssetReferencesV5??[]){reference.Actual=null;reference.WorktableBillsV6?.Clear();reference.StorageContentsV7?.Clear();reference.StorageProgressV11?.Clear();}}
-    private static void VerifyResolutionWorktable(TerritoryTransferReference r,WorkAssetResolution entry,Thing actual)
-        =>VerifyResolutionWorktable(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap);
+    private void VerifyResolutionWorktable(TerritoryTransferReference r,WorkAssetResolution entry,Thing actual)
+        =>VerifyResolutionWorktable(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap,WorkProgress.Validate(Ledger.Transfer(r.Id),r.WorkProgressV1));
     private static List<Bill> OriginalWorktableBills(LoadedMapRecord original,WorkAssetResolution entry)
     {
         if(original.WorkBills==null)throw new ArgumentException("Original bill reference record missing.");
         return entry.WorktableV6.Bills.Select(id=>original.WorkBills.Single(b=>b!=null&&b.GetUniqueLoadID()==id)).ToList();
     }
-    private static void VerifyResolutionWorktable(WorkAssetReferenceV5 reference,WorkAssetResolution entry,Thing actual,LoadedMapRecord original)
+    private static void VerifyResolutionWorktable(WorkAssetReferenceV5 reference,WorkAssetResolution entry,Thing actual,LoadedMapRecord original,WorkProgressSave work=null)
     {
         if(entry.WorktableV6==null){if(WorktableEvidence.Supported(actual)||reference.WorktableBillsV6!=null)throw new ArgumentException("Worktable requires its separate scope.");return;}
-        if(actual is not Building_WorkTable table || JsonSerializer.Serialize(WorktableEvidence.Capture(table))!=JsonSerializer.Serialize(entry.WorktableV6)||reference.WorktableBillsV6==null||!WorktableEvidence.Bills(table).SequenceEqual(reference.WorktableBillsV6))throw new ArgumentException("Actual bill references/configuration changed.");
+        if(entry.WorktableIterationsV15!=null&&work==null)throw new ArgumentException("Original iteration history required for current table verification.");
+        if(actual is not Building_WorkTable table || JsonSerializer.Serialize(WorktableEvidence.Capture(table))!=JsonSerializer.Serialize(WorktableIterations.Current(entry,work))||reference.WorktableBillsV6==null||!WorktableEvidence.Bills(table).SequenceEqual(reference.WorktableBillsV6))throw new ArgumentException("Actual bill references/configuration changed.");
         if(!entry.Event.HasValue&&!reference.WorktableBillsV6.SequenceEqual(OriginalWorktableBills(original,entry)))throw new ArgumentException("Original remainder table lost its original Bill references.");
     }
     private static void ValidateStorageReferenceShape(WorkAssetReferenceV5 reference,WorkAssetResolution entry)

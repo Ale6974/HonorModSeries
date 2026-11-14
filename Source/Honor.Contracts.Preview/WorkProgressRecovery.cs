@@ -25,9 +25,13 @@ public sealed partial class TerritoryAdministrationLedger
         var filth=FrameFilthEvidence.Current(t,r,kind,inputs);
         var storage=CaptureStorageOrigins(t,r,kind);
         var stacks=CaptureStorageStacks(t,r,pawn,kind,storage);
+        var retirements=CaptureStorageRetirements(t,r,pawn,kind);
+        var iteration=CaptureWorktableIteration(t,r,pawn,kind);
         if(filth?.Any(f=>!before.Ids.Contains(f.Id))==true)throw new ArgumentException("Original ancillary filth is absent from the actual before-survey.");
         string next=WorkProgress.Begin(t,r.WorkProgressV1,kind,pawn.GetUniqueLoadID(),job.GetUniqueLoadID(),ids,before.Proof,Find.TickManager.TicksGame,grant,filth,storage);
         if(stacks!=null)next=WorkProgress.BindStorageStacks(t,next,stacks);
+        if(retirements!=null)next=WorkProgress.BindStorageRetirements(t,next,retirements);
+        if(iteration!=null)next=WorkProgress.BindWorktableIteration(t,next,iteration);
         r.WorkProgressV1=next;return new(Current.Game,this,r.Id,saved.Events.Length,before,ids);
     }
     internal void EndWorkObservation(WorkObservationState state,bool? placed=null)
@@ -37,9 +41,10 @@ public sealed partial class TerritoryAdministrationLedger
         if(current.Events.Last().Sequence!=state.Sequence || current.Events.Last().Returned.HasValue)throw new ArgumentException("Original progress start changed.");
         r.WorkProgressV1=placed.HasValue?WorkProgress.ObservePlacementReturn(t,r.WorkProgressV1,state.Sequence,Find.TickManager.TicksGame,placed.Value):WorkProgress.ObserveReturn(t,r.WorkProgressV1,state.Sequence,Find.TickManager.TicksGame);
         FrameFilthEvidence.After(r,current.Events.Last());
+        FinishStorageRetirements(r,current.Events.Last());
         var candidate=ObserveFrameSuccessor(t,r,state,current.Events.Last());
         var after=WorkProgressSurvey.Capture(r,candidate?.Reference);var removed=state.Before.Ids.Except(after.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();var added=after.Ids.Except(state.Before.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();
-        string next=WorkProgress.Returned(t,r.WorkProgressV1,state.Sequence,removed,added,after.Proof,Find.TickManager.TicksGame,FinishStorageStacks(r,current.Events.Last()));
+        string next=WorkProgress.Returned(t,r.WorkProgressV1,state.Sequence,removed,added,after.Proof,Find.TickManager.TicksGame,FinishStorageStacks(r,current.Events.Last()),FinishWorktableIteration(r,current.Events.Last()));
         string resolution=r.WorkAssetResolutionV5;var actualRefs=r.WorkAssetReferencesV5;
         if(candidate!=null)
         {
@@ -49,6 +54,7 @@ public sealed partial class TerritoryAdministrationLedger
         }
         (resolution,actualRefs)=ObserveStorageProgress(t,r,next,resolution,actualRefs,state.Sequence);
         (resolution,actualRefs)=ObserveStorageStacks(t,r,next,resolution,actualRefs,state.Sequence);
+        (resolution,actualRefs)=ObserveWorktableIteration(t,r,next,resolution,actualRefs,state.Sequence);
         r.WorkProgressV1=next;r.WorkAssetResolutionV5=resolution;r.WorkAssetReferencesV5=actualRefs;
     }
     private void SealWorkBoundary(TerritoryTransferReference r,bool beforeAssets=false)
@@ -178,6 +184,11 @@ public sealed partial class TerritoryAdministrationLedger
             if(origins>0)message+="\n\n"+"RE_WorkStorageOriginReview".Translate(origins);
             int partial=WorkProgress.Validate(t,r.WorkProgressV1).Events.Sum(e=>e.StorageStacksV13?.Count(row=>row.After!=null)??0);
             if(partial>0)message+="\n\n"+"RE_WorkStorageStackReview".Translate(partial);
+            var workReview=WorkProgress.Validate(t,r.WorkProgressV1);
+            int retirements=workReview.Events.Sum(e=>e.StorageRetirementsV14?.Length??0);
+            if(retirements>0)message+="\n\n"+"RE_WorkStorageRetireReview".Translate(retirements);
+            int iterations=workReview.Events.Count(e=>e.WorktableIterationV15?.After!=null);
+            if(iterations>0)message+="\n\n"+"RE_WorktableIterationReview".Translate(iterations);
             if(r.WorkAssetResolutionV5!=null)
             {
                 var terrain=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Where(e=>e.TerrainV8?.LayersV9!=null).ToArray();

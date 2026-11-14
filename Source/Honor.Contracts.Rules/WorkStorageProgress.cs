@@ -30,6 +30,7 @@ public static class WorkStorageProgressRules
     {
         int count=entry.Started?(entry.StorageCallV11??0):(entry.StorageProgressV11?.Length??0);
         int stacks=entry.Started?(entry.StorageStackCallV13??0):(entry.StorageStackEventsV13?.Length??0);
-        return entry with{Started=false,Returned=false,Verified=false,Approval=null,StorageCallV11=null,StorageProgressV11=count==0?null:entry.StorageProgressV11.Take(count).ToArray(),StorageStackCallV13=null,StorageStackEventsV13=stacks==0?null:entry.StorageStackEventsV13.Take(stacks).ToArray()};
+        int iterations=entry.Started?(entry.WorktableCallV15??0):(entry.WorktableIterationsV15?.Length??0);
+        return entry with{Started=false,Returned=false,Verified=false,Approval=null,StorageCallV11=null,StorageProgressV11=count==0?null:entry.StorageProgressV11.Take(count).ToArray(),StorageStackCallV13=null,StorageStackEventsV13=stacks==0?null:entry.StorageStackEventsV13.Take(stacks).ToArray(),StorageBridgeV14=count==0?null:entry.StorageBridgeV14,WorktableCallV15=null,WorktableIterationsV15=iterations==0?null:entry.WorktableIterationsV15.Take(iterations).ToArray()};
     }
 }

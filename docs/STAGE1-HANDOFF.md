@@ -1,4 +1,13 @@
-# 1단계 개발 인수인계 — 0.3.117 / 2026-11-14
+# 1단계 개발 인수인계 — 0.3.118 / 2026-11-14
+
+## 0.3.118 — 원 물품 완전 소모 전환과 원 제작 주문 횟수의 실제 진행
+
+[실제 부품/조립·저장·복구 근거와 정확한 제한](M2-PARTS-AUDIT-0.3.118.md). 작업 전 원 잔여 수량/전체 요구량→실제 원 refs의 정상 파괴·소실→membership bridge→빈 선반·새 실제 보관 물품을 연결했다. 원 count/stock/호출 이력은 유지한다. 같은 원 제작대/Bill refs·순서·전체 설정을 보존하면서 남은 제작 횟수만 정확히 하나 줄어든 양성 결과도 별도 before/after journal·version4 실제 재산 root로 연결했다. actual call/최신 full-party 동의/최종 도시 receipt/Scribe·명시 복구를 함께 사용하며 원 snapshot을 실제 출력으로 교체하거나 소비·제작·호출을 replay하지 않는다. 같은 두 이벤트에서 양쪽 흐름을 함께 실행하는 규칙 통합도 검사했다.
+
+M2.4 전체 미완료. 집기·합치기/수량 증가, 일부 원 물품이 남는 복합 변화, UFT/기타 반복 모드·연결 설비·역할/개인 권리·부모 조립이 남았다. M1 10/10,M2 0/18,전체10/100 유지. 기존 잔여25–40%/3묶음 및 여섯 단계 비율은 재측정하지 않았다. Preview Steam/자동 예약 없음.
+
+
+검사·설치: 양 타깃 전체 빌드 및 native compiler 경고/오류0, 최종 Honor20093/Contracts6115/ENKO622, 두 runtime DLL allowlist/패키지 검사 통과. `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.118.zip` SHA256 `6A15EB1DC49B1F2DB45CC7A946AAFB260E7725F3034C690E953CD81071E9E613`. 이전 로컬 Preview는 `.local/contracts-preview-ed3874a7a7284f9c95c32d32667e074e`에 백업한 뒤32파일 일치 설치했다. 활성화·언어 설정 hash 불변. 다음 착수: 실제 집기/합치기와 원 물품 일부가 남는 혼합 변화, 이어서 UFT/반복모드/연결 설비·역할/부모 조립. 이를 기존 before/body/호출 증거의 소급 확대나 unknown replay로 처리하지 않는다.
 
 ## 0.3.117 — 같은 원 선반 물품의 정확한 부분 소비 연결
 

@@ -10,6 +10,8 @@ public sealed record WorkProgressEvent(int Sequence, string Kind, string Actor, 
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkFrameFilth[] FilthV10 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageOrigins StorageOriginsV12 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageStacks[] StorageStacksV13 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorkStorageRetirement[] StorageRetirementsV14 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition=System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public WorktableIteration WorktableIterationV15 { get; init; }
 }
 public sealed record WorkProgressSave(int Version, WorkProgressSeal Seal, WorkProgressEvent[] Events)
 {
@@ -92,6 +94,8 @@ public static partial class WorkProgress
                 WorkStorageOriginRules.Check(t,map,e.StorageOriginsV12,previousStorageCalls);previousStorageCalls=e.StorageOriginsV12.Calls;
             }
             WorkStorageStackRules.Check(map,s,i);
+            WorkStorageRetirements.Check(s,i);
+            WorktableIterations.Check(t,map,s,i);
             var originalFilth=e.Kind=="frame"&&e.Inputs.Length>0?map.WorkFramesV1?.SingleOrDefault(frame=>frame.Id==e.Inputs[0])?.FilthV10:null;
             if(originalFilth!=null||e.FilthV10!=null)
             {
@@ -126,16 +130,31 @@ public static partial class WorkProgress
     public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick)
         =>Returned(t,json,sequence,removed,added,after,tick,null);
     public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick,WorkStorageStacks[] stacks)
+        =>Returned(t,json,sequence,removed,added,after,tick,stacks,null);
+    public static string Returned(TerritoryTransfer t,string json,int sequence,string[] removed,string[] added,string after,long tick,WorkStorageStacks[] stacks,WorktableIteration iteration)
     {
         var s=Validate(t,json);var last=s.Events.LastOrDefault();if(last==null || last.Sequence!=sequence || last.Returned.HasValue)throw new ArgumentException("Exact original unreturned progress start required.");
         if(stacks!=null&&(last.StorageStacksV13==null||stacks.Length!=last.StorageStacksV13.Length||stacks.Where((row,i)=>row==null||JsonSerializer.Serialize(row with{After=null})!=JsonSerializer.Serialize(last.StorageStacksV13[i])).Any()))throw new ArgumentException("Original stack before-evidence cannot be replaced after return.");
-        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{Removed=removed,Added=added,After=after,Returned=tick,StorageStacksV13=stacks??last.StorageStacksV13};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
+        if(iteration!=null&&(last.WorktableIterationV15==null||JsonSerializer.Serialize(iteration with{After=null,AfterStable=null,AfterCount=null})!=JsonSerializer.Serialize(last.WorktableIterationV15)))throw new ArgumentException("Original table iteration start cannot be replaced after return.");
+        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{Removed=removed,Added=added,After=after,Returned=tick,StorageStacksV13=stacks??last.StorageStacksV13,WorktableIterationV15=iteration??last.WorktableIterationV15};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
     }
     public static string BindStorageStacks(TerritoryTransfer t,string json,WorkStorageStacks[] stacks)
     {
         var s=Validate(t,json);var last=s.Events.LastOrDefault();
         if(last==null||last.BodyReturned.HasValue||last.Returned.HasValue||last.StorageStacksV13!=null||stacks==null||stacks.Any(row=>row?.After!=null))throw new ArgumentException("New original before-body stack observation required.");
         var rows=s.Events.ToArray();rows[rows.Length-1]=last with{StorageStacksV13=stacks};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
+    }
+    public static string BindStorageRetirements(TerritoryTransfer t,string json,WorkStorageRetirement[] starts)
+    {
+        var s=Validate(t,json);var last=s.Events.LastOrDefault();
+        if(last==null||last.BodyReturned.HasValue||last.Returned.HasValue||last.StorageRetirementsV14!=null||starts==null)throw new ArgumentException("New explicit before-body retirement required; never backfill outputs.");
+        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{StorageRetirementsV14=starts};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
+    }
+    public static string BindWorktableIteration(TerritoryTransfer t,string json,WorktableIteration start)
+    {
+        var s=Validate(t,json);var last=s.Events.LastOrDefault();
+        if(last==null||last.BodyReturned.HasValue||last.Returned.HasValue||last.WorktableIterationV15!=null||start==null||start.After!=null||start.AfterStable!=null||start.AfterCount.HasValue)throw new ArgumentException("New before-body table iteration required; never backfill results.");
+        var rows=s.Events.ToArray();rows[rows.Length-1]=last with{WorktableIterationV15=start};string next=JsonSerializer.Serialize(s with{Events=rows});Validate(t,next);return next;
     }
     public static string ObserveReturn(TerritoryTransfer t,string json,int sequence,long tick)
     {
