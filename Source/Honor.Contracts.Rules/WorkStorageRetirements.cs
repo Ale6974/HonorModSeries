@@ -19,10 +19,11 @@ public static class WorkStorageRetirements
     {
         if(!entry.StorageBridgeV14.HasValue)
         {
+            if(entry.StorageMixtureV16.HasValue){WorkStorageMixtures.Pair(entry,work);return;}
             if(entry.StorageStackEventsV13!=null&&entry.StorageProgressV11!=null)throw new ArgumentException("Count and membership history require an explicit before-body bridge.");return;
         }
         int index=entry.StorageBridgeV14.Value;
-        if(entry.StorageV7==null||entry.StorageStackEventsV13==null||entry.StorageProgressV11==null||index<0||index>=work.Events.Length||entry.StorageStackEventsV13.Last()>=index||entry.StorageProgressV11[0].Event!=index||!work.Events[index].Returned.HasValue||work.Events[index].StorageRetirementsV14?.Any(r=>r.Shelf==entry.Original)!=true||entry.StorageV7.Contents.Intersect(entry.StorageProgressV11[0].Current.Contents).Any())throw new ArgumentException("Positive complete retirement must be the first membership transition after original count history.");
+        if(entry.StorageMixtureV16.HasValue||entry.StorageV7==null||entry.StorageStackEventsV13==null||entry.StorageProgressV11==null||index<0||index>=work.Events.Length||entry.StorageStackEventsV13.Last()>=index||entry.StorageProgressV11[0].Event!=index||!work.Events[index].Returned.HasValue||work.Events[index].StorageRetirementsV14?.Any(r=>r.Shelf==entry.Original)!=true||entry.StorageV7.Contents.Intersect(entry.StorageProgressV11[0].Current.Contents).Any())throw new ArgumentException("Positive complete retirement must be the first membership transition after original count history.");
         var before=work.Events[index].StorageRetirementsV14.Single(r=>r.Shelf==entry.Original).Before;
         var counts=work.Events[entry.StorageStackEventsV13.Last()].StorageStacksV13.Single(r=>r.Shelf==entry.Original).After;
         if(JsonSerializer.Serialize(before)!=JsonSerializer.Serialize(counts))throw new ArgumentException("Retirement must retain the exact last linked count output.");

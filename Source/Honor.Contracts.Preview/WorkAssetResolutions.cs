@@ -182,6 +182,13 @@ public sealed partial class TerritoryAdministrationLedger
         if(current.Length!=latest.Count||current.Where((p,i)=>!ReferenceEquals(p,latest[i])).Any()||!entry.Event.HasValue&&reference.StorageContentsV7.Any(p=>p!=null&&!original.Things.Any(t=>ReferenceEquals(t,p))))throw new ArgumentException("Same original/current stored goods references required; never haul or recreate.");
         var stacks=WorkStorageStackRules.Current(entry,work);
         if(stacks!=null&&current.Where((thing,i)=>thing.Faction!=null||ResolutionPhysical(thing,original.Map)!=stacks[i]).Any())throw new ArgumentException("Current same stored stack differs from positive native count output.");
+        foreach(var survivor in WorkStorageMixtures.CurrentOriginals(entry,work)??[])
+        {
+            var thing=current.SingleOrDefault(p=>p.GetUniqueLoadID()==survivor.Id);
+            if(thing==null||thing.Faction!=null||ResolutionPhysical(thing,original.Map)!=survivor)throw new ArgumentException("Original surviving stack differs from its exact mixed-consumption output.");
+        }
+        var merged=WorkStorageMerges.Current(entry,work);
+        if(merged!=null&&current.Where((thing,i)=>thing.Faction!=null||ResolutionPhysical(thing,original.Map)!=merged[i]).Any())throw new ArgumentException("Current original shelf counts differ from positive whole-cargo merge output.");
     }
     private static void VerifyResolutionTerrain(TerritoryTransferReference r,WorkAssetResolution entry)
     {

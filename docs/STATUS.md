@@ -1,5 +1,11 @@
 # 요구사항 상태 — 공개 0.2.1 / 호환성 0.2.2 / Contracts 개발판
 
+## 0.3.119 — 남는 원 물품의 혼합 소비와 운반 물품 전량 합치기
+
+[새 부품의 실제 실행·저장·복구·정확한 범위](M2-PARTS-AUDIT-0.3.119.md). 원 count/stock/refs를 유지하고 일부 원 입력의 실제 소실과 다른 원 물품의 정확한 잔존 수량을 별도 before/after·membership bridge로 연결했다. 같은 원 선반의 단순 더미에 운반 입력 전량이 직접 합쳐진 정상 bool 반환·같은 cargo 소실·정확한 원 더미 수량 증가도 별도 event/version5 actual root로 연결했다. 새 현재 full-party 동의·실제 소속 호출·도시·최종 receipt/Scribe/load/명시 복구를 사용하며 원 호출 승인 prefix를 교체하지 않는다. 실패/불명 호출·변조된 원/출력 증거는 완료하지 않는다.
+
+M2.4 전체 미완료. pickup/부분 합치기·comp items·후속 수량 조합·UFT/연결 설비·역할/권리·부모 조립은 남아 있다. M1 10/10,M2 0/18,전체10/100 유지. 과거 잔여25–40%/3묶음·여섯 단계 비율은 재측정하지 않았다. Preview Steam/자동 예약 없음.
+
 ## 0.3.118 — 원 물품 완전 소모 전환과 원 제작 주문 횟수의 실제 진행
 
 [실제 부품/조립·저장·복구 근거와 정확한 제한](M2-PARTS-AUDIT-0.3.118.md). 작업 전 원 잔여 수량/전체 요구량→실제 원 refs의 정상 파괴·소실→membership bridge→빈 선반·새 실제 보관 물품을 연결했다. 원 count/stock/호출 이력은 유지한다. 같은 원 제작대/Bill refs·순서·전체 설정을 보존하면서 남은 제작 횟수만 정확히 하나 줄어든 양성 결과도 별도 before/after journal·version4 실제 재산 root로 연결했다. actual call/최신 full-party 동의/최종 도시 receipt/Scribe·명시 복구를 함께 사용하며 원 snapshot을 실제 출력으로 교체하거나 소비·제작·호출을 replay하지 않는다. 같은 두 이벤트에서 양쪽 흐름을 함께 실행하는 규칙 통합도 검사했다.

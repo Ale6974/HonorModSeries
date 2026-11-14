@@ -27,11 +27,13 @@ public sealed partial class TerritoryAdministrationLedger
         var stacks=CaptureStorageStacks(t,r,pawn,kind,storage);
         var retirements=CaptureStorageRetirements(t,r,pawn,kind);
         var iteration=CaptureWorktableIteration(t,r,pawn,kind);
+        var mixtures=CaptureStorageMixtures(t,r,pawn,kind);
         if(filth?.Any(f=>!before.Ids.Contains(f.Id))==true)throw new ArgumentException("Original ancillary filth is absent from the actual before-survey.");
         string next=WorkProgress.Begin(t,r.WorkProgressV1,kind,pawn.GetUniqueLoadID(),job.GetUniqueLoadID(),ids,before.Proof,Find.TickManager.TicksGame,grant,filth,storage);
         if(stacks!=null)next=WorkProgress.BindStorageStacks(t,next,stacks);
         if(retirements!=null)next=WorkProgress.BindStorageRetirements(t,next,retirements);
         if(iteration!=null)next=WorkProgress.BindWorktableIteration(t,next,iteration);
+        if(mixtures!=null)next=WorkProgress.BindStorageMixtures(t,next,mixtures);
         r.WorkProgressV1=next;return new(Current.Game,this,r.Id,saved.Events.Length,before,ids);
     }
     internal void EndWorkObservation(WorkObservationState state,bool? placed=null)
@@ -44,7 +46,7 @@ public sealed partial class TerritoryAdministrationLedger
         FinishStorageRetirements(r,current.Events.Last());
         var candidate=ObserveFrameSuccessor(t,r,state,current.Events.Last());
         var after=WorkProgressSurvey.Capture(r,candidate?.Reference);var removed=state.Before.Ids.Except(after.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();var added=after.Ids.Except(state.Before.Ids).OrderBy(id=>id,StringComparer.Ordinal).ToArray();
-        string next=WorkProgress.Returned(t,r.WorkProgressV1,state.Sequence,removed,added,after.Proof,Find.TickManager.TicksGame,FinishStorageStacks(r,current.Events.Last()),FinishWorktableIteration(r,current.Events.Last()));
+        string next=WorkProgress.Returned(t,r.WorkProgressV1,state.Sequence,removed,added,after.Proof,Find.TickManager.TicksGame,FinishStorageStacks(r,current.Events.Last()),FinishWorktableIteration(r,current.Events.Last()),FinishStorageMixtures(r,current.Events.Last()),FinishStorageMerge(r,current.Events.Last(),state,placed));
         string resolution=r.WorkAssetResolutionV5;var actualRefs=r.WorkAssetReferencesV5;
         if(candidate!=null)
         {
@@ -55,6 +57,7 @@ public sealed partial class TerritoryAdministrationLedger
         (resolution,actualRefs)=ObserveStorageProgress(t,r,next,resolution,actualRefs,state.Sequence);
         (resolution,actualRefs)=ObserveStorageStacks(t,r,next,resolution,actualRefs,state.Sequence);
         (resolution,actualRefs)=ObserveWorktableIteration(t,r,next,resolution,actualRefs,state.Sequence);
+        (resolution,actualRefs)=ObserveStorageMerge(t,r,next,resolution,actualRefs,state.Sequence);
         r.WorkProgressV1=next;r.WorkAssetResolutionV5=resolution;r.WorkAssetReferencesV5=actualRefs;
     }
     private void SealWorkBoundary(TerritoryTransferReference r,bool beforeAssets=false)
@@ -189,6 +192,10 @@ public sealed partial class TerritoryAdministrationLedger
             if(retirements>0)message+="\n\n"+"RE_WorkStorageRetireReview".Translate(retirements);
             int iterations=workReview.Events.Count(e=>e.WorktableIterationV15?.After!=null);
             if(iterations>0)message+="\n\n"+"RE_WorktableIterationReview".Translate(iterations);
+            int mixtures=workReview.Events.Sum(e=>e.StorageMixturesV16?.Length??0);
+            if(mixtures>0)message+="\n\n"+"RE_WorkStorageMixtureReview".Translate(mixtures);
+            int merges=workReview.Events.Count(e=>e.StorageMergeV17?.After!=null&&e.PlacementResultV4==true);
+            if(merges>0)message+="\n\n"+"RE_WorkStorageMergeReview".Translate(merges);
             if(r.WorkAssetResolutionV5!=null)
             {
                 var terrain=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Where(e=>e.TerrainV8?.LayersV9!=null).ToArray();

@@ -621,4 +621,6 @@
   <RE_WorkStorageStackReview>원 선반의 같은 물품에서 제작 재료를 일부 소비한 검증 기록 {0}건을 포함합니다. 정확한 요구량과 현재 수량은 별도로 기록하며 복구가 수량을 바꾸거나 소비를 반복하지 않습니다. 최신 증거에 대한 새 동의가 필요합니다.</RE_WorkStorageStackReview>
   <RE_WorkStorageRetireReview>부분 소비 후 완전 소모된 원 선반 전환 기록 {0}건을 포함합니다. 원 수량 이력과 물품 참조를 보존하며 후속 보관 물품은 실제 정상 작업 증거와 새 동의가 필요합니다.</RE_WorkStorageRetireReview>
   <RE_WorktableIterationReview>정상 제작 완료 기록 {0}건을 포함합니다. 같은 원 주문·순서·설정을 유지하며 해당 주문의 남은 횟수만 하나 줄어듭니다. 복구가 주문을 재생성하거나 횟수를 바꾸거나 제작을 반복하지 않습니다.</RE_WorktableIterationReview>
+  <RE_WorkStorageMixtureReview>일부 원 물품이 남는 제작 전환 기록 {0}건을 포함합니다. 소모된 원 물품과 남은 정확한 수량을 별도 전후 증거로 검증하며 원 보관·호출 이력을 유지합니다.</RE_WorkStorageMixtureReview>
+  <RE_WorkStorageMergeReview>원 선반의 단순 물품 더미에 운반 물품 전량이 합쳐진 검증 기록 {0}건을 포함합니다. 정확한 수량 증가에는 게임의 내려놓기 성공과 같은 운반 물품의 실제 소실 증거가 필요합니다. 복구가 합치기를 반복하거나 수량을 바꾸지 않습니다.</RE_WorkStorageMergeReview>
 </LanguageData>

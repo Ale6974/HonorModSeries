@@ -10,7 +10,7 @@ internal static class WorkHaulPlacementObservation
 {
     private static bool Prepare()=>NativeTransferBodies.WorkObservationBodies;
     private static IEnumerable<MethodBase> TargetMethods()=>WorkProgressHooks.CarryMethods();
-    private static void Prefix(Pawn_CarryTracker __instance,Action<Thing,int> placedAction,out WorkObservationState __state)
+    private static void Prefix(Pawn_CarryTracker __instance,IntVec3 dropLoc,ThingPlaceMode mode,object[] __args,Action<Thing,int> placedAction,out WorkObservationState __state)
     {
         __state=null;
         try
@@ -26,6 +26,7 @@ internal static class WorkHaulPlacementObservation
             foreach(var method in new[]{AccessTools.Method(cargo.GetType(),nameof(Thing.SplitOff),[typeof(int)]),AccessTools.Method(cargo.GetType(),nameof(Thing.TryAbsorbStack),[typeof(Thing),typeof(bool)])})
                 if(method==null || method.Module.Assembly!=typeof(Pawn).Assembly || Harmony.GetPatchInfo(method)?.Owners.Any()==true)return;
             __state=WorkProgressHooks.Begin(p,"haul-place",[cargo]);
+            if(__state!=null)__state=__state.Ledger.StageStorageMerge(__state,p,dropLoc,mode,__args.Length==5?(int)__args[1]:cargo.stackCount);
         }
         catch(Exception e){Log.Warning("[Honor.Contracts.Preview] Native haul placement observation unavailable: "+e.GetType().Name);}
     }

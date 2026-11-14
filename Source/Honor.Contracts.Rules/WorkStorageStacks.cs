@@ -15,7 +15,7 @@ public static class WorkStorageStackRules
         if(work.Version!=3||ev.Kind!="recipe"||rows.Length is <1 or >1000||rows.Any(r=>r==null)||!rows.Select(r=>r.Shelf).SequenceEqual(rows.Select(r=>r.Shelf).Distinct().OrderBy(id=>id,StringComparer.Ordinal)))throw new ArgumentException("Ordered explicit original recipe shelf observations required.");
         foreach(var row in rows)
         {
-            if(work.Events.Take(index).Any(e=>e.StorageRetirementsV14?.Any(r=>r.Shelf==row.Shelf)==true))throw new ArgumentException("Retired original count objects never become a new count baseline.");
+            if(work.Events.Take(index).Any(e=>e.StorageRetirementsV14?.Any(r=>r.Shelf==row.Shelf)==true||e.StorageMixturesV16?.Any(r=>r.Shelf==row.Shelf)==true))throw new ArgumentException("Transferred original count history never becomes a new count baseline.");
             var shelf=map.Storage?.SingleOrDefault(s=>s.Id==row.Shelf);
             var previous=work.Events.Take(index).SelectMany(e=>e.StorageStacksV13??[]).LastOrDefault(r=>r.Shelf==row.Shelf);
             var before=previous?.After??shelf?.Contents.Select(id=>map.Things.Single(p=>p.Id==id)).ToArray();
@@ -42,5 +42,5 @@ public static class WorkStorageStackRules
         foreach(int i in events)if(i<0||i>=work.Events.Length)throw new ArgumentException("Unknown stack event.");
     }
     public static NeutralMapThing[] Current(WorkAssetResolution entry,WorkProgressSave work)
-        =>entry.StorageStackEventsV13==null||entry.StorageBridgeV14.HasValue?null:work.Events[entry.StorageStackEventsV13.Last()].StorageStacksV13.Single(r=>r.Shelf==entry.Original).After;
+        =>entry.StorageStackEventsV13==null||entry.StorageBridgeV14.HasValue||entry.StorageMixtureV16.HasValue?null:work.Events[entry.StorageStackEventsV13.Last()].StorageStacksV13.Single(r=>r.Shelf==entry.Original).After;
 }
