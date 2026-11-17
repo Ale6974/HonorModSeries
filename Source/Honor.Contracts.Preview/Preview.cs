@@ -9,7 +9,7 @@ namespace Honor.Contracts.Preview;
 
 public sealed class ContractsPreviewMod : Mod
 {
-    public ContractsPreviewMod(ModContentPack content) : base(content) => new Harmony("honor.series.contracts.preview").PatchAll();
+    public ContractsPreviewMod(ModContentPack content) : base(content) => new Harmony("honor.series.contracts.preview").PatchAll(typeof(ContractsPreviewMod).Assembly);
 }
 
 /// <summary>Opt-in isolated political simulation; never mutates native factions, inventories or combat.</summary>

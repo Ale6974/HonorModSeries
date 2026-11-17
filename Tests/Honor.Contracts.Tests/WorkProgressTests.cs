@@ -724,6 +724,44 @@ internal static class WorkProgressTests
         Reject(()=>WorkStorageContinuations.Entry(flowEntry with{StorageContinuationCallV20=4},flowSave));
         var flowFinish=mxw with{Id="flow-finish",Tick=39,WorkProgressV1=WorkProgress.Approve(mx,flowProgress,next,39,[],[],flowDoc)};var flowPhysical=TerritoryTransferLedger.Restore(mixLedger.Export());flowPhysical.ConfirmWorkProgress(mx.Id,flowFinish.WorkProgressV1,new(flowFinish,WorkProgress.Hash(flowFinish)),"target",true,true,40,mxa,finished,flowDoc);
         Check(TerritoryTransferLedger.Restore(flowPhysical.Export()).Transfer(mx.Id).Phase==TerritoryTransferPhase.Applied&&!splitProgress.Contains("StorageContinuationV20")&&!splitDoc.Contains("StorageContinuationsV20"));
+        // New V21 quantity authority is explicit and never inferred from old whole-operation journals.
+        var quantityJob=storageHaul with{Jobs=["Job_quantity_split"]};var quantityWitness=mxw with{Id="quantity-split",Tick=41,WorkProgressV1=WorkProgress.Approve(mx,flowProgress,next,41,[],[quantityJob],flowDoc)};var quantityGrant=WorkJobObservations.Grant(mx,new(quantityWitness,WorkProgress.Hash(quantityWitness)),quantityJob,42);
+        string quantityProgress=WorkProgress.Begin(mx,flowProgress,"haul-pickup","worker","Job_quantity_split",["grain"],next,42,quantityGrant);
+        var quantityStart=new WorkStorageContinuation("zShelf",4,"split",mergeFlowOutput.After,mxgoods[1],null,-1,3,mxa){QuantityV21=1};
+        Reject(()=>WorkProgress.BindStorageContinuation(mx,quantityProgress,quantityStart with{QuantityV21=null}));
+        Reject(()=>WorkProgress.BindStorageContinuation(mx,quantityProgress,quantityStart with{Requested=4}));
+        quantityProgress=WorkProgress.BindStorageContinuation(mx,quantityProgress,quantityStart);string quantityUnknown=quantityProgress;
+        Reject(()=>WorkAssetResolutions.AppendContinuation(mx,quantityUnknown,flowDoc,5));
+        quantityProgress=WorkProgress.ObserveReturn(mx,quantityProgress,5,42);quantityProgress=WorkProgress.ObservePickupCount(mx,quantityProgress,5,3);
+        var quantityOutput=quantityStart with{After=[mergeFlowOutput.After[0],mxgoods[1] with{Count=1}],Carried=mxgoods[1] with{Id="quantityCargo",Count=3,Cell=-1}};
+        Reject(()=>WorkProgress.Returned(mx,quantityProgress,5,[],[],next,43,null,null,null,null,null,null,quantityOutput));
+        Reject(()=>WorkProgress.Returned(mx,quantityProgress,5,[],["grain"],next,43,null,null,null,null,null,null,quantityOutput with{Carried=quantityOutput.Carried with{Id="grain"}}));
+        quantityProgress=WorkProgress.Returned(mx,quantityProgress,5,[],["quantityCargo"],next,43,null,null,null,null,null,null,quantityOutput);string quantityDoc=WorkAssetResolutions.AppendContinuation(mx,quantityProgress,flowDoc,5);
+        var quantityAfter=quantityOutput.After;var quantityCarried=quantityOutput.Carried;
+        for(int i=0;i<3;i++)
+        {
+            int sequence=6+i;long tick=44+i*3;string id="Job_quantity_merge"+i;var qj=storageHaul with{Jobs=[id]};var qw=mxw with{Id="quantity-merge"+i,Tick=tick,WorkProgressV1=WorkProgress.Approve(mx,quantityProgress,next,tick,[],[qj],quantityDoc)};var qg=WorkJobObservations.Grant(mx,new(qw,WorkProgress.Hash(qw)),qj,tick+1);
+            quantityProgress=WorkProgress.Begin(mx,quantityProgress,"haul-place","worker",id,["quantityCargo"],next,tick+1,qg);
+            bool partial=i<2;var qs=new WorkStorageContinuation("zShelf",sequence-1,partial?"partial-merge":"merge",quantityAfter,quantityCarried,"grain",4,1,mxa){QuantityV21=partial?1:null};
+            if(partial)Reject(()=>WorkProgress.BindStorageContinuation(mx,quantityProgress,qs with{QuantityV21=null}));
+            quantityProgress=WorkProgress.BindStorageContinuation(mx,quantityProgress,qs);string quantityBeforeReturn=quantityProgress;
+            Reject(()=>WorkAssetResolutions.AppendContinuation(mx,quantityBeforeReturn,quantityDoc,sequence));
+            quantityProgress=WorkProgress.ObservePlacementReturn(mx,quantityProgress,sequence,tick+1,true);
+            quantityAfter=quantityAfter.Select(p=>p.Id=="grain"?p with{Count=p.Count+1}:p).ToArray();var qo=qs with{After=quantityAfter,Carried=partial?quantityCarried with{Count=quantityCarried.Count-1}:null};
+            if(partial)Reject(()=>WorkProgress.Returned(mx,quantityProgress,sequence,["quantityCargo"],[],next,tick+2,null,null,null,null,null,null,qo));
+            quantityProgress=WorkProgress.Returned(mx,quantityProgress,sequence,partial?[]:["quantityCargo"],[],next,tick+2,null,null,null,null,null,null,qo);quantityDoc=WorkAssetResolutions.AppendContinuation(mx,quantityProgress,quantityDoc,sequence);quantityCarried=qo.Carried;
+            Check(WorkStorageSplits.Current(WorkAssetResolutions.Validate(mx,quantityProgress,quantityDoc).Entries.Single(),WorkProgress.Validate(mx,quantityProgress)).SequenceEqual(quantityAfter));
+        }
+        Check(quantityAfter.SequenceEqual(mergeFlowOutput.After)&&!flowProgress.Contains("QuantityV21")&&!flowDoc.Contains("QuantityV21"));
+        var quantityJob2=storageHaul with{Jobs=["Job_quantity_split2"]};var quantityWitness2=mxw with{Id="quantity-split2",Tick=55,WorkProgressV1=WorkProgress.Approve(mx,quantityProgress,next,55,[],[quantityJob2],quantityDoc)};var quantityGrant2=WorkJobObservations.Grant(mx,new(quantityWitness2,WorkProgress.Hash(quantityWitness2)),quantityJob2,56);
+        quantityProgress=WorkProgress.Begin(mx,quantityProgress,"haul-pickup","worker","Job_quantity_split2",["grain"],next,56,quantityGrant2);var quantityStart2=quantityStart with{Previous=8,Before=quantityAfter,Requested=2};
+        quantityProgress=WorkProgress.BindStorageContinuation(mx,quantityProgress,quantityStart2);quantityProgress=WorkProgress.ObserveReturn(mx,quantityProgress,9,56);quantityProgress=WorkProgress.ObservePickupCount(mx,quantityProgress,9,2);
+        var quantityOutput2=quantityStart2 with{After=[quantityAfter[0],mxgoods[1] with{Count=2}],Carried=quantityOutput.Carried with{Id="quantityCargo2",Count=2}};
+        Reject(()=>WorkProgress.Returned(mx,quantityProgress,9,[],["quantityCargo"],next,57,null,null,null,null,null,null,quantityOutput2 with{Carried=quantityOutput2.Carried with{Id="quantityCargo"}}));
+        quantityProgress=WorkProgress.Returned(mx,quantityProgress,9,[],["quantityCargo2"],next,57,null,null,null,null,null,null,quantityOutput2);quantityDoc=WorkAssetResolutions.AppendContinuation(mx,quantityProgress,quantityDoc,9);
+        var quantityRestored=JsonSerializer.Serialize(WorkProgress.Validate(mx,quantityProgress));Check(quantityRestored==quantityProgress&&WorkAssetResolutions.Validate(mx,quantityRestored,quantityDoc,true).Entries.Single().StorageContinuationsV20.SequenceEqual([2,3,4,5,6,7,8,9]));
+        var quantityFinal=mxw with{Id="quantity-final",Tick=58,WorkProgressV1=WorkProgress.Approve(mx,quantityProgress,next,58,[],[],quantityDoc)};var quantityLedger=TerritoryTransferLedger.Restore(mixLedger.Export());quantityLedger.ConfirmWorkProgress(mx.Id,quantityFinal.WorkProgressV1,new(quantityFinal,WorkProgress.Hash(quantityFinal)),"target",true,true,59,mxa,finished,quantityDoc);
+        Check(TerritoryTransferLedger.Restore(quantityLedger.Export()).Transfer(mx.Id).Phase==TerritoryTransferPhase.Applied);
         string terrainMap=LoadedMapPreservation.Capture("town","map",20,20,hash,CityStockProof.Capture(true,false,-1,[]),0,[new("frame","FloorFrame",null,1,100,2,0,null),new("zBuilding","Wall","Wood",1,100,4,0,null)]);
         terrainMap=LoadedMapPreservation.CaptureResidents(terrainMap,mixedResidents.Residents.Select(p=>new NativeMapResident(p.Id,p.Preserved)));
         terrainMap=LoadedMapPreservation.CaptureCivicAssets(terrainMap,[new("frame","source",hash),new("zBuilding","source",hash)],false,false);

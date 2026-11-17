@@ -208,6 +208,8 @@ public sealed partial class TerritoryAdministrationLedger
             if(splits>0)message+="\n\n"+"RE_WorkStorageSplitReview".Translate(splits);
             int continuations=workReview.Events.Count(e=>e.StorageContinuationV20?.After!=null);
             if(continuations>0)message+="\n\n"+"RE_WorkStorageContinuationReview".Translate(continuations);
+            int quantities=workReview.Events.Count(e=>e.StorageContinuationV20?.QuantityV21==1&&e.StorageContinuationV20.After!=null);
+            if(quantities>0)message+="\n\n"+"RE_WorkStorageQuantityReview".Translate(quantities);
             if(r.WorkAssetResolutionV5!=null)
             {
                 var terrain=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).Entries.Where(e=>e.TerrainV8?.LayersV9!=null).ToArray();

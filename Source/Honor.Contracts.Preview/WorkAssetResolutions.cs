@@ -12,7 +12,8 @@ public sealed class WorkAssetReferenceV5 : IExposable
     public List<Thing> StorageContentsV7;
     public List<WorkStorageReferenceV11> StorageProgressV11;
     public List<Thing> SplitCargoV19;
-    public void ExposeData(){Scribe_Values.Look(ref Original,"originalAssetId");Scribe_References.Look(ref Actual,"separateActualProperty");Scribe_Collections.Look(ref WorktableBillsV6,"actualWorktableBillsV6",LookMode.Reference);Scribe_Collections.Look(ref StorageContentsV7,"actualStorageContentsV7",LookMode.Reference);Scribe_Collections.Look(ref StorageProgressV11,"actualStorageProgressV11",LookMode.Deep);Scribe_Collections.Look(ref SplitCargoV19,"actualSplitCargoV19",LookMode.Reference);}
+    public List<Thing> QuantityCargoV21;
+    public void ExposeData(){Scribe_Values.Look(ref Original,"originalAssetId");Scribe_References.Look(ref Actual,"separateActualProperty");Scribe_Collections.Look(ref WorktableBillsV6,"actualWorktableBillsV6",LookMode.Reference);Scribe_Collections.Look(ref StorageContentsV7,"actualStorageContentsV7",LookMode.Reference);Scribe_Collections.Look(ref StorageProgressV11,"actualStorageProgressV11",LookMode.Deep);Scribe_Collections.Look(ref SplitCargoV19,"actualSplitCargoV19",LookMode.Reference);Scribe_Collections.Look(ref QuantityCargoV21,"actualQuantityCargoV21",LookMode.Reference);}
 }
 public sealed class WorkStorageReferenceV11 : IExposable
 {
@@ -140,7 +141,7 @@ public sealed partial class TerritoryAdministrationLedger
         Messages.Message("RE_WorkSuccessorProgress".Translate(),MessageTypeDefOf.NeutralEvent);return true;
     }
     private static void ReleaseAssetResolutionReferences(TerritoryTransferReference r)
-    {foreach(var reference in r.WorkAssetReferencesV5??[]){reference.Actual=null;reference.WorktableBillsV6?.Clear();reference.StorageContentsV7?.Clear();reference.StorageProgressV11?.Clear();reference.SplitCargoV19?.Clear();}}
+    {foreach(var reference in r.WorkAssetReferencesV5??[]){reference.Actual=null;reference.WorktableBillsV6?.Clear();reference.StorageContentsV7?.Clear();reference.StorageProgressV11?.Clear();reference.SplitCargoV19?.Clear();reference.QuantityCargoV21?.Clear();}}
     private void VerifyResolutionWorktable(TerritoryTransferReference r,WorkAssetResolution entry,Thing actual)
         =>VerifyResolutionWorktable(r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original),entry,actual,r.LoadedMap,WorkProgress.Validate(Ledger.Transfer(r.Id),r.WorkProgressV1));
     private static List<Bill> OriginalWorktableBills(LoadedMapRecord original,WorkAssetResolution entry)
@@ -166,9 +167,16 @@ public sealed partial class TerritoryAdministrationLedger
     private static void VerifyResolutionStorage(WorkAssetReferenceV5 reference,WorkAssetResolution entry,Thing actual,LoadedMapRecord original,WorkProgressSave work)
     {
         ValidateStorageReferenceShape(reference,entry);
-        if(entry.StorageV7==null){if(actual?.GetType()==typeof(Building_Storage))throw new ArgumentException("Storage needs its separate original contents/settings scope.");return;}
         ResidentActiveWork.Known(typeof(Thing),"GetUniqueLoadID");
         ResidentActiveWork.Known(typeof(Thing),"get_ThingID");
+        var quantityIndices=(entry.StorageContinuationsV20??[]).Where(i=>work.Events[i].StorageContinuationV20.Action=="split").ToArray();
+        if(quantityIndices.Length==0?reference.QuantityCargoV21!=null:reference.QuantityCargoV21==null||reference.QuantityCargoV21.Count!=quantityIndices.Length)throw new ArgumentException("Continuation split references must retain their exact original slots.");
+        for(int i=0;i<quantityIndices.Length;i++)
+        {
+            int index=quantityIndices[i];var proof=work.Events[index].StorageContinuationV20;var cargo=reference.QuantityCargoV21[i];
+            if(cargo!=null?cargo.GetUniqueLoadID()!=proof.Carried.Id:!work.Events.Any(ev=>ev.Sequence>index&&ev.Returned.HasValue&&ev.Removed.Contains(proof.Carried.Id)))throw new ArgumentException("Continuation split reference requires positive later removal, never replacement.");
+        }
+        if(entry.StorageV7==null){if(actual?.GetType()==typeof(Building_Storage))throw new ArgumentException("Storage needs its separate original contents/settings scope.");return;}
         var scope=WorkStorageProgressRules.Current(entry);
         var continued=WorkStorageContinuations.Current(entry,work);
         if(continued!=null)scope=scope with{Contents=continued.Select(p=>p.Id).ToArray()};

@@ -2,7 +2,7 @@
   <name>Honor.Contracts — Development Preview</name>
   <author>Honor Mod Series</author>
   <packageId>honor.series.contracts.preview</packageId>
-  <modVersion>0.3.122</modVersion>
+  <modVersion>0.3.123</modVersion>
   <supportedVersions>
     <li>1.6</li>
     <li>1.7</li>
@@ -23,6 +23,6 @@
     <li>brrainz.harmony</li>
     <li>honor.series.core</li>
   </loadAfter>
-  <description>0.3.122: Explicit split-journal continuations connect whole remainder pickup, same-shelf whole restacking and original-object put-back to current consent, actual handover, save and explicit recovery. Original identity, split history and call approvals remain unchanged. Wider M2.4 combinations remain unfinished.
-0.3.122: 부분 집기 이후 남은 원 물품 전량 집기·같은 선반 전량 재합치기·원 물품 되놓기를 현재 승인, 실제 인계, 저장·명시 복구에 연결합니다. 원 객체·분할 이력·호출 승인은 유지합니다. M2.4 전체는 아직 미완료입니다.</description>
+  <description>0.3.123: Explicit quantity evidence connects further splits and requested partial restacks to current consent, native outputs, actual handover, save and recovery. Original objects, split history and call approvals remain immutable. New carried pieces use reference-only saving. Native work execution remains limited to audited 1.7.5005; installed 1.7.5011 is not yet authorized. Wider M2.4 combinations remain unfinished.
+0.3.123: 추가 분할과 지정 수량 부분 합치기를 현재 승인·실제 출력·인계·저장·복구에 연결합니다. 원 객체·분할 이력·호출 승인은 유지하고 새 운반 조각은 참조로만 저장합니다. 새 작업 실행은 검증된 1.7.5005로 제한되며 현재 설치된 1.7.5011은 아직 허용하지 않습니다. M2.4 전체는 미완료입니다.</description>
 </ModMetaData>

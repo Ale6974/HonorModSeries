@@ -14,7 +14,7 @@ public sealed class HonorMod : Mod
         Settings = GetSettings<HonorSettings>();
         try
         {
-            new Harmony("honor.series.core").PatchAll();
+            new Harmony("honor.series.core").PatchAll(typeof(HonorMod).Assembly);
             PatchesReady = true;
             Log.Message("[Honor.Core] Harmony patches installed; target 1.7.4985 / Harmony 3.");
         }

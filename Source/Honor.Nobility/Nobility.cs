@@ -13,7 +13,7 @@ public sealed class NobilityMod : Mod
         if (!ModsConfig.RoyaltyActive) { Log.Error("[Honor.Nobility] Royalty DLC is required; disabled."); return; }
         HonorApi.SensitivityModifiers.Add(Multiplier);
         HonorApi.PendingDelayTicks = Math.Max(HonorApi.PendingDelayTicks, 600);
-        new Harmony("honor.series.nobility").PatchAll();
+        new Harmony("honor.series.nobility").PatchAll(typeof(NobilityMod).Assembly);
     }
     public static float Multiplier(Pawn pawn)
     { int rank = pawn?.royalty?.MostSeniorTitle?.def.seniority ?? -1; return rank < 0 ? 1 : 1.1f + Math.Min(rank, 10) * .05f; }

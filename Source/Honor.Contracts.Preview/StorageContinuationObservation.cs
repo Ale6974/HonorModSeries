@@ -12,29 +12,30 @@ public sealed partial class TerritoryAdministrationLedger
         VerifyResolutionStorage(reference,entry,reference.Actual,r.LoadedMap,work);
         if(item.Faction!=null||!r.LoadedMap.Things.Any(p=>ReferenceEquals(p,item))||ResolutionPhysical(item,r.LoadedMap.Map)!=before.SingleOrDefault(p=>p.Id==item.GetUniqueLoadID()))throw new ArgumentException("Same original latest remainder required for whole pickup continuation.");
         var calls=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).BaseCalls;
-        r.WorkProgressV1=WorkProgress.BindStorageContinuation(t,r.WorkProgressV1,new(entry.Original,ContinuationPrevious(entry),"take",before,before.Single(p=>p.Id==item.GetUniqueLoadID()),null,-1,requested,calls));
+        bool partial=requested>0&&requested<item.stackCount;
+        r.WorkProgressV1=WorkProgress.BindStorageContinuation(t,r.WorkProgressV1,new(entry.Original,ContinuationPrevious(entry),partial?"split":"take",before,before.Single(p=>p.Id==item.GetUniqueLoadID()),null,-1,requested,calls){QuantityV21=partial?1:null});
     }
     private WorkObservationState StageStorageContinuationPlace(WorkObservationState state,TerritoryTransfer t,TerritoryTransferReference r,Pawn pawn,Thing cargo,int cell,int requested,WorkAssetResolution entry,WorkProgressSave work)
     {
         var reference=r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original);VerifyResolutionStorage(reference,entry,reference.Actual,r.LoadedMap,work);
         var before=WorkStorageSplits.Current(entry,work);var input=CarriedMergePhysical(pawn,cargo);
         var prior=work.Events.Take(state.Sequence).Any(e=>e.StorageSplitV19?.Carried==input||e.StorageContinuationV20?.Carried==input);
-        if(!prior||requested!=input.Count||!entry.StorageV7.Cells.Contains(cell))return state;
+        if(!prior||requested<=0||requested>input.Count||!entry.StorageV7.Cells.Contains(cell))return state;
         var matches=before.Where(p=>p.Cell==cell&&p.Def==input.Def&&p.Stuff==input.Stuff).ToArray();string action;string target=null;
         if(matches.Length==1)
         {
             var actual=r.LoadedMap.Things.Single(p=>p!=null&&p.GetUniqueLoadID()==matches[0].Id);
-            if(matches[0].HitPoints!=input.HitPoints||matches[0].Quality!=input.Quality||(long)matches[0].Count+input.Count>cargo.def.stackLimit||actual.GetType()!=cargo.GetType()||actual.def!=cargo.def||(actual as ThingWithComps)?.AllComps.Count>0||(cargo as ThingWithComps)?.AllComps.Count>0)return state;
+            if(matches[0].HitPoints!=input.HitPoints||matches[0].Quality!=input.Quality||(long)matches[0].Count+requested>cargo.def.stackLimit||actual.GetType()!=cargo.GetType()||actual.def!=cargo.def||(actual as ThingWithComps)?.AllComps.Count>0||(cargo as ThingWithComps)?.AllComps.Count>0)return state;
             foreach(var type in new[]{typeof(Thing),actual.GetType()})foreach(var name in new[]{nameof(Thing.CanStackWith),nameof(Thing.TryAbsorbStack)})
             {
                 var method=AccessTools.Method(type,name);if(method==null||method.Module.Assembly!=typeof(Thing).Assembly||Harmony.GetPatchInfo(method)?.Owners.Any()==true)throw new ArgumentException("Known original restack dispatch required.");
             }
-            ResidentActiveWork.Known(typeof(ThingUtility),"TryAbsorbStackNumToTake");action="merge";target=matches[0].Id;
+            ResidentActiveWork.Known(typeof(ThingUtility),"TryAbsorbStackNumToTake");action=requested<input.Count?"partial-merge":"merge";target=matches[0].Id;
         }
-        else if(matches.Length==0&&r.LoadedMap.Things.Any(p=>ReferenceEquals(p,cargo))&&!before.Any(p=>p.Id==input.Id))action="put";
+        else if(requested==input.Count&&matches.Length==0&&r.LoadedMap.Things.Any(p=>ReferenceEquals(p,cargo))&&!before.Any(p=>p.Id==input.Id))action="put";
         else return state;
         string calls=WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5).BaseCalls;
-        r.WorkProgressV1=WorkProgress.BindStorageContinuation(t,r.WorkProgressV1,new(entry.Original,ContinuationPrevious(entry),action,before,input,target,cell,requested,calls));return state with{MergeCargo=cargo};
+        r.WorkProgressV1=WorkProgress.BindStorageContinuation(t,r.WorkProgressV1,new(entry.Original,ContinuationPrevious(entry),action,before,input,target,cell,requested,calls){QuantityV21=action=="partial-merge"?1:null});return state with{MergeCargo=cargo};
     }
     private static WorkStorageContinuation FinishStorageContinuation(TerritoryTransferReference r,WorkProgressEvent ev,WorkObservationState state,int? taken,bool? placed)
     {
@@ -42,7 +43,14 @@ public sealed partial class TerritoryAdministrationLedger
         var pawn=r.Residents.Pawns.Single(p=>p!=null&&p.GetUniqueLoadID()==ev.Actor);var shelf=r.LoadedMap.Things.Single(p=>p!=null&&p.GetUniqueLoadID()==start.Shelf) as Building_Storage;
         if(shelf==null)throw new ArgumentException("Same continuation shelf required.");
         NeutralMapThing carried=null;
-        if(start.Action=="take")
+        if(start.Action=="split")
+        {
+            if(!taken.HasValue||taken<=0||taken>start.Requested||taken>=start.Input.Count)throw new ArgumentException("Positive explicitly partial continuation pickup required.");
+            var cargo=pawn.carryTracker.CarriedThing;
+            if(cargo==null||r.LoadedMap.Things.Any(p=>ReferenceEquals(p,cargo)))throw new ArgumentException("Distinct native split reference required.");
+            carried=CarriedMergePhysical(pawn,cargo);
+        }
+        else if(start.Action=="take")
         {
             if(taken!=start.Input.Count)throw new ArgumentException("Exact whole remainder pickup return required.");
             var original=r.LoadedMap.Things.Single(p=>p!=null&&p.GetUniqueLoadID()==start.Input.Id);carried=CarriedMergePhysical(pawn,original);
@@ -50,6 +58,7 @@ public sealed partial class TerritoryAdministrationLedger
         else
         {
             if(placed!=true||state.MergeCargo?.GetUniqueLoadID()!=start.Input.Id)throw new ArgumentException("Exact same-call original carried witness and true placement return required.");
+            if(start.Action=="partial-merge")carried=CarriedMergePhysical(pawn,state.MergeCargo);
             if(start.Action=="merge"&&(!state.MergeCargo.Destroyed||state.MergeCargo.Spawned||state.MergeCargo.holdingOwner!=null))throw new ArgumentException("Restack must positively destroy the same input through native absorption.");
             if(start.Action=="put"&&(!state.MergeCargo.Spawned||state.MergeCargo.Map!=r.LoadedMap.Map||!r.LoadedMap.Things.Any(p=>ReferenceEquals(p,state.MergeCargo))))throw new ArgumentException("Same original whole-picked object must actually return to the map.");
         }
@@ -60,7 +69,15 @@ public sealed partial class TerritoryAdministrationLedger
     {
         var work=WorkProgress.Validate(t,progress);var row=work.Events[sequence].StorageContinuationV20;if(row==null)return(document,refs);
         string next=WorkAssetResolutions.AppendContinuation(t,progress,document,sequence);var entry=WorkAssetResolutions.Validate(t,progress,next).Entries.Single(p=>p.Original==row.Shelf);var reference=refs.Single(p=>p.Original==row.Shelf);
+        var nextRefs=refs;
+        if(row.Action=="split")
+        {
+            var pawn=r.Residents.Pawns.Single(p=>p!=null&&p.GetUniqueLoadID()==work.Events[sequence].Actor);var cargo=pawn.carryTracker.CarriedThing;
+            if(cargo?.GetUniqueLoadID()!=row.Carried.Id)throw new ArgumentException("Same positive continuation split reference required.");
+            reference=new WorkAssetReferenceV5{Original=reference.Original,Actual=reference.Actual,WorktableBillsV6=reference.WorktableBillsV6,StorageContentsV7=reference.StorageContentsV7,StorageProgressV11=reference.StorageProgressV11,SplitCargoV19=reference.SplitCargoV19,QuantityCargoV21=(reference.QuantityCargoV21??[]).Append(cargo).ToList()};
+            nextRefs=refs.ToList();nextRefs[nextRefs.FindIndex(p=>p.Original==row.Shelf)]=reference;
+        }
         if(ResolutionPhysical(reference.Actual,r.LoadedMap.Map)!=entry.Physical||ResolutionAsset(r,reference.Actual,entry.Asset.Repair!=null,entry.Returned?r.Target:r.From)!=entry.Asset)throw new ArgumentException("Same original continuation property and independently known owner required.");
-        VerifyResolutionStorage(reference,entry,reference.Actual,r.LoadedMap,work);return(next,refs);
+        VerifyResolutionStorage(reference,entry,reference.Actual,r.LoadedMap,work);return(next,nextRefs);
     }
 }

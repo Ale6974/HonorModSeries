@@ -12,7 +12,7 @@ public sealed class DiplomacyMod : Mod
 {
     public DiplomacyMod(ModContentPack content) : base(content)
     {
-        new Harmony("honor.series.diplomacy").PatchAll();
+        new Harmony("honor.series.diplomacy").PatchAll(typeof(DiplomacyMod).Assembly);
         HonorApi.AdditionalParticipantValidators.Add(p => p.Map?.Parent is HonorDelegation site && !site.Resolved && site.Representative == p);
         HonorApi.DuelEnded += d => {
             // The challenger may already be despawned when Core cancels the match.

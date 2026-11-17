@@ -25,7 +25,7 @@ public sealed class OathsMod : Mod
 {
     public OathsMod(ModContentPack content) : base(content)
     {
-        new Harmony("honor.series.oaths").PatchAll();
+        new Harmony("honor.series.oaths").PatchAll(typeof(OathsMod).Assembly);
         HonorApi.InsultOccurred += (p, _) => Current.Game?.GetComponent<OathLedger>().Insult(p);
         HonorApi.DuelEnded += d => {
             if (d.Winner != null && !d.DishonorApplied) Current.Game.GetComponent<OathLedger>().Victory(d.Beneficiary(d.Winner));

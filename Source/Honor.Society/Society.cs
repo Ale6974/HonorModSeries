@@ -10,7 +10,7 @@ public sealed class SocietyMod : Mod
 {
     public SocietyMod(ModContentPack content) : base(content)
     {
-        new Harmony("honor.series.society").PatchAll();
+        new Harmony("honor.series.society").PatchAll(typeof(SocietyMod).Assembly);
         HonorApi.PendingDelayTicks = Math.Max(HonorApi.PendingDelayTicks, 600);
         HonorApi.InsultOccurred += (a, b) => b.Map?.GetComponent<SocialLedger>().Insult(a, b);
         HonorApi.DuelEnded += d => (d.Winner?.Map ?? d.Challenger?.Map)?.GetComponent<SocialLedger>().DuelEnded(d);

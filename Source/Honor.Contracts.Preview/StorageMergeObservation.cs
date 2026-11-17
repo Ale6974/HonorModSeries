@@ -21,11 +21,12 @@ public sealed partial class TerritoryAdministrationLedger
         var r=references.Single(p=>p.Id==state.Transfer);var t=Ledger.Transfer(r.Id);var work=WorkProgress.Validate(t,r.WorkProgressV1);var ev=work.Events.Last();
         if(work.Version!=3||ev.Sequence!=state.Sequence||ev.BodyReturned.HasValue||ev.Actor!=pawn.GetUniqueLoadID()||pawn.Map!=r.LoadedMap.Map||r.LoadedMap.AssetJournal==null||!cell.InBounds(pawn.Map))return state;
         ResidentActiveWork.Known(typeof(Pawn_CarryTracker),"get_CarriedThing");
-        var cargo=pawn.carryTracker.CarriedThing;if(cargo==null||cargo.def.category!=ThingCategory.Item||count!=cargo.stackCount||ev.Inputs.Length!=1||ev.Inputs[0]!=cargo.GetUniqueLoadID())return state;
+        var cargo=pawn.carryTracker.CarriedThing;if(cargo==null||cargo.def.category!=ThingCategory.Item||count<=0||count>cargo.stackCount||ev.Inputs.Length!=1||ev.Inputs[0]!=cargo.GetUniqueLoadID())return state;
         var carried=CarriedMergePhysical(pawn,cargo);var map=LoadedMapPreservation.Restore(t.LoadedMap);int index=pawn.Map.cellIndices.CellToIndex(cell);
         var scope=map.Storage?.SingleOrDefault(s=>s.Cells.Contains(index));if(scope==null)return state;
         var saved=r.WorkAssetResolutionV5==null?null:WorkAssetResolutions.Validate(t,r.WorkProgressV1,r.WorkAssetResolutionV5);var entry=saved?.Entries.SingleOrDefault(e=>e.Original==scope.Id);
         if(entry?.StorageSplitsV19!=null)return StageStorageContinuationPlace(state,t,r,pawn,cargo,index,count,entry,work);
+        if(count!=cargo.stackCount)return state;
         if(entry==null?ev.StorageOriginsV12?.Stores.Any(p=>p.Id==scope.Id)!=true:entry.StorageMergeEventsV17==null)return state;
         var shelf=r.LoadedMap.Things.SingleOrDefault(p=>p!=null&&p.GetUniqueLoadID()==scope.Id) as Building_Storage;
         if(shelf==null||JsonSerializer.Serialize(StorageMapEvidence.CaptureOwned(shelf,pawn.Map))!=JsonSerializer.Serialize(scope))throw new ArgumentException("Same original ungrouped merge shelf scope required.");

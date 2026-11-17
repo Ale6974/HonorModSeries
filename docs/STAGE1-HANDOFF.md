@@ -1,4 +1,13 @@
-# 1단계 개발 인수인계 — 0.3.122 / 2026-11-15
+# 1단계 개발 인수인계 — 0.3.123 / 2026-11-18
+
+## 0.3.123 — 추가 분할·지정 수량 부분 합치기의 실제 연결
+
+[실행·저장·중단 복구 및 설치 API 제한](M2-PARTS-AUDIT-0.3.123.md). 새 명시 QuantityV21은 기존 V19/V20 원 이력에서 추가 분할·부분 합치기를 이어간다. 새 운반 조각의 별도 reference-only Scribe, 같은 운반 원 객체 잔량·원 선반 증가량, native 정상 반환·최신 full-party 동의·실제 인계·최종 receipt/명시 복구를 연결한다. 원 기록/과거 호출 승인 prefix를 교체하거나 집기·합치기/생성·수량 setter를 복구에서 실행하지 않는다.
+
+현재 설치가 1.7.5011 rev24로 변경됨을 확인했다(DLL SHA 7FBCE7A5B2A26CAC500150D3CFF408CDBBD8F1797456BC741252E44C2D27BDC4). 기존5005 실행 whitelist는 유지하며 5011 권한을 열지 않는다. 빌드 호환과 실제 native body 승인 범위는 별개다. M2.4 전체는 미완료: capacity-limited 자동 부분 합치기/일반 ground·복합 holder/stock protocol 혼합/comp·UFT·시설·역할/개인 권리·부모/follower/정치/후손 조립이 남았다. M1 10/10,M2 0/18,전체10/100 유지; 과거 노력 %는 현재 완료율이 아니다. Preview Steam/자동 예약 없음.
+
+
+최종 검사·설치: 양 타깃 전체 build 및 최종 native compile 경고/오류0. Honor20093/Contracts6206/ENKO628, XML/두 runtime allowlist/패키지 검사 통과. 패키지 `artifacts/HonorModSeries-0.2.2-with-Contracts-0.3.123.zip` SHA256 `820FCA585972EB6B12B4811938C59E07426D85B9F1F7E344CACB0A31C67FE435`. 기존 다섯 모듈은 `.local/install-20261118-023307-774a4f82`, Preview는 `.local/contracts-preview-cc3d92894d9140a2b47146d96ccf1cfc`에 백업 후 설치했다. 다섯 모듈 전체 파일/Preview32파일 일치, ModsConfig/Prefs activation·language hash 불변. 설치된5011에 대한 work/royal native whitelist를 열지 않았다는 제한은 유지한다. 다음 착수점은5011 전체 body 감사와 capacity-limited 자동 부분 merge/다른 stock protocol 조립이며, 원 이력·unknown calls는 보존한다.
 
 ## 0.3.122 — 부분 집기 후 전량 집기·같은 선반 재합치기·원 물품 되놓기
 
