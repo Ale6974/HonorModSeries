@@ -1,5 +1,18 @@
 using Honor.Contracts.Rules;
 
+if (args.Length != 0)
+{
+    int selected = args switch
+    {
+        ["--feature", "hauling"] => WorkProgressTests.Run(),
+        ["--feature", "independence"] => LawfulExitPreparationTests.Run() + LawfulAdmissionTests.Run()
+            + LawfulAdmissionHistoryTests.Run() + LawfulFollowerMigrationTests.Run(),
+        _ => throw new ArgumentException("Use --feature hauling or --feature independence, or omit arguments for the full suite.")
+    };
+    Console.WriteLine($"PASS: {args[1]} ({selected} assertions).");
+    return;
+}
+
 int assertions = 0;
 void Check(bool condition, string name)
 {

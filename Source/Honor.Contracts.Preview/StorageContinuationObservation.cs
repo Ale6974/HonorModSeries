@@ -19,7 +19,7 @@ public sealed partial class TerritoryAdministrationLedger
     {
         var reference=r.WorkAssetReferencesV5.Single(p=>p.Original==entry.Original);VerifyResolutionStorage(reference,entry,reference.Actual,r.LoadedMap,work);
         var before=WorkStorageSplits.Current(entry,work);var input=CarriedMergePhysical(pawn,cargo);
-        var prior=work.Events.Take(state.Sequence).Any(e=>e.StorageSplitV19?.Carried==input||e.StorageContinuationV20?.Carried==input);
+        var prior=WorkStorageContinuations.MatchesLatestCargo(work,state.Sequence,input);
         if(!prior||requested<=0||requested>input.Count||!entry.StorageV7.Cells.Contains(cell))return state;
         var matches=before.Where(p=>p.Cell==cell&&p.Def==input.Def&&p.Stuff==input.Stuff).ToArray();string action;string target=null;
         if(matches.Length==1)

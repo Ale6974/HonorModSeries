@@ -744,6 +744,7 @@ internal static class WorkProgressTests
             quantityProgress=WorkProgress.Begin(mx,quantityProgress,"haul-place","worker",id,["quantityCargo"],next,tick+1,qg);
             bool partial=i<2;var qs=new WorkStorageContinuation("zShelf",sequence-1,partial?"partial-merge":"merge",quantityAfter,quantityCarried,"grain",4,1,mxa){QuantityV21=partial?1:null};
             if(partial)Reject(()=>WorkProgress.BindStorageContinuation(mx,quantityProgress,qs with{QuantityV21=null}));
+            if(i==1)Reject(()=>WorkProgress.BindStorageContinuation(mx,quantityProgress,qs with{Input=quantityOutput.Carried}));
             quantityProgress=WorkProgress.BindStorageContinuation(mx,quantityProgress,qs);string quantityBeforeReturn=quantityProgress;
             Reject(()=>WorkAssetResolutions.AppendContinuation(mx,quantityBeforeReturn,quantityDoc,sequence));
             quantityProgress=WorkProgress.ObservePlacementReturn(mx,quantityProgress,sequence,tick+1,true);

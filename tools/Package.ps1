@@ -2,6 +2,7 @@ param([string]$Destination, [switch]$IncludeContractsPreview)
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path $PSScriptRoot -Parent
 if (!$Destination) { $Destination = Join-Path $repoRoot 'artifacts/HonorModSeries-0.2.2.zip' }
+& (Join-Path $PSScriptRoot 'Test-Translations.ps1')
 & (Join-Path $PSScriptRoot 'Test-PackageLayout.ps1')
 $stage = Join-Path $repoRoot ('artifacts/package-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $stage -Force | Out-Null

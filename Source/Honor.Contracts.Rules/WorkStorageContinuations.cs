@@ -8,6 +8,19 @@ public sealed record WorkStorageContinuation(string Shelf,int Previous,string Ac
 }
 public static class WorkStorageContinuations
 {
+    public static bool MatchesLatestCargo(WorkProgressSave work, int sequence, NeutralMapThing input)
+    {
+        for (int i = sequence - 1; i >= 0; i--)
+        {
+            var step = work.Events[i];
+            if (step.Removed?.Contains(input.Id) == true) return false;
+            var carried = step.StorageContinuationV20?.Carried ?? step.StorageSplitV19?.Carried;
+            if (carried?.Id == input.Id) return carried == input;
+            if (step.Kind == "haul-place" && step.Inputs.Contains(input.Id) && step.PlacementResultV4 == true)
+                return false;
+        }
+        return false;
+    }
     public static void Check(TerritoryTransfer t,LoadedMapScope map,WorkProgressSave work,int sequence)
     {
         var ev=work.Events[sequence];var row=ev.StorageContinuationV20;if(row==null)return;
@@ -26,7 +39,7 @@ public static class WorkStorageContinuations
         }
         else
         {
-            if(row.Input.Cell!=-1||row.Input.Count<=0||(quantity?row.Requested<=0||row.Requested>=row.Input.Count:row.Requested!=row.Input.Count)||!scope.Cells.Contains(row.Cell)||row.Before.Any(p=>p.Id==row.Input.Id)||!work.Events.Take(sequence).Any(e=>e.StorageSplitV19?.Carried==row.Input||e.StorageContinuationV20?.Carried==row.Input))throw new ArgumentException("Exact previously observed carried input required; no replacement adoption.");
+            if(row.Input.Cell!=-1||row.Input.Count<=0||(quantity?row.Requested<=0||row.Requested>=row.Input.Count:row.Requested!=row.Input.Count)||!scope.Cells.Contains(row.Cell)||row.Before.Any(p=>p.Id==row.Input.Id)||!MatchesLatestCargo(work,sequence,row.Input))throw new ArgumentException("Exact previously observed carried input required; no replacement adoption.");
             if(row.Action is "merge" or "partial-merge")
             {
                 var target=row.Before.SingleOrDefault(p=>p.Id==row.Target);
