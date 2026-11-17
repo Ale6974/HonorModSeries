@@ -128,7 +128,9 @@ public sealed partial class TerritoryAdministrationLedger
             var city = Charters.Binding(e.Observation.Territory).Settlement;
             var target = Find.FactionManager.AllFactionsListForReading.Single(f => f.GetUniqueLoadID() == original.Target);
             var record = ResidentExecution.CaptureForTransfer(city); record.PrepareCareJournal(city.Faction, target, city);
-            if (record.Set().Proof != e.Observation.ResidentProof) throw new ArgumentException("Original complete resident review changed.");
+            if (record.Set().Proof != e.Observation.ResidentProof ||
+                record.LoadedMapScope != e.Observation.LoadedMap)
+                throw new ArgumentException("Resident roster or original map changed during lawful independence review.");
             rows.Add(new(e.Charter, record.Census));
         }
         return rows.Count == 0 ? null : JsonSerializer.Serialize(rows);
