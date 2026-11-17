@@ -169,7 +169,11 @@ public sealed partial class TerritoryAdministrationLedger
             if (!pending) continue;
             if (rows.Any(t => t.Phase is TerritoryTransferPhase.Prepared or TerritoryTransferPhase.Applied)) continue;
             var city = Charters.Binding(census.Town).Settlement;
-            var fresh = ResidentExecution.CaptureScoped(city, census.Profile, LawfulAdmissions.OriginalMap(intent, scope.Charter));
+            var originalMap = LawfulAdmissions.OriginalMap(intent, scope.Charter);
+            var currentMap = city.HasMap ? LoadedMapRecords.Capture(city).Snapshot : null;
+            if (currentMap != originalMap)
+                throw new ArgumentException("Unstarted lawful resident map changed since approval.");
+            var fresh = ResidentExecution.CaptureScoped(city, census.Profile, currentMap);
             if (city.Faction?.GetUniqueLoadID() != census.Source || fresh.Profile != census.Profile || fresh.Set().Export() != census.Residents)
                 throw new ArgumentException("Unstarted lawful resident scope changed; do not silently rebase original medical evidence.");
         }
