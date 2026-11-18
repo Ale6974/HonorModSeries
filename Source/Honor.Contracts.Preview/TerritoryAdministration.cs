@@ -351,7 +351,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (standaloneWork && !transition.Journal.Pending && c.Purpose==TerritoryTransferPurpose.ActiveCharter && stagedPhysical.Transfer(id).StockFormat==24) stagedPhysical.MarkStandaloneGivenWork(id);
             if (standaloneWork && !transition.Journal.Pending && c.Purpose==TerritoryTransferPurpose.ActiveCharter && stagedPhysical.Transfer(id).StockFormat==25) stagedPhysical.MarkStandaloneActiveWork(id);
             Ledger = stagedPhysical; references.Add(reference);
-            if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof, ResidentCallAuthority(reference));
+            var authority = residents == null ? null : ResidentCallAuthority(reference);
+            if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof, authority);
             if (loaded?.AssetJournal != null)
             {
                 ValidateResidentRecovery(Ledger.Transfer(id), reference);
@@ -376,8 +377,9 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             CityStockPreservation.InvalidateMaterial(c.City);
             if (loaded != null) ValidateMapReference(Ledger.Transfer(id), reference, true);
             if (residents != null) ResidentExecution.Verify(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
-            var finalObservation = Observe(c.City, c.Charter.Terms.Subject, c.Target);
+            var finalObservation = Observe(c.City, c.Charter.Terms.Subject, c.Target, residentProfile: residents?.Profile ?? 7);
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Original game changed before final territory confirmation.");
+            authority?.Invoke();
             Ledger.Confirm(id, finalObservation, Find.TickManager.TicksGame);
             if (residents != null) ResidentExecution.ReleaseReferences(residents);
             if (loaded != null) LoadedMapRecords.Release(loaded);
@@ -520,7 +522,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 else
                 {
                     ValidateResidentRecovery(item, reference);
-                    ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, ResidentCallAuthority(reference));
+                    var authority = ResidentCallAuthority(reference);
+                    ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, authority);
                     if (political.Journal.Pending && political.Journal.Current?.LawfulResidents != null)
                     {
                         political.VerifyLawfulPhysicalRecovery();
@@ -545,6 +548,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     ResidentExecution.Verify(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
                     var finalObservation = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents.Profile);
                     if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Original game changed before recovered territory confirmation.");
+                    authority?.Invoke();
                     Ledger.Confirm(id, finalObservation, Find.TickManager.TicksGame);
                 }
                 ResidentExecution.ReleaseReferences(reference.Residents);
@@ -577,10 +581,11 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
     {
         if (item.Phase != TerritoryTransferPhase.Prepared || reference.City.Faction != reference.From && reference.City.Faction != reference.Target) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         ValidateResidentRecovery(item, reference);
+        var authority = ResidentCallAuthority(reference);
         if (reference.Residents != null)
         {
             ResidentExecution.ValidateCensus(reference.Residents, reference.ResidentCensusProof, item.Territory, item.FromOwner, item.TargetOwner);
-            ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, ResidentCallAuthority(reference));
+            ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, authority);
         }
         MapAssetRecords.Apply(reference);
         ValidateResidentRecovery(item, reference);
@@ -601,6 +606,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (reference.Residents != null) ResidentExecution.Verify(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof);
         var final = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents?.Profile ?? 7);
         if (Current.Game != game || Current.ProgramState != ProgramState.Playing) throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        authority?.Invoke();
         Ledger.Confirm(item.Id, final, Find.TickManager.TicksGame);
         if (reference.Residents != null) ResidentExecution.ReleaseReferences(reference.Residents);
         if (reference.LoadedMap != null) LoadedMapRecords.Release(reference.LoadedMap);
