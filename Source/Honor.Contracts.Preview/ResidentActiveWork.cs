@@ -34,7 +34,9 @@ internal static class ResidentActiveWork
         var methods = AccessTools.GetDeclaredMethods(type).Where(m => m.Name == name).ToArray();
         bool reviewedHaulRead = NativeTransferBodies.Installed5011 &&
             (type == typeof(Pawn_CarryTracker) && name is "ExposeData" or "get_CarriedThing" ||
-             (type == typeof(JobQueue) || type == typeof(QueuedJob)) && name == "ExposeData");
+             type == typeof(Job) && name is "ExposeData" or "GetUniqueLoadID" ||
+             type == typeof(JobDriver_HaulToCell) && name is "ExposeData" or "MakeNewToils" ||
+             (type == typeof(JobQueue) || type == typeof(QueuedJob) || type == typeof(JobDriver) || type == typeof(Pawn_JobTracker)) && name == "ExposeData");
         if ((!NativeTransferBodies.WorkObservationBodies && !reviewedHaulRead) || type.Assembly != typeof(Pawn).Assembly || methods.Length == 0 || methods.Any(m => Harmony.GetPatchInfo(m)?.Owners.Any() == true))
             throw new ArgumentException("Unreviewed native work boundary: " + type.Name + "." + name);
     }
@@ -328,11 +330,12 @@ internal static class ResidentActiveWork
     {
         if (record.Profile != 16) { if (record.ActiveWorkJobs != null || record.ActiveWorkTrees != null || record.ActiveWorkCarry != null) throw new ArgumentException("Old clinical scope cannot acquire active work references."); return; }
         var original = LoadedMapPreservation.Restore(record.LoadedMapScope).ActiveWorkV1;
-        var current = record.Pawns.Where(p => p.CurJob != null).Select(Capture).ToArray();
-        if (original == null || JsonSerializer.Serialize(current) != JsonSerializer.Serialize(original) || record.ActiveWorkJobs == null ||
-            !record.ActiveWorkJobs.SequenceEqual(record.Pawns.Where(p => p.CurJob != null).SelectMany(Jobs)) || record.ActiveWorkTrees == null ||
+        var working = record.Pawns.Where(p => p.CurJob != null).ToArray();
+        if (original == null || record.ActiveWorkJobs == null ||
+            !record.ActiveWorkJobs.SequenceEqual(working.SelectMany(Jobs)) || record.ActiveWorkTrees == null ||
             !record.ActiveWorkTrees.SequenceEqual(record.ActiveWorkJobs.Select(j => j.jobGiverThinkTree).Where(t => t != null).Distinct().OrderBy(t => t.defName, StringComparer.Ordinal)) || record.ActiveWorkCarry == null ||
-            !record.ActiveWorkCarry.SequenceEqual(record.Pawns.Select(CarriedReference).Where(t => t != null)))
+            !record.ActiveWorkCarry.SequenceEqual(record.Pawns.Select(CarriedReference).Where(t => t != null)) ||
+            JsonSerializer.Serialize(working.Select(Capture).ToArray()) != JsonSerializer.Serialize(original))
             throw new ArgumentException("Original work changed/progressed; retain its journals, never reset/restart.");
     }
 }
