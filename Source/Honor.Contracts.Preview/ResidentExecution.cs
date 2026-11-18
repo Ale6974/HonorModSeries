@@ -133,7 +133,7 @@ internal static partial class ResidentExecution
     }
     private static void Eligible(Pawn p, int profile, bool retainedLeader = false, bool enrollment = false)
     {
-        if (profile == 16) { if (!NativeTransferBodies.WorkObservationBodies) throw new ArgumentException("Unreviewed active work bodies."); if (p.CurJob != null) _ = ResidentActiveWork.Capture(p); }
+        if (profile == 16) { if (!ResidentActiveWork.CanSurvey(p)) throw new ArgumentException("Unreviewed active work bodies."); if (p.CurJob != null) _ = ResidentActiveWork.Capture(p); }
         if (profile is 14 or 15) { if (!NativeTransferBodies.WorkObservationBodies) throw new ArgumentException("Unreviewed native ongoing-work bodies."); _ = ResidentGroundRest.Capture(p, profile == 15); }
         if (profile == 13 && !NativeTransferBodies.RoyalCustodyBodies) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (profile == 12 && (!NativeTransferBodies.RoyalCustodyBodies || p == null || p.Spawned || p.IsPrisoner || p.Downed)) throw new ArgumentException("New world royal clinical scope only.");

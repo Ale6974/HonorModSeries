@@ -296,12 +296,14 @@ internal static class ResidentActiveWork
         // Cross-claimant list order is not a reservation right; each claimant's original order IS.
         return rows.OrderBy(r => r.Pawn.GetUniqueLoadID(), StringComparer.Ordinal).ThenBy(r => r.Order).Select(r => new { Pawn = r.Pawn.GetUniqueLoadID(), Job = r.Job.GetUniqueLoadID(), Cell = map.cellIndices.CellToIndex(r.Cell), r.Obsolete, r.Order }).ToArray();
     }
+    internal static bool CanSurvey(Pawn pawn) => NativeTransferBodies.WorkObservationBodies ||
+        NativeTransferBodies.Installed5011 && pawn?.jobs?.curJob?.def == JobDefOf.HaulToCell &&
+        pawn?.jobs?.curDriver?.GetType() == typeof(JobDriver_HaulToCell);
+
     internal static ActiveWorkRow Capture(Pawn pawn)
     {
         if (pawn?.jobs?.curJob == null) return null;
-        bool installedHaul = NativeTransferBodies.Installed5011 && pawn.jobs.curJob.def == JobDefOf.HaulToCell &&
-            pawn.jobs.curDriver?.GetType() == typeof(JobDriver_HaulToCell);
-        if ((!NativeTransferBodies.WorkObservationBodies && !installedHaul) || pawn.jobs.GetType() != typeof(Pawn_JobTracker) || !pawn.Spawned || pawn.jobs.startingNewJob ||
+        if (!CanSurvey(pawn) || pawn.jobs.GetType() != typeof(Pawn_JobTracker) || !pawn.Spawned || pawn.jobs.startingNewJob ||
             pawn.jobs.curDriver == null || !DriverSupported(pawn.jobs.curDriver.GetType()) || pawn.jobs.curDriver.GetType() != pawn.jobs.curJob.def?.driverClass || pawn.jobs.curDriver.job != pawn.jobs.curJob || pawn.jobs.curDriver.pawn != pawn ||
             pawn.jobs.curDriver.ended || Raw(pawn.pather, typeof(Pawn_PathFollower), "curPathRequest") != null) throw new ArgumentException("Original native hauling driver without an in-flight path request required.");
         Known(typeof(JobDriver_HaulToCell), "ExposeData"); Known(typeof(JobDriver_HaulToCell), "MakeNewToils"); Known(typeof(JobDriver), "ExposeData");

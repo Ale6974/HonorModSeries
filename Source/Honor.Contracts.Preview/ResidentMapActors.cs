@@ -100,7 +100,7 @@ internal static class ResidentMapActors
     internal static void RequireEnrollment(Pawn p) => RequireCore(p, true);
     private static void RequireCore(Pawn p, bool enrollment, bool groundRest = false, bool givenWork = false, bool activeWork = false)
     {
-        if (!AuditedModules.Contains(typeof(Pawn).Module.ModuleVersionId)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        if (!AuditedModules.Contains(typeof(Pawn).Module.ModuleVersionId) && !(activeWork && !enrollment && ResidentActiveWork.CanSurvey(p))) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (p?.Spawned != true || p.Map?.Parent is not Settlement city || p.Map.IsPlayerHome || !Find.Maps.Contains(p.Map) ||
             city.previouslyGeneratedInhabitants == null || (!enrollment && city.previouslyGeneratedInhabitants.Count(x => ReferenceEquals(x, p)) != 1) ||
             p.IsPrisoner || p.IsSlave || p.Drafted || !groundRest && !activeWork && p.CurJob != null || p.jobs == null || !groundRest && !activeWork && p.jobs.curDriver != null || !activeWork && p.jobs.jobQueue.Count != 0 || p.jobs.startingNewJob ||
@@ -109,7 +109,7 @@ internal static class ResidentMapActors
             p.health?.surgeryBills?.Count != 0 || p.AllComps.Any(c => c is IThingHolder) ||
             p.inventory?.innerContainer.Any(t => t is IThingHolder || t is ThingWithComps c && c.AllComps.Any(x => x is IThingHolder)) == true)
             throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
-        if (activeWork) { if (!NativeTransferBodies.WorkObservationBodies) throw new ResidentMoveBlocked("RE_MapResidentUnavailable"); if (p.CurJob != null) _ = ResidentActiveWork.Capture(p); }
+        if (activeWork) { if (!ResidentActiveWork.CanSurvey(p)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable"); if (p.CurJob != null) _ = ResidentActiveWork.Capture(p); }
         if (groundRest && p.CurJob != null) _ = ResidentGroundRest.Capture(p, givenWork);
         if (NativeTransferBodies.ExtendedReadBodies && !activeWork)
         {
