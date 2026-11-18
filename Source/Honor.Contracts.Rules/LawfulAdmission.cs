@@ -3,7 +3,11 @@ using System.Text.Json;
 
 namespace Honor.Contracts.Rules;
 
-public sealed record LawfulResidentScope(string Charter, string Census);
+public sealed record LawfulResidentScope(string Charter, string Census)
+{
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string HaulMapProof { get; init; }
+}
 
 /// <summary>Original lawful closure and explicit complete follower scope; legacy empty-town modes never gain resident authority.</summary>
 public static class LawfulAdmissions
@@ -52,13 +56,18 @@ public static class LawfulAdmissions
             var entry = entries.SingleOrDefault(e => e.Charter == row.Charter);
             Require(entry != null, "Unreviewed resident town.");
             var census = ResidentTransferCensus.Restore(row.Census); var residents = ResidentMoveSet.Restore(census.Residents);
-            Require(census.Town == entry.Observation.Territory && census.Source == entry.Observation.Owner && census.Target == scope.Target && census.Profile is 7 or 8 or 9 or 10 or 11 && residents.Proof == entry.Observation.ResidentProof,
+            Require(census.Town == entry.Observation.Territory && census.Source == entry.Observation.Owner && census.Target == scope.Target && census.Profile is 7 or 8 or 9 or 10 or 11 or 16 && residents.Proof == entry.Observation.ResidentProof,
                 "Original resident town, medical profile or authority changed.");
             var map = entry.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(entry.Observation.LoadedMap);
             var mapped = map?.NativeResidents;
             Require(map?.Visitors == null || !map.Visitors.Select(v => v.Id).Intersect(residents.Residents.Select(r => r.Id)).Any(),
                 "A read-only visitor cannot receive resident transfer authority in the same town.");
-            Require((census.Profile == 11) == (mapped != null) && (mapped == null || mapped.All(r => residents.Residents.Any(p => p.Id == r.Id && p.Preserved == r.Preserved))),
+            if (census.Profile == 16)
+                Require(entry.Observation.StockFormat == 25 && map?.ActiveWorkV1?.Length > 0 &&
+                    row.HaulMapProof == map.Proof && map.WorktablesV1 == null && map.WorkFramesV1 == null,
+                    "Lawful hauling requires its original approved active-work map.");
+            else Require(row.HaulMapProof == null && map?.ActiveWorkV1 == null, "Legacy resident approval cannot authorize hauling.");
+            Require((census.Profile is 11 or 16) == (mapped != null) && (mapped == null || mapped.All(r => residents.Residents.Any(p => p.Id == r.Id && p.Preserved == r.Preserved))),
                 "Mapped residents require the same original clinical profile and map scope.");
             foreach (var r in residents.Residents) Require(ids.Add(r.Id), "Resident shared by original follower towns.");
         }

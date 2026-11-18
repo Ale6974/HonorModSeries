@@ -230,6 +230,16 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(mappedJournal.Current, TerritoryTransferLedger.Restore(mappedPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(mappedJournal.Export()).Current, "child") == mappedScope && mappedPhysical.Transfer("mapped-city").StockFormat == 10,
             "original growing/stockpile zones, shelf group and resident scope remain paired through lawful physical save/restore");
+        var haulingMap = LoadedMapPreservation.CaptureActiveWork(mappedScope, [new("restricted", ["job-haul"], "{}")]);
+        var haulProof = LoadedMapPreservation.Restore(haulingMap).Proof;
+        var haulingTown = mappedTown with { LoadedMap = haulingMap, StockFormat = 25, StockProof = haulProof };
+        var haulPlan = FollowerTransfers.Review(after, physical, [new("child", haulingTown), new("deep", actualDeep)], "union", now);
+        var haulPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], haulPlan.Moves);
+        var haulApproval = new LawfulResidentScope("child", ResidentTransferCensus.Prepare("town", "realm", "union", 16, mappedSet)) { HaulMapProof = haulProof };
+        var haulJournal = new AllegianceTransitionLedger();
+        haulJournal.PrepareLawfulResidentAdmission("haul", politics, command, haulPlan, physical, closure, haulPeace, [haulApproval]);
+        Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(haulJournal.Export()).Current, "child") == haulingMap, "lawful haul approval survives parent journal restore");
+        Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("missing-haul", politics, command, haulPlan, physical, closure, haulPeace, [haulApproval with { HaulMapProof = null }]), "missing original hauling approval rejected");
         // Visitor-only map custody stays separate from the original saved-world clinical roster.
         string visitorsScope = LoadedMapPreservation.CaptureBystanders(containerScope, [new("visitor", Hash("unchanged-bystander"))]);
         var visitorsTown = containerTown with { LoadedMap = visitorsScope, StockFormat = 11, StockProof = LoadedMapPreservation.Restore(visitorsScope).Proof };

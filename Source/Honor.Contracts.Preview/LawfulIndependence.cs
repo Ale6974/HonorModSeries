@@ -131,7 +131,16 @@ public sealed partial class TerritoryAdministrationLedger
             if (record.Set().Proof != e.Observation.ResidentProof ||
                 record.LoadedMapScope != e.Observation.LoadedMap)
                 throw new ArgumentException("Resident roster or original map changed during lawful independence review.");
-            rows.Add(new(e.Charter, record.Census));
+            var scope = new LawfulResidentScope(e.Charter, record.Census);
+            if (record.Profile == 16)
+            {
+                if (!NativeTransferBodies.HaulFactionBodies5013 || !record.Pawns.All(ResidentActiveWork.CanSurvey))
+                    throw new ArgumentException("Original installed hauling scope required for lawful independence.");
+                NativeWorkFactionCall.Prepare();
+                ResidentActiveWork.Validate(record);
+                scope = scope with { HaulMapProof = LoadedMapPreservation.Restore(record.LoadedMapScope).Proof };
+            }
+            rows.Add(scope);
         }
         return rows.Count == 0 ? null : JsonSerializer.Serialize(rows);
     }
