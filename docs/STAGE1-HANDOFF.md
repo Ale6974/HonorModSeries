@@ -2,6 +2,8 @@
 
 ### 5011 운반 주민 독립 인계 검토
 
+설치 대상 변경 확인: Version.txt는 1.7.5013 rev95, Assembly-CSharp.dll SHA256 C2BCF5F51176F21C959E41CC1F6E98D3F8DF227D1E09B9D21D4FDCDC2525076D, MVID eed7cbb5-7842-4c58-a9c5-47ec50d66c8c. GamePaths.props의 1.7 참조는 이 설치 폴더를 가리킨다. 이후 해당 경로의 빌드는 5013 기준으로 기록한다. 5011 운반 경로는 RequireCore에서 RequireEmptyReservations로 내려갈 때 기존 모듈 목록에 막힌다. 5011 감사 자료와 5013 추출 자료를 구분하고 새 DLL의 쓰기 경로는 별도 검토한다.
+
 5011 기본 HaulToCell 읽기 조건을 ResidentExecution 프로필 16과 ResidentMapActors의 기존 명부 주민 검사에 연결했다. 미등록 주민 및 다른 작업의 권한은 추가하지 않았다. 복구 시 동일 조건과 원 참조를 확인한다. 양쪽 Preview 빌드·운반 343개·독립 103개 규칙·패키지 구성 통과. 다음에는 LoadedMapRecords.Capture와 RequireEmptyReservations의 실제 호출자가 넘기는 모듈 조건부터 확인하고, NativeWorkFactionCall.Prepare 및 부모 계약의 승인·복구를 연결한다.
 
 5011에서 ResidentActiveWork.Capture는 바닐라 HaulToCell 정의와 정확한 JobDriver_HaulToCell의 읽기 경로를 허용한다. 대기열과 예약에서 읽는 다른 Job에도 같은 정의를 요구한다. PriorityWork·DefMap·CompQuality 추출본도 기존 감사본과 일치했다. 양 타깃 빌드, 운반 343개·독립 103개 규칙 및 패키지 구성 통과. 다음 연결은 ResidentExecution과 ResidentMapActors의 프로필 16 임상 검사, NativeWorkFactionCall.Prepare의 쓰기 경계와 부모 계약 복구다.
