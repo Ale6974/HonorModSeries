@@ -456,7 +456,9 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         catch (ArgumentException)
         { Messages.Message("FB_Incomplete".Translate(), MessageTypeDefOf.RejectInput); Find.TickManager.Pause(); }
     }
-    public void Recover(string id)
+    public void Recover(string id) => Recover(id, false);
+    internal void ContinueLawfulHaul(string id) => Recover(id, true);
+    private void Recover(string id, bool continueLawfulHaul)
     {
         if (nativeExecutionDepth != 0) { Reject(); return; }
         var executionGame = Current.Game;
@@ -469,6 +471,13 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (political.Journal.Pending && political.Journal.Current?.LawfulFollowerMigration == true)
                 political.VerifyLawfulPhysicalRecovery();
             var item = Ledger.Transfer(id); var reference = references.Single(r => r.Id == id);
+            if (continueLawfulHaul)
+            {
+                if (!political.Journal.Pending || political.Journal.Current?.LawfulResidents == null ||
+                    item.Phase != TerritoryTransferPhase.Prepared || item.StockFormat != 25 || reference.Residents?.Profile != 16)
+                    throw new ArgumentException("A pending parent-approved hauling handover is required.");
+                CheckLawfulResidentPreparation(item.Charter, reference.Residents);
+            }
             if(reference.CustodyAgreementV1!=null && custodyAgreements.Record(reference.CustodyAgreementV1).Witness.WorkProgressV1!=null){RecoverWorkProgress(item,reference,executionGame);return;}
             if(reference.WorkAssetResolutionV5!=null)throw new ArgumentException("Actual successor property requires separate current resolution approval.");
             if(reference.WorkJobObservationsV4!=null)ValidateWorkObservations(item,reference);
@@ -491,7 +500,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 return;
             }
             var actual = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents?.Profile ?? 3);
-            if (reference.LoadedMap?.AssetJournal != null && (MapAssetTransfers.Started(reference.LoadedMap.AssetJournal) || reference.CityCallStarted || reference.Residents?.Started == true))
+            if (reference.LoadedMap?.AssetJournal != null && (continueLawfulHaul || MapAssetTransfers.Started(reference.LoadedMap.AssetJournal) || reference.CityCallStarted || reference.Residents?.Started == true))
             {
                 RecoverAssets(item, reference, executionGame);
                 return;
@@ -503,7 +512,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 if (item.Phase != TerritoryTransferPhase.Prepared || reference.Residents.Set().Proof != item.ResidentProof ||
                     reference.City.Faction != reference.From && reference.City.Faction != reference.Target)
                     throw new ArgumentException("No matching pending resident execution.");
-                if (!reference.Residents.Started && reference.City.Faction == reference.From)
+                if (!continueLawfulHaul && !reference.Residents.Started && reference.City.Faction == reference.From)
                 {
                     ResidentExecution.ValidateReferences(reference.Residents, reference.City, item.ResidentProof);
                     Ledger.CancelUnmoved(id, actual, Find.TickManager.TicksGame);

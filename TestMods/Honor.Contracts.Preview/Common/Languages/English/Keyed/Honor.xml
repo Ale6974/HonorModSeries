@@ -161,6 +161,7 @@
   <PS_AllegianceApplied>Allegiance recorded; diplomacy or remaining city execution still needs confirmation.</PS_AllegianceApplied>
   <PS_Cancel>Cancel verified unchanged preparation</PS_Cancel>
   <PS_Cancelled>Unchanged transition preparation cancelled; no allegiance or city movement was reversed.</PS_Cancelled>
+  <PS_ContinueLawfulHaul>Continue the approved handover of hauling residents</PS_ContinueLawfulHaul>
   <PS_ReviewResume>Review current destination and remaining towns</PS_ReviewResume>
   <PS_Resume>Reaffirm reviewed diplomacy and resume remaining moves</PS_Resume>
   <PS_DebtsRetained>Old contracts, unpaid bills and receipts remain in their ledgers. Union return or a new liege does not forgive debt. Union levies and unilateral independence are not implemented.</PS_DebtsRetained>

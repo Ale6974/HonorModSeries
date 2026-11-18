@@ -161,6 +161,7 @@
   <PS_AllegianceApplied>소속 기록됨·외교 또는 남은 도시 집행의 확인이 필요합니다.</PS_AllegianceApplied>
   <PS_Cancel>미변경 확인된 전환 준비 취소</PS_Cancel>
   <PS_Cancelled>미변경 전환 준비를 취소했습니다. 적용된 소속이나 도시 이동을 되돌린 것은 아닙니다.</PS_Cancelled>
+  <PS_ContinueLawfulHaul>승인된 운반 주민 인계 계속</PS_ContinueLawfulHaul>
   <PS_ReviewResume>현재 목적지와 남은 도시 재검토</PS_ReviewResume>
   <PS_Resume>검토한 외교 재확인 및 남은 이동 재개</PS_Resume>
   <PS_DebtsRetained>기존 계약·미납 청구·납부 영수증은 각 장부에 남습니다. 연합 복귀나 새 종주 계약이 채무를 면제하지 않습니다. 연합 회비와 일방 독립은 미구현입니다.</PS_DebtsRetained>
