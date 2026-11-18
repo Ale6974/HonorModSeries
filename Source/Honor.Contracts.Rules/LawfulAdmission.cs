@@ -8,11 +8,12 @@ public sealed record LawfulResidentScope(string Charter, string Census);
 /// <summary>Original lawful closure and explicit complete follower scope; legacy empty-town modes never gain resident authority.</summary>
 public static class LawfulAdmissions
 {
-    public static string OriginalMap(AllegianceTransition c, string charter)
+    public static string OriginalMap(AllegianceTransition c, string charter) => OriginalFollowers(c)[charter].LoadedMap;
+    public static IReadOnlyDictionary<string, TerritoryTransferObservation> OriginalFollowers(AllegianceTransition c)
     {
         ValidateIntent(c);
         var scope = JsonSerializer.Deserialize<AdmissionFollowerSource>(c.FollowerReview.Original);
-        return scope.Entries.Single(e => e.Charter == charter).Observation.LoadedMap;
+        return scope.Entries.ToDictionary(e => e.Charter, e => e.Observation, StringComparer.Ordinal);
     }
     private static void Require(bool ok, string why) { if (!ok) throw new ArgumentException(why); }
     private static string Json<T>(T x) => JsonSerializer.Serialize(x);

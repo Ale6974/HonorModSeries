@@ -146,10 +146,12 @@ public sealed partial class TerritoryAdministrationLedger
     internal void ValidateLawfulResidentExecution(AllegianceTransition intent, bool pending)
     {
         if (intent?.LawfulResidents == null) return;
-        LawfulAdmissions.ValidateIntent(intent);
+        var approved = LawfulAdmissions.OriginalFollowers(intent);
         var original = TerritoryTransferLedger.Restore(LawfulExitPreparation.Restore(intent.LawfulExit).BeforeTransfers);
+
         foreach (var scope in JsonSerializer.Deserialize<LawfulResidentScope[]>(intent.LawfulResidents))
         {
+            var observation = approved[scope.Charter];
             var census = ResidentTransferCensus.Restore(scope.Census);
             var candidates = Ledger.Transfers.Skip(original.Transfers.Count).Where(t => t.Charter == scope.Charter && t.PreparedTick >= intent.PreparedTick &&
                 (!intent.FinishedTick.HasValue || t.PreparedTick <= intent.FinishedTick)).ToArray();
@@ -160,6 +162,8 @@ public sealed partial class TerritoryAdministrationLedger
             {
                 var reference = references.SingleOrDefault(r => r.Id == row.Id);
                 if (row.Territory != census.Town || row.FromOwner != census.Source || row.TargetOwner != census.Target || row.Phase == TerritoryTransferPhase.Destroyed ||
+                    row.Purpose != TerritoryTransferPurpose.ActiveCharter || row.ReleasedRoot != null || row.LoadedMap != observation.LoadedMap ||
+                    row.StockFormat != observation.StockFormat || row.StockProof != observation.StockProof || row.ResidentProof != observation.ResidentProof ||
                     reference?.Residents?.Census != scope.Census || reference.ResidentCensusProof != census.Proof || !reference.ResidentCareJournalRequired || !reference.CityCallV1 ||
                     row.Phase == TerritoryTransferPhase.Applied && (!reference.CityCallStarted || !reference.CityCallReturned))
                     throw new ArgumentException("Missing original lawful resident execution/call evidence.");
@@ -169,9 +173,9 @@ public sealed partial class TerritoryAdministrationLedger
             if (!pending) continue;
             if (rows.Any(t => t.Phase is TerritoryTransferPhase.Prepared or TerritoryTransferPhase.Applied)) continue;
             var city = Charters.Binding(census.Town).Settlement;
-            var originalMap = LawfulAdmissions.OriginalMap(intent, scope.Charter);
+
             var currentMap = city.HasMap ? LoadedMapRecords.Capture(city).Snapshot : null;
-            if (currentMap != originalMap)
+            if (currentMap != observation.LoadedMap)
                 throw new ArgumentException("Unstarted lawful resident map changed since approval.");
             var fresh = ResidentExecution.CaptureScoped(city, census.Profile, currentMap);
             if (city.Faction?.GetUniqueLoadID() != census.Source || fresh.Profile != census.Profile || fresh.Set().Export() != census.Residents)
