@@ -1,5 +1,11 @@
 # 1단계 개발 인수인계 — 0.3.123 / 2026-11-18
 
+### 5011 운반 주민 독립 인계 검토
+
+5005 감사본과 5011 설치 DLL에서 같은 ILSpy 버전으로 추출한 클래스 전체 출력의 SHA256을 비교했다. JobDriver_HaulToCell, EnrouteManager, ThingCountTracker, JobDriver, JobQueue, QueuedJob, Pawn_WorkSettings, Pawn_GuestTracker 여덟 클래스가 일치했다. 직전 검토에서는 PawnDestinationReservationManager, PhysicalInteractionReservationManager, Pawn_PathFollower가 일치했다. 원본 비교 자료는 로컬의 .local/m2-105-* 및 .local/5011-review-*에 있다.
+
+독립 계약 프로필 16 연결과 부모 계약에 묶인 도시별 복구는 미완료다. 다음 감사 대상은 Pawn.SetFaction의 동적 구성요소 변경, 수술 목록 삭제와 의료 설정 초기화 이후의 복원 경로다. 위 비교 결과만으로 5011 전체 실행을 허용하지 않는다.
+
 ## 0.3.123 — 추가 분할·지정 수량 부분 합치기의 실제 연결
 
 [실행·저장·중단 복구 및 설치 API 제한](M2-PARTS-AUDIT-0.3.123.md). 새 명시 QuantityV21은 기존 V19/V20 원 이력에서 추가 분할·부분 합치기를 이어간다. 새 운반 조각의 별도 reference-only Scribe, 같은 운반 원 객체 잔량·원 선반 증가량, native 정상 반환·최신 full-party 동의·실제 인계·최종 receipt/명시 복구를 연결한다. 원 기록/과거 호출 승인 prefix를 교체하거나 집기·합치기/생성·수량 setter를 복구에서 실행하지 않는다.
