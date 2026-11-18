@@ -2,6 +2,8 @@
 
 ### 5011 운반 주민 독립 인계 검토
 
+5011의 ResidentActiveWork.Known에서 원본 운반 슬롯과 대기열을 조회하는 기존 코드가 Pawn_CarryTracker.ExposeData/get_CarriedThing과 JobQueue/QueuedJob.ExposeData를 확인할 수 있다. 실행 권한은 별도이며 ResidentActiveWork.Capture의 전체 작업 검사와 LawfulAdmissions.ValidateResidents의 부모 계약 프로필 16 연결이 남았다. 다음에는 이 두 진입점의 운반 전용 조건을 함께 검토한다. 두 타깃 빌드 및 운반 343개·독립 103개 규칙, 패키지 구성 통과.
+
 5011 MVID 71185080-36f8-4a50-863e-e15aba81b822에서 SpawnedRoster의 원본 지도 명부 조회를 허용했다. MapPawns 추출본은 m2-090과 SHA256 FFFDB952656CBB692FB78F42894D1A4596369EC99798307E52EC8F1693F62DE5로 일치한다. Pawn, Thing, ReservationManager, Pawn_MindState, Pawn_CarryTracker도 기존 추출본과 일치했다. 후속 작업은 운반 중 원본 Job을 유지하는 소속 변경과 부모 계약에 묶인 복구 연결이다. 두 Preview 빌드 및 독립 규칙 103개·패키지 구성 검사 통과.
 
 5011의 Notify_FactionChanged는 ResetMedicalCare를 다시 호출한 뒤 allowedAreas를 비운다. ResidentAreaRecords.Read는 이제 두 메서드 각각에 대한 외부 패치를 검사한다. 두 버전 Preview 빌드 경고·오류 0, 독립 규칙 102개, 양 버전 패키지 구성 검사를 통과했다. 이 변경은 의료·영역 기록의 전제조건을 검증한다. 프로필 16의 부모 계약 실행·복구 연결은 남아 있다.

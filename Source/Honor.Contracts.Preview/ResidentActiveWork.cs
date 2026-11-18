@@ -32,7 +32,10 @@ internal static class ResidentActiveWork
     internal static void Known(Type type, string name)
     {
         var methods = AccessTools.GetDeclaredMethods(type).Where(m => m.Name == name).ToArray();
-        if (!NativeTransferBodies.WorkObservationBodies || type.Assembly != typeof(Pawn).Assembly || methods.Length == 0 || methods.Any(m => Harmony.GetPatchInfo(m)?.Owners.Any() == true))
+        bool reviewedHaulRead = NativeTransferBodies.Installed5011 &&
+            (type == typeof(Pawn_CarryTracker) && name is "ExposeData" or "get_CarriedThing" ||
+             (type == typeof(JobQueue) || type == typeof(QueuedJob)) && name == "ExposeData");
+        if ((!NativeTransferBodies.WorkObservationBodies && !reviewedHaulRead) || type.Assembly != typeof(Pawn).Assembly || methods.Length == 0 || methods.Any(m => Harmony.GetPatchInfo(m)?.Owners.Any() == true))
             throw new ArgumentException("Unreviewed native work boundary: " + type.Name + "." + name);
     }
     internal static List<QueuedJob> Queue(Pawn pawn)
