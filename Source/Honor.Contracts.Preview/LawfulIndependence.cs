@@ -152,6 +152,28 @@ public sealed partial class TerritoryAdministrationLedger
         if (expected?.Census != residents?.Census) throw new ArgumentException("Resident execution differs from original lawful admission scope.");
         if (residents != null && residents.LoadedMapScope != LawfulAdmissions.OriginalMap(intent, charter)) throw new ArgumentException("Original lawful resident map scope changed.");
     }
+    private Action ResidentCallAuthority(TerritoryTransferReference reference)
+    {
+        var game = Current.Game;
+        var political = game.GetComponent<PoliticalTransitionLedger>();
+        var parent = political.Journal.Current;
+        bool lawful = political.Journal.Pending && parent?.LawfulResidents != null;
+        if (!lawful && reference.CustodyAgreementV1 == null) return null;
+        return () => {
+            if (Current.Game != game) throw new ArgumentException("Resident transfer belongs to another game.");
+            if (lawful)
+            {
+                if (!political.Journal.Pending || political.Journal.Current != parent)
+                    throw new ArgumentException("Original lawful resident authority changed.");
+                LawfulAdmissions.ValidatePair(parent, Charters.Book, game.GetComponent<TributePaymentLedger>().Ledger,
+                    game.GetComponent<CharterProtectionLedger>().Ledger);
+                LawfulAdmissions.ValidateCurrentPhysical(parent, Ledger);
+                CheckLawfulResidentPreparation(Ledger.Transfer(reference.Id).Charter, reference.Residents);
+                political.VerifyPeace();
+            }
+            if (reference.CustodyAgreementV1 != null) RequireCurrentCustody(reference);
+        };
+    }
     internal void ValidateLawfulResidentExecution(AllegianceTransition intent, bool pending)
     {
         if (intent?.LawfulResidents == null) return;

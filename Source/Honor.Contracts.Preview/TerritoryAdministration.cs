@@ -351,7 +351,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (standaloneWork && !transition.Journal.Pending && c.Purpose==TerritoryTransferPurpose.ActiveCharter && stagedPhysical.Transfer(id).StockFormat==24) stagedPhysical.MarkStandaloneGivenWork(id);
             if (standaloneWork && !transition.Journal.Pending && c.Purpose==TerritoryTransferPurpose.ActiveCharter && stagedPhysical.Transfer(id).StockFormat==25) stagedPhysical.MarkStandaloneActiveWork(id);
             Ledger = stagedPhysical; references.Add(reference);
-            if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof);
+            if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof, ResidentCallAuthority(reference));
             if (loaded?.AssetJournal != null)
             {
                 ValidateResidentRecovery(Ledger.Transfer(id), reference);
@@ -511,7 +511,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 else
                 {
                     ValidateResidentRecovery(item, reference);
-                    ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, reference.CustodyAgreementV1 == null ? null : () => RequireCurrentCustody(reference));
+                    ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, ResidentCallAuthority(reference));
                     if (political.Journal.Pending && political.Journal.Current?.LawfulResidents != null)
                     {
                         political.VerifyLawfulPhysicalRecovery();
@@ -571,7 +571,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (reference.Residents != null)
         {
             ResidentExecution.ValidateCensus(reference.Residents, reference.ResidentCensusProof, item.Territory, item.FromOwner, item.TargetOwner);
-            ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, reference.CustodyAgreementV1 == null ? null : () => RequireCurrentCustody(reference));
+            ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, ResidentCallAuthority(reference));
         }
         MapAssetRecords.Apply(reference);
         ValidateResidentRecovery(item, reference);
