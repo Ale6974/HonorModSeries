@@ -238,6 +238,12 @@ internal static class LawfulFollowerMigrationTests
         var visitorsJournal = new AllegianceTransitionLedger();
         visitorsJournal.PrepareLawfulResidentAdmission("visitors", politics, command, visitorsPlan, physical, closure, visitorsPeace,
             [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 10, mixedSet))]);
+        var overlappingSet = ResidentMoveSet.Capture(mixedSet.Residents.Concat([new ResidentMoveEvidence("visitor", Hash("unchanged-bystander"), 4)]));
+        var overlappingTown = visitorsTown with { ResidentProof = overlappingSet.Proof };
+        var overlappingPlan = FollowerTransfers.Review(after, physical, [new("child", overlappingTown), new("deep", actualDeep)], "union", now);
+        var overlappingPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], overlappingPlan.Moves);
+        Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("overlap", politics, command, overlappingPlan, physical, closure, overlappingPeace,
+            [new("child", ResidentTransferCensus.Prepare("town", "realm", "union", 10, overlappingSet))]), "read-only bystander cannot be included in the same town resident census");
         var visitorsPhysical = TerritoryTransferLedger.Restore(physical.Export());
         visitorsPhysical.PrepareLoadedJournaled("visitors-city", after, "child", visitorsTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
         LawfulAdmissions.ValidateCurrentPhysical(visitorsJournal.Current, visitorsPhysical);

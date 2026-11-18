@@ -53,7 +53,10 @@ public static class LawfulAdmissions
             var census = ResidentTransferCensus.Restore(row.Census); var residents = ResidentMoveSet.Restore(census.Residents);
             Require(census.Town == entry.Observation.Territory && census.Source == entry.Observation.Owner && census.Target == scope.Target && census.Profile is 7 or 8 or 9 or 10 or 11 && residents.Proof == entry.Observation.ResidentProof,
                 "Original resident town, medical profile or authority changed.");
-            var mapped = entry.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(entry.Observation.LoadedMap).NativeResidents;
+            var map = entry.Observation.LoadedMap == null ? null : LoadedMapPreservation.Restore(entry.Observation.LoadedMap);
+            var mapped = map?.NativeResidents;
+            Require(map?.Visitors == null || !map.Visitors.Select(v => v.Id).Intersect(residents.Residents.Select(r => r.Id)).Any(),
+                "A read-only visitor cannot receive resident transfer authority in the same town.");
             Require((census.Profile == 11) == (mapped != null) && (mapped == null || mapped.All(r => residents.Residents.Any(p => p.Id == r.Id && p.Preserved == r.Preserved))),
                 "Mapped residents require the same original clinical profile and map scope.");
             foreach (var r in residents.Residents) Require(ids.Add(r.Id), "Resident shared by original follower towns.");
