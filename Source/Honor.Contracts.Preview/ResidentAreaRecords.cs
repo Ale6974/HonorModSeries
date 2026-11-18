@@ -33,6 +33,7 @@ internal static class ResidentAreaRecords
             Field.GetValue(p.playerSettings) is not Dictionary<Map, Area> areas || areas.Count > 128)
             throw new ResidentMoveBlocked("RE_AreasUnavailable");
         foreach (var method in new[] {
+            AccessTools.Method(typeof(Pawn_PlayerSettings), nameof(Pawn_PlayerSettings.ResetMedicalCare), []),
             AccessTools.Method(typeof(Pawn_PlayerSettings), nameof(Pawn_PlayerSettings.Notify_FactionChanged), []),
             AccessTools.Method(typeof(Pawn), nameof(Pawn.SetFaction), [typeof(Faction), typeof(Pawn)]),
             AccessTools.PropertyGetter(typeof(Area), nameof(Area.Map)) })
