@@ -19,7 +19,7 @@ internal static class ResidentMapActors
     internal static List<Pawn> SpawnedRoster(Map map)
     {
         var spawned = AccessTools.Field(typeof(MapPawns), "pawnsSpawned"); var owner = AccessTools.Field(typeof(MapPawns), "map");
-        if (!NativeTransferBodies.ExtendedReadBodies || map?.GetType() != typeof(Map) || map.mapPawns?.GetType() != typeof(MapPawns) ||
+        if (!NativeTransferBodies.SpawnedRosterRead || map?.GetType() != typeof(Map) || map.mapPawns?.GetType() != typeof(MapPawns) ||
             spawned?.FieldType != typeof(List<Pawn>) || owner?.FieldType != typeof(Map) || owner.GetValue(map.mapPawns) != map ||
             spawned.GetValue(map.mapPawns) is not List<Pawn> rows || rows.Count > 10000 || rows.Any(p => p == null || p.GetType() != typeof(Pawn)) ||
             rows.Distinct().Count() != rows.Count || rows.Any(p => !p.Spawned || p.Map != map)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");

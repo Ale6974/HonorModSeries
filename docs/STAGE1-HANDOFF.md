@@ -2,6 +2,8 @@
 
 ### 5011 운반 주민 독립 인계 검토
 
+5011 MVID 71185080-36f8-4a50-863e-e15aba81b822에서 SpawnedRoster의 원본 지도 명부 조회를 허용했다. MapPawns 추출본은 m2-090과 SHA256 FFFDB952656CBB692FB78F42894D1A4596369EC99798307E52EC8F1693F62DE5로 일치한다. Pawn, Thing, ReservationManager, Pawn_MindState, Pawn_CarryTracker도 기존 추출본과 일치했다. 후속 작업은 운반 중 원본 Job을 유지하는 소속 변경과 부모 계약에 묶인 복구 연결이다. 두 Preview 빌드 및 독립 규칙 103개·패키지 구성 검사 통과.
+
 5011의 Notify_FactionChanged는 ResetMedicalCare를 다시 호출한 뒤 allowedAreas를 비운다. ResidentAreaRecords.Read는 이제 두 메서드 각각에 대한 외부 패치를 검사한다. 두 버전 Preview 빌드 경고·오류 0, 독립 규칙 102개, 양 버전 패키지 구성 검사를 통과했다. 이 변경은 의료·영역 기록의 전제조건을 검증한다. 프로필 16의 부모 계약 실행·복구 연결은 남아 있다.
 
 5005 감사본과 5011 설치 DLL에서 같은 ILSpy 버전으로 추출한 클래스 전체 출력의 SHA256을 비교했다. JobDriver_HaulToCell, EnrouteManager, ThingCountTracker, JobDriver, JobQueue, QueuedJob, Pawn_WorkSettings, Pawn_GuestTracker 여덟 클래스가 일치했다. 직전 검토에서는 PawnDestinationReservationManager, PhysicalInteractionReservationManager, Pawn_PathFollower가 일치했다. 원본 비교 자료는 로컬의 .local/m2-105-* 및 .local/5011-review-*에 있다.
