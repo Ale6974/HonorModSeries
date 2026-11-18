@@ -4,6 +4,8 @@
 
 5005 감사본과 5011 설치 DLL에서 같은 ILSpy 버전으로 추출한 클래스 전체 출력의 SHA256을 비교했다. JobDriver_HaulToCell, EnrouteManager, ThingCountTracker, JobDriver, JobQueue, QueuedJob, Pawn_WorkSettings, Pawn_GuestTracker 여덟 클래스가 일치했다. 직전 검토에서는 PawnDestinationReservationManager, PhysicalInteractionReservationManager, Pawn_PathFollower가 일치했다. 원본 비교 자료는 로컬의 .local/m2-105-* 및 .local/5011-review-*에 있다.
 
+5011 Pawn.SetFaction은 base.SetFaction 직후 AddAndRemoveDynamicComponents를 호출하고, 이후 health.surgeryBills.Clear(), playerSettings?.ResetMedicalCare(), ClearMind_NewTemp 순으로 진행한다. BillStack.Clear는 내부 목록을 비운다. BillStack 전체 추출 SHA256은 71DB9FB2A6FD36B318739A53CFA1A6C4BD9C0F4651232CF05F7EFB6F5775B753으로 m2-105 및 m2-111과 일치한다. PawnComponentsUtility도 preservation-DynamicComponents와 03003748945F70B636777867C0343EDAEDBB2A621D6A00E47C3A71733FA01D85로 일치한다. 다음 비교는 Pawn_PlayerSettings.ResetMedicalCare 및 Notify_FactionChanged와 기존 주민별 의료 출력 기록에서 시작한다.
+
 독립 계약 프로필 16 연결과 부모 계약에 묶인 도시별 복구는 미완료다. 다음 감사 대상은 Pawn.SetFaction의 동적 구성요소 변경, 수술 목록 삭제와 의료 설정 초기화 이후의 복원 경로다. 위 비교 결과만으로 5011 전체 실행을 허용하지 않는다.
 
 ## 0.3.123 — 추가 분할·지정 수량 부분 합치기의 실제 연결
