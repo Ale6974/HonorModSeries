@@ -2,6 +2,8 @@
 
 ### 5011 운반 주민 독립 인계 검토
 
+5011에서 ResidentActiveWork.Capture는 바닐라 HaulToCell 정의와 정확한 JobDriver_HaulToCell의 읽기 경로를 허용한다. 대기열과 예약에서 읽는 다른 Job에도 같은 정의를 요구한다. PriorityWork·DefMap·CompQuality 추출본도 기존 감사본과 일치했다. 양 타깃 빌드, 운반 343개·독립 103개 규칙 및 패키지 구성 통과. 다음 연결은 ResidentExecution과 ResidentMapActors의 프로필 16 임상 검사, NativeWorkFactionCall.Prepare의 쓰기 경계와 부모 계약 복구다.
+
 5011 설치 DLL의 Job, Pawn_JobTracker, JobDriver, JobDriver_HaulToCell 클래스 전체 추출본이 기존 감사본과 일치했다. Known에서 해당 운반 작업의 ID·직렬화·toil 메서드 확인을 허용했다. 복구 검사는 저장된 원 작업·물품 참조를 먼저 대조하고 이어서 현재 전체 작업 상태를 검사한다. 양 타깃 빌드와 운반 343개·독립 103개 규칙 및 패키지 구성 통과. ResidentActiveWork.Capture와 부모 계약의 실행 연결은 여전히 미완료다.
 
 5011의 ResidentActiveWork.Known에서 원본 운반 슬롯과 대기열을 조회하는 기존 코드가 Pawn_CarryTracker.ExposeData/get_CarriedThing과 JobQueue/QueuedJob.ExposeData를 확인할 수 있다. 실행 권한은 별도이며 ResidentActiveWork.Capture의 전체 작업 검사와 LawfulAdmissions.ValidateResidents의 부모 계약 프로필 16 연결이 남았다. 다음에는 이 두 진입점의 운반 전용 조건을 함께 검토한다. 두 타깃 빌드 및 운반 343개·독립 103개 규칙, 패키지 구성 통과.
