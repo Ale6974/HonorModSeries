@@ -171,7 +171,9 @@ internal static class ResidentMapActors
             var getterMethod = AccessTools.PropertyGetter(p.pather.GetType(), name);
             if (getterMethod == null || Harmony.GetPatchInfo(getterMethod)?.Owners.Any() == true) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         }
-        RequireEmptyReservations(p.Map, groundRest: groundRest, activeWork: activeWork);
+        // The actor and exact haul driver passed the current module survey above.
+        Guid? haulModule = activeWork && NativeTransferBodies.HaulSurveyBodies ? typeof(Pawn).Module.ModuleVersionId : null;
+        RequireEmptyReservations(p.Map, haulModule, groundRest, activeWork);
         var getter = AccessTools.PropertyGetter(typeof(DesignationManager), "AllDesignations");
         if (getter == null || Harmony.GetPatchInfo(getter)?.Owners.Any() == true || p.Map.designationManager?.GetType() != typeof(DesignationManager) ||
             getter.Invoke(p.Map.designationManager, null) is not IEnumerable designations || designations.Cast<object>().Any()) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");

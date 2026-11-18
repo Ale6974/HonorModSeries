@@ -29,7 +29,7 @@ internal static class ResidentActiveWork
         if (value == null || f?.DeclaringType != owner || f.IsStatic) throw new ArgumentException("Unknown original work field: " + owner.Name + "." + name);
         return f.GetValue(value);
     }
-    private static readonly HashSet<Type> HaulSaveTypes5011 = [
+    private static readonly HashSet<Type> HaulSaveTypes = [
         typeof(JobQueue), typeof(QueuedJob), typeof(JobDriver), typeof(Pawn_JobTracker), typeof(Pawn_PathFollower),
         typeof(Pawn_WorkSettings), typeof(DefMap<WorkTypeDef, int>), typeof(PriorityWork), typeof(Pawn_MindState),
         typeof(ReservationManager), typeof(ReservationManager.Reservation), typeof(PhysicalInteractionReservationManager),
@@ -40,12 +40,12 @@ internal static class ResidentActiveWork
     internal static void Known(Type type, string name)
     {
         var methods = AccessTools.GetDeclaredMethods(type).Where(m => m.Name == name).ToArray();
-        bool reviewedHaulRead = NativeTransferBodies.Installed5011 &&
+        bool reviewedHaulRead = NativeTransferBodies.HaulSurveyBodies &&
             (type == typeof(Pawn_CarryTracker) && name is "ExposeData" or "get_CarriedThing" ||
              type == typeof(Job) && name is "ExposeData" or "GetUniqueLoadID" ||
              type == typeof(JobDriver_HaulToCell) && name is "ExposeData" or "MakeNewToils" ||
              (type == typeof(CompQuality) || type == typeof(CompForbiddable)) && name == "PostExposeData" ||
-             HaulSaveTypes5011.Contains(type) && name == "ExposeData");
+             HaulSaveTypes.Contains(type) && name == "ExposeData");
         if ((!NativeTransferBodies.WorkObservationBodies && !reviewedHaulRead) || type.Assembly != typeof(Pawn).Assembly || methods.Length == 0 || methods.Any(m => Harmony.GetPatchInfo(m)?.Owners.Any() == true))
             throw new ArgumentException("Unreviewed native work boundary: " + type.Name + "." + name);
     }
@@ -150,7 +150,7 @@ internal static class ResidentActiveWork
             job.flying || job.swimming || job.def.driverClass != typeof(JobDriver_DoBill) && job.bill != null || job.def.driverClass == typeof(JobDriver_DoBill) && job.bill == null ||
             job.ability != null || job.verbToUse != null || job.lord != null || job.quest != null)
             throw new ArgumentException("New native hauling/basic production adapter only.");
-        if (NativeTransferBodies.Installed5011 && job.def != JobDefOf.HaulToCell)
+        if (NativeTransferBodies.HaulSurveyBodies && job.def != JobDefOf.HaulToCell)
             throw new ArgumentException("Installed work survey requires the original haul-to-cell job.");
         var giver = job.jobGiver == null && job.jobGiverThinkTree == null ? null : GroundRestGivers.Capture(job);
         if (giver == null && Raw(job, typeof(Job), "jobGiverKey") is not -1) throw new ArgumentException("Unknown original job giver cache.");
@@ -297,7 +297,7 @@ internal static class ResidentActiveWork
         return rows.OrderBy(r => r.Pawn.GetUniqueLoadID(), StringComparer.Ordinal).ThenBy(r => r.Order).Select(r => new { Pawn = r.Pawn.GetUniqueLoadID(), Job = r.Job.GetUniqueLoadID(), Cell = map.cellIndices.CellToIndex(r.Cell), r.Obsolete, r.Order }).ToArray();
     }
     internal static bool CanSurvey(Pawn pawn) => NativeTransferBodies.WorkObservationBodies ||
-        NativeTransferBodies.Installed5011 && pawn?.jobs?.curJob?.def == JobDefOf.HaulToCell &&
+        NativeTransferBodies.HaulSurveyBodies && pawn?.jobs?.curJob?.def == JobDefOf.HaulToCell &&
         pawn?.jobs?.curDriver?.GetType() == typeof(JobDriver_HaulToCell);
 
     internal static ActiveWorkRow Capture(Pawn pawn)

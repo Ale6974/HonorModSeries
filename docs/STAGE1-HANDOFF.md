@@ -1,5 +1,9 @@
 # 1단계 개발 인수인계 — 0.3.123 / 2026-11-18
 
+### 현재 우선 대상 1.7.5013 rev95
+
+설치 DLL에서 5011 비교 자료 30개의 타입을 다시 추출해 파일 해시가 모두 일치함을 확인했다. 원 명부와 정확한 HaulToCell 작업 조회에 5013을 연결하고, 확인한 운반 주민의 예약 검사에 해당 모듈을 전달했다. 1.6 및 설치 5013 대상 Preview 빌드 경고·오류 0, 운반 343개·독립 103개 규칙, 두 버전의 패키지 구성 통과. 다음 연결은 NativeWorkFactionCall.Prepare의 제한된 쓰기 경로와 LawfulAdmissions.ValidateResidents의 부모 계약별 승인·중단 복구다. 대표 기능 미완료.
+
 ### 5011 운반 주민 독립 인계 검토
 
 설치 대상 변경 확인: Version.txt는 1.7.5013 rev95, Assembly-CSharp.dll SHA256 C2BCF5F51176F21C959E41CC1F6E98D3F8DF227D1E09B9D21D4FDCDC2525076D, MVID eed7cbb5-7842-4c58-a9c5-47ec50d66c8c. GamePaths.props의 1.7 참조는 이 설치 폴더를 가리킨다. 이후 해당 경로의 빌드는 5013 기준으로 기록한다. 5011 운반 경로는 RequireCore에서 RequireEmptyReservations로 내려갈 때 기존 모듈 목록에 막힌다. 5011 감사 자료와 5013 추출 자료를 구분하고 새 DLL의 쓰기 경로는 별도 검토한다.
