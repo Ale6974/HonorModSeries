@@ -118,6 +118,9 @@ public static class LawfulAdmissions
         foreach (var row in rows.Skip(old.Count))
         {
             var entry = scope.Entries.SingleOrDefault(e => e.Charter == row.Charter);
+            Require(row.LawfulHaulParentProof == null || row.LawfulHaulParentProof == p.Proof && c.LawfulResidents != null &&
+                JsonSerializer.Deserialize<LawfulResidentScope[]>(c.LawfulResidents).Any(r => r.Charter == row.Charter && r.HaulMapProof == row.StockProof),
+                "City hauling origin differs from the original lawful closure.");
             Require(entry != null && row.Territory == entry.Observation.Territory && row.BaselineOwner == book.Entity(row.Territory).NativeOwner &&
                 row.FromOwner == entry.Observation.Owner && row.TargetOwner == command.Authority && row.Purpose == TerritoryTransferPurpose.ActiveCharter &&
                 row.ReleasedRoot == null && row.PreparedTick >= c.PreparedTick && row.Phase != TerritoryTransferPhase.Destroyed &&

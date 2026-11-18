@@ -240,6 +240,13 @@ internal static class LawfulFollowerMigrationTests
         haulJournal.PrepareLawfulResidentAdmission("haul", politics, command, haulPlan, physical, closure, haulPeace, [haulApproval]);
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(haulJournal.Export()).Current, "child") == haulingMap, "lawful haul approval survives parent journal restore");
         Reject(() => new AllegianceTransitionLedger().PrepareLawfulResidentAdmission("missing-haul", politics, command, haulPlan, physical, closure, haulPeace, [haulApproval with { HaulMapProof = null }]), "missing original hauling approval rejected");
+        var haulPhysical = TerritoryTransferLedger.Restore(physical.Export());
+        haulPhysical.PrepareLoadedJournaled("haul-city", after, "child", haulingTown, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        haulPhysical.MarkLawfulHaul("haul-city", haulJournal.Current);
+        var savedHaul = TerritoryTransferLedger.Restore(haulPhysical.Export());
+        LawfulAdmissions.ValidateCurrentPhysical(haulJournal.Current, savedHaul);
+        Check(savedHaul.Transfer("haul-city").LawfulHaulParentProof == closure.Proof, "original lawful closure retained by saved city");
+        Reject(() => savedHaul.MarkStandaloneActiveWork("haul-city"), "lawful city cannot acquire standalone authority");
         // Visitor-only map custody stays separate from the original saved-world clinical roster.
         string visitorsScope = LoadedMapPreservation.CaptureBystanders(containerScope, [new("visitor", Hash("unchanged-bystander"))]);
         var visitorsTown = containerTown with { LoadedMap = visitorsScope, StockFormat = 11, StockProof = LoadedMapPreservation.Restore(visitorsScope).Proof };

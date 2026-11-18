@@ -350,6 +350,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 ResidentCensusProof = residents == null ? null : ResidentTransferCensus.Restore(residents.Census).Proof, CityCallV1 = true, LoadedMap = loaded };
             if (standaloneWork && !transition.Journal.Pending && c.Purpose==TerritoryTransferPurpose.ActiveCharter && stagedPhysical.Transfer(id).StockFormat==24) stagedPhysical.MarkStandaloneGivenWork(id);
             if (standaloneWork && !transition.Journal.Pending && c.Purpose==TerritoryTransferPurpose.ActiveCharter && stagedPhysical.Transfer(id).StockFormat==25) stagedPhysical.MarkStandaloneActiveWork(id);
+            if (transition.Journal.Pending && transition.Journal.Current?.LawfulResidents != null && residents?.Profile == 16)
+                stagedPhysical.MarkLawfulHaul(id, transition.Journal.Current);
             Ledger = stagedPhysical; references.Add(reference);
             var authority = ResidentCallAuthority(reference);
             if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof, authority);

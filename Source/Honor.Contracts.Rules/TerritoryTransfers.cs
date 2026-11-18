@@ -29,6 +29,7 @@ public sealed record TerritoryTransfer(string Id, string Territory, string Basel
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string UnstartedWorkAbortV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public bool StandaloneWorkV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)] public bool StandaloneActiveWorkV1 { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string LawfulHaulParentProof { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string UnstartedActiveWorkAbortV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string WorkCompletionV1 { get; init; }
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)] public string LoadedMap { get; init; }
@@ -190,9 +191,23 @@ public sealed class TerritoryTransferLedger
         if(JsonSerializer.Serialize(new TerritoryTransfersSave(Version,LastTick,transfers.Select(row=>row.Id==id?marked:row).ToArray())).Length>4000000) throw new ArgumentException("Standalone intent capacity.");
         transfers[transfers.IndexOf(t)]=marked;
     }
+    public void MarkLawfulHaul(string id, AllegianceTransition parent)
+    {
+        var t = Transfer(id);
+        Require(parent?.LawfulResidents != null && parent.FinishedTick == null && t.Phase == TerritoryTransferPhase.Prepared &&
+            t.StockFormat == 25 && !t.StandaloneActiveWorkV1 && !t.StandaloneWorkV1 && t.LawfulHaulParentProof == null &&
+            t.PreviousTransferV1 == null && t.RoyalResidentsV1 == null, "Pending parent-approved hauling transfer required.");
+        LawfulAdmissions.ValidateCurrentPhysical(parent, this);
+        var approval = JsonSerializer.Deserialize<LawfulResidentScope[]>(parent.LawfulResidents).SingleOrDefault(r => r.Charter == t.Charter);
+        Require(approval?.HaulMapProof != null && approval.HaulMapProof == t.StockProof, "Original parent hauling map required.");
+        var marked = t with { LawfulHaulParentProof = LawfulExitPreparation.Restore(parent.LawfulExit).Proof };
+        if (JsonSerializer.Serialize(new TerritoryTransfersSave(Version, LastTick, transfers.Select(row => row.Id == id ? marked : row).ToArray())).Length > 4000000)
+            throw new ArgumentException("Lawful hauling transfer capacity.");
+        transfers[transfers.IndexOf(t)] = marked;
+    }
     public void MarkStandaloneActiveWork(string id)
     {
-        var t=Transfer(id); Require(t.Phase==TerritoryTransferPhase.Prepared && t.StockFormat==25 && t.Purpose==TerritoryTransferPurpose.ActiveCharter && t.ReleasedRoot==null && t.PreviousTransferV1==null && t.RoyalResidentsV1==null && !t.StandaloneActiveWorkV1 && !t.StandaloneWorkV1, "Fresh standalone active-work UI intent required.");
+        var t=Transfer(id); Require(t.Phase==TerritoryTransferPhase.Prepared && t.StockFormat==25 && t.Purpose==TerritoryTransferPurpose.ActiveCharter && t.ReleasedRoot==null && t.PreviousTransferV1==null && t.RoyalResidentsV1==null && t.LawfulHaulParentProof == null && !t.StandaloneActiveWorkV1 && !t.StandaloneWorkV1, "Fresh standalone active-work UI intent required.");
         var marked=t with { StandaloneActiveWorkV1=true };
         if(JsonSerializer.Serialize(new TerritoryTransfersSave(Version,LastTick,transfers.Select(row=>row.Id==id?marked:row).ToArray())).Length>4000000) throw new ArgumentException("Standalone active-work intent capacity.");
         transfers[transfers.IndexOf(t)]=marked;
@@ -266,6 +281,7 @@ public sealed class TerritoryTransferLedger
             Require(item.StockFormat != 22 || item.RoyalRightsV2 != null, "Mapped royal history lacks private rights.");
             Require(!item.StandaloneWorkV1 || item.StockFormat==24 && item.Purpose==TerritoryTransferPurpose.ActiveCharter && item.PreviousTransferV1==null && item.ReleasedRoot==null && item.RoyalResidentsV1==null, "Invalid standalone work origin.");
             if (item.UnstartedWorkAbortV1 != null) { Require(item.Phase == TerritoryTransferPhase.Cancelled, "No-start proof is only a cancelled intent."); GroundRestAbort.Validate(item,item.UnstartedWorkAbortV1); }
+            Require(item.LawfulHaulParentProof == null || CityStockProof.Valid(item.LawfulHaulParentProof) && item.StockFormat == 25 && item.Purpose == TerritoryTransferPurpose.ActiveCharter && !item.StandaloneActiveWorkV1 && !item.StandaloneWorkV1 && item.ReleasedRoot == null && item.PreviousTransferV1 == null && item.RoyalResidentsV1 == null, "Invalid parent hauling origin.");
             Require(!item.StandaloneActiveWorkV1 || item.StockFormat==25 && !item.StandaloneWorkV1 && item.Purpose==TerritoryTransferPurpose.ActiveCharter && item.PreviousTransferV1==null && item.ReleasedRoot==null && item.RoyalResidentsV1==null,"Invalid standalone active-work origin.");
             if(item.UnstartedActiveWorkAbortV1!=null) { Require(item.Phase==TerritoryTransferPhase.Cancelled,"Active-work no-start proof requires cancelled intent."); ActiveWorkAbort.Validate(item,item.UnstartedActiveWorkAbortV1); }
             if(item.WorkCompletionV1!=null){var receipt=JsonSerializer.Deserialize<WorkCompletionReceipt>(item.WorkCompletionV1);Require(item.Phase==TerritoryTransferPhase.Applied && receipt!=null && receipt.Tick==item.ResolvedTick && CityStockProof.Valid(receipt.Agreement),"Invalid work completion receipt.");var approval=WorkProgress.Approval(item,receipt.Approval);Require(approval.ResolutionsV5==receipt.ResolutionsV5,"Resolution receipt differs from current approval.");if(WorkProgress.Validate(item,approval.Progress).Version>=2)WorkProgress.AssetAdvance(item,approval.Progress,receipt.AssetCallsV2,true,receipt.ResolutionsV5);else Require(receipt.AssetCallsV2==null,"Unexpected partial asset receipt.");if(WorkProgress.Validate(item,approval.Progress).Version==3)WorkProgress.ClinicalAdvance(item,approval.Progress,receipt.ClinicalV3,true);else Require(receipt.ClinicalV3==null,"Unexpected clinical receipt.");}
