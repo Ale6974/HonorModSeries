@@ -28,8 +28,9 @@ public sealed partial class TerritoryAdministrationLedger
     }
     private void CustodyBasis(TerritoryTransfer t, TerritoryTransferReference r)
     {
-        if (Current.Game != ownerGame || Current.ProgramState != ProgramState.Playing || RestoreFailed || Charters.RestoreFailed || !NativeTransferBodies.ExtendedReadBodies ||
-            UnionWarCouncil.HasExternalProvider || Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges ||
+        bool lawfulHaul = t.LawfulHaulParentProof != null && NativeTransferBodies.HaulFactionBodies5013 && r.Residents?.Profile == 16;
+        if (Current.Game != ownerGame || Current.ProgramState != ProgramState.Playing || RestoreFailed || Charters.RestoreFailed || (!NativeTransferBodies.ExtendedReadBodies && !lawfulHaul) ||
+            UnionWarCouncil.HasExternalProvider || (!lawfulHaul && Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) ||
             Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges ||
             Current.Game.GetComponent<SubtreeExitLedger>().BlocksChanges || HasPendingTownLosses ||
             t.Phase != TerritoryTransferPhase.Prepared || !t.CityCallJournalV1 || !r.CityCallV1 || r.City == null || r.City.GetType() != typeof(Settlement) || r.City.Destroyed ||
@@ -61,6 +62,8 @@ public sealed partial class TerritoryAdministrationLedger
     {
         var physical = proposed ?? Ledger;
         var t = physical.Transfer(transfer); var r = proposedReference ?? references.Single(r => r.Id == transfer);
+        if (t.LawfulHaulParentProof != null)
+            Current.Game.GetComponent<PoliticalTransitionLedger>().RequireHaulCustodyParent(t);
         if(workProgress==null) CustodyBasis(t,r); else { _=WorkProgressBasis(t,r,true); if(workProgress!=CurrentWorkApproval(t,r,tick))throw new ArgumentException("Current work observation changed."); ValidateMapReference(t,r,false); }
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (payments.RestoreFailed || payments.Ledger.Receipts.Any(p => p.Phase == TributeReceiptPhase.Prepared)) throw new ArgumentException("Original liabilities unavailable.");

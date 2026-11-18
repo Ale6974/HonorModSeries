@@ -28,6 +28,25 @@ public sealed partial class PoliticalTransitionLedger
         foreach (var saved in records)
             Territories.ValidateLawfulResidentExecution(AllegianceTransitionLedger.Restore(saved).Current, false);
     }
+    internal void RequireHaulCustodyParent(TerritoryTransfer transfer)
+    {
+        var parent = Journal.Current;
+        if (Current.Game != context || RestoreFailed || Executing || Charters.RestoreFailed || Charters.UnresolvedTownLosses ||
+            Territories.RestoreFailed || Territories.HasPendingTownLosses || context.GetComponent<CharterProtectionLedger>().Executing ||
+            Territories.Ledger.Transfers.Any(row => row.Phase == TerritoryTransferPhase.Prepared && row.Id != transfer.Id) ||
+            !Journal.Pending || parent?.LawfulResidents == null ||
+            transfer.LawfulHaulParentProof == null || transfer.LawfulHaulParentProof != LawfulExitPreparation.Restore(parent.LawfulExit).Proof ||
+            transfer.Phase != TerritoryTransferPhase.Prepared || Territories.Ledger.Transfer(transfer.Id) != transfer ||
+            !Journal.IsAfter(Politics.Model) || Politics.TransitionAuthority()?.GetUniqueLoadID() != transfer.TargetOwner)
+            throw new ArgumentException("Original current lawful parent and pending city required.");
+        LawfulAdmissions.ValidatePair(parent, Charters.Book, context.GetComponent<TributePaymentLedger>().Ledger,
+            context.GetComponent<CharterProtectionLedger>().Ledger);
+        LawfulAdmissions.ValidateCurrentPhysical(parent, Territories.Ledger);
+        if (!Journal.MatchesSurvivingFollowers(Charters.Book.PlayerFollowers().Select(c => c.Id)))
+            throw new ArgumentException("The lawful follower scope changed.");
+        UnionPeaceCouncil.Verify(Politics.RecordedAuthority, parent);
+        UnionWarCouncil.VerifyCurrentCouncil(Politics.RecordedAuthority, parent);
+    }
     public LawfulIndependenceReview ReviewLawfulIndependence(string request)
     {
         Ready(); if (Journal.Pending || Territories.Ledger.Transfers.Any(t => t.Phase == TerritoryTransferPhase.Prepared))
