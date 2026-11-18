@@ -2,6 +2,8 @@
 
 ### 현재 우선 대상 1.7.5013 rev95
 
+5013의 Pawn 및 PawnDestinationReservationManager 전체 추출 해시가 기존 감사본과 각각 일치했다. NativeWorkFactionCall.Prepare가 이 모듈의 세 메서드 원본 서명을 검사하고, Execute는 현재 운반 작업 확인 후 기존 작업 보존 호출 및 독립 반환 기록으로 이어진다. 양쪽 빌드, 운반 343개·독립 103개, 패키지 구성 통과. 부모 계약의 프로필 16 승인과 중단 복구 연결은 아직 남았다.
+
 설치 DLL에서 5011 비교 자료 30개의 타입을 다시 추출해 파일 해시가 모두 일치함을 확인했다. 원 명부와 정확한 HaulToCell 작업 조회에 5013을 연결하고, 확인한 운반 주민의 예약 검사에 해당 모듈을 전달했다. 1.6 및 설치 5013 대상 Preview 빌드 경고·오류 0, 운반 343개·독립 103개 규칙, 두 버전의 패키지 구성 통과. 다음 연결은 NativeWorkFactionCall.Prepare의 제한된 쓰기 경로와 LawfulAdmissions.ValidateResidents의 부모 계약별 승인·중단 복구다. 대표 기능 미완료.
 
 ### 5011 운반 주민 독립 인계 검토

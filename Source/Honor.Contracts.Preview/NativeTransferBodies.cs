@@ -5,7 +5,8 @@ internal static class NativeTransferBodies
 {
     internal static bool RoyalCustodyBodies => typeof(Thing).Module.ModuleVersionId == new Guid("3523c04c-c298-43ae-9571-20caaef22acc");
     internal static bool WorkObservationBodies => typeof(Thing).Module.ModuleVersionId == new Guid("3523c04c-c298-43ae-9571-20caaef22acc");
-    internal static bool HaulSurveyBodies => typeof(Thing).Module.ModuleVersionId == new Guid("eed7cbb5-7842-4c58-a9c5-47ec50d66c8c") ||
+    internal static bool HaulFactionBodies5013 => typeof(Thing).Module.ModuleVersionId == new Guid("eed7cbb5-7842-4c58-a9c5-47ec50d66c8c");
+    internal static bool HaulSurveyBodies => HaulFactionBodies5013 ||
          typeof(Thing).Module.ModuleVersionId == new Guid("71185080-36f8-4a50-863e-e15aba81b822");
     // The haul survey modules match the reviewed Pawn and MapPawns roster reads.
     internal static bool SpawnedRosterRead => ExtendedReadBodies || HaulSurveyBodies;

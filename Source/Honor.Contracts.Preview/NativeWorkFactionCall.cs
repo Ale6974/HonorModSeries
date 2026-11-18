@@ -36,8 +36,14 @@ internal static class NativeWorkFactionCall
     private static bool ready;
     internal static void Prepare()
     {
-        ResidentActiveWork.Known(typeof(Pawn), "SetFaction"); ResidentActiveWork.Known(typeof(Pawn), "ClearMind_NewTemp");
-        ResidentActiveWork.Known(typeof(PawnDestinationReservationManager), "ReleaseAllClaimedBy");
+        if (!NativeTransferBodies.WorkObservationBodies && !NativeTransferBodies.HaulFactionBodies5013)
+            throw new ArgumentException("Unreviewed native work authority call.");
+        foreach (var boundary in new[] {
+            AccessTools.Method(typeof(Pawn), nameof(Pawn.SetFaction), [typeof(Faction), typeof(Pawn)]),
+            AccessTools.Method(typeof(Pawn), nameof(Pawn.ClearMind_NewTemp), [typeof(bool), typeof(bool), typeof(bool), typeof(bool)]),
+            AccessTools.Method(typeof(PawnDestinationReservationManager), nameof(PawnDestinationReservationManager.ReleaseAllClaimedBy), [typeof(Pawn)]) })
+            if (boundary == null || Harmony.GetPatchInfo(boundary)?.Owners.Any() == true)
+                throw new ArgumentException("Original unpatched authority call boundaries required.");
         if (Harmony.GetPatchInfo(AccessTools.Method(typeof(NativeWorkFactionCall), nameof(InvokeOriginal)))?.Owners.Any() == true) throw new ArgumentException("Work authority stand-in was externally patched.");
         if (ready) return;
         var original = AccessTools.Method(typeof(Pawn), nameof(Pawn.SetFaction), new[] { typeof(Faction), typeof(Pawn) });
@@ -51,6 +57,8 @@ internal static class NativeWorkFactionCall
         Prepare();
         if (active != null || returned == null || target == null || target.IsPlayer || pawn?.Faction == null || pawn.Faction.IsPlayer || pawn.Faction == target)
             throw new ArgumentException("Independent NPC work authority call required.");
+        if (pawn.jobs?.curJob == null || !ResidentActiveWork.CanSurvey(pawn))
+            throw new ArgumentException("Current reviewed work required before native authority transfer.");
         var before = ResidentActiveWork.Capture(pawn);
         active = new() { Pawn = pawn, Source = pawn.Faction, Target = target, Game = Current.Game, Map = pawn.Map, Job = pawn.jobs.curJob,
             Driver = pawn.jobs.curDriver, Queue = pawn.jobs.jobQueue, Entries = ResidentActiveWork.Queue(pawn).ToList(),
