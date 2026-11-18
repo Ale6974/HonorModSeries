@@ -351,13 +351,13 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (standaloneWork && !transition.Journal.Pending && c.Purpose==TerritoryTransferPurpose.ActiveCharter && stagedPhysical.Transfer(id).StockFormat==24) stagedPhysical.MarkStandaloneGivenWork(id);
             if (standaloneWork && !transition.Journal.Pending && c.Purpose==TerritoryTransferPurpose.ActiveCharter && stagedPhysical.Transfer(id).StockFormat==25) stagedPhysical.MarkStandaloneActiveWork(id);
             Ledger = stagedPhysical; references.Add(reference);
-            var authority = residents == null ? null : ResidentCallAuthority(reference);
+            var authority = ResidentCallAuthority(reference);
             if (residents != null) ResidentExecution.Apply(residents, c.City, reference.From, c.Target, c.Observation.ResidentProof, authority);
             if (loaded?.AssetJournal != null)
             {
                 ValidateResidentRecovery(Ledger.Transfer(id), reference);
                 SealWorkBoundary(reference,beforeAssets:true);
-                MapAssetRecords.Apply(reference);
+                MapAssetRecords.Apply(reference, authority);
                 ValidateResidentRecovery(Ledger.Transfer(id), reference);
             }
             if (transition.Journal.Pending && transition.Journal.Current?.LawfulResidents != null)
@@ -368,6 +368,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before city ownership call.");
             if (loaded != null) ValidateMapReference(Ledger.Transfer(id), reference, true);
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before preserved map call.");
+            authority?.Invoke();
             SealWorkBoundary(reference);
             TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
             reference.CityCallStarted = true;
@@ -534,6 +535,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Current game changed before loaded map recovery.");
                     if (reference.City.Faction == reference.From)
                     {
+                        authority?.Invoke();
                         SealWorkBoundary(reference);
             TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
                         if (reference.CityCallV1) reference.CityCallStarted = true;
@@ -587,11 +589,12 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             ResidentExecution.ValidateCensus(reference.Residents, reference.ResidentCensusProof, item.Territory, item.FromOwner, item.TargetOwner);
             ResidentExecution.Apply(reference.Residents, reference.City, reference.From, reference.Target, item.ResidentProof, authority);
         }
-        MapAssetRecords.Apply(reference);
+        MapAssetRecords.Apply(reference, authority);
         ValidateResidentRecovery(item, reference);
         if (Current.Game != game || Current.ProgramState != ProgramState.Playing) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (reference.City.Faction == reference.From)
         {
+            authority?.Invoke();
             SealWorkBoundary(reference);
             TerritoryCallGuard.RequireNewCall(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
             reference.CityCallStarted = true;

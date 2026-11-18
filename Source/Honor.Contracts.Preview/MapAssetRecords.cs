@@ -153,14 +153,14 @@ internal static class MapAssetRecords
         if (r.AssetJournal != null || source == null || target == null || source.IsPlayer || target.IsPlayer) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         r.AssetJournal = MapAssetTransfers.Prepare(r.Snapshot, source.GetUniqueLoadID(), target.GetUniqueLoadID());
     }
-    internal static void Apply(TerritoryTransferReference r)
+    internal static void Apply(TerritoryTransferReference r, Action currentAuthority)
     {
         if (r.LoadedMap?.AssetJournal == null) return;
         var game = Current.Game;
         MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, r.LoadedMap.Snapshot, r.From.GetUniqueLoadID(), r.Target.GetUniqueLoadID());
         foreach (var asset in LoadedMapPreservation.Restore(r.LoadedMap.Snapshot).OwnedAssets)
         {
-            if (r.CustodyAgreementV1 != null) Current.Game.GetComponent<TerritoryAdministrationLedger>().RequireCurrentCustody(r);
+            currentAuthority?.Invoke();
             LoadedMapRecords.Verify(r.City, r.LoadedMap);
             var call = MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Single(c => c.Id == asset.Id);
             if (call.Returned) continue;
