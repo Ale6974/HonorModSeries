@@ -139,6 +139,44 @@ public sealed partial class TerritoryAdministrationLedger
             throw new ArgumentException("Current map changed beyond the observed original ground placement.");
         return current.Proof;
     }
+    private void FinishDeliveredCity(TerritoryTransfer t, TerritoryTransferReference r, Game game)
+    {
+        RequireCurrentCustody(r);
+        var agreement = custodyAgreements.Record(r.CustodyAgreementV1);
+        var residents = r.Residents;
+        ResidentExecution.ValidateCensus(residents, r.ResidentCensusProof, t.Territory,t.FromOwner,t.TargetOwner,true);
+        var roster = residents.Set().Residents;
+        for (int i = 0; i < residents.Pawns.Count; i++)
+        {
+            var pawn = residents.Pawns[i];
+            int? care = pawn.playerSettings == null ? null : (int)pawn.playerSettings.medCare;
+            if (pawn.Faction != r.Target || care != roster[i].MedicalCare || residents.Surgery[i].Detached.Count != 0 ||
+                ResidentSurgery.Proof(pawn, residents.Surgery[i]) != residents.Surgery[i].Set().Proof)
+                throw new ArgumentException("Original restored resident affiliation, medical policy and surgery orders required.");
+            ResidentAreas.CheckCurrent(residents.AreaRecords[i].Journal, ResidentAreaRecords.Entries(pawn));
+        }
+        if (r.LoadedMap.AssetJournal != null)
+            MapAssetTransfers.Pair(r.LoadedMap.AssetJournal,t.LoadedMap,t.FromOwner,t.TargetOwner,true);
+        var authority = ResidentCallAuthority(r);
+        authority();
+        if (r.City.Faction == r.From)
+        {
+            TerritoryCallGuard.RequireNewCall(r.CityCallV1,r.CityCallStarted,r.CityCallReturned);
+            r.CityCallStarted = true;
+            r.City.SetFaction(r.Target);
+            if (Current.Game != game || Current.ProgramState != ProgramState.Playing)
+                throw new ArgumentException("Current game changed during lawful city return.");
+            r.CityCallReturned = true;
+        }
+        TerritoryCallGuard.RequireStartedForTarget(r.CityCallV1,r.CityCallStarted,r.CityCallReturned);
+        CityStockPreservation.InvalidateMaterial(r.City);
+        authority();
+        Ledger.ConfirmDeliveredCity(t.Id,agreement,CurrentDeliveredMapProof(t,r),r.City.Faction.GetUniqueLoadID(),
+            r.CityCallStarted,r.CityCallReturned,Find.TickManager.TicksGame);
+        ResidentExecution.ReleaseReferences(residents);
+        LoadedMapRecords.Release(r.LoadedMap);
+        ReleaseWorkObservationReferences(r);
+    }
     internal OriginalDropCall BeginOriginalDrop(Pawn_CarryTracker carry, IntVec3 cell)
     {
         var pawn = carry.pawn;

@@ -157,6 +157,19 @@ public sealed class TerritoryTransferLedger
             "Applied transfer needs actual intended nonplayer ownership and matching preserved stock evidence.");
         transfers[transfers.IndexOf(transfer)] = transfer with { Phase = TerritoryTransferPhase.Applied, ResolvedTick = now }; LastTick = now;
     }
+    public void ConfirmDeliveredCity(string id, CustodyAgreementReceipt agreement, string currentMapProof,
+        string actualOwner, bool cityStarted, bool cityReturned, long now)
+    {
+        Time(now);
+        var transfer = Transfer(id);
+        Require(transfer.Phase == TerritoryTransferPhase.Prepared && transfer.LawfulHaulParentProof != null &&
+            agreement?.Witness?.DeliveredMapProof != null && agreement.Witness.DeliveredMapProof == currentMapProof &&
+            agreement.Proof == WorkProgress.Hash(agreement.Witness) && CustodyAgreements.Validate(agreement.Witness) == transfer &&
+            actualOwner == transfer.TargetOwner && cityStarted && cityReturned && now >= agreement.Witness.Tick,
+            "Original current placement approval and confirmed native city return required.");
+        transfers[transfers.IndexOf(transfer)] = transfer with { Phase = TerritoryTransferPhase.Applied, ResolvedTick = now };
+        LastTick = now;
+    }
     public void ConfirmWorkProgress(string id,string approval,CustodyAgreementReceipt agreement,string actualOwner,bool cityStarted,bool cityReturned,long now)
         =>ConfirmWorkProgress(id,approval,agreement,actualOwner,cityStarted,cityReturned,now,null,null);
     public void ConfirmWorkProgress(string id,string approval,CustodyAgreementReceipt agreement,string actualOwner,bool cityStarted,bool cityReturned,long now,string currentAssets)

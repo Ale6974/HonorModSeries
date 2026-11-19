@@ -490,6 +490,11 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 CheckLawfulResidentPreparation(item.Charter, reference.Residents);
             }
             if(reference.CustodyAgreementV1!=null && custodyAgreements.Record(reference.CustodyAgreementV1).Witness.WorkProgressV1!=null){RecoverWorkProgress(item,reference,executionGame);return;}
+            if (reference.CustodyAgreementV1 != null && custodyAgreements.Record(reference.CustodyAgreementV1).Witness.DeliveredMapProof != null)
+            {
+                FinishDeliveredCity(item, reference, executionGame);
+                return;
+            }
             if(reference.WorkAssetResolutionV5!=null)throw new ArgumentException("Actual successor property requires separate current resolution approval.");
             if(reference.WorkJobObservationsV4!=null)ValidateWorkObservations(item,reference);
             if ((item.PreviousTransferV1 != null || item.RoyalResidentsV1 != null) && reference.CustodyAgreementV1 == null) throw new ArgumentException("Continuation cannot use legacy recovery permission.");
