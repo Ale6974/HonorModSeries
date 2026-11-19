@@ -18,6 +18,7 @@ public sealed class TerritoryTransferReference : IExposable
     public bool CityCallV1, CityCallStarted, CityCallReturned;
     public string CustodyAgreementV1;
     public string WorkProgressV1;
+    public string DeliveredEndStart, DeliveredEndReturn;
     public List<string> OtherHaulerAgreements;
     public string OriginalHaulDropStart, OriginalHaulDropReturn, OriginalHaulerStartAgreement;
     public List<string> WorkAssetVerifiedV2;
@@ -38,6 +39,8 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Values.Look(ref CityCallStarted, "cityCallStartedV1", false);
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
         Scribe_Values.Look(ref CustodyAgreementV1, "currentCustodyCompletionAgreementV1");
+        Scribe_Values.Look(ref DeliveredEndStart, "lawfulDeliveredEndStartV1");
+        Scribe_Values.Look(ref DeliveredEndReturn, "lawfulDeliveredEndReturnV1");
         Scribe_Collections.Look(ref OtherHaulerAgreements, "lawfulOtherHaulerAgreements", LookMode.Value);
         Scribe_Values.Look(ref OriginalHaulerStartAgreement, "lawfulOriginalHaulerStartAgreement");
         Scribe_Values.Look(ref OriginalHaulDropStart, "lawfulOriginalDropStartV1");
@@ -162,6 +165,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 var binding = Charters.Binding(t.Territory); var reference = references.Single(r => r.Id == t.Id);
                 LawfulHaulDrop.Validate(t, reference.Residents?.Profile, reference.OriginalHaulDropStart,
                     reference.OriginalHaulDropReturn, Find.TickManager.TicksGame);
+                LawfulHaulDrop.ValidateEnd(reference.OriginalHaulDropStart, reference.OriginalHaulDropReturn,
+                    reference.DeliveredEndStart, reference.DeliveredEndReturn, t.ResolvedTick ?? Find.TickManager.TicksGame);
                 ValidateWorkCompletion(t,reference);
                 if (t.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
                 TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);

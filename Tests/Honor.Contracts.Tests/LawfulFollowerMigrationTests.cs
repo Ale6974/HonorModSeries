@@ -261,6 +261,14 @@ internal static class LawfulFollowerMigrationTests
         Reject(() => LawfulHaulDrop.Validate(originalCity, 16, null, System.Text.Json.JsonSerializer.Serialize(returnedDrop), now), "orphan drop return");
         Reject(() => LawfulHaulDrop.Validate(originalCity, 16, System.Text.Json.JsonSerializer.Serialize(drop with { Count = 11 }), null, now), "changed original carried quantity");
         Reject(() => LawfulHaulDrop.Validate(originalCity, 16, startDrop, System.Text.Json.JsonSerializer.Serialize(returnedDrop with { Returned = false }), now), "failed native placement cannot prove destination");
+        var placement = JsonSerializer.Serialize(returnedDrop);
+        var endStart = JsonSerializer.Serialize(new DeliveredJobEndStart(WorkProgress.Hash(placement), drop.Pawn, drop.Job, (int)now));
+        var endReturn = new DeliveredJobEndReturn(WorkProgress.Hash(endStart), "wait-job", "Wait_MaintainPosture", (int)now);
+        LawfulHaulDrop.ValidateEnd(startDrop, placement, endStart, null, now);
+        LawfulHaulDrop.ValidateEnd(startDrop, placement, endStart, JsonSerializer.Serialize(endReturn), now);
+        Reject(() => LawfulHaulDrop.ValidateEnd(startDrop, placement, null, JsonSerializer.Serialize(endReturn), now), "job end return cannot backfill its start");
+        Reject(() => LawfulHaulDrop.ValidateEnd(startDrop, placement, endStart, JsonSerializer.Serialize(endReturn with { NextJob = drop.Job }), now), "original running job cannot prove its own end");
+        Reject(() => LawfulHaulDrop.ValidateEnd(startDrop, placement, endStart, JsonSerializer.Serialize(endReturn with { NextDef = null }), now), "successor identity requires paired definition");
         var parties = CustodyAgreements.PartiesFor(after,originalCity).Select(id => after.Entity(id)).ToArray();
         var witness = new CustodyAgreement("delivered",originalCity.Id,after.Export(),afterPayments.Export(),savedHaul.Export(),Hash("custody"),
             parties.Select(e => new CustodyParty(e.Id,e.NativeOwner,e.Player)).ToArray(),parties.Select(e => obs.Single(o => o.Id == e.Id)).ToArray(),

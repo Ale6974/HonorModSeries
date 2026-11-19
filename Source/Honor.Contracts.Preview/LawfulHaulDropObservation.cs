@@ -60,8 +60,66 @@ internal static class LawfulHaulDropObservation
     }
 }
 
+[HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.EndCurrentJob))]
+internal static class DeliveredJobEndObservation
+{
+    internal sealed record Call(Game Game, TerritoryTransferReference City, string Start);
+    private static bool Prepare() => NativeTransferBodies.HaulFactionBodies5013;
+    private static void Prefix(Pawn_JobTracker __instance, Pawn ___pawn, JobCondition condition, out Call __state)
+    {
+        __state = null;
+        if (condition != JobCondition.Succeeded || Current.ProgramState != ProgramState.Playing ||
+            ___pawn?.jobs != __instance || __instance.curDriver?.GetType() != typeof(JobDriver_HaulToCell)) return;
+        try
+        {
+            __state = Current.Game.GetComponent<TerritoryAdministrationLedger>().BeginDeliveredJobEnd(___pawn);
+        }
+        catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Delivered job end input unavailable: " + e.GetType().Name); }
+    }
+
+    internal static bool SoleObserver()
+    {
+        var patches = Harmony.GetPatchInfo(AccessTools.Method(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.EndCurrentJob)));
+        return patches?.Prefixes.Count == 1 && patches.Postfixes.Count == 1 && patches.Transpilers.Count == 0 &&
+            patches.Finalizers.Count == 0 && patches.Prefixes[0].PatchMethod == AccessTools.Method(typeof(DeliveredJobEndObservation), nameof(Prefix)) &&
+            patches.Postfixes[0].PatchMethod == AccessTools.Method(typeof(DeliveredJobEndObservation), nameof(Postfix));
+    }
+
+    private static void Postfix(Pawn_JobTracker __instance, Call __state, bool __runOriginal)
+    {
+        if (__state == null || !__runOriginal || Current.Game != __state.Game ||
+            __state.City.DeliveredEndStart != __state.Start || __state.City.DeliveredEndReturn != null) return;
+        try
+        {
+            var next = __instance.curJob;
+            var output = JsonSerializer.Serialize(new DeliveredJobEndReturn(WorkProgress.Hash(__state.Start),
+                next?.GetUniqueLoadID(), next?.def?.defName, Find.TickManager.TicksGame));
+            LawfulHaulDrop.ValidateEnd(__state.City.OriginalHaulDropStart, __state.City.OriginalHaulDropReturn,
+                __state.Start, output, Find.TickManager.TicksGame);
+            __state.City.DeliveredEndReturn = output;
+        }
+        catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Delivered job end output unavailable: " + e.GetType().Name); }
+    }
+}
+
 public sealed partial class TerritoryAdministrationLedger
 {
+    internal DeliveredJobEndObservation.Call BeginDeliveredJobEnd(Pawn pawn)
+    {
+        if (RestoreFailed || Current.Game != ownerGame || nativeExecutionDepth != 0 || !ownerGame.GetComponent<PoliticalTransitionLedger>().Journal.Pending) return null;
+        var r = references.SingleOrDefault(row => row.OriginalHaulDropReturn != null && row.DeliveredEndStart == null &&
+            row.Residents?.Pawns?.Contains(pawn) == true && Ledger.Transfer(row.Id).Phase == TerritoryTransferPhase.Prepared);
+        if (r == null || !DeliveredJobEndObservation.SoleObserver()) return null;
+        var original = JsonSerializer.Deserialize<OriginalDropInput>(r.OriginalHaulDropStart);
+        if (original.Pawn != pawn.GetUniqueLoadID() || original.Job != pawn.CurJob?.GetUniqueLoadID() ||
+            r.Residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true || pawn.Map != r.LoadedMap?.Map) return null;
+        RequireCurrentOriginalDrop(Ledger.Transfer(r.Id),r);
+        string start = JsonSerializer.Serialize(new DeliveredJobEndStart(WorkProgress.Hash(r.OriginalHaulDropReturn),
+            original.Pawn,original.Job,Find.TickManager.TicksGame));
+        LawfulHaulDrop.ValidateEnd(r.OriginalHaulDropStart,r.OriginalHaulDropReturn,start,null,Find.TickManager.TicksGame);
+        r.DeliveredEndStart = start;
+        return new(ownerGame,r,start);
+    }
     private static void RequireCurrentOriginalDrop(TerritoryTransfer t, TerritoryTransferReference r)
     {
         LawfulHaulDrop.Validate(t, r.Residents?.Profile, r.OriginalHaulDropStart, r.OriginalHaulDropReturn, Find.TickManager.TicksGame);

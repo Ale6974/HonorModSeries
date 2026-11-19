@@ -39,6 +39,8 @@ public sealed partial class TerritoryAdministrationLedger
             r.City.Faction == r.Target && !r.CityCallReturned) throw new ArgumentException("Original returned custody/calls/current game unavailable.");
         var binding = Charters.Binding(t.Territory);
         if (binding.PlayerGroup || binding.FactionGroup || binding.Settlement != r.City) throw new ArgumentException("Original town binding changed.");
+        if (lawfulHaul && r.DeliveredEndStart != null)
+            throw new ArgumentException("A delivered job end requires separate current successor authority.");
         if (lawfulHaul && RetainsDeliveredHaul(t, r))
         {
             ValidateMapReference(t, r, false);
