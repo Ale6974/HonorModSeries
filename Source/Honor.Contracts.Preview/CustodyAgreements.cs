@@ -113,9 +113,11 @@ public sealed partial class TerritoryAdministrationLedger
                 DeliveredClinicalProof = deliveredMap != null && (previous == null || previous.DeliveredClinicalProof != null)
                     ? DeliveredClinicalProof(r.Residents) : null };
             if (w.DeliveredClinicalProof != null && (previous == null || previous.DeliveredHauler != null))
-                w = w with { DeliveredHauler = PendingDeliveredHauler(r) };
+                w = w with { DeliveredHauler = PendingDeliveredResident(r, DeliveredResidentKind.DeliveringHauler) };
             if (w.DeliveredClinicalProof != null && (previous == null || previous.OtherHauler != null))
-                w = w with { OtherHauler = PendingDeliveredHauler(r, other: true) };
+                w = w with { OtherHauler = PendingDeliveredResident(r, DeliveredResidentKind.OtherHauler) };
+            if (w.DeliveredClinicalProof != null && (previous == null || previous.IdleResident != null))
+                w = w with { IdleResident = PendingDeliveredResident(r, DeliveredResidentKind.Idle) };
         }
         w = w with { WorkProgressV1=workProgress };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };
@@ -175,8 +177,9 @@ public sealed partial class TerritoryAdministrationLedger
             foreach (var id in r.OtherHaulerAgreements)
             {
                 var w = custodyAgreements.Record(id).Witness;
-                int index = r.Residents.Set().Residents.ToList().FindIndex(row => row.Id == w.OtherHauler?.Pawn);
-                if (index < 0 || !seen.Add(w.OtherHauler.Pawn) || w.Transfer != r.Id ||
+                var resident = w.OtherHauler ?? w.IdleResident;
+                int index = r.Residents.Set().Residents.ToList().FindIndex(row => row.Id == resident?.Pawn);
+                if (index < 0 || !seen.Add(resident.Pawn) || w.Transfer != r.Id ||
                     w.HaulDropStart != r.OriginalHaulDropStart || w.HaulDropReturn != r.OriginalHaulDropReturn ||
                     !ResidentTransferCensus.Call(r.Residents.AuthorityJournal[index]).Started)
                     throw new ArgumentException("Original working resident call and mandate disagree.");
@@ -226,11 +229,11 @@ public sealed partial class TerritoryAdministrationLedger
                 var cargo = reference.Residents.ActiveWorkCarry.Single(item => item?.GetUniqueLoadID() == drop.Cargo);
                 var pawn = reference.Residents.Pawns.Single(person => person?.GetUniqueLoadID() == drop.Pawn);
                 text += "\n\n" + "RE_CustodyDelivered".Translate(pawn.LabelShort, cargo.LabelNoCount, drop.Count, cargo.Position.ToString());
-                var mandate = reviewed.Witness.OtherHauler ?? reviewed.Witness.DeliveredHauler;
+                var mandate = reviewed.Witness.IdleResident ?? reviewed.Witness.OtherHauler ?? reviewed.Witness.DeliveredHauler;
                 if (mandate != null)
                 {
                     var resident = reference.Residents.Pawns.Single(p => p.GetUniqueLoadID() == mandate.Pawn);
-                    text += "\n" + "RE_DeliveredHaulerMandate".Translate(resident.LabelShort, reference.Target.Name);
+                    text += "\n" + (reviewed.Witness.IdleResident != null ? "RE_DeliveredIdleMandate" : "RE_DeliveredHaulerMandate").Translate(resident.LabelShort, reference.Target.Name);
                 }
             }
             if (reviewed.Witness.ForeignRightsV1 != null)

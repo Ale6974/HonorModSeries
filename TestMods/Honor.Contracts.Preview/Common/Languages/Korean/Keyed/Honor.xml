@@ -629,5 +629,6 @@
   <RE_WorkStorageContinuationReview>검증된 후속 선반 작업: {0}건. 남은 원 물품 전량 집기·원 물품 되놓기·전량 재합치기는 최초 분할 이력을 유지합니다. 현재 승인이 필요합니다.</RE_WorkStorageContinuationReview>
   <RE_WorkStorageQuantityReview>검증된 추가 분할·지정 수량 부분 합치기: {0}건. 새 운반 조각은 별도 객체로 보존하며, 부분 합치기는 같은 운반 물품의 잔량과 선반의 정확한 증가량을 확인합니다. 원 기록과 과거 승인은 유지됩니다.</RE_WorkStorageQuantityReview>
   <RE_CustodyDelivered>{0}이(가) {1} {2}개를 {3}에 내려놓았습니다. 이번 승인에는 그 위치의 물품과 현재 지도 상태가 포함됩니다.</RE_CustodyDelivered>
+  <RE_DeliveredIdleMandate>원 명부에서 유휴 상태였고 현재도 유휴 상태인 {0}의 소속을 {1}(으)로 변경하는 데 동의합니다.</RE_DeliveredIdleMandate>
   <RE_DeliveredHaulerMandate>이번 결정에는 {0}의 현재 운반 작업을 유지하면서 소속을 {1}(으)로 변경하는 승인도 포함됩니다.</RE_DeliveredHaulerMandate>
 </LanguageData>

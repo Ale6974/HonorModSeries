@@ -163,7 +163,7 @@ public sealed class TerritoryTransferLedger
         Time(now);
         var transfer = Transfer(id);
         Require(transfer.Phase == TerritoryTransferPhase.Prepared && transfer.LawfulHaulParentProof != null &&
-            agreement?.Witness?.DeliveredMapProof != null && agreement.Witness.DeliveredHauler == null && agreement.Witness.OtherHauler == null && agreement.Witness.DeliveredMapProof == currentMapProof &&
+            agreement?.Witness?.DeliveredMapProof != null && agreement.Witness.DeliveredHauler == null && agreement.Witness.OtherHauler == null && agreement.Witness.IdleResident == null && agreement.Witness.DeliveredMapProof == currentMapProof &&
             agreement.Proof == WorkProgress.Hash(agreement.Witness) && CustodyAgreements.Validate(agreement.Witness) == transfer &&
             actualOwner == transfer.TargetOwner && cityStarted && cityReturned && now >= agreement.Witness.Tick,
             "Original current placement approval and confirmed native city return required.");

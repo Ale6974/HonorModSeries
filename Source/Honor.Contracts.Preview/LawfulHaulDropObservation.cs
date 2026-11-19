@@ -147,7 +147,9 @@ public sealed partial class TerritoryAdministrationLedger
         Current = residents.Pawns.Select(p => new { Pawn = p.GetUniqueLoadID(), Care = p.playerSettings == null ? (int?)null : (int)p.playerSettings.medCare }).ToArray()
     });
 
-    private static WorkPendingResident PendingDeliveredHauler(TerritoryTransferReference r, bool other = false)
+    private enum DeliveredResidentKind { DeliveringHauler, OtherHauler, Idle }
+
+    private static WorkPendingResident PendingDeliveredResident(TerritoryTransferReference r, DeliveredResidentKind kind)
     {
         var residents = r.Residents;
         var input = JsonSerializer.Deserialize<OriginalDropInput>(r.OriginalHaulDropStart);
@@ -157,14 +159,20 @@ public sealed partial class TerritoryAdministrationLedger
             if (call.Returned) continue;
             var pawn = residents.Pawns[i];
             var id = pawn.GetUniqueLoadID();
-            if (other == (id == input.Pawn)) return null;
-            var expectedJob = other ? LoadedMapPreservation.Restore(residents.LoadedMapScope).ActiveWorkV1
+            bool delivering = kind == DeliveredResidentKind.DeliveringHauler;
+            if (delivering != (id == input.Pawn)) return null;
+            var expectedJob = !delivering ? LoadedMapPreservation.Restore(residents.LoadedMapScope).ActiveWorkV1
                 .SingleOrDefault(row => row.Pawn == id)?.Jobs.FirstOrDefault() : input.Job;
-            if (expectedJob == null || call.Started || pawn.Faction != r.From ||
-                pawn.CurJob?.GetUniqueLoadID() != expectedJob || residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true ||
+            if (kind == DeliveredResidentKind.Idle)
+            {
+                if (expectedJob != null || !ResidentActiveWork.IsOriginalIdleCandidate(pawn)) return null;
+            }
+            else if (expectedJob == null || pawn.CurJob?.GetUniqueLoadID() != expectedJob ||
+                residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true) return null;
+            if (call.Started || pawn.Faction != r.From ||
                 residents.Prisoners.Count != 0 || residents.Surgery[i].Detached.Count != 0 ||
                 residents.Surgery[i].Set().Orders.Count != 0 || pawn.health.surgeryBills.Bills.Count != 0 ||
-                !other && r.OriginalHaulerStartAgreement != null) return null;
+                delivering && r.OriginalHaulerStartAgreement != null) return null;
             var current = ResidentExecution.FreshClinical(pawn);
             if (current.MedicalCare != residents.Set().Residents[i].MedicalCare) return null;
             return new(id,current.Preserved);
@@ -172,11 +180,13 @@ public sealed partial class TerritoryAdministrationLedger
         return null;
     }
 
-    private void StartDeliveredHauler(TerritoryTransferReference r, CustodyAgreement grant)
+    private void StartDeliveredResident(TerritoryTransferReference r, CustodyAgreement grant)
     {
-        var approved = grant.OtherHauler ?? grant.DeliveredHauler;
-        if (approved == null || PendingDeliveredHauler(r,grant.OtherHauler != null) != approved)
-            throw new ArgumentException("Current original hauler approval required.");
+        var approved = grant.IdleResident ?? grant.OtherHauler ?? grant.DeliveredHauler;
+        var kind = grant.IdleResident != null ? DeliveredResidentKind.Idle :
+            grant.OtherHauler != null ? DeliveredResidentKind.OtherHauler : DeliveredResidentKind.DeliveringHauler;
+        if (approved == null || PendingDeliveredResident(r,kind) != approved)
+            throw new ArgumentException("Current individual resident approval required.");
         var record = r.Residents;
         int i = record.Pawns.FindIndex(p => p.GetUniqueLoadID() == approved.Pawn);
         var pawn = record.Pawns[i];
@@ -200,10 +210,10 @@ public sealed partial class TerritoryAdministrationLedger
             record.Started = true;
             record.CareJournal[i] = care.Export();
             area.Journal = areaStart;
-            if (grant.OtherHauler != null) (r.OtherHaulerAgreements ??= []).Add(grant.Id);
+            if (grant.OtherHauler != null || grant.IdleResident != null) (r.OtherHaulerAgreements ??= []).Add(grant.Id);
             else r.OriginalHaulerStartAgreement = grant.Id;
             record.AuthorityJournal[i] = start;
-        });
+        }, originalIdle: grant.IdleResident != null);
     }
     private void FinishDeliveredCity(TerritoryTransfer t, TerritoryTransferReference r, Game game)
     {
@@ -220,9 +230,9 @@ public sealed partial class TerritoryAdministrationLedger
                 return;
             }
         }
-        if (agreement.Witness.DeliveredHauler != null || agreement.Witness.OtherHauler != null)
+        if (agreement.Witness.DeliveredHauler != null || agreement.Witness.OtherHauler != null || agreement.Witness.IdleResident != null)
         {
-            StartDeliveredHauler(r, agreement.Witness);
+            StartDeliveredResident(r, agreement.Witness);
             Messages.Message("RE_WorkClinicalProgress".Translate(), MessageTypeDefOf.NeutralEvent);
             return;
         }

@@ -274,6 +274,13 @@ internal static class LawfulFollowerMigrationTests
         Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,haulerReceipt,witness.DeliveredMapProof,"union",true,true,now), "resident start mandate cannot finalize the city");
         var otherGrant = haulerGrant with { DeliveredHauler = null, OtherHauler = new("second", Hash("second current")) };
         Reject(() => CustodyAgreements.Validate(otherGrant with { OtherHauler = new(idleResident.Id, idleResident.Preserved) }), "an original idle resident needs separate authority after delivery");
+        var idleGrant = haulerGrant with { DeliveredHauler = null, IdleResident = new(idleResident.Id, idleResident.Preserved) };
+        var idleArchive = new CustodyAgreements();
+        var idleReceipt = idleArchive.Add(idleGrant);
+        Check(CustodyAgreements.Restore(idleArchive.Export()).Record(idleGrant.Id).Witness.IdleResident == idleGrant.IdleResident, "individual idle grant survives reload");
+        Reject(() => CustodyAgreements.Validate(idleGrant with { IdleResident = haulerGrant.DeliveredHauler }), "ended original job cannot receive idle authority");
+        Reject(() => CustodyAgreements.Validate(idleGrant with { OtherHauler = otherGrant.OtherHauler }), "separate resident mandates cannot be combined");
+        Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,idleReceipt,witness.DeliveredMapProof,"union",true,true,now), "idle resident mandate cannot finalize city");
         var otherArchive = new CustodyAgreements();
         var otherReceipt = otherArchive.Add(otherGrant);
         Check(CustodyAgreements.Restore(otherArchive.Export()).Record(otherGrant.Id).Witness.OtherHauler == otherGrant.OtherHauler, "second resident mandate survives reload");
