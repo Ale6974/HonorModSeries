@@ -162,8 +162,9 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 ValidateWorkCompletion(t,reference);
                 if (t.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
                 TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
-                bool unstartedGivenWork = KeepsUnstartedGivenWork(t,reference) || KeepsUnstartedActiveWork(t,reference) || RetainsSealedWork(t,reference);
-                ValidateMapReference(t, reference, t.Phase == TerritoryTransferPhase.Prepared && !unstartedGivenWork);
+                bool retainPendingWork = KeepsUnstartedGivenWork(t,reference) || KeepsUnstartedActiveWork(t,reference) ||
+                    RetainsSealedWork(t,reference) || RetainDeliveredHaulOnLoad(t,reference);
+                ValidateMapReference(t, reference, t.Phase == TerritoryTransferPhase.Prepared && !retainPendingWork);
                 if ((t.UnstartedWorkAbortV1 != null || t.UnstartedActiveWorkAbortV1 != null) && (reference.CityCallStarted || reference.CityCallReturned || reference.Residents?.Started != false || reference.CustodyAgreementV1 != null)) throw new ArgumentException("No-start receipt conflicts with actual native calls.");
                 if (reference.CityCallV1 && reference.CityCallStarted && reference.Residents != null && !reference.Residents.Started)
                     throw new ArgumentException("City call cannot precede its recorded resident execution.");
@@ -190,7 +191,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 if (reference.Residents != null)
                 {
                     ResidentExecution.ValidateCensus(reference.Residents, reference.ResidentCensusProof, t.Territory, t.FromOwner, t.TargetOwner, t.Phase == TerritoryTransferPhase.Applied);
-                    if (t.Phase == TerritoryTransferPhase.Prepared && !unstartedGivenWork)
+                    if (t.Phase == TerritoryTransferPhase.Prepared && !retainPendingWork)
                     {
                         ResidentExecution.ValidateReferences(reference.Residents, reference.City, t.ResidentProof);
                         if (reference.ResidentCareJournalRequired) ResidentExecution.ValidateCareJournal(reference.Residents, reference.From, reference.Target);

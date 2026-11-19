@@ -70,7 +70,7 @@ public sealed partial class TerritoryAdministrationLedger
         var map = r.City?.Map;
         var cargo = r.Residents.ActiveWorkCarry?.SingleOrDefault(thing => thing != null && thing.GetUniqueLoadID() == input.Cargo);
         if (map == null || map != r.LoadedMap?.Map || map.GetUniqueLoadID() != input.Map ||
-            cargo == null || cargo.Destroyed || !cargo.Spawned || cargo.Map != map || cargo.holdingOwner != null ||
+            cargo == null || cargo.Destroyed || !cargo.Spawned || cargo.Map != map || cargo.holdingOwner != null && cargo.holdingOwner != map.GetDirectlyHeldThings() ||
             cargo.Faction != null || cargo.stackCount != input.Count || map.cellIndices.CellToIndex(cargo.Position) != input.Cell)
             throw new ArgumentException("Original delivered stack no longer matches its approved destination and quantity.");
         var actor = r.Residents.Pawns.Single(p => p != null && p.GetUniqueLoadID() == input.Pawn);
@@ -78,6 +78,33 @@ public sealed partial class TerritoryAdministrationLedger
         using var saved = JsonDocument.Parse(work.Saved);
         if (saved.RootElement.GetProperty("Carry").GetRawText() != JsonSerializer.Serialize(ResidentActiveWork.SimpleCargoState(cargo, actor)))
             throw new ArgumentException("Delivered stack definition, health or components changed.");
+    }
+    // Loading retains the interrupted operation. It does not authorize a native call.
+    private static bool RetainDeliveredHaulOnLoad(TerritoryTransfer t, TerritoryTransferReference r)
+    {
+        if (t.Phase != TerritoryTransferPhase.Prepared || r.OriginalHaulDropReturn == null ||
+            !JsonSerializer.Deserialize<OriginalDropOutput>(r.OriginalHaulDropReturn).SameStackAtDestination) return false;
+        RequireCurrentOriginalDrop(t, r);
+        var input = JsonSerializer.Deserialize<OriginalDropInput>(r.OriginalHaulDropStart);
+        LoadedMapRecords.VerifyDeliveredContents(r, input.Cargo);
+        var residents = r.Residents;
+        var map = r.City.Map;
+        if (map != residents.NativeMap || r.From == null || r.Target == null || r.Target.IsPlayer ||
+            r.City.Faction != (r.CityCallReturned ? r.Target : r.From) || r.CityCallStarted != r.CityCallReturned ||
+            residents.Pawns == null || residents.Pawns.Any(p => p == null || p.Destroyed || p.Dead || p.Map != map) ||
+            !residents.Pawns.Select(p => p.GetUniqueLoadID()).SequenceEqual(residents.Set().Residents.Select(row => row.Id)) ||
+            r.City.previouslyGeneratedInhabitants == null || residents.Pawns.Count != r.City.previouslyGeneratedInhabitants.Count ||
+            !new HashSet<Pawn>(residents.Pawns).SetEquals(r.City.previouslyGeneratedInhabitants))
+            throw new ArgumentException("Original pending town, map and resident roster required.");
+        ResidentTransferCensus.RequireRecoverable(residents.AuthorityJournal, residents.CareJournal);
+        for (int i = 0; i < residents.Pawns.Count; i++)
+        {
+            var call = ResidentTransferCensus.Call(residents.AuthorityJournal[i]);
+            if (residents.Pawns[i].Faction != (call.Returned ? r.Target : r.From))
+                throw new ArgumentException("Original resident affiliation and call history disagree.");
+        }
+        ResidentExecution.ValidateCareJournal(residents, r.From, r.Target);
+        return true;
     }
     internal OriginalDropCall BeginOriginalDrop(Pawn_CarryTracker carry, IntVec3 cell)
     {

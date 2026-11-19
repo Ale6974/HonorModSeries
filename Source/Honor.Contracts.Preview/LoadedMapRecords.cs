@@ -216,6 +216,43 @@ internal static class LoadedMapRecords
             Stockpiles = stockpiles.Evidence.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Stockpile)).ToList(),
             Growing = stockpiles.Growing.Length == 0 ? null : stockpiles.References.Where(z => z.GetType() == typeof(Zone_Growing)).ToList(), Snapshot = snapshot };
     }
+    internal static void VerifyDeliveredContents(TerritoryTransferReference reference, string deliveredId)
+    {
+        Ready(reference.City);
+        var record = reference.LoadedMap;
+        var map = record.Map;
+        var original = LoadedMapPreservation.Restore(record.Snapshot);
+        if (record.Things == null || record.Things.Any(t => t == null))
+            throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        var objects = record.Things.ToDictionary(t => t.GetUniqueLoadID(), StringComparer.Ordinal);
+        var owned = new HashSet<string>((original.OwnedAssets ?? []).Select(a => a.Id), StringComparer.Ordinal);
+        foreach (string id in owned)
+        {
+            if (!objects.TryGetValue(id, out var asset) || asset.Faction?.GetUniqueLoadID() != MapAssetTransfers.ExpectedOwner(record.AssetJournal,id))
+                throw new ResidentMoveBlocked("RE_AssetUnavailable");
+        }
+        var held = original.Held ?? [];
+        if (objects.Count != original.Things.Length + held.Length || objects.ContainsKey(deliveredId))
+            throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        var roots = new HashSet<Thing>();
+        foreach (var item in original.Things)
+        {
+            if (!objects.TryGetValue(item.Id, out var thing) || Evidence(thing,map,false,owned.Contains(item.Id),true) != item)
+                throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+            roots.Add(thing);
+        }
+        foreach (var row in held)
+        {
+            if (!objects.TryGetValue(row.Item.Id, out var thing) || !objects.TryGetValue(row.Holder, out var holder) ||
+                Evidence(thing,map,true,owned.Contains(row.Item.Id),true) != row.Item ||
+                !ReferenceEquals(thing.holdingOwner.Owner,holder) || row.Slot < 0 ||
+                row.Slot >= thing.holdingOwner.Count || thing.holdingOwner[row.Slot] != thing)
+                throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        }
+        roots.Add(reference.Residents.ActiveWorkCarry.Single(t => t != null && t.GetUniqueLoadID() == deliveredId));
+        if (!roots.SetEquals(map.listerThings.AllThings.Where(t => t is not Pawn)))
+            throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+    }
     internal static void Verify(Settlement city, LoadedMapRecord original)
     {
         if (original == null || original.Map != city.Map || original.Things == null) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
