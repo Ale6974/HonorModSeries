@@ -114,6 +114,8 @@ public sealed partial class TerritoryAdministrationLedger
                     ? DeliveredClinicalProof(r.Residents) : null };
             if (w.DeliveredClinicalProof != null && (previous == null || previous.DeliveredHauler != null))
                 w = w with { DeliveredHauler = PendingDeliveredHauler(r) };
+            if (w.DeliveredClinicalProof != null && (previous == null || previous.OtherHauler != null))
+                w = w with { OtherHauler = PendingDeliveredHauler(r, other: true) };
         }
         w = w with { WorkProgressV1=workProgress };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };
@@ -167,6 +169,19 @@ public sealed partial class TerritoryAdministrationLedger
     {
         if (custodyAgreementSnapshot != null || custodyAgreements.Records.Count > 0)
             custodyAgreements.ValidateHistory(Charters.Book, Ledger, Current.Game.GetComponent<TributePaymentLedger>().Ledger);
+        foreach (var r in references.Where(row => row.OtherHaulerAgreements != null))
+        {
+            var seen = new HashSet<string>();
+            foreach (var id in r.OtherHaulerAgreements)
+            {
+                var w = custodyAgreements.Record(id).Witness;
+                int index = r.Residents.Set().Residents.ToList().FindIndex(row => row.Id == w.OtherHauler?.Pawn);
+                if (index < 0 || !seen.Add(w.OtherHauler.Pawn) || w.Transfer != r.Id ||
+                    w.HaulDropStart != r.OriginalHaulDropStart || w.HaulDropReturn != r.OriginalHaulDropReturn ||
+                    !ResidentTransferCensus.Call(r.Residents.AuthorityJournal[index]).Started)
+                    throw new ArgumentException("Original working resident call and mandate disagree.");
+            }
+        }
         foreach (var r in references.Where(row => row.OriginalHaulerStartAgreement != null))
         {
             var grant = custodyAgreements.Record(r.OriginalHaulerStartAgreement).Witness;
@@ -211,8 +226,12 @@ public sealed partial class TerritoryAdministrationLedger
                 var cargo = reference.Residents.ActiveWorkCarry.Single(item => item?.GetUniqueLoadID() == drop.Cargo);
                 var pawn = reference.Residents.Pawns.Single(person => person?.GetUniqueLoadID() == drop.Pawn);
                 text += "\n\n" + "RE_CustodyDelivered".Translate(pawn.LabelShort, cargo.LabelNoCount, drop.Count, cargo.Position.ToString());
-                if (reviewed.Witness.DeliveredHauler != null)
-                    text += "\n" + "RE_DeliveredHaulerMandate".Translate(pawn.LabelShort, reference.Target.Name);
+                var mandate = reviewed.Witness.OtherHauler ?? reviewed.Witness.DeliveredHauler;
+                if (mandate != null)
+                {
+                    var resident = reference.Residents.Pawns.Single(p => p.GetUniqueLoadID() == mandate.Pawn);
+                    text += "\n" + "RE_DeliveredHaulerMandate".Translate(resident.LabelShort, reference.Target.Name);
+                }
             }
             if (reviewed.Witness.ForeignRightsV1 != null)
             {

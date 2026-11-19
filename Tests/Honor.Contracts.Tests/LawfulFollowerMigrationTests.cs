@@ -230,12 +230,15 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(mappedJournal.Current, TerritoryTransferLedger.Restore(mappedPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(mappedJournal.Export()).Current, "child") == mappedScope && mappedPhysical.Transfer("mapped-city").StockFormat == 10,
             "original growing/stockpile zones, shelf group and resident scope remain paired through lawful physical save/restore");
-        var haulingMap = LoadedMapPreservation.CaptureActiveWork(mappedScope, [new("restricted", ["job-haul"], """{"Carry":{"Id":"steel","stackCount":12}}""")]);
+        var secondResident = new ResidentMoveEvidence("second", Hash("second resident evidence"), 4);
+        var haulingSet = ResidentMoveSet.Capture(mappedSet.Residents.Append(secondResident));
+        var haulingBase = LoadedMapPreservation.CaptureResidents(containerScope, haulingSet.Residents.Select(r => new NativeMapResident(r.Id,r.Preserved)), [new("visitor", Hash("unchanged-bystander"))]);
+        var haulingMap = LoadedMapPreservation.CaptureActiveWork(haulingBase, [new("restricted", ["job-haul"], """{"Carry":{"Id":"steel","stackCount":12}}"""), new("second", ["other-job"], """{"Carry":null}""")]);
         var haulProof = LoadedMapPreservation.Restore(haulingMap).Proof;
-        var haulingTown = mappedTown with { LoadedMap = haulingMap, StockFormat = 25, StockProof = haulProof };
+        var haulingTown = mappedTown with { LoadedMap = haulingMap, StockFormat = 25, StockProof = haulProof, ResidentProof = haulingSet.Proof };
         var haulPlan = FollowerTransfers.Review(after, physical, [new("child", haulingTown), new("deep", actualDeep)], "union", now);
         var haulPeace = UnionPeaceAdmission.Review("union", "player", "chief", now, 75, ["seat"], haulPlan.Moves);
-        var haulApproval = new LawfulResidentScope("child", ResidentTransferCensus.Prepare("town", "realm", "union", 16, mappedSet)) { HaulMapProof = haulProof };
+        var haulApproval = new LawfulResidentScope("child", ResidentTransferCensus.Prepare("town", "realm", "union", 16, haulingSet)) { HaulMapProof = haulProof };
         var haulJournal = new AllegianceTransitionLedger();
         haulJournal.PrepareLawfulResidentAdmission("haul", politics, command, haulPlan, physical, closure, haulPeace, [haulApproval]);
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(haulJournal.Export()).Current, "child") == haulingMap, "lawful haul approval survives parent journal restore");
@@ -268,6 +271,12 @@ internal static class LawfulFollowerMigrationTests
         Check(CustodyAgreements.Scope(haulerGrant) != CustodyAgreements.Scope(haulerGrant with { DeliveredHauler = null }), "original hauler needs an explicit call mandate");
         Reject(() => CustodyAgreements.Validate(haulerGrant with { DeliveredHauler = new("different-resident",Hash("current resident")) }), "another resident cannot inherit the hauler mandate");
         Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,haulerReceipt,witness.DeliveredMapProof,"union",true,true,now), "resident start mandate cannot finalize the city");
+        var otherGrant = haulerGrant with { DeliveredHauler = null, OtherHauler = new("second", Hash("second current")) };
+        var otherArchive = new CustodyAgreements();
+        var otherReceipt = otherArchive.Add(otherGrant);
+        Check(CustodyAgreements.Restore(otherArchive.Export()).Record(otherGrant.Id).Witness.OtherHauler == otherGrant.OtherHauler, "second resident mandate survives reload");
+        Reject(() => CustodyAgreements.Validate(otherGrant with { OtherHauler = new("visitor",Hash("visitor")) }), "bystander cannot inherit the second mandate");
+        Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,otherReceipt,witness.DeliveredMapProof,"union",true,true,now), "second resident mandate cannot finalize city");
         var receipt = new CustodyAgreements().Add(witness);
         Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,receipt,Hash("changed"),"union",true,true,now), "changed delivered map cannot finalize");
         Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,receipt,witness.DeliveredMapProof,"union",true,false,now), "unknown city return cannot finalize");

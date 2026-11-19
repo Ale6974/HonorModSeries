@@ -147,7 +147,7 @@ public sealed partial class TerritoryAdministrationLedger
         Current = residents.Pawns.Select(p => new { Pawn = p.GetUniqueLoadID(), Care = p.playerSettings == null ? (int?)null : (int)p.playerSettings.medCare }).ToArray()
     });
 
-    private static WorkPendingResident PendingDeliveredHauler(TerritoryTransferReference r)
+    private static WorkPendingResident PendingDeliveredHauler(TerritoryTransferReference r, bool other = false)
     {
         var residents = r.Residents;
         var input = JsonSerializer.Deserialize<OriginalDropInput>(r.OriginalHaulDropStart);
@@ -156,28 +156,33 @@ public sealed partial class TerritoryAdministrationLedger
             var call = ResidentTransferCensus.Call(residents.AuthorityJournal[i]);
             if (call.Returned) continue;
             var pawn = residents.Pawns[i];
-            if (call.Started || pawn.GetUniqueLoadID() != input.Pawn || pawn.Faction != r.From ||
-                pawn.CurJob?.GetUniqueLoadID() != input.Job || residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true ||
+            var id = pawn.GetUniqueLoadID();
+            if (other == (id == input.Pawn)) return null;
+            var expectedJob = other ? LoadedMapPreservation.Restore(residents.LoadedMapScope).ActiveWorkV1
+                .SingleOrDefault(row => row.Pawn == id)?.Jobs.FirstOrDefault() : input.Job;
+            if (expectedJob == null || call.Started || pawn.Faction != r.From ||
+                pawn.CurJob?.GetUniqueLoadID() != expectedJob || residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true ||
                 residents.Prisoners.Count != 0 || residents.Surgery[i].Detached.Count != 0 ||
                 residents.Surgery[i].Set().Orders.Count != 0 || pawn.health.surgeryBills.Bills.Count != 0 ||
-                r.OriginalHaulerStartAgreement != null) return null;
+                !other && r.OriginalHaulerStartAgreement != null) return null;
             var current = ResidentExecution.FreshClinical(pawn);
             if (current.MedicalCare != residents.Set().Residents[i].MedicalCare) return null;
-            return new(input.Pawn,current.Preserved);
+            return new(id,current.Preserved);
         }
         return null;
     }
 
     private void StartDeliveredHauler(TerritoryTransferReference r, CustodyAgreement grant)
     {
-        if (grant.DeliveredHauler == null || PendingDeliveredHauler(r) != grant.DeliveredHauler)
+        var approved = grant.OtherHauler ?? grant.DeliveredHauler;
+        if (approved == null || PendingDeliveredHauler(r,grant.OtherHauler != null) != approved)
             throw new ArgumentException("Current original hauler approval required.");
         var record = r.Residents;
-        int i = record.Pawns.FindIndex(p => p.GetUniqueLoadID() == grant.DeliveredHauler.Pawn);
+        int i = record.Pawns.FindIndex(p => p.GetUniqueLoadID() == approved.Pawn);
         var pawn = record.Pawns[i];
         var area = record.AreaRecords[i];
         var care = ResidentCareJournal.Restore(record.CareJournal[i]);
-        ResidentAreaRecords.References(area,grant.DeliveredHauler.Pawn);
+        ResidentAreaRecords.References(area,approved.Pawn);
         if (area.Pawn != pawn || record.Surgery[i].Pawn != pawn || r.CityCallStarted)
             throw new ArgumentException("Original unstarted resident context required.");
         var areaStart = ResidentAreas.Begin(area.Journal,ResidentAreaRecords.Entries(pawn));
@@ -195,7 +200,8 @@ public sealed partial class TerritoryAdministrationLedger
             record.Started = true;
             record.CareJournal[i] = care.Export();
             area.Journal = areaStart;
-            r.OriginalHaulerStartAgreement = grant.Id;
+            if (grant.OtherHauler != null) (r.OtherHaulerAgreements ??= []).Add(grant.Id);
+            else r.OriginalHaulerStartAgreement = grant.Id;
             record.AuthorityJournal[i] = start;
         });
     }
@@ -214,7 +220,7 @@ public sealed partial class TerritoryAdministrationLedger
                 return;
             }
         }
-        if (agreement.Witness.DeliveredHauler != null)
+        if (agreement.Witness.DeliveredHauler != null || agreement.Witness.OtherHauler != null)
         {
             StartDeliveredHauler(r, agreement.Witness);
             Messages.Message("RE_WorkClinicalProgress".Translate(), MessageTypeDefOf.NeutralEvent);
