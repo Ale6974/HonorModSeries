@@ -121,7 +121,9 @@ public sealed partial class TerritoryAdministrationLedger
         var input = JsonSerializer.Deserialize<OriginalDropInput>(reference.OriginalHaulDropStart);
         var residents = reference.Residents;
         var actor = residents.Pawns.Single(p => p.GetUniqueLoadID() == input.Pawn);
-        var current = LoadedMapPreservation.Restore(LoadedMapRecords.Capture(reference.City, deliveredActor: actor).Snapshot);
+        var fresh = LoadedMapRecords.Capture(reference.City, deliveredActor: actor);
+        LoadedMapRecords.VerifyMapRegistries(fresh, reference.LoadedMap);
+        var current = LoadedMapPreservation.Restore(fresh.Snapshot);
         var original = LoadedMapPreservation.Restore(transfer.LoadedMap);
         // Only the delivering resident, its work and the new ground stack may differ.
         // Storage membership changes require separate evidence.
@@ -155,9 +157,15 @@ public sealed partial class TerritoryAdministrationLedger
                 throw new ArgumentException("Original restored resident affiliation, medical policy and surgery orders required.");
             ResidentAreas.CheckCurrent(residents.AreaRecords[i].Journal, ResidentAreaRecords.Entries(pawn));
         }
-        if (r.LoadedMap.AssetJournal != null)
-            MapAssetTransfers.Pair(r.LoadedMap.AssetJournal,t.LoadedMap,t.FromOwner,t.TargetOwner,true);
         var authority = ResidentCallAuthority(r);
+        if (r.LoadedMap.AssetJournal != null)
+        {
+            // The city may already have returned on an earlier run. Never start a property call after it.
+            if (r.CityCallStarted)
+                MapAssetTransfers.Pair(r.LoadedMap.AssetJournal,t.LoadedMap,t.FromOwner,t.TargetOwner,true);
+            else
+                MapAssetRecords.Apply(r, authority, deliveredGroundStack: true);
+        }
         authority();
         if (r.City.Faction == r.From)
         {

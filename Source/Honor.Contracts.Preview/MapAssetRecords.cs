@@ -153,15 +153,25 @@ internal static class MapAssetRecords
         if (r.AssetJournal != null || source == null || target == null || source.IsPlayer || target.IsPlayer) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         r.AssetJournal = MapAssetTransfers.Prepare(r.Snapshot, source.GetUniqueLoadID(), target.GetUniqueLoadID());
     }
-    internal static void Apply(TerritoryTransferReference r, Action currentAuthority)
+    internal static void Apply(TerritoryTransferReference r, Action currentAuthority, bool deliveredGroundStack = false)
     {
         if (r.LoadedMap?.AssetJournal == null) return;
         var game = Current.Game;
         MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, r.LoadedMap.Snapshot, r.From.GetUniqueLoadID(), r.Target.GetUniqueLoadID());
+        void VerifyMap()
+        {
+            if (deliveredGroundStack)
+            {
+                if (r.CustodyAgreementV1 == null || currentAuthority == null)
+                    throw new ArgumentException("Current lawful placement approval required.");
+                currentAuthority();
+            }
+            else LoadedMapRecords.Verify(r.City, r.LoadedMap);
+        }
         foreach (var asset in LoadedMapPreservation.Restore(r.LoadedMap.Snapshot).OwnedAssets)
         {
-            currentAuthority?.Invoke();
-            LoadedMapRecords.Verify(r.City, r.LoadedMap);
+            if (!deliveredGroundStack) currentAuthority?.Invoke();
+            VerifyMap();
             var call = MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.Single(c => c.Id == asset.Id);
             if (call.Returned) continue;
             var thing = r.LoadedMap.Things.Single(t => t.GetUniqueLoadID() == asset.Id);
@@ -171,7 +181,7 @@ internal static class MapAssetRecords
             thing.SetFaction(r.Target);
             if (Current.Game != game || Current.ProgramState != ProgramState.Playing) throw new ResidentMoveBlocked("RE_AssetUnavailable");
             r.LoadedMap.AssetJournal = MapAssetTransfers.Returned(r.LoadedMap.AssetJournal, asset.Id, thing.Faction?.GetUniqueLoadID());
-            LoadedMapRecords.Verify(r.City, r.LoadedMap);
+            VerifyMap();
             if(r.WorkAssetVerifiedV2!=null && !r.WorkAssetVerifiedV2.Contains(asset.Id))r.WorkAssetVerifiedV2.Add(asset.Id);
         }
         MapAssetTransfers.Pair(r.LoadedMap.AssetJournal, r.LoadedMap.Snapshot, r.From.GetUniqueLoadID(), r.Target.GetUniqueLoadID(), true);

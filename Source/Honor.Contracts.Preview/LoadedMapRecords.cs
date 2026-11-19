@@ -268,6 +268,10 @@ internal static class LoadedMapRecords
         }
         else if (original.BystanderReferencesV1 != null) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         if (fresh.Snapshot != original.Snapshot || !fresh.Things.SequenceEqual(original.Things)) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
+        VerifyMapRegistries(fresh, original);
+    }
+    internal static void VerifyMapRegistries(LoadedMapRecord fresh, LoadedMapRecord original)
+    {
         if (fresh.WorkBills == null ? original.WorkBills != null : original.WorkBills == null || !fresh.WorkBills.SequenceEqual(original.WorkBills)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (fresh.WorkFrameResources == null ? original.WorkFrameResources != null : original.WorkFrameResources == null || !fresh.WorkFrameResources.SequenceEqual(original.WorkFrameResources)) throw new ResidentMoveBlocked("RE_AssetUnavailable");
         if (fresh.Groups == null ? original.Groups != null : original.Groups == null || !fresh.Groups.SequenceEqual(original.Groups)) throw new ResidentMoveBlocked("RE_StorageMapUnavailable");
