@@ -628,4 +628,5 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <RE_WorkStorageSplitReview>Includes {0} verified partial pickups. Original shelf remainders retain their identities; native-created carried splits have separate references and exact quantities. Recovery never creates a replacement, changes counts or repeats pickup. Fresh consent covers the latest evidence.</RE_WorkStorageSplitReview>
   <RE_WorkStorageContinuationReview>Verified follow-up shelf operations: {0}. Whole remainder pickup, original-object return and full restacking retain the original split history. Current approval is required.</RE_WorkStorageContinuationReview>
   <RE_WorkStorageQuantityReview>Verified additional splits and requested partial restacks: {0}. New carried pieces keep separate identities; partial restacks retain the same carried remainder and exact shelf increase. Original records and prior approvals remain unchanged.</RE_WorkStorageQuantityReview>
+  <RE_CustodyDelivered>{0} delivered {2} × {1} to {3}. This approval covers the stack at that location and the current state of the map.</RE_CustodyDelivered>
 </LanguageData>

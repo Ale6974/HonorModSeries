@@ -116,6 +116,29 @@ public sealed partial class TerritoryAdministrationLedger
         ResidentExecution.ValidateCareJournal(residents, r.From, r.Target);
         return true;
     }
+    private static string CurrentDeliveredMapProof(TerritoryTransfer transfer, TerritoryTransferReference reference)
+    {
+        var input = JsonSerializer.Deserialize<OriginalDropInput>(reference.OriginalHaulDropStart);
+        var residents = reference.Residents;
+        var actor = residents.Pawns.Single(p => p.GetUniqueLoadID() == input.Pawn);
+        var current = LoadedMapPreservation.Restore(LoadedMapRecords.Capture(reference.City, deliveredActor: actor).Snapshot);
+        var original = LoadedMapPreservation.Restore(transfer.LoadedMap);
+        // Only the delivering resident, its work and the new ground stack may differ.
+        // Storage membership changes require separate evidence.
+        var comparison = current with {
+            Proof = original.Proof,
+            Things = current.Things.Where(row => row.Id != input.Cargo).ToArray(),
+            NativeResidents = current.NativeResidents.Select(row => row.Id == input.Pawn
+                ? original.NativeResidents.Single(old => old.Id == row.Id) : row).ToArray(),
+            ActiveWorkV1 = current.ActiveWorkV1?.Select(row => row.Pawn == input.Pawn
+                ? original.ActiveWorkV1.Single(old => old.Pawn == row.Pawn) : row).ToArray()
+        };
+        if (current.Things.Count(row => row.Id == input.Cargo) != 1 ||
+            current.ActiveWorkV1?.SingleOrDefault(row => row.Pawn == input.Pawn)?.Jobs.FirstOrDefault() != input.Job ||
+            JsonSerializer.Serialize(comparison) != JsonSerializer.Serialize(original))
+            throw new ArgumentException("Current map changed beyond the observed original ground placement.");
+        return current.Proof;
+    }
     internal OriginalDropCall BeginOriginalDrop(Pawn_CarryTracker carry, IntVec3 cell)
     {
         var pawn = carry.pawn;

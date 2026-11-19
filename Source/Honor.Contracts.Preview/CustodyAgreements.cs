@@ -26,7 +26,7 @@ public sealed partial class TerritoryAdministrationLedger
             City = t.Territory, From = t.FromOwner, Target = t.TargetOwner, r.ResidentCensusProof,
             Residents = r.Residents?.Snapshot, Census = r.Residents?.Census, Map = r.LoadedMap?.Snapshot }));
     }
-    private void CustodyBasis(TerritoryTransfer t, TerritoryTransferReference r)
+    private string CustodyBasis(TerritoryTransfer t, TerritoryTransferReference r)
     {
         bool lawfulHaul = t.LawfulHaulParentProof != null && NativeTransferBodies.HaulFactionBodies5013 && r.Residents?.Profile == 16;
         if (Current.Game != ownerGame || Current.ProgramState != ProgramState.Playing || RestoreFailed || Charters.RestoreFailed || (!NativeTransferBodies.ExtendedReadBodies && !lawfulHaul) ||
@@ -39,6 +39,14 @@ public sealed partial class TerritoryAdministrationLedger
             r.City.Faction == r.Target && !r.CityCallReturned) throw new ArgumentException("Original returned custody/calls/current game unavailable.");
         var binding = Charters.Binding(t.Territory);
         if (binding.PlayerGroup || binding.FactionGroup || binding.Settlement != r.City) throw new ArgumentException("Original town binding changed.");
+        if (lawfulHaul && RetainsDeliveredHaul(t, r))
+        {
+            ValidateMapReference(t, r, false);
+            ResidentExecution.ValidateCensus(r.Residents, r.ResidentCensusProof, t.Territory, t.FromOwner, t.TargetOwner);
+            if (r.City.Faction == r.From && t.FromOwner != AdministrationId && Cities().Count(city => city.Faction == r.From) < 2)
+                throw new ArgumentException("Original source settlement base required.");
+            return CurrentDeliveredMapProof(t, r);
+        }
         ValidateMapReference(t, r, true); TerritoryCallGuard.Validate(r.CityCallV1, r.CityCallStarted, r.CityCallReturned);
         if (r.LoadedMap?.AssetJournal != null)
         {
@@ -57,6 +65,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (!actual.Exists || actual.StockFormat != t.StockFormat || actual.LoadedMap != t.LoadedMap || actual.StockProof != t.StockProof ||
             actual.StockProof == null && actual.Visited || actual.Owner == t.FromOwner && actual.SourceSettlements < 2 && t.FromOwner != AdministrationId)
             throw new ArgumentException("Original stock/map/source base changed; current consent grants no restoration.");
+        return null;
     }
     private CustodyAgreement CurrentCustodyWitness(string transfer, string id, long tick, CustodyAgreement previous = null, TerritoryTransferLedger proposed = null, TerritoryTransferReference proposedReference = null, string workProgress = null)
     {
@@ -64,7 +73,8 @@ public sealed partial class TerritoryAdministrationLedger
         var t = physical.Transfer(transfer); var r = proposedReference ?? references.Single(r => r.Id == transfer);
         if (t.LawfulHaulParentProof != null)
             Current.Game.GetComponent<PoliticalTransitionLedger>().RequireHaulCustodyParent(t);
-        if(workProgress==null) CustodyBasis(t,r); else { _=WorkProgressBasis(t,r,true); if(workProgress!=CurrentWorkApproval(t,r,tick))throw new ArgumentException("Current work observation changed."); ValidateMapReference(t,r,false); }
+        string deliveredMap = null;
+        if(workProgress==null) deliveredMap = CustodyBasis(t,r); else { _=WorkProgressBasis(t,r,true); if(workProgress!=CurrentWorkApproval(t,r,tick))throw new ArgumentException("Current work observation changed."); ValidateMapReference(t,r,false); }
         var payments = Current.Game.GetComponent<TributePaymentLedger>();
         if (payments.RestoreFailed || payments.Ledger.Receipts.Any(p => p.Phase == TributeReceiptPhase.Prepared)) throw new ArgumentException("Original liabilities unavailable.");
         string[] parties = CustodyAgreements.PartiesFor(Charters.Book, t);
@@ -99,7 +109,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (r.OriginalHaulDropStart != null)
         {
             RequireCurrentOriginalDrop(t, r);
-            w = w with { HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn };
+            w = w with { HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap };
         }
         w = w with { WorkProgressV1=workProgress };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };
@@ -180,6 +190,14 @@ public sealed partial class TerritoryAdministrationLedger
             string parties = string.Join(", ", reviewed.Witness.Parties.Select(p => Charters.Binding(p.Party).Settlement?.Label ?? (p.Player ? Faction.OfPlayer.Name : Charters.Binding(p.Party).OriginalFaction?.Name) ?? p.Party));
             string rulers = string.Join(", ", reviewed.Witness.Realms.Select(r => { var f = Find.FactionManager.AllFactionsListForReading.Single(f => f.GetUniqueLoadID() == r.Realm); return f.Name + "/" + f.leader.LabelShortCap; }));
             string text = "RE_CustodyConfirm".Translate(reviewed.Label, parties, rulers);
+            if (reviewed.Witness.DeliveredMapProof != null)
+            {
+                var drop = JsonSerializer.Deserialize<OriginalDropInput>(reviewed.Witness.HaulDropStart);
+                var reference = references.Single(row => row.Id == transfer);
+                var cargo = reference.Residents.ActiveWorkCarry.Single(item => item?.GetUniqueLoadID() == drop.Cargo);
+                var pawn = reference.Residents.Pawns.Single(person => person?.GetUniqueLoadID() == drop.Pawn);
+                text += "\n\n" + "RE_CustodyDelivered".Translate(pawn.LabelShort, cargo.LabelNoCount, drop.Count, cargo.Position.ToString());
+            }
             if (reviewed.Witness.ForeignRightsV1 != null)
             {
                 var right = JsonSerializer.Deserialize<CustodyForeignRight>(reviewed.Witness.ForeignRightsV1);

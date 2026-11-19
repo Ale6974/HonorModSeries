@@ -86,7 +86,7 @@ internal static class LoadedMapRecords
             throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
         return container;
     }
-    internal static LoadedMapRecord Capture(Settlement city, bool royal = false)
+    internal static LoadedMapRecord Capture(Settlement city, bool royal = false, Pawn deliveredActor = null)
     {
         Ready(city); var map = city.Map; var things = map.listerThings.AllThings.OrderBy(t => t?.GetUniqueLoadID(), StringComparer.Ordinal).ToList();
         if (things.Count > 10000 || map.Size.x is < 1 or > 500 || map.Size.z is < 1 or > 500) throw new ResidentMoveBlocked("RE_LoadedMapUnavailable");
@@ -115,7 +115,11 @@ internal static class LoadedMapRecords
         if (royal && (groundRest || activeWork)) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         bool givenWork = originalResidents != null ? originalResidents.Profile == 15 : groundRest && actors.Any(p => p.jobs?.curJob?.jobGiver != null || p.jobs?.curJob?.jobGiverThinkTree != null);
         var work = groundRest ? actors.Where(p => p.jobs?.curJob != null).Select(p => ResidentGroundRest.Capture(p, givenWork)).ToArray() : null;
-        var actorRows = actors.Select(p => ResidentExecution.MapActor(p, originalResidents, royal, groundRest, givenWork, activeWork)).ToArray();
+        if (deliveredActor != null && (!activeWork || !actors.Contains(deliveredActor)))
+            throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
+        var actorRows = actors.Select(p => p == deliveredActor
+            ? new NativeMapResident(p.GetUniqueLoadID(), ResidentExecution.FreshClinical(p).Preserved)
+            : ResidentExecution.MapActor(p, originalResidents, royal, groundRest, givenWork, activeWork)).ToArray();
         if (visitors.Count > 128) throw new ResidentMoveBlocked("RE_MapResidentUnavailable");
         var visitorRows = visitors.Select(ResidentMapVisitors.Capture).ToArray();
         var rootThings = things.Where(t => t is not Pawn).ToList();
