@@ -57,7 +57,7 @@ internal static class ResidentActiveWork
         Known(typeof(JobQueue), "ExposeData"); Known(typeof(QueuedJob), "ExposeData");
         return rows;
     }
-    internal static List<Job> Jobs(Pawn pawn) => new[] { pawn.jobs.curJob }.Concat(Queue(pawn).Select(q => q.job)).ToList();
+    internal static List<Job> Jobs(Pawn pawn) => new[] { pawn.jobs.curJob }.Where(job => job != null).Concat(Queue(pawn).Select(q => q.job)).ToList();
     // Same-call memory check only. These runtime identities are NEVER serialized or used as load/recovery evidence.
     internal static string Memory(Pawn pawn)
     {
@@ -78,7 +78,7 @@ internal static class ResidentActiveWork
         }
         object Fields(object value) => value == null ? null : value.GetType().GetFields(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance).OrderBy(f => f.Name, StringComparer.Ordinal).Select(f => new { f.Name, Value = Read(f.GetValue(value)) }).ToArray();
         return JsonSerializer.Serialize(new { Tracker = Fields(pawn.jobs), Jobs = Jobs(pawn).Select(Fields).ToArray(), Driver = Fields(pawn.jobs.curDriver),
-            Toils = ((List<Toil>)Raw(pawn.jobs.curDriver, typeof(JobDriver), "toils")).Select(Fields).ToArray(), Path = Fields(pawn.pather), Mind = Fields(pawn.mindState), Settings = Fields(pawn.workSettings) });
+            Toils = pawn.jobs.curDriver == null ? null : ((List<Toil>)Raw(pawn.jobs.curDriver, typeof(JobDriver), "toils")).Select(Fields).ToArray(), Path = Fields(pawn.pather), Mind = Fields(pawn.mindState), Settings = Fields(pawn.workSettings) });
     }
     private static object Value(object value, Pawn pawn, int depth = 0)
     {
@@ -302,7 +302,20 @@ internal static class ResidentActiveWork
         // Cross-claimant list order is not a reservation right; each claimant's original order IS.
         return rows.OrderBy(r => r.Pawn.GetUniqueLoadID(), StringComparer.Ordinal).ThenBy(r => r.Order).Select(r => new { Pawn = r.Pawn.GetUniqueLoadID(), Job = r.Job.GetUniqueLoadID(), Cell = map.cellIndices.CellToIndex(r.Cell), r.Obsolete, r.Order }).ToArray();
     }
-    internal static bool CanSurvey(Pawn pawn) => NativeTransferBodies.WorkObservationBodies ||
+    internal static bool IsOriginalIdleCandidate(Pawn pawn) =>
+        NativeTransferBodies.HaulFactionBodies5013 && pawn?.Spawned == true &&
+        pawn.jobs?.GetType() == typeof(Pawn_JobTracker) && pawn.jobs.curJob == null &&
+        pawn.jobs.curDriver == null && !pawn.jobs.startingNewJob && Queue(pawn).Count == 0 &&
+        pawn.pather?.GetType() == typeof(Pawn_PathFollower) && !pawn.pather.Moving &&
+        Raw(pawn.pather, typeof(Pawn_PathFollower), "curPath") == null &&
+        Raw(pawn.pather, typeof(Pawn_PathFollower), "curPathRequest") == null &&
+        pawn.carryTracker?.innerContainer?.Count == 0 && pawn.workSettings == null &&
+        !Reservations(pawn.Map).Any(row => ReferenceEquals(Raw(row, typeof(ReservationManager.Reservation), "claimant"), pawn)) &&
+        !PhysicalRows(pawn.Map).Any(row => row.claimant == pawn) &&
+        !Destinations(pawn.Map).Values.Any(group => group.list.Any(row => row.claimant == pawn)) &&
+        EnrouteRows(pawn.Map).Count == 0;
+
+    internal static bool CanSurvey(Pawn pawn) => NativeTransferBodies.WorkObservationBodies || IsOriginalIdleCandidate(pawn) ||
         NativeTransferBodies.HaulSurveyBodies && pawn?.jobs?.curJob?.def == JobDefOf.HaulToCell &&
         pawn?.jobs?.curDriver?.GetType() == typeof(JobDriver_HaulToCell);
 

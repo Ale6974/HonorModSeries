@@ -231,7 +231,8 @@ internal static class LawfulFollowerMigrationTests
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(mappedJournal.Export()).Current, "child") == mappedScope && mappedPhysical.Transfer("mapped-city").StockFormat == 10,
             "original growing/stockpile zones, shelf group and resident scope remain paired through lawful physical save/restore");
         var secondResident = new ResidentMoveEvidence("second", Hash("second resident evidence"), 4);
-        var haulingSet = ResidentMoveSet.Capture(mappedSet.Residents.Append(secondResident));
+        var idleResident = new ResidentMoveEvidence("idle", Hash("idle resident evidence"), 2);
+        var haulingSet = ResidentMoveSet.Capture(mappedSet.Residents.Append(secondResident).Append(idleResident));
         var haulingBase = LoadedMapPreservation.CaptureResidents(containerScope, haulingSet.Residents.Select(r => new NativeMapResident(r.Id,r.Preserved)), [new("visitor", Hash("unchanged-bystander"))]);
         var haulingMap = LoadedMapPreservation.CaptureActiveWork(haulingBase, [new("restricted", ["job-haul"], """{"Carry":{"Id":"steel","stackCount":12}}"""), new("second", ["other-job"], """{"Carry":null}""")]);
         var haulProof = LoadedMapPreservation.Restore(haulingMap).Proof;
@@ -272,6 +273,7 @@ internal static class LawfulFollowerMigrationTests
         Reject(() => CustodyAgreements.Validate(haulerGrant with { DeliveredHauler = new("different-resident",Hash("current resident")) }), "another resident cannot inherit the hauler mandate");
         Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,haulerReceipt,witness.DeliveredMapProof,"union",true,true,now), "resident start mandate cannot finalize the city");
         var otherGrant = haulerGrant with { DeliveredHauler = null, OtherHauler = new("second", Hash("second current")) };
+        Reject(() => CustodyAgreements.Validate(otherGrant with { OtherHauler = new(idleResident.Id, idleResident.Preserved) }), "an original idle resident needs separate authority after delivery");
         var otherArchive = new CustodyAgreements();
         var otherReceipt = otherArchive.Add(otherGrant);
         Check(CustodyAgreements.Restore(otherArchive.Export()).Record(otherGrant.Id).Witness.OtherHauler == otherGrant.OtherHauler, "second resident mandate survives reload");

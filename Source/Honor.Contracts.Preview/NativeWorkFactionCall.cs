@@ -52,12 +52,12 @@ internal static class NativeWorkFactionCall
             .Patch(HarmonyReversePatchType.Original);
         ready = true;
     }
-    internal static void Execute(Pawn pawn, Faction target, Action returned, Action beforeNativeCall = null)
+    internal static void Execute(Pawn pawn, Faction target, Action returned, Action beforeNativeCall = null, bool originalIdle = false)
     {
         Prepare();
         if (active != null || returned == null || target == null || target.IsPlayer || pawn?.Faction == null || pawn.Faction.IsPlayer || pawn.Faction == target)
             throw new ArgumentException("Independent NPC work authority call required.");
-        if (pawn.jobs?.curJob == null || !ResidentActiveWork.CanSurvey(pawn))
+        if (originalIdle ? !ResidentActiveWork.IsOriginalIdleCandidate(pawn) : pawn.jobs?.curJob == null || !ResidentActiveWork.CanSurvey(pawn))
             throw new ArgumentException("Current reviewed work required before native authority transfer.");
         var before = ResidentActiveWork.Capture(pawn);
         active = new() { Pawn = pawn, Source = pawn.Faction, Target = target, Game = Current.Game, Map = pawn.Map, Job = pawn.jobs.curJob,
@@ -73,7 +73,7 @@ internal static class NativeWorkFactionCall
             InvokeOriginal(pawn, target, null);
             // Native normal return is an independent fact, retained even if later preservation verification fails.
             returned(); active.Same(target);
-            if (!active.MindPassed || !active.DestinationPassed || active.Memory != ResidentActiveWork.Memory(pawn) || System.Text.Json.JsonSerializer.Serialize(before) != System.Text.Json.JsonSerializer.Serialize(ResidentActiveWork.Capture(pawn)))
+            if (originalIdle && !ResidentActiveWork.IsOriginalIdleCandidate(pawn) || !active.MindPassed || !active.DestinationPassed || active.Memory != ResidentActiveWork.Memory(pawn) || System.Text.Json.JsonSerializer.Serialize(before) != System.Text.Json.JsonSerializer.Serialize(ResidentActiveWork.Capture(pawn)))
                 throw new ArgumentException("Native work-preserving call did not return the original work.");
         }
         finally { active = null; }

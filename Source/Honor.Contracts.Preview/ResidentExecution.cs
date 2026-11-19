@@ -434,7 +434,11 @@ internal static partial class ResidentExecution
             if (surgery != null && action == ResidentMoveAction.ChangeFaction) ResidentSurgery.Detach(surgery);
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
                 throw new ArgumentException("Current game changed before resident authority change; original intent retained.");
-            bool workCall = prisoner == null && record.Profile == 16 && p.CurJob != null;
+            bool originalIdle = record.Profile == 16 && NativeTransferBodies.HaulFactionBodies5013 && p.CurJob == null;
+            if (originalIdle && action == ResidentMoveAction.ChangeFaction &&
+                LoadedMapPreservation.Restore(record.LoadedMapScope).ActiveWorkV1.Any(row => row.Pawn == p.GetUniqueLoadID()))
+                throw new ArgumentException("An ended original job requires independent completion evidence.");
+            bool workCall = prisoner == null && record.Profile == 16 && (p.CurJob != null || originalIdle);
             if (action == ResidentMoveAction.ChangeFaction)
             {
                 string areaStart = area == null ? null : ResidentAreas.Begin(area.Journal, ResidentAreaRecords.Entries(p));
@@ -460,7 +464,7 @@ internal static partial class ResidentExecution
                     care.RecordReturn(target.GetUniqueLoadID(), p.playerSettings == null ? null : (int)p.playerSettings.medCare); record.CareJournal[i] = care.Export();
                     if (area != null) ResidentAreaRecords.Returned(area);
                     Current.Game.GetComponent<TerritoryAdministrationLedger>().SealClinicalReturn(record);
-                }, beforeNativeCall: RecordStart);
+                }, beforeNativeCall: RecordStart, originalIdle: originalIdle);
                 else p.SetFaction(target);
                 if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
                     throw new ArgumentException("Current game changed during resident authority change; original intent retained.");
