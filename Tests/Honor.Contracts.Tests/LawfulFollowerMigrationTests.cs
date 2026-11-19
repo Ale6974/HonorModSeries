@@ -257,6 +257,18 @@ internal static class LawfulFollowerMigrationTests
         Reject(() => LawfulHaulDrop.Validate(originalCity, 16, null, System.Text.Json.JsonSerializer.Serialize(returnedDrop), now), "orphan drop return");
         Reject(() => LawfulHaulDrop.Validate(originalCity, 16, System.Text.Json.JsonSerializer.Serialize(drop with { Count = 11 }), null, now), "changed original carried quantity");
         Reject(() => LawfulHaulDrop.Validate(originalCity, 16, startDrop, System.Text.Json.JsonSerializer.Serialize(returnedDrop with { Returned = false }), now), "failed native placement cannot prove destination");
+        var parties = CustodyAgreements.PartiesFor(after,originalCity).Select(id => after.Entity(id)).ToArray();
+        var witness = new CustodyAgreement("delivered",originalCity.Id,after.Export(),afterPayments.Export(),savedHaul.Export(),Hash("custody"),
+            parties.Select(e => new CustodyParty(e.Id,e.NativeOwner,e.Player)).ToArray(),parties.Select(e => obs.Single(o => o.Id == e.Id)).ToArray(),
+            [d,d with { Realm = "union", Representative = "union-ruler" }],now) {
+            DeliveredMapProof = Hash("approved-map"), HaulDropStart = startDrop, HaulDropReturn = JsonSerializer.Serialize(returnedDrop)
+        };
+        var receipt = new CustodyAgreements().Add(witness);
+        Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,receipt,Hash("changed"),"union",true,true,now), "changed delivered map cannot finalize");
+        Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,receipt,witness.DeliveredMapProof,"union",true,false,now), "unknown city return cannot finalize");
+        savedHaul.ConfirmDeliveredCity(originalCity.Id,receipt,witness.DeliveredMapProof,"union",true,true,now);
+        var appliedDrop = TerritoryTransferLedger.Restore(savedHaul.Export()).Transfer(originalCity.Id);
+        Check(appliedDrop.Phase == TerritoryTransferPhase.Applied && WorkProgress.Original(appliedDrop) == originalCity, "delivered city completion retains its original physical record");
         // Visitor-only map custody stays separate from the original saved-world clinical roster.
         string visitorsScope = LoadedMapPreservation.CaptureBystanders(containerScope, [new("visitor", Hash("unchanged-bystander"))]);
         var visitorsTown = containerTown with { LoadedMap = visitorsScope, StockFormat = 11, StockProof = LoadedMapPreservation.Restore(visitorsScope).Proof };
