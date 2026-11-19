@@ -359,6 +359,11 @@ public sealed class PlayerAllegianceWindow : Window
                 foreach (var pending in territories.Ledger.Transfers.Where(t => t.Phase == TerritoryTransferPhase.Prepared).ToArray())
                 {
                     list.Label("FB_Pending".Translate(territories.FollowerLabel(pending.Charter)));
+                    if (pending.LawfulHaulParentProof != null && transition.Journal.Current.LawfulResidents != null)
+                    {
+                        territories.DrawCustodyAgreement(list, pending.Id);
+                        territories.DrawWorkProgress(list, pending.Id);
+                    }
                     if (pending.StockFormat == 25 && transition.Journal.Current.LawfulResidents != null &&
                         list.ButtonText("PS_ContinueLawfulHaul".Translate())) { territories.ContinueLawfulHaul(pending.Id); review = null; }
                     if (list.ButtonText("CT_Recover".Translate())) { territories.Recover(pending.Id); review = null; }

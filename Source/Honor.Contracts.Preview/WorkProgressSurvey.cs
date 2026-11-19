@@ -44,7 +44,8 @@ internal static class WorkProgressSurvey
         LoadedMapRecords.RequireProgressBoundary(r.City);
         ResidentMapActors.RequireEmptyReservations(r.City.Map,typeof(Pawn).Module.ModuleVersionId,activeWork:true);
         var map=r.City.Map;var ids=new HashSet<string>(StringComparer.Ordinal);var rows=new List<object>();
-        bool partial=r.WorkProgressV1==null || WorkProgress.Validate(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfer(r.Id),r.WorkProgressV1).Version>=2;
+        int? version = r.WorkProgressV1 == null ? null : WorkProgress.Validate(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfer(r.Id),r.WorkProgressV1).Version;
+        bool partial = version == null || version >= 2;
         var assetOwners=partial&&r.LoadedMap.AssetJournal!=null?MapAssetTransfers.Restore(r.LoadedMap.AssetJournal).Calls.ToDictionary(c=>c.Id,c=>MapAssetTransfers.ExpectedOwner(r.LoadedMap.AssetJournal,c.Id)):null;
         void Thing(Thing t,string owner,int slot,int depth=0)
         {
@@ -61,7 +62,7 @@ internal static class WorkProgressSurvey
             rows.Add(new {Id=t.GetUniqueLoadID(),Type=t.GetType().FullName,Def=t.def.defName,Stuff=t.Stuff?.defName,t.stackCount,HP=t.HitPoints,Faction=t.Faction?.GetUniqueLoadID(),
                 Owner=owner,Slot=slot,Cell=t.Spawned?map.cellIndices.CellToIndex(t.Position):-1,Rotation=t.Rotation.AsInt,Comps=comps.Select(c=>Value(c)).ToArray(),
                 Frame=t is Frame frame?new {frame.workDone}:null});
-            if(t is Building_WorkTable table){_ = WorktableEvidence.ObserveProgress(table);rows.Add(new {Table=table.GetUniqueLoadID(),Bills=WorktableEvidence.ObserveProgress(table)});}
+            if(t is Building_WorkTable table){rows.Add(new {Table=table.GetUniqueLoadID(),Bills=WorktableEvidence.ObserveProgress(table)});}
             if(t is UnfinishedThing uft)
             {
                 var ingredients=ResidentActiveWork.Raw(uft,typeof(UnfinishedThing),"ingredients") as List<Thing>??throw new ArgumentException("Original current unfinished ingredients unavailable.");
@@ -86,7 +87,7 @@ internal static class WorkProgressSurvey
             var job=p.jobs?.curJob;var driver=p.jobs?.curDriver;
             if(job!=null && (job.GetType()!=typeof(Job)||driver?.GetType().Assembly!=typeof(Pawn).Assembly||driver.job!=job||driver.pawn!=p))throw new ArgumentException("Current native job owner changed.");
             rows.Add(new {Pawn=p.GetUniqueLoadID(),baseline,Genes=ResidentGenes.Proof(p),Ideology=ResidentIdeology.Proof(p),
-                PendingClinical=r.WorkProgressV1!=null&&WorkProgress.Validate(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfer(r.Id),r.WorkProgressV1).Version==3&&!ResidentTransferCensus.Call(r.Residents.AuthorityJournal[index]).Started?ResidentExecution.FreshClinical(p):null,
+                PendingClinical=version==3&&!ResidentTransferCensus.Call(r.Residents.AuthorityJournal[index]).Started?ResidentExecution.FreshClinical(p):null,
                 Needs=p.needs.AllNeeds.Select(n=>new {Def=n.def.defName,Level=n.CurLevel}).ToArray(),Relations=p.relations.DirectRelations.Select(x=>new {Def=x.def.defName,Pawn=x.otherPawn.GetUniqueLoadID()}).ToArray(),
                 Medical=p.playerSettings==null?null:(int?)p.playerSettings.medCare,Areas=ResidentAreaRecords.Entries(p),Surgery=ResidentSurgery.Capture(p).Set().Export(),
                 Cell=p.Spawned?map.cellIndices.CellToIndex(p.Position):-1,Job=job==null?null:SavedFields(job,typeof(Job),ResidentGroundRest.JobFields),
@@ -103,6 +104,6 @@ internal static class WorkProgressSurvey
         var grid=map.AllCells.Select(c=>new {Terrain=map.terrainGrid.TerrainAt(c)?.defName,Under=map.terrainGrid.UnderTerrainAt(c)?.defName,Roof=map.roofGrid.RoofAt(c)?.defName}).ToArray();
         var reservations=new {Regular=ResidentActiveWork.ReservationState(map),Physical=ResidentActiveWork.PhysicalState(map),Enroute=ResidentActiveWork.EnrouteState(map),Destination=ResidentActiveWork.DestinationState(map)};
         string proof=WorkProgress.Hash(new {Map=map.GetUniqueLoadID(),Size=new[]{map.Size.x,map.Size.z},Grid=grid,Reservations=reservations,Rows=rows,AssetCalls=partial?r.LoadedMap.AssetJournal:null,
-            Clinical=r.WorkProgressV1!=null&&WorkProgress.Validate(Current.Game.GetComponent<TerritoryAdministrationLedger>().Ledger.Transfer(r.Id),r.WorkProgressV1).Version==3?TerritoryAdministrationLedger.ClinicalState(r.Residents):null});return new(proof,ids.OrderBy(id=>id,StringComparer.Ordinal).ToArray());
+            Clinical=version==3?TerritoryAdministrationLedger.ClinicalState(r.Residents):null});return new(proof,ids.OrderBy(id=>id,StringComparer.Ordinal).ToArray());
     }
 }
