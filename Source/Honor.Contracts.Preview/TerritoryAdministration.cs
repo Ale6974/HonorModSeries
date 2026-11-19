@@ -18,6 +18,7 @@ public sealed class TerritoryTransferReference : IExposable
     public bool CityCallV1, CityCallStarted, CityCallReturned;
     public string CustodyAgreementV1;
     public string WorkProgressV1;
+    public string OriginalHaulDropStart, OriginalHaulDropReturn;
     public List<string> WorkAssetVerifiedV2;
     public List<string> WorkResidentStartsV3;
     public List<Pawn> WorkNativeRosterV3;
@@ -36,6 +37,8 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Values.Look(ref CityCallStarted, "cityCallStartedV1", false);
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
         Scribe_Values.Look(ref CustodyAgreementV1, "currentCustodyCompletionAgreementV1");
+        Scribe_Values.Look(ref OriginalHaulDropStart, "lawfulOriginalDropStartV1");
+        Scribe_Values.Look(ref OriginalHaulDropReturn, "lawfulOriginalDropReturnV1");
         Scribe_Values.Look(ref WorkProgressV1, "verifiedNativeWorkProgressV1");
         Scribe_Collections.Look(ref WorkAssetVerifiedV2,"verifiedPartialWorkAssetsV2",LookMode.Value);
         Scribe_Collections.Look(ref WorkResidentStartsV3,"currentResidentCallStartsV3",LookMode.Value);
