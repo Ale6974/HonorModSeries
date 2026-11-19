@@ -262,18 +262,23 @@ internal static partial class ResidentExecution
     internal static ResidentExecutionRecord CaptureForTransfer(Settlement city)
     {
         // Inspect the complete original roster. Choosing a format never bypasses each resident's eligibility checks.
+        return CaptureForTransfer(city, city?.HasMap == true ? LoadedMapRecords.Capture(city).Snapshot : null);
+    }
+    private static ResidentExecutionRecord CaptureForTransfer(Settlement city, string loaded)
+    {
         var roster = city?.previouslyGeneratedInhabitants;
-        string loaded = city?.HasMap == true ? LoadedMapRecords.Capture(city).Snapshot : null;
-        int profile = loaded != null && LoadedMapPreservation.Restore(loaded).NativeResidents != null ? (LoadedMapPreservation.Restore(loaded).ActiveWorkV1 != null ? 16 : LoadedMapPreservation.Restore(loaded).GroundRestV1 != null ? (LoadedMapPreservation.Restore(loaded).GivenGroundRestV1 == 1 ? 15 : 14) : 11) : ResidentMoveProfiles.SelectTownClinical(roster?.Any(ResidentAreaRecords.HasRestrictions) == true,
+        var map = loaded == null ? null : LoadedMapPreservation.Restore(loaded);
+        int profile = map?.NativeResidents != null ? (map.ActiveWorkV1 != null ? 16 : map.GroundRestV1 != null ? (map.GivenGroundRestV1 == 1 ? 15 : 14) : 11) : ResidentMoveProfiles.SelectTownClinical(roster?.Any(ResidentAreaRecords.HasRestrictions) == true,
             roster?.Any(p => p?.Downed == true) == true, roster?.Any(p => p?.IsPrisoner == true) == true);
         return CaptureCore(city, profile, loaded);
     }
     internal static ResidentExecutionRecord CaptureScoped(Settlement city, int profile, string loaded) => CaptureCore(city, profile, loaded);
-    internal static string Proof(Settlement city, int profile = 7, Faction target = null)
+    internal static string Proof(Settlement city, int profile, Faction target, string loaded)
     {
         try
         {
-            var record = profile == 7 ? CaptureForTransfer(city) : CaptureCore(city, profile, city?.HasMap == true ? LoadedMapRecords.Capture(city, profile == 13).Snapshot : null);
+            if (city.HasMap != (loaded != null)) return null;
+            var record = profile == 7 ? CaptureForTransfer(city, loaded) : CaptureCore(city, profile, loaded);
             if (target != null && target != city.Faction)
                 foreach (var prisoner in record.Prisoners) ResidentPrisoners.NeedsRestore(prisoner, city.Faction, target, profile);
             return record.Set().Proof;

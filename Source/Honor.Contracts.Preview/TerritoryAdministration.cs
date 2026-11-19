@@ -263,7 +263,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         int format = 0;
         string loaded = null;
         string proof = exists ? CityStockPreservation.Capture(city, out format, out loaded, residentProfile == 13) : null;
-        string residentProof = exists && city.previouslyGeneratedInhabitants?.Count > 0 ? ResidentExecution.Proof(city, residentProfile, target) : null;
+        string residentProof = exists && city.previouslyGeneratedInhabitants?.Count > 0 ? ResidentExecution.Proof(city, residentProfile, target, loaded) : null;
         return new(territory, owner?.GetUniqueLoadID(), all.Count(s => s.Faction == owner), exists, owner?.IsPlayer == true,
             exists && city.HasMap, !exists || proof == null || city.EverVisited,
             exists && city.def.canHaveFaction && Eligible(owner, releasedSource), Eligible(target), target?.IsPlayer == true,

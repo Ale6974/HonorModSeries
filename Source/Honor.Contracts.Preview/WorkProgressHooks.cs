@@ -9,6 +9,7 @@ namespace Honor.Contracts.Preview;
 internal sealed record WorkObservationState(Game Game,TerritoryAdministrationLedger Ledger,string Transfer,int Sequence,WorkSurvey Before,string[] Inputs)
 {
     // Same-call transient witness only. An interrupted native merge never replays after load.
+    internal bool InputCaptureFailed { get; init; }
     internal Thing MergeCargo { get; init; }
 }
 internal static class WorkProgressHooks

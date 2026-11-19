@@ -46,6 +46,8 @@ public sealed partial class TerritoryAdministrationLedger
         if(current.Events.Last().Sequence!=state.Sequence || current.Events.Last().Returned.HasValue)throw new ArgumentException("Original progress start changed.");
         r.WorkProgressV1=placed.HasValue?WorkProgress.ObservePlacementReturn(t,r.WorkProgressV1,state.Sequence,Find.TickManager.TicksGame,placed.Value):WorkProgress.ObserveReturn(t,r.WorkProgressV1,state.Sequence,Find.TickManager.TicksGame);
         if(picked.HasValue)r.WorkProgressV1=WorkProgress.ObservePickupCount(t,r.WorkProgressV1,state.Sequence,picked.Value);
+        // Keep the native return as evidence, but an incomplete before-image cannot prove a transfer.
+        if (state.InputCaptureFailed) return;
         FrameFilthEvidence.After(r,current.Events.Last());
         FinishStorageRetirements(r,current.Events.Last());
         var candidate=ObserveFrameSuccessor(t,r,state,current.Events.Last());

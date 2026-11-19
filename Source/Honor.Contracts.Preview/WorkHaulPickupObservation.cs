@@ -36,7 +36,10 @@ internal static class WorkHaulPickupObservation
             __state=WorkProgressHooks.Begin(pawn,"haul-pickup",[item]);
             if(__state!=null)__state.Ledger.StageStoragePickup(__state,pawn,item,count);
         }
-        catch(Exception e){Log.Warning("[Honor.Contracts.Preview] Whole original pickup observation unavailable: "+e.GetType().Name);}
+        catch(Exception e)
+        {
+            if (__state != null) __state = __state with { InputCaptureFailed = true };
+            Log.Warning("[Honor.Contracts.Preview] Whole original pickup observation unavailable: "+e.GetType().Name);}
     }
     private static void Postfix(int __result,WorkObservationState __state)=>WorkProgressHooks.EndPickup(__state,__result);
     private static Exception Finalizer(Exception __exception,WorkObservationState __state){if(__exception!=null)WorkProgressHooks.Failed(__state);return __exception;}

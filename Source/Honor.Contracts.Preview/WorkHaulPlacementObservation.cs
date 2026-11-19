@@ -28,7 +28,10 @@ internal static class WorkHaulPlacementObservation
             __state=WorkProgressHooks.Begin(p,"haul-place",[cargo]);
             if(__state!=null)__state=__state.Ledger.StageStorageMerge(__state,p,dropLoc,mode,__args.Length==5?(int)__args[1]:cargo.stackCount);
         }
-        catch(Exception e){Log.Warning("[Honor.Contracts.Preview] Native haul placement observation unavailable: "+e.GetType().Name);}
+        catch(Exception e)
+        {
+            if (__state != null) __state = __state with { InputCaptureFailed = true };
+            Log.Warning("[Honor.Contracts.Preview] Native haul placement observation unavailable: "+e.GetType().Name);}
     }
     private static void Postfix(bool __result,WorkObservationState __state)=>WorkProgressHooks.End(__state,__result);
     private static Exception Finalizer(Exception __exception,WorkObservationState __state){if(__exception!=null)WorkProgressHooks.Failed(__state);return __exception;}
