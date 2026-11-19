@@ -52,7 +52,7 @@ internal static class NativeWorkFactionCall
             .Patch(HarmonyReversePatchType.Original);
         ready = true;
     }
-    internal static void Execute(Pawn pawn, Faction target, Action returned)
+    internal static void Execute(Pawn pawn, Faction target, Action returned, Action beforeNativeCall = null)
     {
         Prepare();
         if (active != null || returned == null || target == null || target.IsPlayer || pawn?.Faction == null || pawn.Faction.IsPlayer || pawn.Faction == target)
@@ -68,7 +68,9 @@ internal static class NativeWorkFactionCall
             DestinationGroups = ResidentActiveWork.Destinations(pawn.Map), DestinationRows = ResidentActiveWork.Destinations(pawn.Map).Values.SelectMany(g => g.list).Where(r => r.claimant == pawn).ToArray() };
         try
         {
-            active.Same(active.Source); InvokeOriginal(pawn, target, null);
+            active.Same(active.Source);
+            beforeNativeCall?.Invoke();
+            InvokeOriginal(pawn, target, null);
             // Native normal return is an independent fact, retained even if later preservation verification fails.
             returned(); active.Same(target);
             if (!active.MindPassed || !active.DestinationPassed || active.Memory != ResidentActiveWork.Memory(pawn) || System.Text.Json.JsonSerializer.Serialize(before) != System.Text.Json.JsonSerializer.Serialize(ResidentActiveWork.Capture(pawn)))

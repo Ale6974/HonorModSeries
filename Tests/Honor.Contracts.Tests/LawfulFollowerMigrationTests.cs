@@ -274,6 +274,26 @@ internal static class LawfulFollowerMigrationTests
         savedHaul.ConfirmDeliveredCity(originalCity.Id,receipt,witness.DeliveredMapProof,"union",true,true,now);
         var appliedDrop = TerritoryTransferLedger.Restore(savedHaul.Export()).Transfer(originalCity.Id);
         Check(appliedDrop.Phase == TerritoryTransferPhase.Applied && WorkProgress.Original(appliedDrop) == originalCity, "delivered city completion retains its original physical record");
+        var resumedParent = AllegianceTransitionLedger.Restore(haulJournal.Export());
+        var resumedCities = TerritoryTransferLedger.Restore(savedHaul.Export());
+        var joinedPlayer = PlayerAllegiance.Restore(politics.Export());
+        joinedPlayer.Apply(command);
+        resumedParent.ConfirmAllegiance(joinedPlayer, now);
+        LawfulAdmissions.ValidateCurrentPhysical(resumedParent.Current, resumedCities);
+        var deliveredTown = haulingTown with { Owner = "union", SourceSettlements = 2 };
+        var pendingDeep = actualDeep with { SourceSettlements = 2 };
+        var resumedPlan = FollowerTransfers.Review(after, resumedCities, [new("child", deliveredTown), new("deep", pendingDeep)], "union", now);
+        Check(resumedPlan.Moves.SequenceEqual(["deep"]), "restored parent skips the delivered hauling town");
+        resumedCities.Prepare("haul-deep", after, "deep", pendingDeep, "union", "union", null, TerritoryTransferPurpose.ActiveCharter, now);
+        var deliveredDeep = pendingDeep with { Owner = "union" };
+        resumedCities.Confirm("haul-deep", deliveredDeep, now);
+        LawfulAdmissions.ValidateCurrentPhysical(resumedParent.Current, resumedCities);
+        var finalPlan = FollowerTransfers.Review(after, resumedCities, [new("child", deliveredTown), new("deep", deliveredDeep)], "union", now);
+        resumedParent.ReaffirmPeace(haulPeace, now);
+        resumedParent.Complete(joinedPlayer, finalPlan, now);
+        LawfulAdmissions.ValidateArchive([resumedParent.Export()], after, afterPayments, protection);
+        Check(AllegianceTransitionLedger.Restore(resumedParent.Export()).Current.Phase == AllegianceTransitionPhase.Completed,
+            "parent completes with the original lawful closure after delivered city recovery");
         // Visitor-only map custody stays separate from the original saved-world clinical roster.
         string visitorsScope = LoadedMapPreservation.CaptureBystanders(containerScope, [new("visitor", Hash("unchanged-bystander"))]);
         var visitorsTown = containerTown with { LoadedMap = visitorsScope, StockFormat = 11, StockProof = LoadedMapPreservation.Restore(visitorsScope).Proof };

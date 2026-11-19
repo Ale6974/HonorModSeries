@@ -183,13 +183,6 @@ public sealed partial class TerritoryAdministrationLedger
         var areaStart = ResidentAreas.Begin(area.Journal,ResidentAreaRecords.Entries(pawn));
         care.Begin(r.From.GetUniqueLoadID(),record.Set().Residents[i].MedicalCare);
         var start = ResidentTransferCensus.Begin(record.AuthorityJournal[i]);
-        NativeWorkFactionCall.Prepare();
-        ResidentCallAuthority(r)();
-        record.Started = true;
-        record.CareJournal[i] = care.Export();
-        area.Journal = areaStart;
-        r.OriginalHaulerStartAgreement = grant.Id;
-        record.AuthorityJournal[i] = start;
         NativeWorkFactionCall.Execute(pawn,r.Target,() => {
             record.AuthorityJournal[i] = ResidentTransferCensus.Returned(record.AuthorityJournal[i]);
             if (Current.Game != ownerGame || Current.ProgramState != ProgramState.Playing || pawn.Faction != r.Target)
@@ -197,6 +190,13 @@ public sealed partial class TerritoryAdministrationLedger
             care.RecordReturn(r.Target.GetUniqueLoadID(),pawn.playerSettings == null ? null : (int)pawn.playerSettings.medCare);
             record.CareJournal[i] = care.Export();
             ResidentAreaRecords.Returned(area);
+        }, beforeNativeCall: () => {
+            ResidentCallAuthority(r)();
+            record.Started = true;
+            record.CareJournal[i] = care.Export();
+            area.Journal = areaStart;
+            r.OriginalHaulerStartAgreement = grant.Id;
+            record.AuthorityJournal[i] = start;
         });
     }
     private void FinishDeliveredCity(TerritoryTransfer t, TerritoryTransferReference r, Game game)
