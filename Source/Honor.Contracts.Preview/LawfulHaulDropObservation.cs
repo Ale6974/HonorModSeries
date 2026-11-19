@@ -52,10 +52,8 @@ internal static class LawfulHaulDropObservation
             bool sameStack = __result && ReferenceEquals(resultingThing,call.Cargo) &&
                 call.Actor.carryTracker.CarriedThing == null && call.Cargo.Spawned &&
                 call.Cargo.Map == call.Map && call.Cargo.Position == call.Cell && call.Cargo.stackCount == call.Quantity;
-            call.City.OriginalHaulDropReturn = JsonSerializer.Serialize(new {
-                Start = WorkProgress.Hash(call.Start), Returned = __result, SameStackAtDestination = sameStack,
-                Tick = Find.TickManager.TicksGame
-            });
+            call.City.OriginalHaulDropReturn = JsonSerializer.Serialize(new OriginalDropOutput(
+                WorkProgress.Hash(call.Start), __result, sameStack, Find.TickManager.TicksGame));
         }
         catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Original haul output unavailable: " + e.GetType().Name); }
     }
@@ -87,10 +85,9 @@ public sealed partial class TerritoryAdministrationLedger
             priorCargo.GetRawText() != JsonSerializer.Serialize(ResidentActiveWork.SimpleCargo(cargo,carry.innerContainer,pawn)) ||
             !LawfulHaulDropObservation.SoleObserver()) return null;
         political.RequireHaulCustodyParent(t);
-        string start = JsonSerializer.Serialize(new { Parent = t.LawfulHaulParentProof, City = t.Id,
-            Map = pawn.Map.GetUniqueLoadID(), Pawn = original.Pawn, Job = job.GetUniqueLoadID(),
-            Cargo = cargo.GetUniqueLoadID(), Count = cargo.stackCount, Cell = pawn.Map.cellIndices.CellToIndex(cell),
-            Tick = Find.TickManager.TicksGame });
+        string start = JsonSerializer.Serialize(new OriginalDropInput(t.LawfulHaulParentProof, t.Id,
+            pawn.Map.GetUniqueLoadID(), original.Pawn, job.GetUniqueLoadID(), cargo.GetUniqueLoadID(),
+            cargo.stackCount, pawn.Map.cellIndices.CellToIndex(cell), Find.TickManager.TicksGame));
         var call = new OriginalDropCall(r, Current.Game, pawn, cargo, pawn.Map, cell, cargo.stackCount, start);
         r.OriginalHaulDropStart = start;
         return call;

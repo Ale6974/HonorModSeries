@@ -157,6 +157,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             {
                 var charter = Charters.Book.Charter(t.Charter); var entity = Charters.Book.Entity(t.Territory);
                 var binding = Charters.Binding(t.Territory); var reference = references.Single(r => r.Id == t.Id);
+                LawfulHaulDrop.Validate(t, reference.Residents?.Profile, reference.OriginalHaulDropStart,
+                    reference.OriginalHaulDropReturn, Find.TickManager.TicksGame);
                 ValidateWorkCompletion(t,reference);
                 if (t.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
                 TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);

@@ -230,7 +230,7 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(mappedJournal.Current, TerritoryTransferLedger.Restore(mappedPhysical.Export()));
         Check(LawfulAdmissions.OriginalMap(AllegianceTransitionLedger.Restore(mappedJournal.Export()).Current, "child") == mappedScope && mappedPhysical.Transfer("mapped-city").StockFormat == 10,
             "original growing/stockpile zones, shelf group and resident scope remain paired through lawful physical save/restore");
-        var haulingMap = LoadedMapPreservation.CaptureActiveWork(mappedScope, [new("restricted", ["job-haul"], "{}")]);
+        var haulingMap = LoadedMapPreservation.CaptureActiveWork(mappedScope, [new("restricted", ["job-haul"], """{"Carry":{"Id":"steel","stackCount":12}}""")]);
         var haulProof = LoadedMapPreservation.Restore(haulingMap).Proof;
         var haulingTown = mappedTown with { LoadedMap = haulingMap, StockFormat = 25, StockProof = haulProof };
         var haulPlan = FollowerTransfers.Review(after, physical, [new("child", haulingTown), new("deep", actualDeep)], "union", now);
@@ -247,6 +247,16 @@ internal static class LawfulFollowerMigrationTests
         LawfulAdmissions.ValidateCurrentPhysical(haulJournal.Current, savedHaul);
         Check(savedHaul.Transfer("haul-city").LawfulHaulParentProof == closure.Proof, "original lawful closure retained by saved city");
         Reject(() => savedHaul.MarkStandaloneActiveWork("haul-city"), "lawful city cannot acquire standalone authority");
+        var originalCity = savedHaul.Transfer("haul-city");
+        var drop = new OriginalDropInput(closure.Proof, originalCity.Id, LoadedMapPreservation.Restore(haulingMap).Map,
+            "restricted", "job-haul", "steel", 12, 0, (int)now);
+        var startDrop = System.Text.Json.JsonSerializer.Serialize(drop);
+        var returnedDrop = new OriginalDropOutput(WorkProgress.Hash(startDrop), true, true, (int)now);
+        LawfulHaulDrop.Validate(originalCity, 16, startDrop, null, now);
+        LawfulHaulDrop.Validate(originalCity, 16, startDrop, System.Text.Json.JsonSerializer.Serialize(returnedDrop), now);
+        Reject(() => LawfulHaulDrop.Validate(originalCity, 16, null, System.Text.Json.JsonSerializer.Serialize(returnedDrop), now), "orphan drop return");
+        Reject(() => LawfulHaulDrop.Validate(originalCity, 16, System.Text.Json.JsonSerializer.Serialize(drop with { Count = 11 }), null, now), "changed original carried quantity");
+        Reject(() => LawfulHaulDrop.Validate(originalCity, 16, startDrop, System.Text.Json.JsonSerializer.Serialize(returnedDrop with { Returned = false }), now), "failed native placement cannot prove destination");
         // Visitor-only map custody stays separate from the original saved-world clinical roster.
         string visitorsScope = LoadedMapPreservation.CaptureBystanders(containerScope, [new("visitor", Hash("unchanged-bystander"))]);
         var visitorsTown = containerTown with { LoadedMap = visitorsScope, StockFormat = 11, StockProof = LoadedMapPreservation.Restore(visitorsScope).Proof };
