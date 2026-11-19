@@ -434,35 +434,43 @@ internal static partial class ResidentExecution
             if (surgery != null && action == ResidentMoveAction.ChangeFaction) ResidentSurgery.Detach(surgery);
             if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
                 throw new ArgumentException("Current game changed before resident authority change; original intent retained.");
+            bool workCall = prisoner == null && record.Profile == 16 && p.CurJob != null;
             if (action == ResidentMoveAction.ChangeFaction)
             {
                 string areaStart = area == null ? null : ResidentAreas.Begin(area.Journal, ResidentAreaRecords.Entries(p));
+                string call = null;
                 if (care != null)
                 {
                     if (record.Census == null) care.Begin(source.GetUniqueLoadID(), set.Residents[i].MedicalCare);
                     else care.Begin(record.Profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction?.GetUniqueLoadID(), p.playerSettings == null ? null : (int)p.playerSettings.medCare);
-                    string call = record.Census == null ? null : ResidentTransferCensus.Begin(record.AuthorityJournal[i]);
-                    record.CareJournal[i] = care.Export(); if (call != null) record.AuthorityJournal[i] = call;
+                    call = record.Census == null ? null : ResidentTransferCensus.Begin(record.AuthorityJournal[i]);
+
                 }
-                if (area != null) area.Journal = areaStart;
+                void RecordStart()
+                {
+                    if (care != null) record.CareJournal[i] = care.Export();
+                    if (call != null) record.AuthorityJournal[i] = call;
+                    if (area != null) area.Journal = areaStart;
+                }
+                if (!workCall) RecordStart();
                 if (prisoner != null) ResidentPrisoners.ChangeHost(prisoner, source, target, record.Profile);
-                else if (record.Profile == 16 && p.CurJob != null) NativeWorkFactionCall.Execute(p, target, () => {
+                else if (workCall) NativeWorkFactionCall.Execute(p, target, () => {
                     record.AuthorityJournal[i] = ResidentTransferCensus.Returned(record.AuthorityJournal[i]);
                     if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing || p.Faction != target) throw new ArgumentException("Native work return belongs to a changed game/authority.");
                     care.RecordReturn(target.GetUniqueLoadID(), p.playerSettings == null ? null : (int)p.playerSettings.medCare); record.CareJournal[i] = care.Export();
                     if (area != null) ResidentAreaRecords.Returned(area);
                     Current.Game.GetComponent<TerritoryAdministrationLedger>().SealClinicalReturn(record);
-                });
+                }, beforeNativeCall: RecordStart);
                 else p.SetFaction(target);
                 if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing)
                     throw new ArgumentException("Current game changed during resident authority change; original intent retained.");
-                if (record.Census != null && !(record.Profile == 16 && p.CurJob != null)) record.AuthorityJournal[i] = ResidentTransferCensus.Returned(record.AuthorityJournal[i]);
+                if (record.Census != null && !workCall) record.AuthorityJournal[i] = ResidentTransferCensus.Returned(record.AuthorityJournal[i]);
             }
             if ((record.Profile >= 4 ? ResidentPrisoners.Authority(p) : p.Faction?.GetUniqueLoadID()) != target.GetUniqueLoadID())
                 throw new ArgumentException("Native resident authority did not reach the target.");
-            if (record.Census != null && care != null && action == ResidentMoveAction.ChangeFaction && !(record.Profile == 16 && p.CurJob != null))
+            if (record.Census != null && care != null && action == ResidentMoveAction.ChangeFaction && !workCall)
             { care.RecordReturn(target.GetUniqueLoadID(), p.playerSettings == null ? null : (int)p.playerSettings.medCare); record.CareJournal[i] = care.Export(); }
-            if (area != null && action == ResidentMoveAction.ChangeFaction && !(record.Profile == 16 && p.CurJob != null)) ResidentAreaRecords.Returned(area);
+            if (area != null && action == ResidentMoveAction.ChangeFaction && !workCall) ResidentAreaRecords.Returned(area);
             if(record.Profile==16)Current.Game.GetComponent<TerritoryAdministrationLedger>().SealClinicalReturn(record);
             // Restore recorded care/orders and separately verified custody resets only; never repair health, gear, social state or unexplained ownership.
             var actual = ReadWithAreas(p, record.Profile, surgery, prisoner, area);

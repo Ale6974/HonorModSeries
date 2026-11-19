@@ -99,15 +99,24 @@ internal static partial class ResidentExecution
             var start=ResidentTransferCensus.Begin(record.AuthorityJournal[i]);ledger.RequireCurrentCustody(r);
             ledger.RequireApprovedResident(r,p.GetUniqueLoadID(),actual.Preserved);
             if(r.WorkResidentStartsV3.Any(raw=>JsonSerializer.Deserialize<WorkResidentStart>(raw).Pawn==p.GetUniqueLoadID()))throw new ArgumentException("Original current resident start already exists.");
-            r.WorkResidentStartsV3.Add(JsonSerializer.Serialize(new WorkResidentStart(p.GetUniqueLoadID(),actual.Preserved,r.CustodyAgreementV1,Find.TickManager.TicksGame)));
-            record.CareJournal[i]=care.Export();record.AuthorityJournal[i]=start;area.Journal=areaStart;
+            void RecordStart()
+            {
+                r.WorkResidentStartsV3.Add(JsonSerializer.Serialize(new WorkResidentStart(p.GetUniqueLoadID(),actual.Preserved,r.CustodyAgreementV1,Find.TickManager.TicksGame)));
+                record.CareJournal[i]=care.Export();record.AuthorityJournal[i]=start;area.Journal=areaStart;
+            }
             void Returned()
             {
                 record.AuthorityJournal[i]=ResidentTransferCensus.Returned(record.AuthorityJournal[i]);
                 if(Current.Game!=game || Current.ProgramState!=ProgramState.Playing || p.Faction!=r.Target)throw new ArgumentException("Changed original resident return context.");
                 care.RecordReturn(r.Target.GetUniqueLoadID(),p.playerSettings==null?null:(int)p.playerSettings.medCare);record.CareJournal[i]=care.Export();ResidentAreaRecords.Returned(area);
             }
-            if(p.CurJob!=null)NativeWorkFactionCall.Execute(p,r.Target,Returned);else {p.SetFaction(r.Target);Returned();}
+            if (p.CurJob != null) NativeWorkFactionCall.Execute(p, r.Target, Returned, beforeNativeCall: RecordStart);
+            else
+            {
+                RecordStart();
+                p.SetFaction(r.Target);
+                Returned();
+            }
             return true;
         }
         ValidateCensus(record,r.ResidentCensusProof,"territory/"+r.City.GetUniqueLoadID(),r.From.GetUniqueLoadID(),r.Target.GetUniqueLoadID(),true);return false;
