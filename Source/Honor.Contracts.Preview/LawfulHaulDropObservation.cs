@@ -141,11 +141,27 @@ public sealed partial class TerritoryAdministrationLedger
             throw new ArgumentException("Current map changed beyond the observed original ground placement.");
         return current.Proof;
     }
+    private static string DeliveredClinicalProof(ResidentExecutionRecord residents) => WorkProgress.Hash(new {
+        residents.Census, residents.AuthorityJournal, residents.CareJournal,
+        Areas = residents.AreaRecords.Select(area => area.Journal).ToArray(),
+        Current = residents.Pawns.Select(p => new { Pawn = p.GetUniqueLoadID(), Care = p.playerSettings == null ? (int?)null : (int)p.playerSettings.medCare }).ToArray()
+    });
+
     private void FinishDeliveredCity(TerritoryTransfer t, TerritoryTransferReference r, Game game)
     {
         RequireCurrentCustody(r);
         var agreement = custodyAgreements.Record(r.CustodyAgreementV1);
         var residents = r.Residents;
+        ResidentExecution.ValidateCensus(residents,r.ResidentCensusProof,t.Territory,t.FromOwner,t.TargetOwner);
+        for (int i = 0; i < residents.Pawns.Count; i++)
+        {
+            if (!ResidentTransferCensus.Call(residents.AuthorityJournal[i]).Returned) continue;
+            if (agreement.Witness.DeliveredClinicalProof != null && ResidentExecution.RestoreReturnedClinical(r,i))
+            {
+                Messages.Message("RE_WorkClinicalProgress".Translate(),MessageTypeDefOf.NeutralEvent);
+                return;
+            }
+        }
         ResidentExecution.ValidateCensus(residents, r.ResidentCensusProof, t.Territory,t.FromOwner,t.TargetOwner,true);
         var roster = residents.Set().Residents;
         for (int i = 0; i < residents.Pawns.Count; i++)

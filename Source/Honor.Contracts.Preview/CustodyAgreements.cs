@@ -109,7 +109,9 @@ public sealed partial class TerritoryAdministrationLedger
         if (r.OriginalHaulDropStart != null)
         {
             RequireCurrentOriginalDrop(t, r);
-            w = w with { HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap };
+            w = w with { HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap,
+                DeliveredClinicalProof = deliveredMap != null && (previous == null || previous.DeliveredClinicalProof != null)
+                    ? DeliveredClinicalProof(r.Residents) : null };
         }
         w = w with { WorkProgressV1=workProgress };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };

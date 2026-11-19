@@ -44,6 +44,36 @@ internal static partial class ResidentExecution
         var area=ResidentAreaRecords.Capture(p);var surgery=ResidentSurgery.Capture(p);
         return ReadInternal(p,16,surgery,null,false,area,captureAreas:true);
     }
+    internal static bool RestoreReturnedClinical(TerritoryTransferReference r, int i)
+    {
+        var record = r.Residents;
+        var p = record.Pawns[i];
+        var area = record.AreaRecords[i];
+        var care = ResidentCareJournal.Restore(record.CareJournal[i]);
+        if (!ResidentTransferCensus.Call(record.AuthorityJournal[i]).Returned || p.Faction != r.Target ||
+            !care.State.Returned || area.Pawn != p || record.Surgery[i].Pawn != p || record.Surgery[i].Detached.Count != 0)
+            throw new ArgumentException("Original resident return and clinical references required.");
+        ResidentAreaRecords.References(area,p.GetUniqueLoadID());
+        if (!care.State.Consumed)
+        {
+            int? current = p.playerSettings == null ? null : (int)p.playerSettings.medCare;
+            if (care.MayRestore(r.Target.GetUniqueLoadID(),current))
+            {
+                care.Consume(r.Target.GetUniqueLoadID(),current);
+                record.CareJournal[i] = care.Export();
+                p.playerSettings.medCare = (MedicalCareCategory)care.State.OriginalCare.Value;
+            }
+            else
+            {
+                care.SealUnchanged(r.Target.GetUniqueLoadID(),current);
+                record.CareJournal[i] = care.Export();
+            }
+            return true;
+        }
+        if (ResidentAreas.Restore(area.Journal).Consumed) return false;
+        ResidentAreaRecords.Restore(area);
+        return true;
+    }
     internal static bool ResumeClinicalOriginal(TerritoryTransferReference r)
     {
         var record=r.Residents;var ledger=Current.Game.GetComponent<TerritoryAdministrationLedger>();var game=Current.Game;
@@ -58,16 +88,7 @@ internal static partial class ResidentExecution
             ResidentAreaRecords.References(area,p.GetUniqueLoadID());
             if(call.Returned)
             {
-                if(p.Faction!=r.Target || !care.State.Returned)throw new ArgumentException("Original normal return and observed output required.");
-                if(!care.State.Consumed)
-                {
-                    int? current=p.playerSettings==null?null:(int)p.playerSettings.medCare;
-                    if(care.MayRestore(r.Target.GetUniqueLoadID(),current))
-                    {care.Consume(r.Target.GetUniqueLoadID(),current);record.CareJournal[i]=care.Export();p.playerSettings.medCare=(MedicalCareCategory)care.State.OriginalCare.Value;}
-                    else {care.SealUnchanged(r.Target.GetUniqueLoadID(),current);record.CareJournal[i]=care.Export();}
-                    return true;
-                }
-                if(!ResidentAreas.Restore(area.Journal).Consumed){ResidentAreaRecords.Restore(area);return true;}
+                if (RestoreReturnedClinical(r,i)) return true;
                 continue;
             }
             if(call.Started || care.State.Started || p.Faction!=r.From)throw new ArgumentException("Never replay uncertain resident authority.");

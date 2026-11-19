@@ -11,6 +11,7 @@ public sealed record CustodyAgreement(string Id, string Transfer, string Book, s
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string TransitDestinationV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool RoyalCustodyV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string[] RoyalStakeholdersV2 { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredClinicalProof { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredMapProof { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string HaulDropStart { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string HaulDropReturn { get; init; }
@@ -33,8 +34,10 @@ public sealed class CustodyAgreements
     private static string WorkScope(CustodyAgreement w) => w.WorkProgressV1==null?RightsScope(w):Hash(new{Action="VerifiedWorkProgressCompletion/v1",Original=RightsScope(w),w.WorkProgressV1});
     private static string DropScope(CustodyAgreement w) => w.HaulDropStart == null ? WorkScope(w) :
         Hash(new { Action = "LawfulHaulDrop/v1", Original = WorkScope(w), w.HaulDropStart, w.HaulDropReturn });
-    public static string Scope(CustodyAgreement w) => w.DeliveredMapProof == null ? DropScope(w) :
+    private static string DeliveredScope(CustodyAgreement w) => w.DeliveredMapProof == null ? DropScope(w) :
         Hash(new { Action = "LawfulDeliveredMap/v1", Original = DropScope(w), w.DeliveredMapProof });
+    public static string Scope(CustodyAgreement w) => w.DeliveredClinicalProof == null ? DeliveredScope(w) :
+        Hash(new { Action = "LawfulDeliveredClinical/v1", Original = DeliveredScope(w), w.DeliveredClinicalProof });
     /// <summary>Descriptor only: current scoped representative decisions must independently approve it.</summary>
     public static string CaptureForeignRights(CharterBook book, TerritoryTransfer t, CustodyParty[] parties, string transitDestination = null)
     {
@@ -75,6 +78,8 @@ public sealed class CustodyAgreements
             !CityStockProof.Valid(w.Custody) || w.ForeignRightsV1?.Length > 4096 || w.Parties == null || w.Observations == null || w.Realms == null || w.Tick is < 0 or > int.MaxValue) throw new ArgumentException("Bounded original custody and current consent required.");
         var book = CharterBook.Restore(w.Book); var physical = TerritoryTransferLedger.Restore(w.Physical); var payments = TributeLedger.Restore(w.Payments);
         var t = physical.Transfer(w.Transfer); var old = book.Charter(t.Charter);
+        if (w.DeliveredClinicalProof != null && (!CityStockProof.Valid(w.DeliveredClinicalProof) || w.DeliveredMapProof == null))
+            throw new ArgumentException("Delivered clinical consent requires the current map.");
         if (w.DeliveredMapProof != null && (!CityStockProof.Valid(w.DeliveredMapProof) || w.HaulDropStart == null || w.WorkProgressV1 != null))
             throw new ArgumentException("Delivered map approval requires its original placement.");
         if (w.HaulDropStart != null || w.HaulDropReturn != null)
