@@ -96,6 +96,11 @@ public sealed partial class TerritoryAdministrationLedger
         if (t.PreviousTransferV1 == null && next != null && next != t.TargetOwner) w = w with { TransitDestinationV1 = next };
         w = w with { ForeignRightsV1 = CustodyAgreements.CaptureForeignRights(Charters.Book, t, w.Parties, w.TransitDestinationV1) };
         w = w with { RoyalCustodyV1 = t.RoyalResidentsV1 != null, RoyalStakeholdersV2 = t.RoyalRightsV2 == null ? null : RoyalRights.Realms(t.RoyalRightsV2) };
+        if (r.OriginalHaulDropStart != null)
+        {
+            RequireCurrentOriginalDrop(t, r);
+            w = w with { HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn };
+        }
         w = w with { WorkProgressV1=workProgress };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };
         if (w.RoyalCustodyV1)
@@ -151,6 +156,9 @@ public sealed partial class TerritoryAdministrationLedger
         foreach (var receipt in custodyAgreements.Records)
         {
             var original = references.Single(r => r.Id == receipt.Witness.Transfer);
+            if (receipt.Witness.HaulDropStart != null && (receipt.Witness.HaulDropStart != original.OriginalHaulDropStart ||
+                receipt.Witness.HaulDropReturn != original.OriginalHaulDropReturn))
+                throw new ArgumentException("Approved original haul placement changed.");
             if (receipt.Witness.Custody != CustodyFingerprint(Ledger.Transfer(original.Id), original) || original.CustodyAgreementV1 == null ||
                 custodyAgreements.Records.Last(r => r.Witness.Transfer == original.Id).Witness.Id != original.CustodyAgreementV1)
                 throw new ArgumentException("Unpaired original custody approval archive/reference.");

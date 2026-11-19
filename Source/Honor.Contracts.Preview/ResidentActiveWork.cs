@@ -128,7 +128,13 @@ internal static class ResidentActiveWork
     }
     internal static object SimpleCargo(Thing t, ThingOwner owner, Pawn pawn)
     {
-        if (t == null || t.Spawned || t.Map != null || t.holdingOwner != owner || t.Destroyed || t.Faction != null ||
+        if (t == null || t.Spawned || t.Map != null || t.holdingOwner != owner)
+            throw new ArgumentException("Original carried holder required.");
+        return SimpleCargoState(t, pawn);
+    }
+    internal static object SimpleCargoState(Thing t, Pawn pawn)
+    {
+        if (t == null || t.Destroyed || t.Faction != null ||
             t.GetType() != typeof(Thing) && t.GetType() != typeof(ThingWithComps) || t.def?.category != ThingCategory.Item || t.stackCount < 1 ||
             t is ThingWithComps c && c.AllComps.Any(comp => comp?.GetType() != typeof(CompQuality) && comp?.GetType() != typeof(CompForbiddable)))
             throw new ArgumentException("Only original neutral basic work cargo is currently reviewed.");

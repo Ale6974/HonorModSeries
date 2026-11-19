@@ -61,6 +61,24 @@ internal static class LawfulHaulDropObservation
 
 public sealed partial class TerritoryAdministrationLedger
 {
+    private static void RequireCurrentOriginalDrop(TerritoryTransfer t, TerritoryTransferReference r)
+    {
+        LawfulHaulDrop.Validate(t, r.Residents?.Profile, r.OriginalHaulDropStart, r.OriginalHaulDropReturn, Find.TickManager.TicksGame);
+        if (r.OriginalHaulDropReturn == null || !JsonSerializer.Deserialize<OriginalDropOutput>(r.OriginalHaulDropReturn).SameStackAtDestination)
+            throw new ArgumentException("Original whole cargo placement has no positive output.");
+        var input = JsonSerializer.Deserialize<OriginalDropInput>(r.OriginalHaulDropStart);
+        var map = r.City?.Map;
+        var cargo = r.Residents.ActiveWorkCarry?.SingleOrDefault(thing => thing != null && thing.GetUniqueLoadID() == input.Cargo);
+        if (map == null || map != r.LoadedMap?.Map || map.GetUniqueLoadID() != input.Map ||
+            cargo == null || cargo.Destroyed || !cargo.Spawned || cargo.Map != map || cargo.holdingOwner != null ||
+            cargo.Faction != null || cargo.stackCount != input.Count || map.cellIndices.CellToIndex(cargo.Position) != input.Cell)
+            throw new ArgumentException("Original delivered stack no longer matches its approved destination and quantity.");
+        var actor = r.Residents.Pawns.Single(p => p != null && p.GetUniqueLoadID() == input.Pawn);
+        var work = LoadedMapPreservation.Restore(t.LoadedMap).ActiveWorkV1.Single(row => row.Pawn == input.Pawn);
+        using var saved = JsonDocument.Parse(work.Saved);
+        if (saved.RootElement.GetProperty("Carry").GetRawText() != JsonSerializer.Serialize(ResidentActiveWork.SimpleCargoState(cargo, actor)))
+            throw new ArgumentException("Delivered stack definition, health or components changed.");
+    }
     internal OriginalDropCall BeginOriginalDrop(Pawn_CarryTracker carry, IntVec3 cell)
     {
         var pawn = carry.pawn;

@@ -11,6 +11,8 @@ public sealed record CustodyAgreement(string Id, string Transfer, string Book, s
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string TransitDestinationV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool RoyalCustodyV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string[] RoyalStakeholdersV2 { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string HaulDropStart { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string HaulDropReturn { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string WorkProgressV1 { get; init; }
 }
 public sealed record CustodyAgreementReceipt(CustodyAgreement Witness, string Proof);
@@ -27,7 +29,9 @@ public sealed class CustodyAgreements
     private static string TransitScope(CustodyAgreement w) => w.TransitDestinationV1 == null ? ForeignScope(w) : Hash(new { Action = "TransitCustodyCompletion/v1", Original = ForeignScope(w), w.TransitDestinationV1 });
     private static string RoyalScope(CustodyAgreement w) => w.RoyalCustodyV1 ? Hash(new { Action = "RoyalCivilianCustody/v1", Original = TransitScope(w) }) : TransitScope(w);
     private static string RightsScope(CustodyAgreement w) => w.RoyalStakeholdersV2 == null ? RoyalScope(w) : Hash(new { Action = "RoyalPrivateRightsCustody/v2", Original = RoyalScope(w), w.RoyalStakeholdersV2 });
-    public static string Scope(CustodyAgreement w) => w.WorkProgressV1==null?RightsScope(w):Hash(new{Action="VerifiedWorkProgressCompletion/v1",Original=RightsScope(w),w.WorkProgressV1});
+    private static string WorkScope(CustodyAgreement w) => w.WorkProgressV1==null?RightsScope(w):Hash(new{Action="VerifiedWorkProgressCompletion/v1",Original=RightsScope(w),w.WorkProgressV1});
+    public static string Scope(CustodyAgreement w) => w.HaulDropStart == null ? WorkScope(w) :
+        Hash(new { Action = "LawfulHaulDrop/v1", Original = WorkScope(w), w.HaulDropStart, w.HaulDropReturn });
     /// <summary>Descriptor only: current scoped representative decisions must independently approve it.</summary>
     public static string CaptureForeignRights(CharterBook book, TerritoryTransfer t, CustodyParty[] parties, string transitDestination = null)
     {
@@ -68,6 +72,12 @@ public sealed class CustodyAgreements
             !CityStockProof.Valid(w.Custody) || w.ForeignRightsV1?.Length > 4096 || w.Parties == null || w.Observations == null || w.Realms == null || w.Tick is < 0 or > int.MaxValue) throw new ArgumentException("Bounded original custody and current consent required.");
         var book = CharterBook.Restore(w.Book); var physical = TerritoryTransferLedger.Restore(w.Physical); var payments = TributeLedger.Restore(w.Payments);
         var t = physical.Transfer(w.Transfer); var old = book.Charter(t.Charter);
+        if (w.HaulDropStart != null || w.HaulDropReturn != null)
+        {
+            LawfulHaulDrop.Validate(t, 16, w.HaulDropStart, w.HaulDropReturn, w.Tick);
+            if (w.HaulDropReturn == null || !JsonSerializer.Deserialize<OriginalDropOutput>(w.HaulDropReturn).SameStackAtDestination)
+                throw new ArgumentException("Current consent requires positively observed whole placement.");
+        }
         if(w.WorkProgressV1!=null){var progress=WorkProgress.Approval(t,w.WorkProgressV1);if(progress.Tick!=w.Tick || t.WorkCompletionV1!=null)throw new ArgumentException("Separate current work-progress approval required.");}
         if (t.Phase != TerritoryTransferPhase.Prepared || !t.CityCallJournalV1 || t.Purpose != TerritoryTransferPurpose.ActiveCharter || t.ReleasedRoot != null ||
             old.Terms.Subject != t.Territory || book.Entity(t.Territory).Player || book.Entity(t.Territory).NativeOwner != t.BaselineOwner ||
