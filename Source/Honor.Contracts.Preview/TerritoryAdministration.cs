@@ -163,7 +163,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 if (t.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
                 TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
                 bool retainPendingWork = KeepsUnstartedGivenWork(t,reference) || KeepsUnstartedActiveWork(t,reference) ||
-                    RetainsSealedWork(t,reference) || RetainDeliveredHaulOnLoad(t,reference);
+                    RetainsSealedWork(t,reference) || RetainsDeliveredHaul(t,reference);
                 ValidateMapReference(t, reference, t.Phase == TerritoryTransferPhase.Prepared && !retainPendingWork);
                 if ((t.UnstartedWorkAbortV1 != null || t.UnstartedActiveWorkAbortV1 != null) && (reference.CityCallStarted || reference.CityCallReturned || reference.Residents?.Started != false || reference.CustodyAgreementV1 != null)) throw new ArgumentException("No-start receipt conflicts with actual native calls.");
                 if (reference.CityCallV1 && reference.CityCallStarted && reference.Residents != null && !reference.Residents.Started)

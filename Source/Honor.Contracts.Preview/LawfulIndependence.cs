@@ -197,7 +197,8 @@ public sealed partial class TerritoryAdministrationLedger
     {
         if (intent?.LawfulResidents == null) return;
         var approved = LawfulAdmissions.OriginalFollowers(intent);
-        var original = TerritoryTransferLedger.Restore(LawfulExitPreparation.Restore(intent.LawfulExit).BeforeTransfers);
+        var closure = LawfulExitPreparation.Restore(intent.LawfulExit);
+        var original = TerritoryTransferLedger.Restore(closure.BeforeTransfers);
 
         foreach (var scope in JsonSerializer.Deserialize<LawfulResidentScope[]>(intent.LawfulResidents))
         {
@@ -218,7 +219,14 @@ public sealed partial class TerritoryAdministrationLedger
                     row.Phase == TerritoryTransferPhase.Applied && (!reference.CityCallStarted || !reference.CityCallReturned))
                     throw new ArgumentException("Missing original lawful resident execution/call evidence.");
                 ResidentExecution.ValidateCensus(reference.Residents, census.Proof, row.Territory, row.FromOwner, row.TargetOwner, row.Phase == TerritoryTransferPhase.Applied);
-                ValidateMapReference(row, reference, pending && row.Phase == TerritoryTransferPhase.Prepared);
+                bool current = pending && row.Phase == TerritoryTransferPhase.Prepared;
+                if (current && reference.OriginalHaulDropReturn != null)
+                {
+                    if (row.LawfulHaulParentProof != closure.Proof || scope.HaulMapProof != row.StockProof)
+                        throw new ArgumentException("Original delivering city must belong to this approved lawful exit.");
+                    if (RetainsDeliveredHaul(row, reference)) current = false;
+                }
+                ValidateMapReference(row, reference, current);
             }
             if (!pending) continue;
             if (rows.Any(t => t.Phase is TerritoryTransferPhase.Prepared or TerritoryTransferPhase.Applied)) continue;

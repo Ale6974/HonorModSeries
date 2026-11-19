@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using HarmonyLib;
 using Honor.Contracts.Rules;
+using RimWorld;
 using Verse;
 using Verse.AI;
 
@@ -79,8 +80,8 @@ public sealed partial class TerritoryAdministrationLedger
         if (saved.RootElement.GetProperty("Carry").GetRawText() != JsonSerializer.Serialize(ResidentActiveWork.SimpleCargoState(cargo, actor)))
             throw new ArgumentException("Delivered stack definition, health or components changed.");
     }
-    // Loading retains the interrupted operation. It does not authorize a native call.
-    private static bool RetainDeliveredHaulOnLoad(TerritoryTransfer t, TerritoryTransferReference r)
+    // Retain a pending operation for review. Execution requires independent current authority.
+    private static bool RetainsDeliveredHaul(TerritoryTransfer t, TerritoryTransferReference r)
     {
         if (t.Phase != TerritoryTransferPhase.Prepared || r.OriginalHaulDropReturn == null ||
             !JsonSerializer.Deserialize<OriginalDropOutput>(r.OriginalHaulDropReturn).SameStackAtDestination) return false;
@@ -96,6 +97,15 @@ public sealed partial class TerritoryAdministrationLedger
             r.City.previouslyGeneratedInhabitants == null || residents.Pawns.Count != r.City.previouslyGeneratedInhabitants.Count ||
             !new HashSet<Pawn>(residents.Pawns).SetEquals(r.City.previouslyGeneratedInhabitants))
             throw new ArgumentException("Original pending town, map and resident roster required.");
+        if (!Find.FactionManager.AllFactionsListForReading.Contains(r.From) ||
+            !Find.FactionManager.AllFactionsListForReading.Contains(r.Target) || r.From.HostileTo(r.Target) || r.Target.HostileTo(r.From))
+            throw new ArgumentException("Original realms and reciprocal peace required.");
+        var visitors = r.LoadedMap.Visitors ?? [];
+        var expectedVisitors = LoadedMapPreservation.Restore(t.LoadedMap).Visitors ?? [];
+        if (!visitors.Select(ResidentMapVisitors.Capture).OrderBy(row => row.Id,StringComparer.Ordinal).SequenceEqual(expectedVisitors) ||
+            !new HashSet<Pawn>(residents.Pawns.Concat(visitors)).SetEquals(map.mapPawns.AllPawns))
+            throw new ArgumentException("Original mapped residents and bystanders required.");
+        if (visitors.Count > 0) CheckMapVisitorPeace(r.City,r.Target);
         ResidentTransferCensus.RequireRecoverable(residents.AuthorityJournal, residents.CareJournal);
         for (int i = 0; i < residents.Pawns.Count; i++)
         {
