@@ -504,7 +504,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 RecoverAssets(item, reference, executionGame);
                 return;
             }
-            var actual = Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents?.Profile ?? 3);
+            TerritoryTransferObservation CurrentObservation() => Observe(reference.City, item.Territory, reference.Target, residentProfile: reference.Residents?.Profile ?? 3);
             if (reference.LoadedMap?.AssetJournal != null && (continueLawfulHaul || MapAssetTransfers.Started(reference.LoadedMap.AssetJournal) || reference.CityCallStarted || reference.Residents?.Started == true))
             {
                 RecoverAssets(item, reference, executionGame);
@@ -520,7 +520,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 if (!continueLawfulHaul && !reference.Residents.Started && reference.City.Faction == reference.From)
                 {
                     ResidentExecution.ValidateReferences(reference.Residents, reference.City, item.ResidentProof);
-                    Ledger.CancelUnmoved(id, actual, Find.TickManager.TicksGame);
+                    Ledger.CancelUnmoved(id, CurrentObservation(), Find.TickManager.TicksGame);
                 }
                 else
                 {
@@ -564,7 +564,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
             {
                 if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Original game changed before cancellation.");
                 TerritoryCallGuard.RequireVerifiedUnmoved(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
-                Ledger.CancelUnmoved(id, actual, Find.TickManager.TicksGame);
+                Ledger.CancelUnmoved(id, CurrentObservation(), Find.TickManager.TicksGame);
             }
             else
             {
@@ -572,7 +572,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                 TerritoryCallGuard.RequireStartedForTarget(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);
                 CityStockPreservation.InvalidateMaterial(reference.City);
                 if (Current.Game != executionGame || Current.ProgramState != ProgramState.Playing) throw new ArgumentException("Original game changed before confirmation.");
-                Ledger.Confirm(id, actual, Find.TickManager.TicksGame);
+                Ledger.Confirm(id, CurrentObservation(), Find.TickManager.TicksGame);
             }
             if (reference.LoadedMap != null) LoadedMapRecords.Release(reference.LoadedMap);
             reference.WorkNativeRosterV3?.Clear();ReleaseWorkObservationReferences(reference);
@@ -655,7 +655,7 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
         if (!currentCustody) Charters.Book.ValidateCurrent(item.Charter, observations);
         if (Charters.Book.Charters.Any(c => Charters.Book.Phase(c, Find.TickManager.TicksGame) == RecordedCharterPhase.Offered && c.Terms.Subject == item.Territory))
             throw new ArgumentException("Competing current city offer.");
-        var stock = Observe(reference.City, item.Territory, destination, releasedSource);
+        var stock = Observe(reference.City, item.Territory, destination, releasedSource, reference.Residents?.Profile ?? 7);
         if ((stock.HasMap && item.LoadedMap == null) || stock.LoadedMap != item.LoadedMap || !stock.Exists || stock.StockFormat != item.StockFormat || stock.StockProof != item.StockProof ||
             stock.StockProof == null && stock.Visited || stock.Owner == item.FromOwner && stock.SourceSettlements < 2 && item.FromOwner != AdministrationId)
             throw new ArgumentException("Original stock/map/source-base preservation changed.");
