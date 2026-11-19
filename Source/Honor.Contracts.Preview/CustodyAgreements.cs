@@ -112,6 +112,8 @@ public sealed partial class TerritoryAdministrationLedger
             w = w with { HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap,
                 DeliveredClinicalProof = deliveredMap != null && (previous == null || previous.DeliveredClinicalProof != null)
                     ? DeliveredClinicalProof(r.Residents) : null };
+            if (w.DeliveredClinicalProof != null && (previous == null || previous.DeliveredHauler != null))
+                w = w with { DeliveredHauler = PendingDeliveredHauler(r) };
         }
         w = w with { WorkProgressV1=workProgress };
         w = w with { Regimes = NativeNpcContractAuthority.ReviewCustody(CustodyAgreements.Scope(w), tick, realms) };
@@ -165,6 +167,16 @@ public sealed partial class TerritoryAdministrationLedger
     {
         if (custodyAgreementSnapshot != null || custodyAgreements.Records.Count > 0)
             custodyAgreements.ValidateHistory(Charters.Book, Ledger, Current.Game.GetComponent<TributePaymentLedger>().Ledger);
+        foreach (var r in references.Where(row => row.OriginalHaulerStartAgreement != null))
+        {
+            var grant = custodyAgreements.Record(r.OriginalHaulerStartAgreement).Witness;
+            var roster = r.Residents.Set().Residents;
+            int index = roster.ToList().FindIndex(row => row.Id == grant.DeliveredHauler?.Pawn);
+            if (grant.Transfer != r.Id || grant.HaulDropStart != r.OriginalHaulDropStart ||
+                grant.HaulDropReturn != r.OriginalHaulDropReturn || index < 0 ||
+                !ResidentTransferCensus.Call(r.Residents.AuthorityJournal[index]).Started)
+                throw new ArgumentException("Original hauler call lost its current party mandate.");
+        }
         foreach (var receipt in custodyAgreements.Records)
         {
             var original = references.Single(r => r.Id == receipt.Witness.Transfer);
@@ -199,6 +211,8 @@ public sealed partial class TerritoryAdministrationLedger
                 var cargo = reference.Residents.ActiveWorkCarry.Single(item => item?.GetUniqueLoadID() == drop.Cargo);
                 var pawn = reference.Residents.Pawns.Single(person => person?.GetUniqueLoadID() == drop.Pawn);
                 text += "\n\n" + "RE_CustodyDelivered".Translate(pawn.LabelShort, cargo.LabelNoCount, drop.Count, cargo.Position.ToString());
+                if (reviewed.Witness.DeliveredHauler != null)
+                    text += "\n" + "RE_DeliveredHaulerMandate".Translate(pawn.LabelShort, reference.Target.Name);
             }
             if (reviewed.Witness.ForeignRightsV1 != null)
             {

@@ -263,6 +263,11 @@ internal static class LawfulFollowerMigrationTests
             [d,d with { Realm = "union", Representative = "union-ruler" }],now) {
             DeliveredMapProof = Hash("approved-map"), HaulDropStart = startDrop, HaulDropReturn = JsonSerializer.Serialize(returnedDrop)
         };
+        var haulerGrant = witness with { DeliveredClinicalProof = Hash("clinical"), DeliveredHauler = new(drop.Pawn,Hash("current resident")) };
+        var haulerReceipt = new CustodyAgreements().Add(haulerGrant);
+        Check(CustodyAgreements.Scope(haulerGrant) != CustodyAgreements.Scope(haulerGrant with { DeliveredHauler = null }), "original hauler needs an explicit call mandate");
+        Reject(() => CustodyAgreements.Validate(haulerGrant with { DeliveredHauler = new("different-resident",Hash("current resident")) }), "another resident cannot inherit the hauler mandate");
+        Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,haulerReceipt,witness.DeliveredMapProof,"union",true,true,now), "resident start mandate cannot finalize the city");
         var receipt = new CustodyAgreements().Add(witness);
         Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,receipt,Hash("changed"),"union",true,true,now), "changed delivered map cannot finalize");
         Reject(() => savedHaul.ConfirmDeliveredCity(originalCity.Id,receipt,witness.DeliveredMapProof,"union",true,false,now), "unknown city return cannot finalize");

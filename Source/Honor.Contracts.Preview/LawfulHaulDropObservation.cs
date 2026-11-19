@@ -147,6 +147,58 @@ public sealed partial class TerritoryAdministrationLedger
         Current = residents.Pawns.Select(p => new { Pawn = p.GetUniqueLoadID(), Care = p.playerSettings == null ? (int?)null : (int)p.playerSettings.medCare }).ToArray()
     });
 
+    private static WorkPendingResident PendingDeliveredHauler(TerritoryTransferReference r)
+    {
+        var residents = r.Residents;
+        var input = JsonSerializer.Deserialize<OriginalDropInput>(r.OriginalHaulDropStart);
+        for (int i = 0; i < residents.Pawns.Count; i++)
+        {
+            var call = ResidentTransferCensus.Call(residents.AuthorityJournal[i]);
+            if (call.Returned) continue;
+            var pawn = residents.Pawns[i];
+            if (call.Started || pawn.GetUniqueLoadID() != input.Pawn || pawn.Faction != r.From ||
+                pawn.CurJob?.GetUniqueLoadID() != input.Job || residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true ||
+                residents.Prisoners.Count != 0 || residents.Surgery[i].Detached.Count != 0 ||
+                residents.Surgery[i].Set().Orders.Count != 0 || pawn.health.surgeryBills.Bills.Count != 0 ||
+                r.OriginalHaulerStartAgreement != null) return null;
+            var current = ResidentExecution.FreshClinical(pawn);
+            if (current.MedicalCare != residents.Set().Residents[i].MedicalCare) return null;
+            return new(input.Pawn,current.Preserved);
+        }
+        return null;
+    }
+
+    private void StartDeliveredHauler(TerritoryTransferReference r, CustodyAgreement grant)
+    {
+        if (grant.DeliveredHauler == null || PendingDeliveredHauler(r) != grant.DeliveredHauler)
+            throw new ArgumentException("Current original hauler approval required.");
+        var record = r.Residents;
+        int i = record.Pawns.FindIndex(p => p.GetUniqueLoadID() == grant.DeliveredHauler.Pawn);
+        var pawn = record.Pawns[i];
+        var area = record.AreaRecords[i];
+        var care = ResidentCareJournal.Restore(record.CareJournal[i]);
+        ResidentAreaRecords.References(area,grant.DeliveredHauler.Pawn);
+        if (area.Pawn != pawn || record.Surgery[i].Pawn != pawn || r.CityCallStarted)
+            throw new ArgumentException("Original unstarted resident context required.");
+        var areaStart = ResidentAreas.Begin(area.Journal,ResidentAreaRecords.Entries(pawn));
+        care.Begin(r.From.GetUniqueLoadID(),record.Set().Residents[i].MedicalCare);
+        var start = ResidentTransferCensus.Begin(record.AuthorityJournal[i]);
+        NativeWorkFactionCall.Prepare();
+        ResidentCallAuthority(r)();
+        record.Started = true;
+        record.CareJournal[i] = care.Export();
+        area.Journal = areaStart;
+        r.OriginalHaulerStartAgreement = grant.Id;
+        record.AuthorityJournal[i] = start;
+        NativeWorkFactionCall.Execute(pawn,r.Target,() => {
+            record.AuthorityJournal[i] = ResidentTransferCensus.Returned(record.AuthorityJournal[i]);
+            if (Current.Game != ownerGame || Current.ProgramState != ProgramState.Playing || pawn.Faction != r.Target)
+                throw new ArgumentException("Original hauling resident return context changed.");
+            care.RecordReturn(r.Target.GetUniqueLoadID(),pawn.playerSettings == null ? null : (int)pawn.playerSettings.medCare);
+            record.CareJournal[i] = care.Export();
+            ResidentAreaRecords.Returned(area);
+        });
+    }
     private void FinishDeliveredCity(TerritoryTransfer t, TerritoryTransferReference r, Game game)
     {
         RequireCurrentCustody(r);
@@ -161,6 +213,12 @@ public sealed partial class TerritoryAdministrationLedger
                 Messages.Message("RE_WorkClinicalProgress".Translate(),MessageTypeDefOf.NeutralEvent);
                 return;
             }
+        }
+        if (agreement.Witness.DeliveredHauler != null)
+        {
+            StartDeliveredHauler(r, agreement.Witness);
+            Messages.Message("RE_WorkClinicalProgress".Translate(), MessageTypeDefOf.NeutralEvent);
+            return;
         }
         ResidentExecution.ValidateCensus(residents, r.ResidentCensusProof, t.Territory,t.FromOwner,t.TargetOwner,true);
         var roster = residents.Set().Residents;

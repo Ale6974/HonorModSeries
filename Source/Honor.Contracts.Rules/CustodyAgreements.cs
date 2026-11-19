@@ -11,6 +11,7 @@ public sealed record CustodyAgreement(string Id, string Transfer, string Book, s
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string TransitDestinationV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)] public bool RoyalCustodyV1 { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string[] RoyalStakeholdersV2 { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public WorkPendingResident DeliveredHauler { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredClinicalProof { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredMapProof { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string HaulDropStart { get; init; }
@@ -36,8 +37,10 @@ public sealed class CustodyAgreements
         Hash(new { Action = "LawfulHaulDrop/v1", Original = WorkScope(w), w.HaulDropStart, w.HaulDropReturn });
     private static string DeliveredScope(CustodyAgreement w) => w.DeliveredMapProof == null ? DropScope(w) :
         Hash(new { Action = "LawfulDeliveredMap/v1", Original = DropScope(w), w.DeliveredMapProof });
-    public static string Scope(CustodyAgreement w) => w.DeliveredClinicalProof == null ? DeliveredScope(w) :
+    private static string ClinicalScope(CustodyAgreement w) => w.DeliveredClinicalProof == null ? DeliveredScope(w) :
         Hash(new { Action = "LawfulDeliveredClinical/v1", Original = DeliveredScope(w), w.DeliveredClinicalProof });
+    public static string Scope(CustodyAgreement w) => w.DeliveredHauler == null ? ClinicalScope(w) :
+        Hash(new { Action = "LawfulDeliveredHauler/v1", Original = ClinicalScope(w), w.DeliveredHauler });
     /// <summary>Descriptor only: current scoped representative decisions must independently approve it.</summary>
     public static string CaptureForeignRights(CharterBook book, TerritoryTransfer t, CustodyParty[] parties, string transitDestination = null)
     {
@@ -78,6 +81,7 @@ public sealed class CustodyAgreements
             !CityStockProof.Valid(w.Custody) || w.ForeignRightsV1?.Length > 4096 || w.Parties == null || w.Observations == null || w.Realms == null || w.Tick is < 0 or > int.MaxValue) throw new ArgumentException("Bounded original custody and current consent required.");
         var book = CharterBook.Restore(w.Book); var physical = TerritoryTransferLedger.Restore(w.Physical); var payments = TributeLedger.Restore(w.Payments);
         var t = physical.Transfer(w.Transfer); var old = book.Charter(t.Charter);
+        if (w.DeliveredHauler != null && w.HaulDropStart == null) throw new ArgumentException("Original hauling record required.");
         if (w.DeliveredClinicalProof != null && (!CityStockProof.Valid(w.DeliveredClinicalProof) || w.DeliveredMapProof == null))
             throw new ArgumentException("Delivered clinical consent requires the current map.");
         if (w.DeliveredMapProof != null && (!CityStockProof.Valid(w.DeliveredMapProof) || w.HaulDropStart == null || w.WorkProgressV1 != null))
@@ -85,6 +89,9 @@ public sealed class CustodyAgreements
         if (w.HaulDropStart != null || w.HaulDropReturn != null)
         {
             LawfulHaulDrop.Validate(t, 16, w.HaulDropStart, w.HaulDropReturn, w.Tick);
+            if (w.DeliveredHauler != null && (w.DeliveredClinicalProof == null || !CityStockProof.Valid(w.DeliveredHauler.Proof) ||
+                w.DeliveredHauler.Pawn != JsonSerializer.Deserialize<OriginalDropInput>(w.HaulDropStart).Pawn))
+                throw new ArgumentException("Only the original delivering resident can receive this mandate.");
             if (w.HaulDropReturn == null || !JsonSerializer.Deserialize<OriginalDropOutput>(w.HaulDropReturn).SameStackAtDestination)
                 throw new ArgumentException("Current consent requires positively observed whole placement.");
         }
