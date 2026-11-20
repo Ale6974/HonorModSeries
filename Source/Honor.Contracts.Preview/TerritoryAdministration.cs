@@ -19,6 +19,9 @@ public sealed class TerritoryTransferReference : IExposable
     public string CustodyAgreementV1;
     public string WorkProgressV1;
     public Verse.AI.Job DeliveredSuccessorJob;
+    public Verse.AI.Job PostureSuccessorJob;
+    public Verse.AI.Job CurrentSuccessorJob => PostureEndStart == null ? DeliveredSuccessorJob : PostureSuccessorJob;
+    public string PostureEndStart, PostureEndReturn;
     public string DeliveredEndStart, DeliveredEndReturn;
     public List<string> OtherHaulerAgreements;
     public string OriginalHaulDropStart, OriginalHaulDropReturn, OriginalHaulerStartAgreement;
@@ -40,6 +43,9 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Values.Look(ref CityCallStarted, "cityCallStartedV1", false);
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
         Scribe_Values.Look(ref CustodyAgreementV1, "currentCustodyCompletionAgreementV1");
+        Scribe_References.Look(ref PostureSuccessorJob, "lawfulPostureSuccessorJobV1");
+        Scribe_Values.Look(ref PostureEndStart, "lawfulPostureEndStartV1");
+        Scribe_Values.Look(ref PostureEndReturn, "lawfulPostureEndReturnV1");
         Scribe_References.Look(ref DeliveredSuccessorJob, "lawfulDeliveredSuccessorJobV1");
         Scribe_Values.Look(ref DeliveredEndStart, "lawfulDeliveredEndStartV1");
         Scribe_Values.Look(ref DeliveredEndReturn, "lawfulDeliveredEndReturnV1");
@@ -169,6 +175,8 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     reference.OriginalHaulDropReturn, Find.TickManager.TicksGame);
                 LawfulHaulDrop.ValidateEnd(reference.OriginalHaulDropStart, reference.OriginalHaulDropReturn,
                     reference.DeliveredEndStart, reference.DeliveredEndReturn, t.ResolvedTick ?? Find.TickManager.TicksGame);
+                LawfulHaulDrop.ValidatePosture(reference.OriginalHaulDropStart, reference.DeliveredEndReturn,
+                    reference.PostureEndStart, reference.PostureEndReturn, t.ResolvedTick ?? Find.TickManager.TicksGame);
                 ValidateWorkCompletion(t,reference);
                 if (t.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
                 TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);

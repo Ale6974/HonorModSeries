@@ -111,7 +111,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (r.OriginalHaulDropStart != null)
         {
             RequireCurrentOriginalDrop(t, r);
-            w = w with { DeliveredEndStart = r.DeliveredEndStart, DeliveredEndReturn = r.DeliveredEndReturn, HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap,
+            w = w with { PostureEndStart = r.PostureEndStart, PostureEndReturn = r.PostureEndReturn, DeliveredEndStart = r.DeliveredEndStart, DeliveredEndReturn = r.DeliveredEndReturn, HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap,
                 DeliveredClinicalProof = deliveredMap != null && (previous == null || previous.DeliveredClinicalProof != null)
                     ? DeliveredClinicalProof(r.Residents) : null };
             if (w.DeliveredClinicalProof != null && (previous == null || previous.DeliveredHauler != null))
@@ -200,6 +200,8 @@ public sealed partial class TerritoryAdministrationLedger
         foreach (var receipt in custodyAgreements.Records)
         {
             var original = references.Single(r => r.Id == receipt.Witness.Transfer);
+            if (receipt.Witness.PostureEndStart != null && (receipt.Witness.PostureEndStart != original.PostureEndStart ||
+                receipt.Witness.PostureEndReturn != original.PostureEndReturn)) throw new ArgumentException("Posture successor evidence changed.");
             if (receipt.Witness.DeliveredEndStart != null && (receipt.Witness.DeliveredEndStart != original.DeliveredEndStart ||
                 receipt.Witness.DeliveredEndReturn != original.DeliveredEndReturn))
                 throw new ArgumentException("Original successor approval evidence changed.");
@@ -235,14 +237,14 @@ public sealed partial class TerritoryAdministrationLedger
                 var pawn = reference.Residents.Pawns.Single(person => person?.GetUniqueLoadID() == drop.Pawn);
                 text += "\n\n" + "RE_CustodyDelivered".Translate(pawn.LabelShort, cargo.LabelNoCount, drop.Count, cargo.Position.ToString());
                 if (reviewed.Witness.DeliveredEndReturn != null)
-                    text += "\n" + (reference.DeliveredSuccessorJob == null ? "RE_DeliveredEndIdle".Translate(pawn.LabelShort) :
-                        "RE_DeliveredSuccessor".Translate(pawn.LabelShort, reference.DeliveredSuccessorJob.def.LabelCap));
+                    text += "\n" + (reference.CurrentSuccessorJob == null ? "RE_DeliveredEndIdle".Translate(pawn.LabelShort) :
+                        "RE_DeliveredSuccessor".Translate(pawn.LabelShort, reference.CurrentSuccessorJob.def.LabelCap));
                 var mandate = reviewed.Witness.IdleResident ?? reviewed.Witness.OtherHauler ?? reviewed.Witness.DeliveredHauler;
                 if (mandate != null)
                 {
                     var resident = reference.Residents.Pawns.Single(p => p.GetUniqueLoadID() == mandate.Pawn);
                     text += "\n" + (reviewed.Witness.IdleResident != null ? "RE_DeliveredIdleMandate" :
-                        reviewed.Witness.DeliveredHauler != null && reviewed.Witness.DeliveredEndReturn != null && reference.DeliveredSuccessorJob == null ?
+                        reviewed.Witness.DeliveredHauler != null && reviewed.Witness.DeliveredEndReturn != null && reference.CurrentSuccessorJob == null ?
                         "RE_DeliveredNowIdleMandate" : "RE_DeliveredHaulerMandate").Translate(resident.LabelShort, reference.Target.Name);
                 }
             }

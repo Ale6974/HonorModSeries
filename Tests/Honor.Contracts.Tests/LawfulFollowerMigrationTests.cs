@@ -278,6 +278,18 @@ internal static class LawfulFollowerMigrationTests
         var haulerGrant = witness with { DeliveredClinicalProof = Hash("clinical"), DeliveredHauler = new(drop.Pawn,Hash("current resident")) };
         var successorGrant = haulerGrant with { DeliveredEndStart = endStart,
             DeliveredEndReturn = JsonSerializer.Serialize(endReturn with { NextJob = "next-haul", NextDef = "HaulToCell" }) };
+        var waitOutput = JsonSerializer.Serialize(endReturn);
+        var postureStart = JsonSerializer.Serialize(new DeliveredJobEndStart(WorkProgress.Hash(waitOutput),drop.Pawn,endReturn.NextJob,(int)now));
+        var afterPosture = new DeliveredJobEndReturn(WorkProgress.Hash(postureStart),"next-haul","HaulToCell",(int)now);
+        var postureGrant = successorGrant with { DeliveredEndReturn = waitOutput, PostureEndStart = postureStart, PostureEndReturn = JsonSerializer.Serialize(afterPosture) };
+        var postureArchive = new CustodyAgreements();
+        postureArchive.Add(postureGrant);
+        var restoredPosture = CustodyAgreements.Restore(postureArchive.Export()).Record(postureGrant.Id).Witness;
+        Check(restoredPosture.DeliveredEndReturn == waitOutput && restoredPosture.PostureEndReturn == postureGrant.PostureEndReturn &&
+            CustodyAgreements.Scope(restoredPosture) == CustodyAgreements.Scope(postureGrant),
+            "posture successor consent and both observed returns survive restore");
+        Reject(() => CustodyAgreements.Validate(postureGrant with { PostureEndReturn = null }), "unfinished posture end cannot authorize recovery");
+        Reject(() => CustodyAgreements.Validate(postureGrant with { PostureEndReturn = JsonSerializer.Serialize(afterPosture with { NextJob = drop.Job }) }), "retired delivery job cannot become the next job");
         var endedIdleGrant = successorGrant with { DeliveredEndReturn = JsonSerializer.Serialize(endReturn with { NextDef = null, NextJob = null }) };
         var idleEndArchive = new CustodyAgreements();
         idleEndArchive.Add(endedIdleGrant);

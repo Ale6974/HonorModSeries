@@ -63,13 +63,14 @@ internal static class LawfulHaulDropObservation
 [HarmonyPatch(typeof(Pawn_JobTracker), nameof(Pawn_JobTracker.EndCurrentJob))]
 internal static class DeliveredJobEndObservation
 {
-    internal sealed record Call(Game Game, TerritoryTransferReference City, string Start);
+    internal sealed record Call(Game Game, TerritoryTransferReference City, string Start, bool Posture);
     private static bool Prepare() => NativeTransferBodies.HaulFactionBodies;
     private static void Prefix(Pawn_JobTracker __instance, Pawn ___pawn, JobCondition condition, out Call __state)
     {
         __state = null;
         if (condition != JobCondition.Succeeded || Current.ProgramState != ProgramState.Playing ||
-            ___pawn?.jobs != __instance || __instance.curDriver?.GetType() != typeof(JobDriver_HaulToCell)) return;
+            ___pawn?.jobs != __instance || (__instance.curDriver?.GetType() != typeof(JobDriver_HaulToCell) &&
+            __instance.curDriver?.GetType() != typeof(JobDriver_WaitMaintainPosture))) return;
         try
         {
             __state = Current.Game.GetComponent<TerritoryAdministrationLedger>().BeginDeliveredJobEnd(___pawn);
@@ -88,12 +89,21 @@ internal static class DeliveredJobEndObservation
     private static void Postfix(Pawn_JobTracker __instance, Call __state, bool __runOriginal)
     {
         if (__state == null || !__runOriginal || Current.Game != __state.Game ||
-            __state.City.DeliveredEndStart != __state.Start || __state.City.DeliveredEndReturn != null) return;
+            (__state.Posture ? __state.City.PostureEndStart : __state.City.DeliveredEndStart) != __state.Start ||
+            (__state.Posture ? __state.City.PostureEndReturn : __state.City.DeliveredEndReturn) != null) return;
         try
         {
             var next = __instance.curJob;
             var output = JsonSerializer.Serialize(new DeliveredJobEndReturn(WorkProgress.Hash(__state.Start),
                 next?.GetUniqueLoadID(), next?.def?.defName, Find.TickManager.TicksGame));
+            if (__state.Posture)
+            {
+                LawfulHaulDrop.ValidatePosture(__state.City.OriginalHaulDropStart,__state.City.DeliveredEndReturn,__state.Start,output,Find.TickManager.TicksGame);
+                __state.City.PostureSuccessorJob = next;
+                __state.City.PostureEndReturn = output;
+                __state.City.DeliveredSuccessorJob = null;
+                return;
+            }
             LawfulHaulDrop.ValidateEnd(__state.City.OriginalHaulDropStart, __state.City.OriginalHaulDropReturn,
                 __state.Start, output, Find.TickManager.TicksGame);
             __state.City.DeliveredSuccessorJob = next;
@@ -108,10 +118,22 @@ public sealed partial class TerritoryAdministrationLedger
     internal DeliveredJobEndObservation.Call BeginDeliveredJobEnd(Pawn pawn)
     {
         if (RestoreFailed || Current.Game != ownerGame || nativeExecutionDepth != 0 || !ownerGame.GetComponent<PoliticalTransitionLedger>().Journal.Pending) return null;
-        var r = references.SingleOrDefault(row => row.OriginalHaulDropReturn != null && row.DeliveredEndStart == null &&
+        bool posture = pawn.CurJob?.def == JobDefOf.Wait_MaintainPosture && pawn.jobs.curDriver?.GetType() == typeof(JobDriver_WaitMaintainPosture);
+        var r = references.SingleOrDefault(row => row.OriginalHaulDropReturn != null &&
+            (posture ? row.DeliveredEndReturn != null && row.PostureEndStart == null && row.DeliveredSuccessorJob == pawn.CurJob : row.DeliveredEndStart == null) &&
             row.Residents?.Pawns?.Contains(pawn) == true && Ledger.Transfer(row.Id).Phase == TerritoryTransferPhase.Prepared);
         if (r == null || !DeliveredJobEndObservation.SoleObserver()) return null;
         var original = JsonSerializer.Deserialize<OriginalDropInput>(r.OriginalHaulDropStart);
+        if (posture)
+        {
+            RequireCurrentOriginalDrop(Ledger.Transfer(r.Id),r);
+            if (pawn.Map != r.LoadedMap.Map) return null;
+            string postureStart = JsonSerializer.Serialize(new DeliveredJobEndStart(WorkProgress.Hash(r.DeliveredEndReturn),
+                pawn.GetUniqueLoadID(),pawn.CurJob.GetUniqueLoadID(),Find.TickManager.TicksGame));
+            LawfulHaulDrop.ValidatePosture(r.OriginalHaulDropStart,r.DeliveredEndReturn,postureStart,null,Find.TickManager.TicksGame);
+            r.PostureEndStart = postureStart;
+            return new(ownerGame,r,postureStart,true);
+        }
         if (original.Pawn != pawn.GetUniqueLoadID() || original.Job != pawn.CurJob?.GetUniqueLoadID() ||
             r.Residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true || pawn.Map != r.LoadedMap?.Map) return null;
         RequireCurrentOriginalDrop(Ledger.Transfer(r.Id),r);
@@ -119,7 +141,7 @@ public sealed partial class TerritoryAdministrationLedger
             original.Pawn,original.Job,Find.TickManager.TicksGame));
         LawfulHaulDrop.ValidateEnd(r.OriginalHaulDropStart,r.OriginalHaulDropReturn,start,null,Find.TickManager.TicksGame);
         r.DeliveredEndStart = start;
-        return new(ownerGame,r,start);
+        return new(ownerGame,r,start,false);
     }
     private static void RequireCurrentOriginalDrop(TerritoryTransfer t, TerritoryTransferReference r)
     {
@@ -179,9 +201,11 @@ public sealed partial class TerritoryAdministrationLedger
     {
         if (r.DeliveredEndStart == null && r.DeliveredEndReturn == null) return drop.Job;
         LawfulHaulDrop.ValidateEnd(r.OriginalHaulDropStart,r.OriginalHaulDropReturn,r.DeliveredEndStart,r.DeliveredEndReturn,Find.TickManager.TicksGame);
-        var next = r.DeliveredEndReturn == null ? null : JsonSerializer.Deserialize<DeliveredJobEndReturn>(r.DeliveredEndReturn);
-        if (next != null && next.NextJob == null && r.DeliveredSuccessorJob == null && ResidentActiveWork.IsOriginalIdleCandidate(actor)) return null;
-        if (next?.NextJob == null || actor.CurJob == null || actor.CurJob != r.DeliveredSuccessorJob ||
+        LawfulHaulDrop.ValidatePosture(r.OriginalHaulDropStart,r.DeliveredEndReturn,r.PostureEndStart,r.PostureEndReturn,Find.TickManager.TicksGame);
+        var last = r.PostureEndStart == null ? r.DeliveredEndReturn : r.PostureEndReturn;
+        var next = last == null ? null : JsonSerializer.Deserialize<DeliveredJobEndReturn>(last);
+        if (next != null && next.NextJob == null && r.CurrentSuccessorJob == null && ResidentActiveWork.IsOriginalIdleCandidate(actor)) return null;
+        if (next?.NextJob == null || actor.CurJob == null || actor.CurJob != r.CurrentSuccessorJob ||
             actor.CurJob.GetUniqueLoadID() != next.NextJob || actor.CurJob.def != JobDefOf.HaulToCell ||
             actor.CurJob.def.defName != next.NextDef || !ResidentActiveWork.CanSurvey(actor))
             throw new ArgumentException("Original observed successor hauling job required.");
@@ -242,7 +266,7 @@ public sealed partial class TerritoryAdministrationLedger
                 if (expectedJob != null || !ResidentActiveWork.IsOriginalIdleCandidate(pawn)) return null;
             }
             else if (expectedJob == null || pawn.CurJob?.GetUniqueLoadID() != expectedJob ||
-                (delivering && r.DeliveredEndReturn != null ? pawn.CurJob != r.DeliveredSuccessorJob : residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true)) return null;
+                (delivering && r.DeliveredEndReturn != null ? pawn.CurJob != r.CurrentSuccessorJob : residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true)) return null;
             if (call.Started || pawn.Faction != r.From ||
                 residents.Prisoners.Count != 0 || residents.Surgery[i].Detached.Count != 0 ||
                 residents.Surgery[i].Set().Orders.Count != 0 || pawn.health.surgeryBills.Bills.Count != 0 ||
@@ -288,7 +312,7 @@ public sealed partial class TerritoryAdministrationLedger
             else r.OriginalHaulerStartAgreement = grant.Id;
             record.AuthorityJournal[i] = start;
         }, originalIdle: grant.IdleResident != null || grant.DeliveredHauler != null && grant.DeliveredEndReturn != null &&
-            JsonSerializer.Deserialize<DeliveredJobEndReturn>(grant.DeliveredEndReturn).NextJob == null);
+            JsonSerializer.Deserialize<DeliveredJobEndReturn>(grant.PostureEndReturn ?? grant.DeliveredEndReturn).NextJob == null);
     }
     private void FinishDeliveredCity(TerritoryTransfer t, TerritoryTransferReference r, Game game)
     {
@@ -346,6 +370,7 @@ public sealed partial class TerritoryAdministrationLedger
         authority();
         Ledger.ConfirmDeliveredCity(t.Id,agreement,CurrentDeliveredMapProof(t,r),r.City.Faction.GetUniqueLoadID(),
             r.CityCallStarted,r.CityCallReturned,Find.TickManager.TicksGame);
+        r.PostureSuccessorJob = null;
         r.DeliveredSuccessorJob = null;
         ResidentExecution.ReleaseReferences(residents);
         LoadedMapRecords.Release(r.LoadedMap);

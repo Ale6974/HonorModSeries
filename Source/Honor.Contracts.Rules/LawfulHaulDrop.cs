@@ -22,6 +22,28 @@ public static class LawfulHaulDrop
             !output.Returned || output.Start != WorkProgress.Hash(dropStart) || end.DropReturn != WorkProgress.Hash(dropReturn) ||
             input == null || end.Pawn != input.Pawn || end.Job != input.Job || end.Tick < output.Tick || end.Tick > now)
             throw new ArgumentException("Job end differs from its original completed delivery.");
+        ValidateReturn(start, finish, end, now);
+    }
+
+    public static void ValidatePosture(string dropStart, string deliveryReturn, string start, string finish, long now)
+    {
+        if (start == null && finish == null) return;
+        if (dropStart == null || deliveryReturn == null || start == null || start.Length > 2048 || finish?.Length > 2048)
+            throw new ArgumentException("Missing posture predecessor.");
+        var previous = JsonSerializer.Deserialize<DeliveredJobEndReturn>(deliveryReturn);
+        var input = JsonSerializer.Deserialize<OriginalDropInput>(dropStart);
+        var end = JsonSerializer.Deserialize<DeliveredJobEndStart>(start);
+        if (input == null || previous?.NextDef != "Wait_MaintainPosture" || previous.NextJob == null ||
+            end == null || JsonSerializer.Serialize(end) != start || end.Pawn != input.Pawn || end.Job != previous.NextJob ||
+            end.DropReturn != WorkProgress.Hash(deliveryReturn) || end.Tick < previous.Tick || end.Tick > now)
+            throw new ArgumentException("Posture end differs from its observed predecessor.");
+        ValidateReturn(start, finish, end, now);
+        if (finish != null && JsonSerializer.Deserialize<DeliveredJobEndReturn>(finish).NextJob == input.Job)
+            throw new ArgumentException("Ended hauling job cannot be its own successor.");
+    }
+
+    private static void ValidateReturn(string start, string finish, DeliveredJobEndStart end, long now)
+    {
         if (finish == null) return;
         var result = JsonSerializer.Deserialize<DeliveredJobEndReturn>(finish);
         if (result == null || JsonSerializer.Serialize(result) != finish || result.Start != WorkProgress.Hash(start) ||
