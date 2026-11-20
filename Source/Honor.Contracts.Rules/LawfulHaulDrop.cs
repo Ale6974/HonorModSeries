@@ -42,6 +42,36 @@ public static class LawfulHaulDrop
             throw new ArgumentException("Ended hauling job cannot be its own successor.");
     }
 
+    // Alternating start/return entries. An odd prefix retains an uncertain call.
+    public static string Continuation(string drop, string delivery, string posture, IReadOnlyList<string> entries, long now)
+    {
+        string last = posture ?? delivery;
+        if (entries == null) return last;
+        if (entries.Count is < 1 or > 128 || drop == null || delivery == null)
+            throw new ArgumentException("Bounded original successor chain required.");
+        var original = JsonSerializer.Deserialize<OriginalDropInput>(drop);
+        var retired = new HashSet<string> { original.Job };
+        if (posture != null) retired.Add(JsonSerializer.Deserialize<DeliveredJobEndReturn>(delivery).NextJob);
+        for (int i = 0; i < entries.Count; i += 2)
+        {
+            var predecessor = JsonSerializer.Deserialize<DeliveredJobEndReturn>(last);
+            string raw = entries[i];
+            if (raw == null || raw.Length > 2048) throw new ArgumentException("Missing successor call.");
+            var start = JsonSerializer.Deserialize<DeliveredJobEndStart>(raw);
+            if (predecessor?.NextDef is not ("Goto" or "HaulToCell" or "Wait_MaintainPosture") || start == null ||
+                start.Job == null || !retired.Add(start.Job) || start.Job != predecessor.NextJob || start.Pawn != original.Pawn ||
+                start.DropReturn != WorkProgress.Hash(last) || start.Tick < predecessor.Tick || start.Tick > now || JsonSerializer.Serialize(start) != raw)
+                throw new ArgumentException("Successor does not follow the previous native return.");
+            if (i + 1 == entries.Count) return null;
+            last = entries[i+1];
+            if (last == null || last.Length > 2048) throw new ArgumentException("Missing successor return.");
+            ValidateReturn(raw,last,start,now);
+            if (retired.Contains(JsonSerializer.Deserialize<DeliveredJobEndReturn>(last).NextJob))
+                throw new ArgumentException("A retired job cannot return as a successor.");
+        }
+        return last;
+    }
+
     private static void ValidateReturn(string start, string finish, DeliveredJobEndStart end, long now)
     {
         if (finish == null) return;

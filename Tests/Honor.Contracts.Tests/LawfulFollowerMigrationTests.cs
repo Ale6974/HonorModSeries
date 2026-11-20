@@ -290,6 +290,18 @@ internal static class LawfulFollowerMigrationTests
             "posture successor consent and both observed returns survive restore");
         Reject(() => CustodyAgreements.Validate(postureGrant with { PostureEndReturn = null }), "unfinished posture end cannot authorize recovery");
         Reject(() => CustodyAgreements.Validate(postureGrant with { PostureEndReturn = JsonSerializer.Serialize(afterPosture with { NextJob = drop.Job }) }), "retired delivery job cannot become the next job");
+        var gotoReturn = JsonSerializer.Serialize(afterPosture with { NextJob = "walk", NextDef = "Goto" });
+        var gotoStart = JsonSerializer.Serialize(new DeliveredJobEndStart(WorkProgress.Hash(gotoReturn),drop.Pawn,"walk",(int)now));
+        var newHaul = JsonSerializer.Serialize(new DeliveredJobEndReturn(WorkProgress.Hash(gotoStart),"later-haul","HaulToCell",(int)now));
+        var laterStart = JsonSerializer.Serialize(new DeliveredJobEndStart(WorkProgress.Hash(newHaul),drop.Pawn,"later-haul",(int)now));
+        var laterIdle = JsonSerializer.Serialize(new DeliveredJobEndReturn(WorkProgress.Hash(laterStart),null,null,(int)now));
+        var chainGrant = postureGrant with { PostureEndReturn = gotoReturn, SuccessorEnds = [gotoStart,newHaul,laterStart,laterIdle] };
+        var chainArchive = new CustodyAgreements();
+        chainArchive.Add(chainGrant);
+        Check(CustodyAgreements.Restore(chainArchive.Export()).Record(chainGrant.Id).Witness.SuccessorEnds.SequenceEqual(chainGrant.SuccessorEnds),
+            "all successor transitions remain ordered in the saved mandate");
+        Reject(() => CustodyAgreements.Validate(chainGrant with { SuccessorEnds = [gotoStart,newHaul,laterStart] }), "unknown successor return cannot authorize a transfer");
+        Reject(() => CustodyAgreements.Validate(chainGrant with { SuccessorEnds = [laterStart,laterIdle] }), "successor cannot skip its original walking predecessor");
         var endedIdleGrant = successorGrant with { DeliveredEndReturn = JsonSerializer.Serialize(endReturn with { NextDef = null, NextJob = null }) };
         var idleEndArchive = new CustodyAgreements();
         idleEndArchive.Add(endedIdleGrant);

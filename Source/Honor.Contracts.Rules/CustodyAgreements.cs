@@ -18,6 +18,7 @@ public sealed record CustodyAgreement(string Id, string Transfer, string Book, s
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredEndReturn { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string PostureEndStart { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string PostureEndReturn { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string[] SuccessorEnds { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredClinicalProof { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredMapProof { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string HaulDropStart { get; init; }
@@ -45,7 +46,9 @@ public sealed class CustodyAgreements
         Hash(new { Action = "LawfulDeliveredMap/v1", Original = DropScope(w), w.DeliveredMapProof });
     private static string ClinicalScope(CustodyAgreement w) => w.DeliveredClinicalProof == null ? DeliveredScope(w) :
         Hash(new { Action = "LawfulDeliveredClinical/v1", Original = DeliveredScope(w), w.DeliveredClinicalProof });
-    public static string Scope(CustodyAgreement w) => w.PostureEndStart == null ? EndScope(w) :
+    public static string Scope(CustodyAgreement w) => w.SuccessorEnds == null ? PostureScope(w) :
+        Hash(new { Action = "LawfulSuccessorChain/v1", Original = PostureScope(w), w.SuccessorEnds });
+    private static string PostureScope(CustodyAgreement w) => w.PostureEndStart == null ? EndScope(w) :
         Hash(new { Action = "LawfulPostureSuccessor/v1", Original = EndScope(w), w.PostureEndStart, w.PostureEndReturn });
     private static string EndScope(CustodyAgreement w) => w.DeliveredEndStart == null ? ResidentScope(w) :
         Hash(new { Action = "LawfulDeliveredSuccessor/v1", Original = ResidentScope(w), w.DeliveredEndStart, w.DeliveredEndReturn });
@@ -93,10 +96,12 @@ public sealed class CustodyAgreements
         var t = physical.Transfer(w.Transfer); var old = book.Charter(t.Charter);
         LawfulHaulDrop.ValidatePosture(w.HaulDropStart,w.DeliveredEndReturn,w.PostureEndStart,w.PostureEndReturn,w.Tick);
         if (w.PostureEndStart != null && w.PostureEndReturn == null) throw new ArgumentException("Normal posture return required for consent.");
+        var latest = LawfulHaulDrop.Continuation(w.HaulDropStart,w.DeliveredEndReturn,w.PostureEndReturn,w.SuccessorEnds,w.Tick);
+        if (w.SuccessorEnds != null && latest == null) throw new ArgumentException("Incomplete successor chain.");
         if (w.DeliveredEndStart != null || w.DeliveredEndReturn != null)
         {
             LawfulHaulDrop.ValidateEnd(w.HaulDropStart,w.HaulDropReturn,w.DeliveredEndStart,w.DeliveredEndReturn,w.Tick);
-            var successor = w.DeliveredEndReturn == null ? null : JsonSerializer.Deserialize<DeliveredJobEndReturn>(w.PostureEndReturn ?? w.DeliveredEndReturn);
+            var successor = w.DeliveredEndReturn == null ? null : JsonSerializer.Deserialize<DeliveredJobEndReturn>(latest);
             if (w.DeliveredClinicalProof == null || successor == null || successor.NextJob != null && successor.NextDef != "HaulToCell")
                 throw new ArgumentException("Current approved successor hauling state required.");
         }

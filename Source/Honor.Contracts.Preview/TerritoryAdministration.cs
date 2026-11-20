@@ -20,7 +20,9 @@ public sealed class TerritoryTransferReference : IExposable
     public string WorkProgressV1;
     public Verse.AI.Job DeliveredSuccessorJob;
     public Verse.AI.Job PostureSuccessorJob;
-    public Verse.AI.Job CurrentSuccessorJob => PostureEndStart == null ? DeliveredSuccessorJob : PostureSuccessorJob;
+    public List<string> SuccessorEnds;
+    public Verse.AI.Job LatestSuccessorJob;
+    public Verse.AI.Job CurrentSuccessorJob => SuccessorEnds != null ? LatestSuccessorJob : PostureEndStart == null ? DeliveredSuccessorJob : PostureSuccessorJob;
     public string PostureEndStart, PostureEndReturn;
     public string DeliveredEndStart, DeliveredEndReturn;
     public List<string> OtherHaulerAgreements;
@@ -43,6 +45,8 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Values.Look(ref CityCallStarted, "cityCallStartedV1", false);
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
         Scribe_Values.Look(ref CustodyAgreementV1, "currentCustodyCompletionAgreementV1");
+        Scribe_Collections.Look(ref SuccessorEnds, "lawfulSuccessorEndsV1", LookMode.Value);
+        Scribe_References.Look(ref LatestSuccessorJob, "lawfulLatestSuccessorJobV1");
         Scribe_References.Look(ref PostureSuccessorJob, "lawfulPostureSuccessorJobV1");
         Scribe_Values.Look(ref PostureEndStart, "lawfulPostureEndStartV1");
         Scribe_Values.Look(ref PostureEndReturn, "lawfulPostureEndReturnV1");
@@ -177,6 +181,9 @@ public sealed partial class TerritoryAdministrationLedger : GameComponent
                     reference.DeliveredEndStart, reference.DeliveredEndReturn, t.ResolvedTick ?? Find.TickManager.TicksGame);
                 LawfulHaulDrop.ValidatePosture(reference.OriginalHaulDropStart, reference.DeliveredEndReturn,
                     reference.PostureEndStart, reference.PostureEndReturn, t.ResolvedTick ?? Find.TickManager.TicksGame);
+                if (reference.PostureEndStart != null && reference.PostureEndReturn == null && reference.SuccessorEnds != null)
+                    throw new ArgumentException("Successor chain cannot skip an interrupted posture call.");
+                LawfulHaulDrop.Continuation(reference.OriginalHaulDropStart,reference.DeliveredEndReturn,reference.PostureEndReturn,reference.SuccessorEnds,t.ResolvedTick ?? Find.TickManager.TicksGame);
                 ValidateWorkCompletion(t,reference);
                 if (t.CityCallJournalV1 != reference.CityCallV1) throw new ArgumentException("City call journal is not paired with its transfer.");
                 TerritoryCallGuard.Validate(reference.CityCallV1, reference.CityCallStarted, reference.CityCallReturned);

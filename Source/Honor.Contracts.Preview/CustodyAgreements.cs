@@ -111,7 +111,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (r.OriginalHaulDropStart != null)
         {
             RequireCurrentOriginalDrop(t, r);
-            w = w with { PostureEndStart = r.PostureEndStart, PostureEndReturn = r.PostureEndReturn, DeliveredEndStart = r.DeliveredEndStart, DeliveredEndReturn = r.DeliveredEndReturn, HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap,
+            w = w with { SuccessorEnds = r.SuccessorEnds?.ToArray(), PostureEndStart = r.PostureEndStart, PostureEndReturn = r.PostureEndReturn, DeliveredEndStart = r.DeliveredEndStart, DeliveredEndReturn = r.DeliveredEndReturn, HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap,
                 DeliveredClinicalProof = deliveredMap != null && (previous == null || previous.DeliveredClinicalProof != null)
                     ? DeliveredClinicalProof(r.Residents) : null };
             if (w.DeliveredClinicalProof != null && (previous == null || previous.DeliveredHauler != null))
@@ -200,6 +200,8 @@ public sealed partial class TerritoryAdministrationLedger
         foreach (var receipt in custodyAgreements.Records)
         {
             var original = references.Single(r => r.Id == receipt.Witness.Transfer);
+            if (receipt.Witness.SuccessorEnds is { } prefix && (original.SuccessorEnds == null ||
+                !original.SuccessorEnds.Take(prefix.Length).SequenceEqual(prefix))) throw new ArgumentException("Approved successor call prefix changed.");
             if (receipt.Witness.PostureEndStart != null && (receipt.Witness.PostureEndStart != original.PostureEndStart ||
                 receipt.Witness.PostureEndReturn != original.PostureEndReturn)) throw new ArgumentException("Posture successor evidence changed.");
             if (receipt.Witness.DeliveredEndStart != null && (receipt.Witness.DeliveredEndStart != original.DeliveredEndStart ||
