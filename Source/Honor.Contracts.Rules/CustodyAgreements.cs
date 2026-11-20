@@ -14,6 +14,8 @@ public sealed record CustodyAgreement(string Id, string Transfer, string Book, s
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public WorkPendingResident DeliveredHauler { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public WorkPendingResident OtherHauler { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public WorkPendingResident IdleResident { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredEndStart { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredEndReturn { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredClinicalProof { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string DeliveredMapProof { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string HaulDropStart { get; init; }
@@ -41,7 +43,9 @@ public sealed class CustodyAgreements
         Hash(new { Action = "LawfulDeliveredMap/v1", Original = DropScope(w), w.DeliveredMapProof });
     private static string ClinicalScope(CustodyAgreement w) => w.DeliveredClinicalProof == null ? DeliveredScope(w) :
         Hash(new { Action = "LawfulDeliveredClinical/v1", Original = DeliveredScope(w), w.DeliveredClinicalProof });
-    public static string Scope(CustodyAgreement w) => w.IdleResident != null ? Hash(new { Action = "LawfulIdleResident/v1", Original = ClinicalScope(w), w.IdleResident }) : w.OtherHauler != null ? Hash(new { Action = "LawfulOtherHauler/v1", Original = ClinicalScope(w), w.OtherHauler }) : w.DeliveredHauler == null ? ClinicalScope(w) :
+    public static string Scope(CustodyAgreement w) => w.DeliveredEndStart == null ? ResidentScope(w) :
+        Hash(new { Action = "LawfulDeliveredSuccessor/v1", Original = ResidentScope(w), w.DeliveredEndStart, w.DeliveredEndReturn });
+    private static string ResidentScope(CustodyAgreement w) => w.IdleResident != null ? Hash(new { Action = "LawfulIdleResident/v1", Original = ClinicalScope(w), w.IdleResident }) : w.OtherHauler != null ? Hash(new { Action = "LawfulOtherHauler/v1", Original = ClinicalScope(w), w.OtherHauler }) : w.DeliveredHauler == null ? ClinicalScope(w) :
         Hash(new { Action = "LawfulDeliveredHauler/v1", Original = ClinicalScope(w), w.DeliveredHauler });
     /// <summary>Descriptor only: current scoped representative decisions must independently approve it.</summary>
     public static string CaptureForeignRights(CharterBook book, TerritoryTransfer t, CustodyParty[] parties, string transitDestination = null)
@@ -83,6 +87,13 @@ public sealed class CustodyAgreements
             !CityStockProof.Valid(w.Custody) || w.ForeignRightsV1?.Length > 4096 || w.Parties == null || w.Observations == null || w.Realms == null || w.Tick is < 0 or > int.MaxValue) throw new ArgumentException("Bounded original custody and current consent required.");
         var book = CharterBook.Restore(w.Book); var physical = TerritoryTransferLedger.Restore(w.Physical); var payments = TributeLedger.Restore(w.Payments);
         var t = physical.Transfer(w.Transfer); var old = book.Charter(t.Charter);
+        if (w.DeliveredEndStart != null || w.DeliveredEndReturn != null)
+        {
+            LawfulHaulDrop.ValidateEnd(w.HaulDropStart,w.HaulDropReturn,w.DeliveredEndStart,w.DeliveredEndReturn,w.Tick);
+            var successor = w.DeliveredEndReturn == null ? null : JsonSerializer.Deserialize<DeliveredJobEndReturn>(w.DeliveredEndReturn);
+            if (w.DeliveredClinicalProof == null || successor?.NextDef != "HaulToCell")
+                throw new ArgumentException("Current approved successor hauling state required.");
+        }
         if (w.IdleResident != null)
         {
             if (w.HaulDropStart == null || w.DeliveredClinicalProof == null || w.OtherHauler != null || w.DeliveredHauler != null ||

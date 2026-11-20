@@ -276,6 +276,14 @@ internal static class LawfulFollowerMigrationTests
             DeliveredMapProof = Hash("approved-map"), HaulDropStart = startDrop, HaulDropReturn = JsonSerializer.Serialize(returnedDrop)
         };
         var haulerGrant = witness with { DeliveredClinicalProof = Hash("clinical"), DeliveredHauler = new(drop.Pawn,Hash("current resident")) };
+        var successorGrant = haulerGrant with { DeliveredEndStart = endStart,
+            DeliveredEndReturn = JsonSerializer.Serialize(endReturn with { NextJob = "next-haul", NextDef = "HaulToCell" }) };
+        var successors = new CustodyAgreements();
+        successors.Add(successorGrant);
+        Check(CustodyAgreements.Restore(successors.Export()).Record(successorGrant.Id).Witness.DeliveredEndReturn == successorGrant.DeliveredEndReturn &&
+            CustodyAgreements.Scope(successorGrant) != CustodyAgreements.Scope(haulerGrant), "successor requires its own persisted scope");
+        Reject(() => CustodyAgreements.Validate(successorGrant with { DeliveredEndReturn = null }), "unknown job end cannot authorize its successor");
+        Reject(() => CustodyAgreements.Validate(successorGrant with { DeliveredEndReturn = JsonSerializer.Serialize(endReturn) }), "posture wait cannot inherit haul authority");
         var haulerReceipt = new CustodyAgreements().Add(haulerGrant);
         Check(CustodyAgreements.Scope(haulerGrant) != CustodyAgreements.Scope(haulerGrant with { DeliveredHauler = null }), "original hauler needs an explicit call mandate");
         Reject(() => CustodyAgreements.Validate(haulerGrant with { DeliveredHauler = new("different-resident",Hash("current resident")) }), "another resident cannot inherit the hauler mandate");

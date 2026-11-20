@@ -28,7 +28,7 @@ public sealed partial class TerritoryAdministrationLedger
     }
     private string CustodyBasis(TerritoryTransfer t, TerritoryTransferReference r)
     {
-        bool lawfulHaul = t.LawfulHaulParentProof != null && NativeTransferBodies.HaulFactionBodies5013 && r.Residents?.Profile == 16;
+        bool lawfulHaul = t.LawfulHaulParentProof != null && NativeTransferBodies.HaulFactionBodies && r.Residents?.Profile == 16;
         if (Current.Game != ownerGame || Current.ProgramState != ProgramState.Playing || RestoreFailed || Charters.RestoreFailed || (!NativeTransferBodies.ExtendedReadBodies && !lawfulHaul) ||
             UnionWarCouncil.HasExternalProvider || (!lawfulHaul && Current.Game.GetComponent<PoliticalTransitionLedger>().BlocksChanges) ||
             Current.Game.GetComponent<LeaderJoinLedger>().BlocksChanges || Current.Game.GetComponent<LeaderRelocationLedger>().BlocksChanges ||
@@ -39,7 +39,7 @@ public sealed partial class TerritoryAdministrationLedger
             r.City.Faction == r.Target && !r.CityCallReturned) throw new ArgumentException("Original returned custody/calls/current game unavailable.");
         var binding = Charters.Binding(t.Territory);
         if (binding.PlayerGroup || binding.FactionGroup || binding.Settlement != r.City) throw new ArgumentException("Original town binding changed.");
-        if (lawfulHaul && r.DeliveredEndStart != null)
+        if (lawfulHaul && r.DeliveredEndStart != null && r.DeliveredEndReturn == null)
             throw new ArgumentException("A delivered job end requires separate current successor authority.");
         if (lawfulHaul && RetainsDeliveredHaul(t, r))
         {
@@ -111,7 +111,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (r.OriginalHaulDropStart != null)
         {
             RequireCurrentOriginalDrop(t, r);
-            w = w with { HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap,
+            w = w with { DeliveredEndStart = r.DeliveredEndStart, DeliveredEndReturn = r.DeliveredEndReturn, HaulDropStart = r.OriginalHaulDropStart, HaulDropReturn = r.OriginalHaulDropReturn, DeliveredMapProof = deliveredMap,
                 DeliveredClinicalProof = deliveredMap != null && (previous == null || previous.DeliveredClinicalProof != null)
                     ? DeliveredClinicalProof(r.Residents) : null };
             if (w.DeliveredClinicalProof != null && (previous == null || previous.DeliveredHauler != null))
@@ -200,6 +200,9 @@ public sealed partial class TerritoryAdministrationLedger
         foreach (var receipt in custodyAgreements.Records)
         {
             var original = references.Single(r => r.Id == receipt.Witness.Transfer);
+            if (receipt.Witness.DeliveredEndStart != null && (receipt.Witness.DeliveredEndStart != original.DeliveredEndStart ||
+                receipt.Witness.DeliveredEndReturn != original.DeliveredEndReturn))
+                throw new ArgumentException("Original successor approval evidence changed.");
             if (receipt.Witness.HaulDropStart != null && (receipt.Witness.HaulDropStart != original.OriginalHaulDropStart ||
                 receipt.Witness.HaulDropReturn != original.OriginalHaulDropReturn))
                 throw new ArgumentException("Approved original haul placement changed.");
@@ -231,6 +234,8 @@ public sealed partial class TerritoryAdministrationLedger
                 var cargo = reference.Residents.ActiveWorkCarry.Single(item => item?.GetUniqueLoadID() == drop.Cargo);
                 var pawn = reference.Residents.Pawns.Single(person => person?.GetUniqueLoadID() == drop.Pawn);
                 text += "\n\n" + "RE_CustodyDelivered".Translate(pawn.LabelShort, cargo.LabelNoCount, drop.Count, cargo.Position.ToString());
+                if (reviewed.Witness.DeliveredEndReturn != null)
+                    text += "\n" + "RE_DeliveredSuccessor".Translate(pawn.LabelShort, reference.DeliveredSuccessorJob.def.LabelCap);
                 var mandate = reviewed.Witness.IdleResident ?? reviewed.Witness.OtherHauler ?? reviewed.Witness.DeliveredHauler;
                 if (mandate != null)
                 {

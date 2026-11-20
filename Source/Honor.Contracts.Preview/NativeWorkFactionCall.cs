@@ -36,7 +36,7 @@ internal static class NativeWorkFactionCall
     private static bool ready;
     internal static void Prepare()
     {
-        if (!NativeTransferBodies.WorkObservationBodies && !NativeTransferBodies.HaulFactionBodies5013)
+        if (!NativeTransferBodies.WorkObservationBodies && !NativeTransferBodies.HaulFactionBodies)
             throw new ArgumentException("Unreviewed native work authority call.");
         foreach (var boundary in new[] {
             AccessTools.Method(typeof(Pawn), nameof(Pawn.SetFaction), [typeof(Faction), typeof(Pawn)]),

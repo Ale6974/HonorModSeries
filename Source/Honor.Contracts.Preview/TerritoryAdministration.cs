@@ -18,6 +18,7 @@ public sealed class TerritoryTransferReference : IExposable
     public bool CityCallV1, CityCallStarted, CityCallReturned;
     public string CustodyAgreementV1;
     public string WorkProgressV1;
+    public Verse.AI.Job DeliveredSuccessorJob;
     public string DeliveredEndStart, DeliveredEndReturn;
     public List<string> OtherHaulerAgreements;
     public string OriginalHaulDropStart, OriginalHaulDropReturn, OriginalHaulerStartAgreement;
@@ -39,6 +40,7 @@ public sealed class TerritoryTransferReference : IExposable
         Scribe_Values.Look(ref CityCallStarted, "cityCallStartedV1", false);
         Scribe_Values.Look(ref CityCallReturned, "cityCallReturnedV1", false);
         Scribe_Values.Look(ref CustodyAgreementV1, "currentCustodyCompletionAgreementV1");
+        Scribe_References.Look(ref DeliveredSuccessorJob, "lawfulDeliveredSuccessorJobV1");
         Scribe_Values.Look(ref DeliveredEndStart, "lawfulDeliveredEndStartV1");
         Scribe_Values.Look(ref DeliveredEndReturn, "lawfulDeliveredEndReturnV1");
         Scribe_Collections.Look(ref OtherHaulerAgreements, "lawfulOtherHaulerAgreements", LookMode.Value);

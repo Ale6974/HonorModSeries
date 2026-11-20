@@ -153,7 +153,7 @@ public sealed partial class TerritoryAdministrationLedger
             var scope = new LawfulResidentScope(e.Charter, record.Census);
             if (record.Profile == 16)
             {
-                if (!NativeTransferBodies.HaulFactionBodies5013 || !record.Pawns.All(ResidentActiveWork.CanSurvey))
+                if (!NativeTransferBodies.HaulFactionBodies || !record.Pawns.All(ResidentActiveWork.CanSurvey))
                     throw new ArgumentException("Original installed hauling scope required for lawful independence.");
                 NativeWorkFactionCall.Prepare();
                 ResidentActiveWork.Validate(record);

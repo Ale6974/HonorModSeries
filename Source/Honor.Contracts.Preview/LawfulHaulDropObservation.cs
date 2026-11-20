@@ -15,7 +15,7 @@ internal sealed record OriginalDropCall(TerritoryTransferReference City, Game Ga
 [HarmonyPatch]
 internal static class LawfulHaulDropObservation
 {
-    private static bool Prepare() => NativeTransferBodies.HaulFactionBodies5013;
+    private static bool Prepare() => NativeTransferBodies.HaulFactionBodies;
     private static MethodBase TargetMethod() => AccessTools.Method(typeof(Pawn_CarryTracker),
         nameof(Pawn_CarryTracker.TryDropCarriedThing),
         [typeof(IntVec3),typeof(ThingPlaceMode),typeof(Thing).MakeByRefType(),typeof(Action<Thing,int>)]);
@@ -64,7 +64,7 @@ internal static class LawfulHaulDropObservation
 internal static class DeliveredJobEndObservation
 {
     internal sealed record Call(Game Game, TerritoryTransferReference City, string Start);
-    private static bool Prepare() => NativeTransferBodies.HaulFactionBodies5013;
+    private static bool Prepare() => NativeTransferBodies.HaulFactionBodies;
     private static void Prefix(Pawn_JobTracker __instance, Pawn ___pawn, JobCondition condition, out Call __state)
     {
         __state = null;
@@ -96,6 +96,7 @@ internal static class DeliveredJobEndObservation
                 next?.GetUniqueLoadID(), next?.def?.defName, Find.TickManager.TicksGame));
             LawfulHaulDrop.ValidateEnd(__state.City.OriginalHaulDropStart, __state.City.OriginalHaulDropReturn,
                 __state.Start, output, Find.TickManager.TicksGame);
+            __state.City.DeliveredSuccessorJob = next;
             __state.City.DeliveredEndReturn = output;
         }
         catch (Exception e) { Log.Warning("[Honor.Contracts.Preview] Delivered job end output unavailable: " + e.GetType().Name); }
@@ -174,6 +175,18 @@ public sealed partial class TerritoryAdministrationLedger
         ResidentExecution.ValidateCareJournal(residents, r.From, r.Target);
         return true;
     }
+    private static string CurrentDeliveryJob(TerritoryTransferReference r, OriginalDropInput drop, Pawn actor)
+    {
+        if (r.DeliveredEndStart == null && r.DeliveredEndReturn == null) return drop.Job;
+        LawfulHaulDrop.ValidateEnd(r.OriginalHaulDropStart,r.OriginalHaulDropReturn,r.DeliveredEndStart,r.DeliveredEndReturn,Find.TickManager.TicksGame);
+        var next = r.DeliveredEndReturn == null ? null : JsonSerializer.Deserialize<DeliveredJobEndReturn>(r.DeliveredEndReturn);
+        if (next?.NextJob == null || actor.CurJob == null || actor.CurJob != r.DeliveredSuccessorJob ||
+            actor.CurJob.GetUniqueLoadID() != next.NextJob || actor.CurJob.def != JobDefOf.HaulToCell ||
+            actor.CurJob.def.defName != next.NextDef || !ResidentActiveWork.CanSurvey(actor))
+            throw new ArgumentException("Original observed successor hauling job required.");
+        return next.NextJob;
+    }
+
     private static string CurrentDeliveredMapProof(TerritoryTransfer transfer, TerritoryTransferReference reference)
     {
         var input = JsonSerializer.Deserialize<OriginalDropInput>(reference.OriginalHaulDropStart);
@@ -194,7 +207,7 @@ public sealed partial class TerritoryAdministrationLedger
                 ? original.ActiveWorkV1.Single(old => old.Pawn == row.Pawn) : row).ToArray()
         };
         if (current.Things.Count(row => row.Id == input.Cargo) != 1 ||
-            current.ActiveWorkV1?.SingleOrDefault(row => row.Pawn == input.Pawn)?.Jobs.FirstOrDefault() != input.Job ||
+            current.ActiveWorkV1?.SingleOrDefault(row => row.Pawn == input.Pawn)?.Jobs.FirstOrDefault() != CurrentDeliveryJob(reference,input,actor) ||
             JsonSerializer.Serialize(comparison) != JsonSerializer.Serialize(original))
             throw new ArgumentException("Current map changed beyond the observed original ground placement.");
         return current.Proof;
@@ -220,13 +233,13 @@ public sealed partial class TerritoryAdministrationLedger
             bool delivering = kind == DeliveredResidentKind.DeliveringHauler;
             if (delivering != (id == input.Pawn)) return null;
             var expectedJob = !delivering ? LoadedMapPreservation.Restore(residents.LoadedMapScope).ActiveWorkV1
-                .SingleOrDefault(row => row.Pawn == id)?.Jobs.FirstOrDefault() : input.Job;
+                .SingleOrDefault(row => row.Pawn == id)?.Jobs.FirstOrDefault() : CurrentDeliveryJob(r,input,pawn);
             if (kind == DeliveredResidentKind.Idle)
             {
                 if (expectedJob != null || !ResidentActiveWork.IsOriginalIdleCandidate(pawn)) return null;
             }
             else if (expectedJob == null || pawn.CurJob?.GetUniqueLoadID() != expectedJob ||
-                residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true) return null;
+                (delivering && r.DeliveredEndReturn != null ? pawn.CurJob != r.DeliveredSuccessorJob : residents.ActiveWorkJobs?.Contains(pawn.CurJob) != true)) return null;
             if (call.Started || pawn.Faction != r.From ||
                 residents.Prisoners.Count != 0 || residents.Surgery[i].Detached.Count != 0 ||
                 residents.Surgery[i].Set().Orders.Count != 0 || pawn.health.surgeryBills.Bills.Count != 0 ||
@@ -329,6 +342,7 @@ public sealed partial class TerritoryAdministrationLedger
         authority();
         Ledger.ConfirmDeliveredCity(t.Id,agreement,CurrentDeliveredMapProof(t,r),r.City.Faction.GetUniqueLoadID(),
             r.CityCallStarted,r.CityCallReturned,Find.TickManager.TicksGame);
+        r.DeliveredSuccessorJob = null;
         ResidentExecution.ReleaseReferences(residents);
         LoadedMapRecords.Release(r.LoadedMap);
         ReleaseWorkObservationReferences(r);

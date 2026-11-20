@@ -303,7 +303,7 @@ internal static class ResidentActiveWork
         return rows.OrderBy(r => r.Pawn.GetUniqueLoadID(), StringComparer.Ordinal).ThenBy(r => r.Order).Select(r => new { Pawn = r.Pawn.GetUniqueLoadID(), Job = r.Job.GetUniqueLoadID(), Cell = map.cellIndices.CellToIndex(r.Cell), r.Obsolete, r.Order }).ToArray();
     }
     internal static bool IsOriginalIdleCandidate(Pawn pawn) =>
-        NativeTransferBodies.HaulFactionBodies5013 && pawn?.Spawned == true &&
+        NativeTransferBodies.HaulFactionBodies && pawn?.Spawned == true &&
         pawn.jobs?.GetType() == typeof(Pawn_JobTracker) && pawn.jobs.curJob == null &&
         pawn.jobs.curDriver == null && !pawn.jobs.startingNewJob && Queue(pawn).Count == 0 &&
         pawn.pather?.GetType() == typeof(Pawn_PathFollower) && !pawn.pather.Moving &&

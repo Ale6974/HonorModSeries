@@ -629,6 +629,7 @@ Review Honor contracts for settlement. This notice does not establish intent, di
   <RE_WorkStorageContinuationReview>Verified follow-up shelf operations: {0}. Whole remainder pickup, original-object return and full restacking retain the original split history. Current approval is required.</RE_WorkStorageContinuationReview>
   <RE_WorkStorageQuantityReview>Verified additional splits and requested partial restacks: {0}. New carried pieces keep separate identities; partial restacks retain the same carried remainder and exact shelf increase. Original records and prior approvals remain unchanged.</RE_WorkStorageQuantityReview>
   <RE_CustodyDelivered>{0} delivered {2} × {1} to {3}. This approval covers the stack at that location and the current state of the map.</RE_CustodyDelivered>
+  <RE_DeliveredSuccessor>{0} finished the original delivery. This approval covers the observed next job, {1}.</RE_DeliveredSuccessor>
   <RE_DeliveredIdleMandate>This decision authorizes transferring {0}, who was idle in the original roster and remains idle, to {1}.</RE_DeliveredIdleMandate>
   <RE_DeliveredHaulerMandate>This decision also authorizes transferring {0} to {1} while their current hauling job continues.</RE_DeliveredHaulerMandate>
 </LanguageData>
