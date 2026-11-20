@@ -91,7 +91,7 @@ public sealed class CustodyAgreements
         {
             LawfulHaulDrop.ValidateEnd(w.HaulDropStart,w.HaulDropReturn,w.DeliveredEndStart,w.DeliveredEndReturn,w.Tick);
             var successor = w.DeliveredEndReturn == null ? null : JsonSerializer.Deserialize<DeliveredJobEndReturn>(w.DeliveredEndReturn);
-            if (w.DeliveredClinicalProof == null || successor?.NextDef != "HaulToCell")
+            if (w.DeliveredClinicalProof == null || successor == null || successor.NextJob != null && successor.NextDef != "HaulToCell")
                 throw new ArgumentException("Current approved successor hauling state required.");
         }
         if (w.IdleResident != null)

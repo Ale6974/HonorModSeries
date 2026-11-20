@@ -201,7 +201,8 @@ internal static class LoadedMapRecords
                 (p.inventory?.innerContainer.Cast<Thing>() ?? []).Concat(p.equipment?.AllEquipmentListForReading.Cast<Thing>() ?? []).Concat(p.apparel?.WornApparel.Cast<Thing>() ?? []))))
                 if (!allIds.Add(item.GetUniqueLoadID()) || allIds.Count > 10000) throw new ArgumentException("Original work/frame/carry/gear references overlap or exceed capacity.");
         }
-        if (activeWork) snapshot = LoadedMapPreservation.CaptureActiveWork(snapshot, actors.Where(p => p.CurJob != null).Select(ResidentActiveWork.Capture), worktables.Length == 0 ? null : worktables.Select(WorktableEvidence.Capture), frames.Length == 0 ? null : frames.Select(ConstructionEvidence.Capture));
+        if (activeWork && (deliveredActor == null || actors.Any(p => p.CurJob != null) || worktables.Length != 0 || frames.Length != 0))
+            snapshot = LoadedMapPreservation.CaptureActiveWork(snapshot, actors.Where(p => p.CurJob != null).Select(ResidentActiveWork.Capture), worktables.Length == 0 ? null : worktables.Select(WorktableEvidence.Capture), frames.Length == 0 ? null : frames.Select(ConstructionEvidence.Capture));
         if (groundRest) snapshot = LoadedMapPreservation.CaptureGroundRest(snapshot, work, givenWork);
         if (royal) snapshot = LoadedMapPreservation.CaptureRoyalMapped(snapshot);
         var visitorReferences = actors.Count == 0 && visitors.Count > 0 ? visitors.Select(ResidentMapVisitors.References).ToList() : null;

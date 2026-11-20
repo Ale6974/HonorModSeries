@@ -180,6 +180,7 @@ public sealed partial class TerritoryAdministrationLedger
         if (r.DeliveredEndStart == null && r.DeliveredEndReturn == null) return drop.Job;
         LawfulHaulDrop.ValidateEnd(r.OriginalHaulDropStart,r.OriginalHaulDropReturn,r.DeliveredEndStart,r.DeliveredEndReturn,Find.TickManager.TicksGame);
         var next = r.DeliveredEndReturn == null ? null : JsonSerializer.Deserialize<DeliveredJobEndReturn>(r.DeliveredEndReturn);
+        if (next != null && next.NextJob == null && r.DeliveredSuccessorJob == null && ResidentActiveWork.IsOriginalIdleCandidate(actor)) return null;
         if (next?.NextJob == null || actor.CurJob == null || actor.CurJob != r.DeliveredSuccessorJob ||
             actor.CurJob.GetUniqueLoadID() != next.NextJob || actor.CurJob.def != JobDefOf.HaulToCell ||
             actor.CurJob.def.defName != next.NextDef || !ResidentActiveWork.CanSurvey(actor))
@@ -192,6 +193,7 @@ public sealed partial class TerritoryAdministrationLedger
         var input = JsonSerializer.Deserialize<OriginalDropInput>(reference.OriginalHaulDropStart);
         var residents = reference.Residents;
         var actor = residents.Pawns.Single(p => p.GetUniqueLoadID() == input.Pawn);
+        var expectedJob = CurrentDeliveryJob(reference,input,actor);
         var fresh = LoadedMapRecords.Capture(reference.City, deliveredActor: actor);
         LoadedMapRecords.VerifyMapRegistries(fresh, reference.LoadedMap);
         var current = LoadedMapPreservation.Restore(fresh.Snapshot);
@@ -203,11 +205,12 @@ public sealed partial class TerritoryAdministrationLedger
             Things = current.Things.Where(row => row.Id != input.Cargo).ToArray(),
             NativeResidents = current.NativeResidents.Select(row => row.Id == input.Pawn
                 ? original.NativeResidents.Single(old => old.Id == row.Id) : row).ToArray(),
-            ActiveWorkV1 = current.ActiveWorkV1?.Select(row => row.Pawn == input.Pawn
-                ? original.ActiveWorkV1.Single(old => old.Pawn == row.Pawn) : row).ToArray()
+            ActiveWorkV1 = (current.ActiveWorkV1 ?? []).Where(row => row.Pawn != input.Pawn)
+                .Append(original.ActiveWorkV1.Single(row => row.Pawn == input.Pawn))
+                .OrderBy(row => row.Pawn,StringComparer.Ordinal).ToArray()
         };
         if (current.Things.Count(row => row.Id == input.Cargo) != 1 ||
-            current.ActiveWorkV1?.SingleOrDefault(row => row.Pawn == input.Pawn)?.Jobs.FirstOrDefault() != CurrentDeliveryJob(reference,input,actor) ||
+            current.ActiveWorkV1?.SingleOrDefault(row => row.Pawn == input.Pawn)?.Jobs.FirstOrDefault() != expectedJob ||
             JsonSerializer.Serialize(comparison) != JsonSerializer.Serialize(original))
             throw new ArgumentException("Current map changed beyond the observed original ground placement.");
         return current.Proof;
@@ -234,7 +237,7 @@ public sealed partial class TerritoryAdministrationLedger
             if (delivering != (id == input.Pawn)) return null;
             var expectedJob = !delivering ? LoadedMapPreservation.Restore(residents.LoadedMapScope).ActiveWorkV1
                 .SingleOrDefault(row => row.Pawn == id)?.Jobs.FirstOrDefault() : CurrentDeliveryJob(r,input,pawn);
-            if (kind == DeliveredResidentKind.Idle)
+            if (kind == DeliveredResidentKind.Idle || delivering && expectedJob == null)
             {
                 if (expectedJob != null || !ResidentActiveWork.IsOriginalIdleCandidate(pawn)) return null;
             }
@@ -284,7 +287,8 @@ public sealed partial class TerritoryAdministrationLedger
             if (grant.OtherHauler != null || grant.IdleResident != null) (r.OtherHaulerAgreements ??= []).Add(grant.Id);
             else r.OriginalHaulerStartAgreement = grant.Id;
             record.AuthorityJournal[i] = start;
-        }, originalIdle: grant.IdleResident != null);
+        }, originalIdle: grant.IdleResident != null || grant.DeliveredHauler != null && grant.DeliveredEndReturn != null &&
+            JsonSerializer.Deserialize<DeliveredJobEndReturn>(grant.DeliveredEndReturn).NextJob == null);
     }
     private void FinishDeliveredCity(TerritoryTransfer t, TerritoryTransferReference r, Game game)
     {

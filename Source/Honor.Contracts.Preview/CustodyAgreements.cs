@@ -235,12 +235,15 @@ public sealed partial class TerritoryAdministrationLedger
                 var pawn = reference.Residents.Pawns.Single(person => person?.GetUniqueLoadID() == drop.Pawn);
                 text += "\n\n" + "RE_CustodyDelivered".Translate(pawn.LabelShort, cargo.LabelNoCount, drop.Count, cargo.Position.ToString());
                 if (reviewed.Witness.DeliveredEndReturn != null)
-                    text += "\n" + "RE_DeliveredSuccessor".Translate(pawn.LabelShort, reference.DeliveredSuccessorJob.def.LabelCap);
+                    text += "\n" + (reference.DeliveredSuccessorJob == null ? "RE_DeliveredEndIdle".Translate(pawn.LabelShort) :
+                        "RE_DeliveredSuccessor".Translate(pawn.LabelShort, reference.DeliveredSuccessorJob.def.LabelCap));
                 var mandate = reviewed.Witness.IdleResident ?? reviewed.Witness.OtherHauler ?? reviewed.Witness.DeliveredHauler;
                 if (mandate != null)
                 {
                     var resident = reference.Residents.Pawns.Single(p => p.GetUniqueLoadID() == mandate.Pawn);
-                    text += "\n" + (reviewed.Witness.IdleResident != null ? "RE_DeliveredIdleMandate" : "RE_DeliveredHaulerMandate").Translate(resident.LabelShort, reference.Target.Name);
+                    text += "\n" + (reviewed.Witness.IdleResident != null ? "RE_DeliveredIdleMandate" :
+                        reviewed.Witness.DeliveredHauler != null && reviewed.Witness.DeliveredEndReturn != null && reference.DeliveredSuccessorJob == null ?
+                        "RE_DeliveredNowIdleMandate" : "RE_DeliveredHaulerMandate").Translate(resident.LabelShort, reference.Target.Name);
                 }
             }
             if (reviewed.Witness.ForeignRightsV1 != null)

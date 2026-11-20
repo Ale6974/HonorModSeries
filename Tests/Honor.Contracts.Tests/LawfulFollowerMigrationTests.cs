@@ -278,6 +278,11 @@ internal static class LawfulFollowerMigrationTests
         var haulerGrant = witness with { DeliveredClinicalProof = Hash("clinical"), DeliveredHauler = new(drop.Pawn,Hash("current resident")) };
         var successorGrant = haulerGrant with { DeliveredEndStart = endStart,
             DeliveredEndReturn = JsonSerializer.Serialize(endReturn with { NextJob = "next-haul", NextDef = "HaulToCell" }) };
+        var endedIdleGrant = successorGrant with { DeliveredEndReturn = JsonSerializer.Serialize(endReturn with { NextDef = null, NextJob = null }) };
+        var idleEndArchive = new CustodyAgreements();
+        idleEndArchive.Add(endedIdleGrant);
+        Check(CustodyAgreements.Restore(idleEndArchive.Export()).Record(endedIdleGrant.Id).Witness.DeliveredEndReturn == endedIdleGrant.DeliveredEndReturn &&
+            CustodyAgreements.Scope(endedIdleGrant) != CustodyAgreements.Scope(successorGrant), "observed idle return has a separate persisted approval from a successor job");
         var successors = new CustodyAgreements();
         successors.Add(successorGrant);
         Check(CustodyAgreements.Restore(successors.Export()).Record(successorGrant.Id).Witness.DeliveredEndReturn == successorGrant.DeliveredEndReturn &&
